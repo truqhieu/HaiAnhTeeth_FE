@@ -7,9 +7,13 @@ import {
   NavbarItem,
   Link,
   Input,
+  Button,
 } from "@heroui/react";
+import { useAuthModal } from "@/contexts/AuthModalContext";
 
 const AppNavbar = () => {
+  const { openLoginModal, openSignupModal } = useAuthModal();
+
   return (
     <header className="w-full shadow bg-white">
       {/* Top bar */}
@@ -41,12 +45,22 @@ const AppNavbar = () => {
               <option value="kr">KR</option>
               <option value="cn">CN</option>
             </select>
-            <Link href="/signup" className="text-white">
+            <Button 
+              variant="light" 
+              size="sm"
+              className="text-white hover:text-gray-200 min-w-unit-0 p-2"
+              onPress={openSignupModal}
+            >
               Đăng ký
-            </Link>
-            <Link href="/login" className="text-white">
+            </Button>
+            <Button 
+              variant="light" 
+              size="sm"
+              className="text-white hover:text-gray-200 min-w-unit-0 p-2"
+              onPress={openLoginModal}
+            >
               Đăng nhập
-            </Link>
+            </Button>
           </div>
         </div>
       </div>
