@@ -5,11 +5,13 @@ import DocsPage from "@/pages/docs";
 import PricingPage from "@/pages/pricing";
 import BlogPage from "@/pages/blog";
 import AboutPage from "@/pages/about";
-import SignupPage from "@/pages/signup";
-import LoginPage from "@/pages/login";
+import { AuthModalProvider } from "@/contexts/AuthModalContext";
+import LoginModal from "@/components/LoginModal";
+import SignupModal from "@/components/SignupModal";
+
 function App() {
   return (
-    <>
+    <AuthModalProvider>
       {/* Navbar luôn hiển thị */}
       <Navbar />
 
@@ -20,10 +22,12 @@ function App() {
         <Route element={<PricingPage />} path="/pricing" />
         <Route element={<BlogPage />} path="/blog" />
         <Route element={<AboutPage />} path="/about" />
-        <Route element={<SignupPage />} path="/signup" />
-        <Route element={<LoginPage />} path="/login" />
       </Routes>
-    </>
+
+      {/* Auth Modals - hiển thị ở mọi nơi */}
+      <LoginModal />
+      <SignupModal />
+    </AuthModalProvider>
   );
 }
 
