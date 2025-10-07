@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { PhoneIcon } from "@heroicons/react/24/outline";
 import {
   Navbar,
@@ -9,7 +9,9 @@ import {
   Button,
 } from "@heroui/react";
 import Lottie from "lottie-react";
+
 import searchAnimation from "../icons/search.json";
+
 import { useAuthModal } from "@/contexts/AuthModalContext";
 
 const AppNavbar = () => {
@@ -23,7 +25,7 @@ const AppNavbar = () => {
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center py-2">
           {/* Left side */}
           <div className="flex items-center space-x-6">
-            <a href="tel:02473008866" className="flex items-center space-x-2">
+            <a className="flex items-center space-x-2" href="tel:02473008866">
               <PhoneIcon className="w-4 h-4" />
               <span>Hỗ trợ tư vấn: 024 7300 8866</span>
             </a>
@@ -32,14 +34,14 @@ const AppNavbar = () => {
           {/* Right side */}
           <div className="flex items-center space-x-4">
             <a
-              href="/offers"
               className="bg-[#39BDCC] hover:bg-green-500 px-3 py-1 rounded text-white text-xs"
+              href="/offers"
             >
               Ưu đãi nổi bật
             </a>
             <select
-              name="language"
               className="bg-transparent text-white uppercase text-sm"
+              name="language"
             >
               <option value="vi">VI</option>
               <option value="en">EN</option>
@@ -47,17 +49,17 @@ const AppNavbar = () => {
               <option value="cn">CN</option>
             </select>
             <Button
-              variant="light"
-              size="sm"
               className="text-white hover:text-gray-200 min-w-unit-0 p-2"
+              size="sm"
+              variant="light"
               onPress={openSignupModal}
             >
               Đăng ký
             </Button>
             <Button
-              variant="light"
-              size="sm"
               className="text-white hover:text-gray-200 min-w-unit-0 p-2"
+              size="sm"
+              variant="light"
               onPress={openLoginModal}
             >
               Đăng nhập
@@ -70,16 +72,16 @@ const AppNavbar = () => {
       <div className="flex items-center h-30 px-4">
         {/* Logo bên trái */}
         <div className="flex-shrink-0">
-          <Link href="/" className="flex items-center">
+          <Link className="flex items-center" href="/">
             <img
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
               alt="Logo"
               className="h-20 w-auto object-contain"
+              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
             />
             <img
-              src="/Screenshot_2025-09-19_141449-removebg-preview.png"
               alt="Logo Text"
               className="h-12 w-auto object-contain ml-2"
+              src="/Screenshot_2025-09-19_141449-removebg-preview.png"
             />
           </Link>
         </div>
@@ -89,32 +91,32 @@ const AppNavbar = () => {
           {/* Menu Items ở giữa */}
           <NavbarContent className="hidden sm:flex gap-6" justify="center">
             <NavbarItem>
-              <Link href="/about" color="foreground">
+              <Link color="foreground" href="/about">
                 Giới thiệu
               </Link>
             </NavbarItem>
             <NavbarItem>
-              <Link href="/services" color="foreground">
+              <Link color="foreground" href="/services">
                 Dịch vụ
               </Link>
             </NavbarItem>
             <NavbarItem>
-              <Link href="/doctors" color="foreground">
+              <Link color="foreground" href="/doctors">
                 Danh sách bác sĩ
               </Link>
             </NavbarItem>
             <NavbarItem>
-              <Link href="/departments" color="foreground">
+              <Link color="foreground" href="/departments">
                 Chuyên khoa
               </Link>
             </NavbarItem>
             <NavbarItem>
-              <Link href="/news" color="foreground">
+              <Link color="foreground" href="/news">
                 Tin tức & Ưu đãi
               </Link>
             </NavbarItem>
             <NavbarItem>
-              <Link href="/contact" color="foreground">
+              <Link color="foreground" href="/contact">
                 Liên hệ
               </Link>
             </NavbarItem>
@@ -124,13 +126,13 @@ const AppNavbar = () => {
           <NavbarContent justify="end">
             <NavbarItem className="flex items-center gap-2">
               <button
-                onClick={() => setShowSearch(!showSearch)}
                 className="w-10 h-10 flex items-center justify-center"
+                onClick={() => setShowSearch(!showSearch)}
               >
                 <Lottie
                   animationData={searchAnimation}
-                  loop={false}
                   autoplay={false}
+                  loop={false}
                   style={{ width: 32, height: 32 }}
                 />
               </button>
@@ -140,7 +142,7 @@ const AppNavbar = () => {
                   showSearch ? "w-48 opacity-100" : "w-0 opacity-0"
                 }`}
               >
-                <Input placeholder="Tìm kiếm..." size="sm" className="w-full" />
+                <Input className="w-full" placeholder="Tìm kiếm..." size="sm" />
               </div>
             </NavbarItem>
           </NavbarContent>

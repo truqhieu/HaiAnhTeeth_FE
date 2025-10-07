@@ -15,6 +15,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const data = { name, email, message };
+
+    // TODO: Gửi data lên server
+    // eslint-disable-next-line no-console
     console.log("Đặt lịch khám:", data);
 
     // Reset form
@@ -31,8 +34,16 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
+        aria-label="Close modal"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        role="button"
+        tabIndex={0}
         onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            onClose();
+          }
+        }}
       />
 
       {/* Modal Content */}
@@ -45,9 +56,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           </div>
           <Button
             isIconOnly
+            className="text-gray-500 hover:text-gray-700"
             variant="light"
             onPress={onClose}
-            className="text-gray-500 hover:text-gray-700"
           >
             <XMarkIcon className="w-5 h-5" />
           </Button>
@@ -57,37 +68,37 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         <div className="p-6">
           <Form className="space-y-4" onSubmit={onSubmit}>
             <Input
+              fullWidth
+              isRequired
               label="Họ và tên"
               placeholder="Nguyễn Văn A"
               value={name}
               onValueChange={setName}
-              fullWidth
-              isRequired
             />
 
             <Input
-              label="Email"
-              type="email"
-              placeholder="nguyenvana@example.com"
-              value={email}
-              onValueChange={setEmail}
               fullWidth
               isRequired
+              label="Email"
+              placeholder="nguyenvana@example.com"
+              type="email"
+              value={email}
+              onValueChange={setEmail}
             />
 
             <Textarea
+              fullWidth
               label="Nội dung"
               placeholder="Triệu chứng hoặc yêu cầu của bạn..."
+              rows={4}
               value={message}
               onValueChange={setMessage}
-              fullWidth
-              rows={4}
             />
 
             <Button
+              className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"
               type="submit"
               variant="solid"
-              className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"
             >
               Xác nhận đặt lịch
             </Button>

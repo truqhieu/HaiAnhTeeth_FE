@@ -1,5 +1,8 @@
-import React from "react";
-import { MapPinIcon, PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import {
+  MapPinIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+} from "@heroicons/react/24/outline";
 
 const Footer = () => {
   return (
@@ -8,11 +11,13 @@ const Footer = () => {
         {/* Cột 1: Thông tin liên hệ */}
         <div>
           <img
-            src="/Screenshot_2025-09-19_141436-removebg-preview.png"
             alt="Logo Hải Anh"
             className="h-12 w-auto mb-4"
+            src="/Screenshot_2025-09-19_141436-removebg-preview.png"
           />
-          <h3 className="text-lg font-semibold mb-2">Phòng khám răng hàm mặt Hải Anh</h3>
+          <h3 className="text-lg font-semibold mb-2">
+            Phòng khám răng hàm mặt Hải Anh
+          </h3>
           <div className="space-y-2">
             <p className="flex items-center">
               <MapPinIcon className="w-5 h-5 mr-2 text-gray-600" />

@@ -1,6 +1,12 @@
 import React from "react";
-import { UserIcon, EyeIcon, EyeSlashIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import {
+  UserIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/solid";
 import { DatePicker, Input, Button, Form } from "@heroui/react";
+
 import { useAuthModal } from "@/contexts/AuthModalContext";
 
 const SignupModal = () => {
@@ -14,7 +20,8 @@ const SignupModal = () => {
   const [submitted, setSubmitted] = React.useState<any>(null);
   const [showValidation, setShowValidation] = React.useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = React.useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
+    React.useState(false);
 
   // Reset form when modal opens
   React.useEffect(() => {
@@ -39,15 +46,20 @@ const SignupModal = () => {
   // Xác thực mật khẩu
   const getPasswordErrors = (): string[] => {
     const errors: string[] = [];
+
     if (password.length > 0 && password.length < 4) {
       errors.push("Mật khẩu phải có ít nhất 4 ký tự.");
     }
     if (password.length > 0 && (password.match(/[A-Z]/g) || []).length < 1) {
       errors.push("Mật khẩu phải có ít nhất 1 chữ cái viết hoa.");
     }
-    if (password.length > 0 && (password.match(/[^a-z0-9]/gi) || []).length < 1) {
+    if (
+      password.length > 0 &&
+      (password.match(/[^a-z0-9]/gi) || []).length < 1
+    ) {
       errors.push("Mật khẩu phải có ít nhất 1 ký tự đặc biệt.");
     }
+
     return errors;
   };
 
@@ -56,33 +68,38 @@ const SignupModal = () => {
   const isEmailInvalid = showValidation && (!email || !validateEmail(email));
   const isGenderInvalid = showValidation && !gender;
   const isBirthdateInvalid = showValidation && !birthdate;
-  const isPasswordInvalid = showValidation && (!password || getPasswordErrors().length > 0);
-  const isConfirmPasswordInvalid = showValidation && (!confirmPassword || password !== confirmPassword);
+  const isPasswordInvalid =
+    showValidation && (!password || getPasswordErrors().length > 0);
+  const isConfirmPasswordInvalid =
+    showValidation && (!confirmPassword || password !== confirmPassword);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setShowValidation(true);
-    
+
     // Kiểm tra validation cho tất cả các trường
-    const hasErrors = 
+    const hasErrors =
       !name ||
-      !email || 
-      !validateEmail(email) || 
-      !gender || 
+      !email ||
+      !validateEmail(email) ||
+      !gender ||
       !birthdate ||
       !password ||
-      getPasswordErrors().length > 0 || 
+      getPasswordErrors().length > 0 ||
       !confirmPassword ||
       password !== confirmPassword;
-    
+
     if (hasErrors) {
       return;
     }
-    
+
     const data = { name, email, gender, birthdate, password };
+
     setSubmitted(data);
+    // TODO: Gửi data lên server
+    // eslint-disable-next-line no-console
     console.log("Đăng ký thành công:", data);
-    
+
     // Close modal after successful signup
     setTimeout(() => {
       closeModals();
@@ -106,83 +123,110 @@ const SignupModal = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
+        aria-label="Close modal"
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        role="button"
+        tabIndex={0}
         onClick={closeModals}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            closeModals();
+          }
+        }}
       />
-      
+
       {/* Modal Content */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
           <div className="flex items-center space-x-3">
-    <img
-      src="/Screenshot_2025-09-19_141436-removebg-preview.png"
-      alt="Logo"
-      className="h-8 w-auto object-contain"
-    />
-    <h2 className="text-2xl font-bold">Đăng ký</h2>
-  </div>
-          <Button 
-            isIconOnly 
-            variant="light" 
-            onPress={closeModals}
+            <img
+              alt="Logo"
+              className="h-8 w-auto object-contain"
+              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+            />
+            <h2 className="text-2xl font-bold">Đăng ký</h2>
+          </div>
+          <Button
+            isIconOnly
             className="text-gray-500 hover:text-gray-700"
+            variant="light"
+            onPress={closeModals}
           >
             <XMarkIcon className="w-5 h-5" />
           </Button>
         </div>
-        
+
         {/* Body */}
         <div className="p-6 overflow-y-auto">
-          <Form className="space-y-4" onSubmit={onSubmit} autoComplete="off">
-            <Input 
-              label="Họ và tên *" 
-              type="text" 
-              name="name" 
+          <Form autoComplete="off" className="space-y-4" onSubmit={onSubmit}>
+            <Input
+              fullWidth
+              autoComplete="off"
+              errorMessage={
+                isNameInvalid ? "Vui lòng nhập họ và tên" : undefined
+              }
+              isInvalid={isNameInvalid}
+              label="Họ và tên *"
+              name="name"
+              placeholder="Nhập họ và tên của bạn"
+              type="text"
               value={name}
               onValueChange={setName}
-              fullWidth 
-              autoComplete="off"
-              placeholder="Nhập họ và tên của bạn"
-              isInvalid={isNameInvalid}
-              errorMessage={isNameInvalid ? "Vui lòng nhập họ và tên" : undefined}
             />
 
             <Input
-              label="Email *"
-              type="email"
-              value={email}
-              onValueChange={setEmail}
-              name="email"
               fullWidth
               autoComplete="off"
-              placeholder="Nhập email của bạn"
-              isInvalid={isEmailInvalid}
               errorMessage={
-                isEmailInvalid 
-                  ? email === "" 
-                    ? "Vui lòng nhập email" 
+                isEmailInvalid
+                  ? email === ""
+                    ? "Vui lòng nhập email"
                     : "Vui lòng nhập email hợp lệ"
                   : undefined
               }
+              isInvalid={isEmailInvalid}
+              label="Email *"
+              name="email"
+              placeholder="Nhập email của bạn"
+              type="email"
+              value={email}
+              onValueChange={setEmail}
             />
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Giới tính *</label>
-              <div className="grid grid-cols-2 gap-2">
+              <label
+                className="text-sm font-medium text-gray-700"
+                htmlFor="gender-selection"
+              >
+                Giới tính *
+              </label>
+              <div className="grid grid-cols-2 gap-2" id="gender-selection">
                 <Button
-                  variant={gender === "Nam" ? "solid" : "bordered"}
-                  color={gender === "Nam" ? "primary" : isGenderInvalid ? "danger" : "default"}
                   className={`w-full ${gender === "Nam" ? "bg-[#39BDCC] text-white" : ""} ${isGenderInvalid ? "border-danger-500" : ""}`}
+                  color={
+                    gender === "Nam"
+                      ? "primary"
+                      : isGenderInvalid
+                        ? "danger"
+                        : "default"
+                  }
+                  variant={gender === "Nam" ? "solid" : "bordered"}
                   onPress={() => setGender("Nam")}
                 >
                   Nam
                 </Button>
                 <Button
-                  variant={gender === "Nữ" ? "solid" : "bordered"}
-                  color={gender === "Nữ" ? "primary" : isGenderInvalid ? "danger" : "default"}
                   className={`w-full ${gender === "Nữ" ? "bg-[#39BDCC] text-white" : ""} ${isGenderInvalid ? "border-danger-500" : ""}`}
+                  color={
+                    gender === "Nữ"
+                      ? "primary"
+                      : isGenderInvalid
+                        ? "danger"
+                        : "default"
+                  }
+                  variant={gender === "Nữ" ? "solid" : "bordered"}
                   onPress={() => setGender("Nữ")}
                 >
                   Nữ
@@ -193,38 +237,21 @@ const SignupModal = () => {
               )}
             </div>
 
-            <DatePicker 
-              label="Ngày sinh *" 
-              name="birthdate" 
+            <DatePicker
+              fullWidth
+              errorMessage={
+                isBirthdateInvalid ? "Vui lòng chọn ngày sinh" : undefined
+              }
+              isInvalid={isBirthdateInvalid}
+              label="Ngày sinh *"
+              name="birthdate"
               value={birthdate}
               onChange={setBirthdate}
-              fullWidth 
-              isInvalid={isBirthdateInvalid}
-              errorMessage={isBirthdateInvalid ? "Vui lòng chọn ngày sinh" : undefined}
             />
 
             <Input
-              label="Mật khẩu *"
-              labelPlacement="outside"
-              name="password"
-              placeholder="Nhập mật khẩu"
-              value={password}
-              type={isPasswordVisible ? "text" : "password"}
-              onValueChange={setPassword}
               fullWidth
               autoComplete="new-password"
-              isInvalid={isPasswordInvalid}
-              errorMessage={
-                isPasswordInvalid ? (
-                  !password ? "Vui lòng nhập mật khẩu" : (
-                    <ul className="list-disc list-inside">
-                      {getPasswordErrors().map((error, i) => (
-                        <li key={i}>{error}</li>
-                      ))}
-                    </ul>
-                  )
-                ) : undefined
-              }
               endContent={
                 <button
                   className="focus:outline-none"
@@ -238,29 +265,39 @@ const SignupModal = () => {
                   )}
                 </button>
               }
+              errorMessage={
+                isPasswordInvalid ? (
+                  !password ? (
+                    "Vui lòng nhập mật khẩu"
+                  ) : (
+                    <ul className="list-disc list-inside">
+                      {getPasswordErrors().map((error, i) => (
+                        <li key={i}>{error}</li>
+                      ))}
+                    </ul>
+                  )
+                ) : undefined
+              }
+              isInvalid={isPasswordInvalid}
+              label="Mật khẩu *"
+              labelPlacement="outside"
+              name="password"
+              placeholder="Nhập mật khẩu"
+              type={isPasswordVisible ? "text" : "password"}
+              value={password}
+              onValueChange={setPassword}
             />
 
             <Input
-              label="Xác nhận mật khẩu *"
-              labelPlacement="outside"
-              name="confirm-password"
-              placeholder="Nhập lại mật khẩu"
-              value={confirmPassword}
-              type={isConfirmPasswordVisible ? "text" : "password"}
-              onValueChange={setConfirmPassword}
               fullWidth
               autoComplete="new-password"
-              isInvalid={isConfirmPasswordInvalid}
-              errorMessage={
-                isConfirmPasswordInvalid ? (
-                  !confirmPassword ? "Vui lòng xác nhận mật khẩu" : "Mật khẩu không khớp."
-                ) : undefined
-              }
               endContent={
                 <button
                   className="focus:outline-none"
                   type="button"
-                  onClick={() => setIsConfirmPasswordVisible(!isConfirmPasswordVisible)}
+                  onClick={() =>
+                    setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
+                  }
                 >
                   {isConfirmPasswordVisible ? (
                     <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
@@ -269,12 +306,27 @@ const SignupModal = () => {
                   )}
                 </button>
               }
+              errorMessage={
+                isConfirmPasswordInvalid
+                  ? !confirmPassword
+                    ? "Vui lòng xác nhận mật khẩu"
+                    : "Mật khẩu không khớp."
+                  : undefined
+              }
+              isInvalid={isConfirmPasswordInvalid}
+              label="Xác nhận mật khẩu *"
+              labelPlacement="outside"
+              name="confirm-password"
+              placeholder="Nhập lại mật khẩu"
+              type={isConfirmPasswordVisible ? "text" : "password"}
+              value={confirmPassword}
+              onValueChange={setConfirmPassword}
             />
 
             <Button
+              className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"
               type="submit"
               variant="solid"
-              className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"
             >
               <UserIcon className="w-5 h-5 mr-2" />
               Đăng ký
@@ -289,9 +341,9 @@ const SignupModal = () => {
 
           <p className="mt-4 text-center text-sm">
             Bạn đã có tài khoản?{" "}
-            <button 
-              onClick={handleSwitchToLogin}
+            <button
               className="text-blue-500 hover:underline"
+              onClick={handleSwitchToLogin}
             >
               Đăng nhập
             </button>
