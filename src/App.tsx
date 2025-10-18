@@ -5,39 +5,71 @@ import Navbar from "./components/navbar";
 import DefaultLayout from "@/layouts/default";
 import IndexPage from "@/pages/Public/index";
 import AboutPage from "@/pages/Public/about";
+import ResetPassword from "@/pages/Public/reset-password";
 import Dashboard from "@/pages/Patient/Dashboard";
 import AccountSettings from "@/pages/Patient/AccountSettings";
 import Complaints from "@/pages/Patient/Complaints";
+import AccountManagement from "@/pages/Admin/AccountManagement";
+import AdminSettings from "@/pages/Admin/AdminSettings";
+import AdminLayout from "@/layouts/AdminLayout";
 import { AuthModalProvider } from "@/contexts/AuthModalContext";
 import LoginModal from "@/components/LoginModal";
 import SignupModal from "@/components/SignupModal";
+import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 
 function App() {
   return (
     <AuthModalProvider>
-      {/* Navbar hiển thị trên tất cả các trang */}
-      <Navbar />
+      <Routes>
+        {/* Admin Routes */}
+        <Route
+          path="/admin/*"
+          element={
+            <AdminLayout>
+              <Routes>
+                <Route
+                  element={<AccountManagement />}
+                  path="accounts"
+                />
+                <Route element={<AdminSettings />} path="settings" />
+              </Routes>
+            </AdminLayout>
+          }
+        />
 
-      {/* DefaultLayout bao bọc tất cả routes - có Footer */}
-      <DefaultLayout>
-        <Routes>
-          {/* Public Routes */}
-          <Route element={<IndexPage />} path="/" />
-          <Route element={<AboutPage />} path="/about" />
+        {/* Public Routes */}
+        <Route
+          path="/*"
+          element={
+            <>
+              {/* Navbar hiển thị trên tất cả các trang */}
+              <Navbar />
 
-          {/* Patient Routes */}
-          <Route element={<Dashboard />} path="/patient/dashboard" />
-          <Route
-            element={<AccountSettings />}
-            path="/patient/account-settings"
-          />
-          <Route element={<Complaints />} path="/patient/complaints" />
-        </Routes>
-      </DefaultLayout>
+              {/* DefaultLayout bao bọc tất cả routes - có Footer */}
+              <DefaultLayout>
+                <Routes>
+                  <Route element={<IndexPage />} path="/" />
+                  <Route element={<AboutPage />} path="/about" />
+                  <Route element={<ResetPassword />} path="/reset-password" />
 
-      {/* Auth Modals - hiển thị ở mọi nơi */}
-      <LoginModal />
-      <SignupModal />
+                  {/* Patient Routes */}
+                  <Route element={<Dashboard />} path="/patient/dashboard" />
+                  <Route
+                    element={<AccountSettings />}
+                    path="/patient/account-settings"
+                  />
+                  <Route element={<Complaints />} path="/patient/complaints" />
+                </Routes>
+              </DefaultLayout>
+
+              {/* Auth Modals - hiển thị ở mọi nơi */}
+              <LoginModal />
+              <SignupModal />
+              <ForgotPasswordModal />
+            </>
+          }
+        />
+      </Routes>
     </AuthModalProvider>
   );
 }

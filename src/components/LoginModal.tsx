@@ -5,7 +5,12 @@ import { Input, Button, Form } from "@heroui/react";
 import { useAuthModal } from "@/contexts/AuthModalContext";
 
 const LoginModal = () => {
-  const { isLoginModalOpen, closeModals, openSignupModal } = useAuthModal();
+  const {
+    isLoginModalOpen,
+    closeModals,
+    openSignupModal,
+    openForgotPasswordModal,
+  } = useAuthModal();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
 
@@ -124,6 +129,16 @@ const LoginModal = () => {
               value={password}
               onValueChange={setPassword}
             />
+
+            <div className="text-right mb-2">
+              <button
+                className="text-sm text-blue-500 hover:underline"
+                type="button"
+                onClick={openForgotPasswordModal}
+              >
+                Quên mật khẩu?
+              </button>
+            </div>
 
             <Button
               className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"

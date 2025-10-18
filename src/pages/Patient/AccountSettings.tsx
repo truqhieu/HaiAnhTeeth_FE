@@ -44,7 +44,7 @@ const AccountSettings = () => {
 
         <form className="space-y-8" onSubmit={handleSubmit}>
           {/* Thông tin tài khoản */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white shadow-sm border p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-6">
               Thông tin tài khoản
             </h2>
@@ -109,7 +109,7 @@ const AccountSettings = () => {
           </div>
 
           {/* Địa chỉ liên lạc */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white shadow-sm border p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-6">
               Địa chỉ liên lạc
             </h2>
@@ -138,12 +138,12 @@ const AccountSettings = () => {
           </div>
 
           {/* Đổi mật khẩu */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white shadow-sm border p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-6">
               Đổi mật khẩu
             </h2>
 
-            <div className="max-w-md space-y-4">
+            <div className="grid grid-cols-1 gap-6 max-w-md">
               <Input
                 label="Mật khẩu cũ"
                 labelPlacement="outside"
@@ -165,7 +165,7 @@ const AccountSettings = () => {
               />
 
               <Input
-                label="Xác nhận thay đổi mật khẩu"
+                label="Xác nhận mật khẩu mới"
                 labelPlacement="outside"
                 placeholder="Nhập lại mật khẩu mới"
                 type="password"

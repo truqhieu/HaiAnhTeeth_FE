@@ -3,8 +3,10 @@ import React, { createContext, useContext, useState } from "react";
 interface AuthModalContextType {
   isLoginModalOpen: boolean;
   isSignupModalOpen: boolean;
+  isForgotPasswordModalOpen: boolean;
   openLoginModal: () => void;
   openSignupModal: () => void;
+  openForgotPasswordModal: () => void;
   closeModals: () => void;
 }
 
@@ -27,20 +29,31 @@ export const AuthModalProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
+  const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] =
+    useState(false);
 
   const openLoginModal = () => {
     setIsLoginModalOpen(true);
     setIsSignupModalOpen(false);
+    setIsForgotPasswordModalOpen(false);
   };
 
   const openSignupModal = () => {
     setIsSignupModalOpen(true);
     setIsLoginModalOpen(false);
+    setIsForgotPasswordModalOpen(false);
+  };
+
+  const openForgotPasswordModal = () => {
+    setIsForgotPasswordModalOpen(true);
+    setIsLoginModalOpen(false);
+    setIsSignupModalOpen(false);
   };
 
   const closeModals = () => {
     setIsLoginModalOpen(false);
     setIsSignupModalOpen(false);
+    setIsForgotPasswordModalOpen(false);
   };
 
   return (
@@ -48,8 +61,10 @@ export const AuthModalProvider: React.FC<{ children: React.ReactNode }> = ({
       value={{
         isLoginModalOpen,
         isSignupModalOpen,
+        isForgotPasswordModalOpen,
         openLoginModal,
         openSignupModal,
+        openForgotPasswordModal,
         closeModals,
       }}
     >
