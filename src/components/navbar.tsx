@@ -1,62 +1,65 @@
-import React from "react";
+import { useState } from "react";
 import { PhoneIcon } from "@heroicons/react/24/outline";
 import {
   Navbar,
-  NavbarBrand,
   NavbarContent,
   NavbarItem,
   Link,
   Input,
   Button,
 } from "@heroui/react";
+import Lottie from "lottie-react";
+
+import searchAnimation from "../icons/search.json";
+
 import { useAuthModal } from "@/contexts/AuthModalContext";
 
 const AppNavbar = () => {
+  const [showSearch, setShowSearch] = useState(false);
   const { openLoginModal, openSignupModal } = useAuthModal();
 
   return (
     <header className="w-full shadow bg-white">
       {/* Top bar */}
-      <div className="bg-green-700 text-white text-sm">
+      <div className="bg-[#39BDCC] text-white text-sm">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center py-2">
           {/* Left side */}
           <div className="flex items-center space-x-6">
-            <a href="tel:02473008866" className="flex items-center space-x-2">
+            <a className="flex items-center space-x-2" href="tel:02473008866">
               <PhoneIcon className="w-4 h-4" />
               <span>Hỗ trợ tư vấn: 024 7300 8866</span>
-            </a>
-            <a href="tel:1900636555" className="flex items-center space-x-2">
-              <PhoneIcon className="w-4 h-4" />
-              <span>Cấp cứu: 1900 636 555</span>
             </a>
           </div>
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
-            <a href="/offers" className="bg-green-600 hover:bg-green-500 px-3 py-1 rounded text-white text-xs">
+            <a
+              className="bg-[#39BDCC] hover:bg-green-500 px-3 py-1 rounded text-white text-xs"
+              href="/offers"
+            >
               Ưu đãi nổi bật
             </a>
             <select
-              name="language"
               className="bg-transparent text-white uppercase text-sm"
+              name="language"
             >
               <option value="vi">VI</option>
               <option value="en">EN</option>
               <option value="kr">KR</option>
               <option value="cn">CN</option>
             </select>
-            <Button 
-              variant="light" 
-              size="sm"
+            <Button
               className="text-white hover:text-gray-200 min-w-unit-0 p-2"
+              size="sm"
+              variant="light"
               onPress={openSignupModal}
             >
               Đăng ký
             </Button>
-            <Button 
-              variant="light" 
-              size="sm"
+            <Button
               className="text-white hover:text-gray-200 min-w-unit-0 p-2"
+              size="sm"
+              variant="light"
               onPress={openLoginModal}
             >
               Đăng nhập
@@ -66,63 +69,85 @@ const AppNavbar = () => {
       </div>
 
       {/* Main Navbar */}
-      <Navbar isBordered className="flex items-center h-30 px-4">
-  {/* Logo */}
-  <NavbarBrand>
-    <Link href="/" className="flex items-center">
-      <img
-        src="/unnamed.png"
-        alt="Logo"
-        className="h-29 max-h-[8rem] w-auto object-contain"
-      />
-    </Link>
-  </NavbarBrand>
+      <div className="flex items-center h-30 px-4">
+        {/* Logo bên trái */}
+        <div className="flex-shrink-0">
+          <Link className="flex items-center" href="/">
+            <img
+              alt="Logo"
+              className="h-20 w-auto object-contain"
+              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+            />
+            <img
+              alt="Logo Text"
+              className="h-12 w-auto object-contain ml-2"
+              src="/Screenshot_2025-09-19_141449-removebg-preview.png"
+            />
+          </Link>
+        </div>
 
-  {/* Menu Items */}
-  <NavbarContent className="hidden sm:flex gap-6" justify="center">
-    <NavbarItem>
-      <Link href="/about" color="foreground">
-        Giới thiệu
-      </Link>
-    </NavbarItem>
-    <NavbarItem>
-      <Link href="/services" color="foreground">
-        Dịch vụ
-      </Link>
-    </NavbarItem>
-    <NavbarItem>
-      <Link href="/doctors" color="foreground">
-        Danh sách bác sĩ
-      </Link>
-    </NavbarItem>
-    <NavbarItem>
-      <Link href="/departments" color="foreground">
-        Chuyên khoa
-      </Link>
-    </NavbarItem>
-    <NavbarItem>
-      <Link href="/news" color="foreground">
-        Tin tức & Ưu đãi
-      </Link>
-    </NavbarItem>
-    <NavbarItem>
-      <Link href="/contact" color="foreground">
-        Liên hệ
-      </Link>
-    </NavbarItem>
-  </NavbarContent>
+        {/* Navbar Items + Search */}
+        <Navbar className="flex-1">
+          {/* Menu Items ở giữa */}
+          <NavbarContent className="hidden sm:flex gap-6" justify="center">
+            <NavbarItem>
+              <Link color="foreground" href="/about">
+                Giới thiệu
+              </Link>
+            </NavbarItem>
+            <NavbarItem>
+              <Link color="foreground" href="/services">
+                Dịch vụ
+              </Link>
+            </NavbarItem>
+            <NavbarItem>
+              <Link color="foreground" href="/doctors">
+                Danh sách bác sĩ
+              </Link>
+            </NavbarItem>
+            <NavbarItem>
+              <Link color="foreground" href="/departments">
+                Chuyên khoa
+              </Link>
+            </NavbarItem>
+            <NavbarItem>
+              <Link color="foreground" href="/news">
+                Tin tức & Ưu đãi
+              </Link>
+            </NavbarItem>
+            <NavbarItem>
+              <Link color="foreground" href="/contact">
+                Liên hệ
+              </Link>
+            </NavbarItem>
+          </NavbarContent>
 
-  {/* Search + Action */}
-  <NavbarContent justify="end">
-    <NavbarItem className="hidden lg:flex">
-      <Input
-        placeholder="Tìm kiếm..."
-        size="sm"
-        className="w-48"
-      />
-    </NavbarItem>
-  </NavbarContent>
-</Navbar>
+          {/* Search */}
+          <NavbarContent justify="end">
+            <NavbarItem className="flex items-center gap-2">
+              <button
+                className="w-10 h-10 flex items-center justify-center"
+                onClick={() => setShowSearch(!showSearch)}
+              >
+                <Lottie
+                  animationData={searchAnimation}
+                  autoplay={false}
+                  loop={false}
+                  style={{ width: 32, height: 32 }}
+                />
+              </button>
+
+              <div
+                className={`transition-all duration-300 overflow-hidden ${
+                  showSearch ? "w-48 opacity-100" : "w-0 opacity-0"
+                }`}
+              >
+                <Input className="w-full" placeholder="Tìm kiếm..." size="sm" />
+              </div>
+            </NavbarItem>
+          </NavbarContent>
+        </Navbar>
+      </div>
     </header>
   );
 };
