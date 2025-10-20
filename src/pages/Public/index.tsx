@@ -3,20 +3,22 @@ import {
   CalendarIcon,
   UserIcon,
   ChatBubbleLeftIcon,
-  PhoneIcon,
 } from "@heroicons/react/24/outline";
 
-import { BookingModal } from "@/components";
+// THAY ĐỔI 1: Import `useBookingModal` và `BookingModal`
+import { useBookingModal } from "@/contexts/BookingModalContext";
+import { BookingModal } from "@/components"; // Giữ lại cho "Đặt lịch khám"
 
 const Home = () => {
+  // THAY ĐỔI 2: Lấy hàm `openBookingModal` từ context
+  const { openBookingModal } = useBookingModal();
+
   const images = [
     "/your-banner.jpg",
     "/your-banner-2.jpg",
     "/your-banner-3.jpg",
   ];
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-
   const handlePrev = () =>
     setCurrentImageIndex((prevIndex) =>
       prevIndex === 0 ? images.length - 1 : prevIndex - 1,
@@ -26,6 +28,9 @@ const Home = () => {
     setCurrentImageIndex((prevIndex) =>
       prevIndex === images.length - 1 ? 0 : prevIndex + 1,
     );
+
+  // THAY ĐỔI 3: State cho modal "Đặt lịch khám" (không phải tư vấn)
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-white">
@@ -76,20 +81,19 @@ const Home = () => {
             <ChatBubbleLeftIcon className="w-5 h-5 text-[#39BDCC]" />
             <span>Góp ý</span>
           </a>
-          <a
-            className="text-[#39BDCC] font-medium hover:underline flex items-center space-x-2"
-            href="#submitcontact"
+          <button
+            className="text-[#39BDCC] font-medium hover:underline cursor-pointer flex items-center space-x-2"
+            // THAY ĐỔI 4: Sử dụng `openBookingModal` để mở modal tư vấn
+            onClick={openBookingModal}
           >
             <CalendarIcon className="w-5 h-5 text-[#39BDCC]" />
             <span>Đặt lịch tư vấn online</span>
-          </a>
+          </button>
         </div>
       </div>
-      {/* Booking Modal */}
-      <BookingModal
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-      />
+      {/* THAY ĐỔI 5: Chỉ giữ lại modal "Đặt lịch khám" ở đây.
+          Modal tư vấn và thanh toán đã được quản lý bởi BookingModalProvider. */}
+      <BookingModal isOpen={isBookingOpen} onClose={() => setIsBookingOpen(false)} />
       {/* Section dưới banner (sử dụng container) */}
       <div className="max-w-6xl mx-auto py-20 px-6 space-y-16">
         {/* Card 1 - Text trái, ảnh phải */}

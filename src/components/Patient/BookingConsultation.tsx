@@ -1,7 +1,8 @@
+// Giả sử file này ở: @/components/BookingConsultation.tsx
+
 import React, { useState } from 'react';
 import { XMarkIcon, CalendarDaysIcon } from "@heroicons/react/24/solid";
 
-// Interface và State giữ nguyên cấu trúc
 interface FormData {
   category: 'individual' | 'company';
   firstName: string;
@@ -10,14 +11,15 @@ interface FormData {
   phone: string;
   serviceType: string;
   doctorName: string;
-  date: string; 
+  date: string;
   time: string;
 }
 
-// THAY ĐỔI 1: Đổi tên component
-interface BookingModalProps { 
+// THAY ĐỔI 1: Thêm 'onBookingSuccess' vào interface
+interface BookingConsultationProps {
   isOpen: boolean;
   onClose: () => void;
+  onBookingSuccess: () => void; // <-- PROP MỚI
 }
 
 const consultants = [
@@ -34,7 +36,7 @@ const timeSlots = [
   '15:00 - 15:30',
 ];
 
-// State khởi tạo (giữ nguyên lastName dù form chỉ có 1 trường tên)
+// Dữ liệu ban đầu cho state
 const initialFormData = {
   category: 'individual' as 'individual' | 'company',
   firstName: '',
@@ -47,11 +49,14 @@ const initialFormData = {
   time: '',
 };
 
-const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
+const BookingConsultation: React.FC<BookingConsultationProps> = ({ 
+  isOpen, 
+  onClose, 
+  onBookingSuccess // <-- THAY ĐỔI 2: Nhận prop mới
+}) => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const today = new Date().toISOString().split('T')[0];
 
-  // Giữ nguyên các hàm handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -74,13 +79,17 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }));
   };
 
-  // THAY ĐỔI 2: Cập nhật logic submit cho "Đặt lịch khám"
+  // THAY ĐỔI 3: Cập nhật handleSubmit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form Data (Đặt lịch khám):', formData);
-    alert('Đặt lịch khám thành công!'); // Đổi nội dung
+    console.log('Form Data:', formData);
+    
+    // Không alert, không gọi onClose
+    // alert('Đặt lịch tư vấn thành công!'); 
+    
     setFormData(initialFormData); // Reset form
-    onClose();
+    
+    onBookingSuccess(); // <-- Gọi hàm thành công để mở modal thanh toán
   };
 
   if (!isOpen) return null;
@@ -101,14 +110,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         }}
       />
 
-      {/* Modal Content */}
+      {/* Modal Content (Giữ nguyên) */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
           <div className="flex items-center space-x-3">
             <CalendarDaysIcon className="w-6 h-6 text-[#39BDCC]" />
-            {/* THAY ĐỔI 3: Đổi tiêu đề */}
-            <h2 className="text-2xl font-bold text-gray-800">Đặt lịch khám</h2>
+            <h2 className="text-2xl font-bold text-gray-800">Đặt lịch tư vấn online</h2>
           </div>
           <button
             type="button"
@@ -119,10 +127,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Body (Giữ nguyên 100% JSX từ BookingConsultation) */}
+        {/* Body (Giữ nguyên) */}
         <div className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            
             {/* Category Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -206,7 +213,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chọn dịch vụ khám <span className="text-red-500">*</span>
+                  Chọn dịch vụ tư vấn <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="serviceType"
@@ -216,9 +223,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#39BDCC]"
                 >
                   <option value="">Chọn dịch vụ</option>
-                  <option value="general">Khám tổng quát</option>
-                  <option value="specialized">Khám chuyên khoa</option>
-                  <option value="emergency">Khám nha khoa</option>
+                  <option value="general">Tư vấn tổng quát</option>
+                  <option value="specialized">Tư vấn chuyên khoa</option>
+                  <option value="emergency">Tư vấn khẩn cấp</option>
                 </select>
               </div>
               <div>
@@ -242,19 +249,18 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-
             {/* Date Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Chọn ngày khám <span className="text-red-500">*</span>
+                Chọn ngày tư vấn <span className="text-red-500">*</span>
               </label>
               <input
                 type="date"
                 name="date"
                 value={formData.date}
-                onChange={handleInputChange} 
+                onChange={handleInputChange}
                 required
-                min={today} 
+                min={today}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#39BDCC]"
               />
             </div>
@@ -262,7 +268,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
             {/* Time Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                Chọn giờ khám <span className="text-red-500">*</span>
+                Chọn giờ tư vấn <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-5 gap-3">
                 {timeSlots.map(slot => (
@@ -291,12 +297,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
               >
                 Hủy
               </button>
-              {/* THAY ĐỔI 4: Đổi chữ trên nút Submit */}
               <button
                 type="submit"
                 className="px-6 py-2 bg-[#39BDCC] text-white rounded-lg font-semibold hover:bg-[#2ca6b5] transition"
               >
-                Xác nhận đặt lịch
+                Xác nhận và thanh toán
               </button>
             </div>
           </form>
@@ -306,4 +311,4 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   );
 };
 
-export default BookingModal; 
+export default BookingConsultation;
