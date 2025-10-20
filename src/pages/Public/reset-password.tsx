@@ -8,11 +8,13 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/solid";
 import { Input, Button, Form } from "@heroui/react";
+import { authApi } from "@/api";
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get("token");
+  const email = searchParams.get("email");
 
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -77,26 +79,18 @@ const ResetPassword = () => {
     setIsSubmitting(true);
 
     try {
-      // TODO: Gửi request lên backend để reset mật khẩu
-      // const response = await fetch('/api/reset-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ token, password }),
-      // });
-      //
-      // if (!response.ok) {
-      //   throw new Error('Không thể đặt lại mật khẩu');
-      // }
+        const result = await authApi.resetPassword({ token, email, newPassword: password });
 
-      // Giả lập API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (!result.success) {
+        throw new Error(result.message || "Không thể đặt lại mật khẩu");
+      }
 
       // eslint-disable-next-line no-console
-      console.log("Reset password with token:", token, "password:", password);
+      console.log("Reset password successful:", result);
 
       setSubmitStatus("success");
 
-      // Redirect về trang đăng nhập sau 3 giây
+      // Redirect về trang chủ sau 3 giây
       setTimeout(() => {
         navigate("/");
       }, 3000);
@@ -113,7 +107,7 @@ const ResetPassword = () => {
   };
 
   // Kiểm tra token có tồn tại không
-  if (!token) {
+  if (!token || !email) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 text-center">
