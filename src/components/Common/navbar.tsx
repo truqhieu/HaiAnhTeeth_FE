@@ -86,12 +86,12 @@ const AppNavbar = () => {
             <img
               alt="Logo"
               className="h-20 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+              src="/logo1.png"
             />
             <img
               alt="Logo Text"
               className="h-12 w-auto object-contain ml-2"
-              src="/Screenshot_2025-09-19_141449-removebg-preview.png"
+              src="/logo2.png"
             />
           </Link>
         </div>
