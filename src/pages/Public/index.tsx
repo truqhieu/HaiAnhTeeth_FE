@@ -3,6 +3,7 @@ import {
   CalendarIcon,
   UserIcon,
   ChatBubbleLeftIcon,
+  PhoneIcon,
 } from "@heroicons/react/24/outline";
 
 import BookingModal from "@/components/BookingModal";
@@ -74,6 +75,13 @@ const Home = () => {
           >
             <ChatBubbleLeftIcon className="w-5 h-5 text-[#39BDCC]" />
             <span>Góp ý</span>
+          </a>
+          <a
+            className="text-[#39BDCC] font-medium hover:underline flex items-center space-x-2"
+            href="#submitcontact"
+          >
+            <CalendarIcon className="w-5 h-5 text-[#39BDCC]" />
+            <span>Đặt lịch tư vấn online</span>
           </a>
         </div>
       </div>

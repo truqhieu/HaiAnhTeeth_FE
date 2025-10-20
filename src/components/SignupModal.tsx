@@ -144,7 +144,7 @@ const SignupModal = () => {
             <img
               alt="Logo"
               className="h-8 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+              src="/logo1.png"
             />
             <h2 className="text-2xl font-bold">Đăng ký</h2>
           </div>

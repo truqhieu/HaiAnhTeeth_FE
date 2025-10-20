@@ -144,6 +144,11 @@ const AppNavbar = () => {
               >
                 <Input className="w-full" placeholder="Tìm kiếm..." size="sm" />
               </div>
+              <Button
+                className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5] ml-2"
+                size="sm">
+                Để lại thông tin tư vấn
+              </Button>
             </NavbarItem>
           </NavbarContent>
         </Navbar>
