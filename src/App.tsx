@@ -12,6 +12,10 @@ import Complaints from "@/pages/Patient/Complaints";
 import AccountManagement from "@/pages/Admin/AccountManagement";
 import AdminSettings from "@/pages/Admin/AdminSettings";
 import AdminLayout from "@/layouts/AdminLayout";
+import ServiceManagement from "@/pages/Manager/ServiceManagement";
+import RoomManagement from "@/pages/Manager/RoomManagement";
+import ScheduleManagement from "@/pages/Manager/ScheduleManagement";
+import ManagerLayout from "@/layouts/ManagerLayout";
 import { AuthModalProvider } from "@/contexts/AuthModalContext";
 import LoginModal from "@/components/LoginModal";
 import SignupModal from "@/components/SignupModal";
@@ -34,6 +38,21 @@ function App() {
                 <Route element={<AdminSettings />} path="settings" />
               </Routes>
             </AdminLayout>
+          }
+        />
+
+        {/* Manager Routes */}
+        <Route
+          path="/manager/*"
+          element={
+            <ManagerLayout>
+              <Routes>
+                <Route element={<ServiceManagement />} path="services" />
+                <Route element={<RoomManagement />} path="rooms" />
+                <Route element={<ScheduleManagement />} path="schedules" />
+                <Route element={<ServiceManagement />} path="" />
+              </Routes>
+            </ManagerLayout>
           }
         />
 
