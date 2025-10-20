@@ -7,8 +7,7 @@ import {
   CalendarIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
-import AddScheduleModal from "@/components/AddScheduleModal";
-import EditScheduleModal from "@/components/EditScheduleModal";
+import { AddScheduleModal, EditScheduleModal } from "@/components";
 
 interface Doctor {
   id: number;

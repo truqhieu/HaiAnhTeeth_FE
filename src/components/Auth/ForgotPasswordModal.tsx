@@ -3,12 +3,15 @@ import { EnvelopeIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form } from "@heroui/react";
 
 import { useAuthModal } from "@/contexts/AuthModalContext";
+import { authApi } from "@/api";
 
 const ForgotPasswordModal = () => {
   const { isForgotPasswordModalOpen, closeModals, openLoginModal } =
     useAuthModal();
   const [email, setEmail] = React.useState("");
   const [submitted, setSubmitted] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
 
   // Random names để tránh autofill
   const [randomNames] = React.useState({
@@ -21,6 +24,8 @@ const ForgotPasswordModal = () => {
       const timer = setTimeout(() => {
         setEmail("");
         setSubmitted(false);
+        setIsLoading(false);
+        setError("");
       }, 100);
 
       return () => clearTimeout(timer);
@@ -36,26 +41,37 @@ const ForgotPasswordModal = () => {
     return validateEmail(email) ? false : true;
   }, [email]);
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateEmail(email)) {
       return;
     }
 
-    const data = { email };
+    setError("");
+    setIsLoading(true);
 
-    // TODO: Gửi yêu cầu reset mật khẩu lên server
-    // eslint-disable-next-line no-console
-    console.log("Yêu cầu reset mật khẩu:", data);
+    try {
+      const response = await authApi.forgotPassword({ email });
 
-    setSubmitted(true);
+      if (response.success) {
+        setSubmitted(true);
+        // eslint-disable-next-line no-console
+        console.log("Yêu cầu reset mật khẩu thành công:", response.data);
 
-    // Auto close after 3 seconds
-    setTimeout(() => {
-      closeModals();
-      setSubmitted(false);
-    }, 3000);
+        // Auto close after 5 seconds
+        setTimeout(() => {
+          closeModals();
+          setSubmitted(false);
+        }, 5000);
+      } else {
+        setError(response.message || "Gửi yêu cầu thất bại");
+      }
+    } catch (error: any) {
+      setError(error.message || "Lỗi kết nối đến server");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBackToLogin = () => {
@@ -108,6 +124,12 @@ const ForgotPasswordModal = () => {
         <div className="p-6">
           {!submitted ? (
             <>
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+              
               <p className="text-sm text-gray-600 mb-4">
                 Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn hướng dẫn
                 đặt lại mật khẩu.
@@ -139,12 +161,13 @@ const ForgotPasswordModal = () => {
 
                 <Button
                   className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"
-                  isDisabled={!email || isInvalidEmail}
+                  isDisabled={!email || isInvalidEmail || isLoading}
+                  isLoading={isLoading}
                   type="submit"
                   variant="solid"
                 >
-                  <EnvelopeIcon className="w-5 h-5 mr-2" />
-                  Gửi yêu cầu
+                  {!isLoading && <EnvelopeIcon className="w-5 h-5 mr-2" />}
+                  {isLoading ? "Đang gửi..." : "Gửi yêu cầu"}
                 </Button>
               </Form>
             </>
@@ -163,7 +186,7 @@ const ForgotPasswordModal = () => {
                   tiếp tục.
                 </p>
                 <p className="text-xs text-green-500 mt-2 italic">
-                  Link sẽ hết hạn sau 24 giờ.
+                  Link sẽ hết hạn sau 10 phút.
                 </p>
               </div>
             </div>

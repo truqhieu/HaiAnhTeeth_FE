@@ -5,8 +5,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
-import AddUserModal from "@/components/AddUserModal";
-import EditUserModal from "@/components/EditUserModal";
+import { AddUserModal, EditUserModal } from "@/components";
 
 interface User {
   id: number;
