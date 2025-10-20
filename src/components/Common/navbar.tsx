@@ -10,13 +10,23 @@ import {
 } from "@heroui/react";
 import Lottie from "lottie-react";
 
-import searchAnimation from "../icons/search.json";
+import searchAnimation from "./search.json";
 
 import { useAuthModal } from "@/contexts/AuthModalContext";
+import { useAuth } from "@/contexts/AuthContext";
+import PatientHeader from "../Patient/PatientHeader";
 
 const AppNavbar = () => {
   const [showSearch, setShowSearch] = useState(false);
   const { openLoginModal, openSignupModal } = useAuthModal();
+  const { isAuthenticated, user } = useAuth();
+
+  // Nếu user đã login và là Patient, hiển thị PatientHeader
+  if (isAuthenticated && user?.role === "Patient") {
+    return <PatientHeader />;
+  }
+
+  // Nếu chưa login hoặc không phải Patient, hiển thị navbar thông thường
 
   return (
     <header className="w-full shadow bg-white">

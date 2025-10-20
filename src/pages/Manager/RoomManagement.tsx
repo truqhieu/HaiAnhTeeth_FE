@@ -6,8 +6,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
-import AddRoomModal from "@/components/AddRoomModal";
-import EditRoomModal from "@/components/EditRoomModal";
+import { AddRoomModal, EditRoomModal } from "@/components";
 
 interface Doctor {
   id: number;

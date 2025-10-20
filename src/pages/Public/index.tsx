@@ -6,7 +6,7 @@ import {
   PhoneIcon,
 } from "@heroicons/react/24/outline";
 
-import BookingModal from "@/components/BookingModal";
+import { BookingModal } from "@/components";
 
 const Home = () => {
   const images = [

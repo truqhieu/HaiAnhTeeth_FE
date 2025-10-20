@@ -5,7 +5,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
-import EditServiceModal from "@/components/EditServiceModal";
+import { EditServiceModal } from "@/components";
 
 interface Service {
   id: number;

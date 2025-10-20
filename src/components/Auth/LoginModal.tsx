@@ -3,6 +3,8 @@ import { LockClosedIcon, XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form } from "@heroui/react";
 
 import { useAuthModal } from "@/contexts/AuthModalContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { authApi } from "@/api";
 
 const LoginModal = () => {
   const {
@@ -11,8 +13,11 @@ const LoginModal = () => {
     openSignupModal,
     openForgotPasswordModal,
   } = useAuthModal();
+  const { login } = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
 
   // Random names để tránh autofill
   const [randomNames] = React.useState({
@@ -26,6 +31,8 @@ const LoginModal = () => {
       const timer = setTimeout(() => {
         setEmail("");
         setPassword("");
+        setError("");
+        setIsLoading(false);
       }, 100);
 
       return () => clearTimeout(timer);
@@ -41,14 +48,40 @@ const LoginModal = () => {
     return validateEmail(email) ? false : true;
   }, [email]);
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const data = { email, password };
+    setError("");
+    setIsLoading(true);
 
-    // TODO: Gửi data lên server
-    // eslint-disable-next-line no-console
-    console.log("Đăng nhập đã gửi:", data);
-    closeModals();
+    try {
+      const response = await authApi.login({ email, password });
+
+      if (response.success && response.data?.user && response.data?.token) {
+        // eslint-disable-next-line no-console
+        console.log("Đăng nhập thành công:", response.data);
+        
+        // Update auth state
+        login(response.data.user, response.data.token);
+        
+        // Close modal
+        closeModals();
+        
+        // Redirect based on user role
+        const role = response.data.user.role;
+        if (role === "Admin") {
+          window.location.href = "/admin/accounts";
+        } else if (role === "Manager") {
+          window.location.href = "/manager/rooms";
+        }
+        // Patient stays on homepage - no redirect
+      } else {
+        setError(response.message || "Đăng nhập thất bại");
+      }
+    } catch (error: any) {
+      setError(error.message || "Lỗi kết nối đến server");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSwitchToSignup = () => {
@@ -100,6 +133,12 @@ const LoginModal = () => {
 
         {/* Body */}
         <div className="p-6">
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-sm text-red-700">
+              {error}
+            </div>
+          )}
+          
           <Form autoComplete="off" className="space-y-4" onSubmit={onSubmit}>
             {/* Hidden dummy inputs để ngăn autofill */}
             <input style={{ display: "none" }} type="text" />
@@ -143,11 +182,13 @@ const LoginModal = () => {
 
             <Button
               className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"
+              isDisabled={isLoading || !email || !password}
+              isLoading={isLoading}
               type="submit"
               variant="solid"
             >
-              <LockClosedIcon className="w-5 h-5 mr-2" />
-              Đăng nhập
+              {!isLoading && <LockClosedIcon className="w-5 h-5 mr-2" />}
+              {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
           </Form>
 
