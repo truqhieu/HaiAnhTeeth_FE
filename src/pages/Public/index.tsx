@@ -4,14 +4,10 @@ import {
   UserIcon,
   ChatBubbleLeftIcon,
 } from "@heroicons/react/24/outline";
-
-// THAY ĐỔI 1: Import `useBookingModal` và `BookingModal`
-import { useBookingModal } from "@/contexts/BookingModalContext";
 import { BookingModal } from "@/components"; // Giữ lại cho "Đặt lịch khám"
 
 const Home = () => {
-  // THAY ĐỔI 2: Lấy hàm `openBookingModal` từ context
-  const { openBookingModal } = useBookingModal();
+
 
   const images = [
     "/your-banner.jpg",
@@ -81,14 +77,6 @@ const Home = () => {
             <ChatBubbleLeftIcon className="w-5 h-5 text-[#39BDCC]" />
             <span>Góp ý</span>
           </a>
-          <button
-            className="text-[#39BDCC] font-medium hover:underline cursor-pointer flex items-center space-x-2"
-            // THAY ĐỔI 4: Sử dụng `openBookingModal` để mở modal tư vấn
-            onClick={openBookingModal}
-          >
-            <CalendarIcon className="w-5 h-5 text-[#39BDCC]" />
-            <span>Đặt lịch tư vấn online</span>
-          </button>
         </div>
       </div>
       {/* THAY ĐỔI 5: Chỉ giữ lại modal "Đặt lịch khám" ở đây.

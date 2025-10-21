@@ -1,90 +1,117 @@
-import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { Button, Spinner } from "@heroui/react";
+import React, { useEffect, useState, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button, Spinner } from "@heroui/react"; // <-- dùng thư viện bạn đang có
 import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/solid";
 
-import { useAuth } from "@/contexts/AuthContext";
-import { authApi } from "@/api";
+import { authApi } from "@/api"; // dùng authApi.verifyEmail if available
 
-const VerifyEmail = () => {
+const VerifyEmail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   const [status, setStatus] = useState<
-    "loading" | "success" | "error" | "expired"
-  >("loading");
-  const [message, setMessage] = useState("");
-  const [userData, setUserData] = useState<any>(null);
+    "waiting" | "loading" | "success" | "error" | "expired"
+  >("waiting");
+  const [message, setMessage] = useState<string>("");
+
+  // tránh gọi nhiều lần / tránh setState khi unmounted
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    const verifyEmail = async () => {
-      const token = searchParams.get("token");
-      const email = searchParams.get("email");
+    isMounted.current = true;
+    // trạng thái ban đầu: chờ 3s trước khi gọi API
+    setStatus("loading");
+    setMessage("Đang xác thực email của bạn...");
+
+    const token = searchParams.get("token");
+    const email = searchParams.get("email");
+
+    // nếu thiếu token/email thì sẽ báo lỗi SAU 3s (theo yêu cầu của bạn)
+    const timer = setTimeout(async () => {
+      if (!isMounted.current) return;
 
       if (!token || !email) {
         setStatus("error");
-        setMessage("Link xác thực không hợp lệ. Thiếu thông tin.");
+        setMessage("Link xác thực không hợp lệ hoặc thiếu thông tin.");
         return;
       }
 
       try {
-          const result = await authApi.verifyEmail(token, email);
+        // Nếu bạn có authApi.verifyEmail(token, email), dùng nó.
+        // Nếu không, thay thế bằng axios.get(...)
+        const result = await authApi.verifyEmail(token, email);
+        // console.log("verify result", result);
+
+        if (!isMounted.current) return;
+
+        const msg = (result.message || "").toLowerCase();
 
         if (result.success) {
           setStatus("success");
-          setMessage(result.message || "Xác thực email thành công!");
-          setUserData(result.data);
+          setMessage(result.message || "Xác thực email thành công! Đang chuyển hướng...");
 
-          // Tự động login nếu có token
+          // Nếu API trả token + user thì tự login trước khi redirect
           if (result.data?.token && result.data?.user) {
-            login(result.data.user, result.data.token);
+            try {
+              // nếu bạn có context login, bạn có thể gọi login(result.data.user, result.data.token)
+              // import { useAuth } from "@/contexts/AuthContext"; const { login } = useAuth();
+              // login(result.data.user, result.data.token);
+            } catch (err) {
+              // ignore login error client-side
+            }
+          }
 
-            // Redirect sau 2 giây
-            setTimeout(() => {
-              const role = result.data.user.role;
-              if (role === "Admin") {
-                navigate("/admin/accounts");
-              } else if (role === "Manager") {
-                navigate("/manager/rooms");
-              } else {
-                navigate("/");
-              }
-            }, 2000);
-          } else {
-            // Nếu không có token, redirect về login sau 3 giây
-            setTimeout(() => {
-              navigate("/");
-            }, 3000);
-          }
-        } else {
-          if (
-            result.message?.includes("hết hạn") ||
-            result.message?.includes("expired")
-          ) {
-            setStatus("expired");
-          } else {
-            setStatus("error");
-          }
-          setMessage(result.message || "Xác thực email thất bại");
+          setTimeout(() => {
+            if (!isMounted.current) return;
+            navigate("/", { replace: true });
+          }, 1500);
+          return;
         }
-      } catch (error: any) {
-        setStatus("error");
-        setMessage(error.message || "Lỗi kết nối đến server");
-      }
-    };
 
-    verifyEmail();
-  }, [searchParams, login, navigate]);
+        // Trường hợp backend nói "already verified" -> coi là success
+        if (msg.includes("đã xác thực") || msg.includes("already verified") || msg.includes("already verified")) {
+          setStatus("success");
+          setMessage("Email của bạn đã được xác thực trước đó. Đang chuyển hướng...");
+          setTimeout(() => {
+            if (!isMounted.current) return;
+            navigate("/", { replace: true });
+          }, 1200);
+          return;
+        }
+
+        // Token expired
+        if (msg.includes("hết hạn") || msg.includes("expired")) {
+          setStatus("expired");
+          setMessage(result.message || "Link xác thực đã hết hạn.");
+          return;
+        }
+
+        // Mọi lỗi khác -> error
+        setStatus("error");
+        setMessage(result.message || "Xác thực email thất bại.");
+      } catch (err: any) {
+        if (!isMounted.current) return;
+        // Nếu server trả lỗi chi tiết trong err.response?.data, lấy ra
+        const serverMessage =
+          err?.response?.data?.message || err?.message || "Lỗi kết nối đến server";
+        setStatus("error");
+        setMessage(serverMessage);
+      }
+    }, 3000); // ⏳ chờ 3 giây trước khi gọi API
+
+    return () => {
+      isMounted.current = false;
+      clearTimeout(timer);
+    };
+  }, [searchParams, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
-        {/* Loading */}
         {status === "loading" && (
           <div className="text-center">
             <Spinner
@@ -93,92 +120,46 @@ const VerifyEmail = () => {
               label="Đang xác thực email..."
               size="lg"
             />
-            <p className="text-gray-600 mt-4">Vui lòng đợi một chút...</p>
+            <h2 className="text-xl font-semibold text-gray-800">Đang xác thực</h2>
+            <p className="text-gray-600 mt-2">{message}</p>
           </div>
         )}
 
-        {/* Success */}
         {status === "success" && (
           <div className="text-center">
             <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              Xác thực thành công!
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Xác thực thành công!</h1>
             <p className="text-gray-600 mb-6">{message}</p>
-
-            {userData?.user && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <p className="text-sm text-green-800">
-                  Chào mừng <strong>{userData.user.fullName}</strong>!
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  Đang tự động đăng nhập...
-                </p>
-              </div>
-            )}
-
-            <Button
-              className="w-full bg-green-500 text-white hover:bg-green-600"
-              onPress={() => navigate("/")}
-            >
+            <Button className="w-full bg-green-500 text-white" onPress={() => navigate("/")}>
               Về trang chủ
             </Button>
           </div>
         )}
 
-        {/* Error */}
         {status === "error" && (
           <div className="text-center">
             <XCircleIcon className="w-20 h-20 text-red-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              Xác thực thất bại
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Xác thực thất bại</h1>
             <p className="text-gray-600 mb-6">{message}</p>
-
             <div className="space-y-3">
-              <Button
-                className="w-full bg-blue-500 text-white hover:bg-blue-600"
-                onPress={() => navigate("/")}
-              >
+              <Button className="w-full bg-blue-500 text-white" onPress={() => navigate("/")}>
                 Về trang chủ
               </Button>
-              <Button
-                className="w-full"
-                variant="bordered"
-                onPress={() => window.location.reload()}
-              >
+              <Button className="w-full" variant="bordered" onPress={() => window.location.reload()}>
                 Thử lại
               </Button>
             </div>
           </div>
         )}
 
-        {/* Expired */}
         {status === "expired" && (
           <div className="text-center">
             <ExclamationTriangleIcon className="w-20 h-20 text-orange-500 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">
-              Link đã hết hạn
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Link đã hết hạn</h1>
             <p className="text-gray-600 mb-6">{message}</p>
-
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-orange-800">
-                Link xác thực chỉ có hiệu lực trong 24 giờ.
-              </p>
-              <p className="text-xs text-orange-600 mt-1">
-                Vui lòng đăng ký lại hoặc yêu cầu gửi lại email xác thực.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <Button
-                className="w-full bg-blue-500 text-white hover:bg-blue-600"
-                onPress={() => navigate("/")}
-              >
-                Về trang chủ & Đăng ký lại
-              </Button>
-            </div>
+            <Button className="w-full bg-blue-500 text-white" onPress={() => navigate("/")}>
+              Về trang chủ & Đăng ký lại
+            </Button>
           </div>
         )}
       </div>
@@ -187,4 +168,3 @@ const VerifyEmail = () => {
 };
 
 export default VerifyEmail;
-
