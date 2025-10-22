@@ -10,7 +10,6 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-  Button,
   Spinner,
 } from "@heroui/react";
 import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
@@ -31,6 +30,7 @@ interface Appointment {
   paymentStatus?: string;
   appointmentFor: string;
   customerName?: string;
+  customerEmail?: string; // ⭐ THÊM: Email của customer
 }
 
 const Appointments = () => {
@@ -113,6 +113,7 @@ const Appointments = () => {
           paymentStatus: apt.paymentId?.status || '',
           appointmentFor: apt.appointmentFor || 'self',
           customerName: apt.customerId?.fullName || '',
+          customerEmail: apt.customerId?.email || '',
         };
       });
       
@@ -237,6 +238,7 @@ const Appointments = () => {
     { key: "endTime", label: "Giờ kết thúc" },
     { key: "doctor", label: "Bác sĩ" },
     { key: "service", label: "Dịch vụ" },
+    { key: "bookedFor", label: "Đặt lịch cho ai" }, // ⭐ THÊM: Cột "Đặt lịch cho ai"
     { key: "status", label: "Trạng thái" },
     { key: "actions", label: "Hoạt động" },
   ];
@@ -315,6 +317,19 @@ const Appointments = () => {
                   <TableCell>{formatTime(appointment.endTime)}</TableCell>
                   <TableCell>{appointment.doctorName}</TableCell>
                   <TableCell>{appointment.serviceName}</TableCell>
+                  <TableCell>
+                    {/* ⭐ THÊM: Hiển thị "Đặt lịch cho ai" */}
+                    {appointment.customerName && appointment.customerEmail ? (
+                      // Nếu customerId có giá trị → Đặt cho người khác
+                      <div className="text-sm">
+                        <p className="font-medium">{appointment.customerName}</p>
+                        <p className="text-gray-500">{appointment.customerEmail}</p>
+                      </div>
+                    ) : (
+                      // Nếu customerId null → Đặt cho bản thân
+                      <p className="text-sm">Bản thân</p>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <span
                       className={`px-3 py-1 rounded-full text-sm font-medium ${
