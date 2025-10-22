@@ -10,6 +10,9 @@ export interface GenerateByDateParams {
   serviceId: string;
   date: string; // YYYY-MM-DD
   breakAfterMinutes?: number;
+  appointmentFor?: 'self' | 'other'; // ⭐ Thêm để backend biết có exclude hay không
+  customerFullName?: string; // ⭐ Tên người khác (để validate conflict)
+  customerEmail?: string; // ⭐ Email người khác (để validate conflict)
 }
 
 export interface GenerateByDateResponse {
@@ -17,8 +20,11 @@ export interface GenerateByDateResponse {
   data: {
     serviceId: string;
     date: string;
-    totalSlots: number;
+    serviceName?: string;
+    serviceDuration?: number;
+    totalSlots?: number;
     slots: GeneratedSlot[];
+    schedules?: any[];
   };
   message?: string;
 }
@@ -27,6 +33,8 @@ export const generateByDateApi = {
   /**
    * Lấy danh sách khung giờ trống theo ngày (generate dynamic slots)
    * (GET /api/available-slots/generate?serviceId=xxx&date=YYYY-MM-DD)
+   * 
+   * ⭐ NOTE: Gửi Authorization header để backend có thể exclude slots user đã đặt
    */
   get: async (params: GenerateByDateParams): Promise<GenerateByDateResponse> => {
     try {
@@ -42,13 +50,28 @@ export const generateByDateApi = {
         ? `/api/available-slots/generate?${query}`
         : `/api/available-slots/generate`;
 
+      // ⭐ Lấy token từ store để gửi Authorization header
+      const { store } = await import('../store/index');
+      const state = store.getState();
+      const token = state.auth.token;
+
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      // ⭐ Nếu có token, thêm vào header
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('✅ [generateByDateApi] Gửi Authorization header với token');
+      } else {
+        console.log('⚠️ [generateByDateApi] Không có token, gửi request as Guest');
+      }
+
       const response = await fetch(
-        `${import.meta.env.VITE_API1_URL || "http://localhost:9999"}${endpoint}`,
+        `${import.meta.env.VITE_API1_URL || "https://haianhteethbe-production.up.railway.app"}${endpoint}`,
         {
           method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers,
         }
       );
 

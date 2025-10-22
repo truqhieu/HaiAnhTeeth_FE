@@ -35,9 +35,38 @@ export interface AppointmentResponseData {
 
 export const appointmentApi = {
   create: async (data: AppointmentCreationData): Promise<ApiResponse<AppointmentResponseData>> => {
-    return authenticatedApiCall('/appointments/consultation/create', {
+    return authenticatedApiCall('/api/appointments/consultation/create', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Lấy danh sách ca khám của người dùng
+   * Logic mặc định:
+   *   - Lấy tất cả các ca khám đã hoàn tất đặt lịch (Pending, Approved, CheckedIn, Completed, Cancelled)
+   *   - Bao gồm cả đặt lịch khám (không cần thanh toán) và tư vấn đã thanh toán xong
+   *   - KHÔNG bao gồm: PendingPayment (các ca tư vấn đang chờ thanh toán)
+   */
+  getMyAppointments: async (options?: { 
+    includePendingPayment?: boolean; 
+    status?: string;
+  }): Promise<ApiResponse<any>> => {
+    const queryParams = new URLSearchParams();
+    
+    if (options?.includePendingPayment) {
+      queryParams.append('includePendingPayment', 'true');
+    }
+    
+    if (options?.status) {
+      queryParams.append('status', options.status);
+    }
+    
+    const queryString = queryParams.toString();
+    const url = `/api/appointments/my-appointments${queryString ? `?${queryString}` : ''}`;
+    
+    return authenticatedApiCall(url, {
+      method: 'GET',
     });
   },
 };

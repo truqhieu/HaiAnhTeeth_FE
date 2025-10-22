@@ -25,14 +25,15 @@ export interface ResetPasswordData {
 }
 
 export interface User {
-  id: string;
+  id?: string;
+  _id?: string;
   fullName: string;
   email: string;
   role: string;
   status: string;
-  gender: string;
-  phoneNumber: string; // THÊM DÒNG NÀY
-  dob: string;
+  gender?: string;
+  phoneNumber?: string;
+  dob?: string;
 }
 
 export interface AuthResponse {
@@ -52,18 +53,10 @@ export const authApi = {
 
   // Login user
   login: async (data: LoginData): Promise<ApiResponse<AuthResponse>> => { // Thêm /api
-    const response = await apiCall<AuthResponse>('/api/auth/login', {
+    return apiCall<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-
-    // Save token and user to localStorage
-    if (response.success && response.data) {
-      localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-    }
-
-    return response;
   },
 
   // Forgot password
@@ -94,27 +87,5 @@ export const authApi = {
     return authenticatedApiCall<User>('/api/auth/profile', { // Thêm /api
       method: 'GET',
     });
-  },
-
-  // Logout (clear localStorage)
-  logout: (): void => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-  },
-
-  // Get current user from localStorage
-  getCurrentUser: (): User | null => {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
-  },
-
-  // Get token from localStorage
-  getToken: (): string | null => {
-    return localStorage.getItem('authToken');
-  },
-
-  // Check if user is authenticated
-  isAuthenticated: (): boolean => {
-    return !!localStorage.getItem('authToken');
   },
 };

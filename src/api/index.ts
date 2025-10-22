@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9999';
+export const API_BASE_URL = import.meta.env.VITE_API1_URL || 'https://haianhteethbe-production.up.railway.app';
 
 // API Response Types
 export interface ApiResponse<T = any> {
@@ -45,7 +45,10 @@ export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  const token = localStorage.getItem('authToken');
+  // Import store dynamically to avoid circular dependencies
+  const { store } = await import('../store/index');
+  const state = store.getState();
+  const token = state.auth.token;
   
   if (!token) {
     throw new Error('Token không tồn tại. Vui lòng đăng nhập lại.');
@@ -54,6 +57,7 @@ export const authenticatedApiCall = async <T = any>(
   return apiCall<T>(endpoint, {
     ...options,
     headers: {
+      'Content-Type': 'application/json',
       ...options.headers,
       'Authorization': `Bearer ${token}`,
     },

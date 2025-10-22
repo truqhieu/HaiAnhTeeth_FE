@@ -1,5 +1,4 @@
 // src/api/service.ts
-import { apiCall } from "."; 
 
 export interface Service {
   _id: string;
@@ -51,7 +50,7 @@ export const serviceApi = {
       
       // Gọi apiCall và cast response về GetServicesResponse
       const response = await fetch(
-        `${import.meta.env.VITE_API1_URL || 'http://localhost:9999'}${endpoint}`,
+        `${import.meta.env.VITE_API1_URL || 'https://haianhteethbe-production.up.railway.app'}${endpoint}`,
         {
           method: 'GET',
           headers: {

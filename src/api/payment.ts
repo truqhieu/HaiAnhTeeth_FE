@@ -31,7 +31,7 @@ export const paymentApi = {
    * @param paymentId - ID của thanh toán cần kiểm tra
    */
   checkPaymentStatus: async (paymentId: string): Promise<ApiResponse<CheckPaymentStatusResponse>> => {
-    return authenticatedApiCall<CheckPaymentStatusResponse>(`/payments/${paymentId}/check`, {
+    return authenticatedApiCall<CheckPaymentStatusResponse>(`/api/payments/${paymentId}/check`, {
       method: 'GET',
     });
   },

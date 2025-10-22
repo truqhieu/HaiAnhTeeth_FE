@@ -12,6 +12,7 @@ import AccountSettings from "@/pages/Patient/AccountSettings";
 import Complaints from "@/pages/Patient/Complaints";
 import Appointments from "@/pages/Patient/Appointments";
 import MedicalRecords from "@/pages/Patient/MedicalRecords";
+import PaymentPage from "@/pages/Patient/PaymentPage";
 import AccountManagement from "@/pages/Admin/AccountManagement";
 import AdminSettings from "@/pages/Admin/AdminSettings";
 import AdminLayout from "@/layouts/AdminLayout";
@@ -87,6 +88,7 @@ function App() {
                     <Route element={<Appointments />} path="/patient/appointments" />
                     <Route element={<MedicalRecords />} path="/patient/medical-records" />
                     <Route element={<Complaints />} path="/patient/complaints" />
+                    <Route element={<PaymentPage />} path="/patient/payment/:paymentId" />
                     <Route
                       element={<AccountSettings />}
                       path="/patient/account-settings"

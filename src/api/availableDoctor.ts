@@ -12,6 +12,8 @@ export interface GetAvailableDoctorsParams {
   date: string;
   startTime: string;
   endTime: string;
+  appointmentFor?: 'self' | 'other'; // ⭐ Để backend biết có exclude doctors hay không
+  userId?: string; // ⭐ ID của user (để exclude bác sĩ mà user đã đặt)
 }
 
 export interface GetAvailableDoctorsResponse {
@@ -50,12 +52,12 @@ export const availableDoctorApi = {
 
       const query = queryParams.toString();
       const endpoint = query
-        ? `/api/available-slots/doctors/list?${query}`
-        : "/api/available-slots/doctors/list";
+        ? `/api/available-slots/doctors/time-slot?${query}`
+        : "/api/available-slots/doctors/time-slot";
 
       // Gọi trực tiếp fetch (giống serviceApi)
       const response = await fetch(
-        `${import.meta.env.VITE_API1_URL || "http://localhost:9999"}${endpoint}`,
+        `${import.meta.env.VITE_API1_URL || "https://haianhteethbe-production.up.railway.app"}${endpoint}`,
         {
           method: "GET",
           headers: {
