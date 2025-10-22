@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
+import { adminApi } from "@/api";
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -30,10 +31,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const roleOptions = [
-    { key: "Bác sĩ", label: "Bác sĩ" },
-    { key: "Điều dưỡng", label: "Điều dưỡng" },
-    { key: "Lễ Tân", label: "Lễ Tân" },
-    { key: "Bệnh nhân", label: "Bệnh nhân" },
+    { key: "Doctor", label: "Bác sĩ" },
+    { key: "Nurse", label: "Điều dưỡng" },
+    { key: "Staff", label: "Lễ Tân" },
+    { key: "Patient", label: "Bệnh nhân" },
     { key: "Manager", label: "Manager" },
   ];
 
@@ -108,42 +109,43 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // TODO: Gửi request lên backend để tạo user mới
-      // const response = await fetch('/api/users', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData),
-      // });
-      //
-      // if (!response.ok) {
-      //   throw new Error('Không thể tạo tài khoản');
-      // }
-
-      // Giả lập API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      console.log("Creating user:", formData);
-
-      // Reset form
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        role: "",
-        password: "",
-        confirmPassword: "",
-        status: "active",
+      // Call API to create new user
+      const response = await adminApi.createAccount({
+        fullName: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        phone: formData.phone,
       });
-      setShowValidation(false);
 
-      // Close modal and notify success
-      onClose();
-      if (onSuccess) {
-        onSuccess();
+      // Backend returns 'status' instead of 'success'
+      const isSuccess = response.success || (response.data as any)?.status;
+      
+      if (isSuccess) {
+        alert(response.message || 'Tạo tài khoản thành công!');
+        
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          role: "",
+          password: "",
+          confirmPassword: "",
+          status: "active",
+        });
+        setShowValidation(false);
+
+        // Close modal and notify success
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        alert(response.message || 'Có lỗi xảy ra khi tạo tài khoản');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating user:", error);
-      alert("Có lỗi xảy ra khi tạo tài khoản. Vui lòng thử lại.");
+      alert(error.message || "Có lỗi xảy ra khi tạo tài khoản. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }

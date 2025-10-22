@@ -20,15 +20,21 @@ export const apiCall = async <T = any>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const url = `${API_BASE_URL}${endpoint}`;
+    console.log('🚀 Fetching:', url);
+    
+    const response = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      ...options,
     });
 
+    console.log('📡 Response status:', response.status, response.statusText);
+    
     const result = await response.json();
+    console.log('📦 Response body:', result);
 
     if (!response.ok) {
       throw new Error(result.message || `HTTP error! status: ${response.status}`);
@@ -36,6 +42,7 @@ export const apiCall = async <T = any>(
 
     return result;
   } catch (error: any) {
+    console.error('💥 API Call Error:', error);
     throw new Error(error.message || 'Lỗi kết nối đến server');
   }
 };
@@ -47,9 +54,14 @@ export const authenticatedApiCall = async <T = any>(
 ): Promise<ApiResponse<T>> => {
   const token = localStorage.getItem('authToken');
   
+  console.log('🔐 Auth check - Token exists?', !!token);
+  
   if (!token) {
+    console.error('❌ No token found in localStorage');
     throw new Error('Token không tồn tại. Vui lòng đăng nhập lại.');
   }
+
+  console.log('✅ Token found, adding to headers');
 
   return apiCall<T>(endpoint, {
     ...options,
@@ -63,5 +75,13 @@ export const authenticatedApiCall = async <T = any>(
 // Export auth API
 export { authApi } from './auth';
 
+// Export admin API
+export { adminApi } from './admin';
+
+// Export manager API
+export { managerApi } from './manager';
+
 // Export types
-export type { RegisterData, LoginData, ForgotPasswordData, ResetPasswordData, User as AuthUser, AuthResponse } from './auth';
+export type { RegisterData, LoginData, ForgotPasswordData, ResetPasswordData, UpdateProfileData, User as AuthUser, AuthResponse } from './auth';
+export type { AdminUser, CreateUserData, UpdateUserData, ChangePasswordData, GetAccountsParams, GetAccountsResponse } from './admin';
+export type { ManagerService, CreateServiceData, UpdateServiceData, GetServicesParams, GetServicesResponse, ManagerClinic, ManagerDoctor, CreateClinicData, UpdateClinicData, GetClinicsParams, GetClinicsResponse } from './manager';

@@ -30,8 +30,22 @@ export interface User {
   email: string;
   role: string;
   status: string;
-  gender: string;
-  dob: string;
+  gender?: string;
+  dob?: string;
+  phone?: string;
+  address?: string;
+  avatar?: string;
+  dateOfBirth?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface UpdateProfileData {
+  fullName?: string;
+  phoneNumber?: string;
+  address?: string;
+  dob?: string;
+  gender?: string;
 }
 
 export interface AuthResponse {
@@ -89,10 +103,28 @@ export const authApi = {
   },
 
   // Get current user profile
-  getProfile: async (): Promise<ApiResponse<User>> => {
-    return authenticatedApiCall<User>('/auth/profile', {
+  getProfile: async (): Promise<ApiResponse<{ user: User }>> => {
+    return authenticatedApiCall<{ user: User }>('/auth/profile', {
       method: 'GET',
     });
+  },
+
+  // Update user profile
+  updateProfile: async (data: UpdateProfileData): Promise<ApiResponse<{ user: User }>> => {
+    const response = await authenticatedApiCall<{ user: User }>('/auth/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    // Update user in localStorage if successful
+    if (response.success && response.data) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+
+    return response;
   },
 
   // Logout (clear localStorage)

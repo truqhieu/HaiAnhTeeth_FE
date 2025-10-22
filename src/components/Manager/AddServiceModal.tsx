@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem, Textarea } from "@heroui/react";
 import { managerApi } from "@/api";
-import { Service } from "@/types";
 
-interface EditServiceModalProps {
+interface AddServiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  service: Service | null;
   onSuccess?: () => void;
 }
 
-const EditServiceModal: React.FC<EditServiceModalProps> = ({
+const AddServiceModal: React.FC<AddServiceModalProps> = ({
   isOpen,
   onClose,
-  service,
   onSuccess,
 }) => {
   const [formData, setFormData] = useState({
@@ -23,7 +20,6 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
     price: "",
     duration: "",
     category: "",
-    status: "active",
   });
 
   const [showValidation, setShowValidation] = useState(false);
@@ -40,26 +36,6 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
     'Khám': 'Examination',
     'Tư vấn': 'Consultation'
   };
-
-  const statusOptions = [
-    { key: "active", label: "Hoạt động" },
-    { key: "inactive", label: "Không hoạt động" },
-  ];
-
-  // Load service data when modal opens
-  useEffect(() => {
-    if (isOpen && service) {
-      setFormData({
-        name: service.name,
-        description: service.description,
-        price: service.price.toString(),
-        duration: service.duration.toString(),
-        category: service.category,
-        status: service.status,
-      });
-      setShowValidation(false);
-    }
-  }, [isOpen, service]);
 
   // Validation states
   const isNameInvalid = showValidation && !formData.name.trim();
@@ -98,12 +74,8 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      if (!service?.id) {
-        throw new Error('Không tìm thấy ID dịch vụ');
-      }
-
       // Prepare data for API call
-      const updateData = {
+      const createData = {
         serviceName: formData.name.trim(),
         description: formData.description.trim(),
         price: Number(formData.price),
@@ -111,22 +83,23 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         category: categoryReverseMap[formData.category] as 'Examination' | 'Consultation',
       };
 
-      // Gọi API cập nhật
-      const response = await managerApi.updateService(service.id, updateData);
+      // Gọi API tạo mới
+      const response = await managerApi.createService(createData);
 
       if (response.status) {
-        alert(response.message || "Cập nhật dịch vụ thành công!");
-        // Close modal and notify success
-        onClose();
+        alert(response.message || "Thêm dịch vụ mới thành công!");
+        // Reset form
+        handleClose();
+        // Notify success
         if (onSuccess) {
           onSuccess();
         }
       } else {
-        throw new Error(response.message || 'Không thể cập nhật dịch vụ');
+        throw new Error(response.message || 'Không thể thêm dịch vụ');
       }
     } catch (error: any) {
-      console.error("Error updating service:", error);
-      alert(error.message || "Có lỗi xảy ra khi cập nhật dịch vụ. Vui lòng thử lại.");
+      console.error("Error creating service:", error);
+      alert(error.message || "Có lỗi xảy ra khi thêm dịch vụ. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -139,13 +112,12 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
       price: "",
       duration: "",
       category: "",
-      status: "active",
     });
     setShowValidation(false);
     onClose();
   };
 
-  if (!isOpen || !service) return null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -174,9 +146,9 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
               src="/Screenshot_2025-09-19_141436-removebg-preview.png"
             />
             <div>
-              <h2 className="text-2xl font-bold">Chỉnh sửa dịch vụ</h2>
+              <h2 className="text-2xl font-bold">Thêm dịch vụ mới</h2>
               <p className="text-sm text-gray-600">
-                {service.name} - ID: {service.id}
+                Nhập thông tin dịch vụ nha khoa
               </p>
             </div>
           </div>
@@ -256,39 +228,25 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                 }
               />
 
-              <Select
-                fullWidth
-                errorMessage={isCategoryInvalid ? "Vui lòng chọn danh mục" : ""}
-                isInvalid={isCategoryInvalid}
-                label="Danh mục *"
-                placeholder="Chọn danh mục"
-                selectedKeys={formData.category ? [formData.category] : []}
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
-                  handleInputChange("category", selectedKey);
-                }}
-                variant="bordered"
-              >
-                {categoryOptions.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
-                ))}
-              </Select>
-
-              <Select
-                fullWidth
-                label="Trạng thái"
-                placeholder="Chọn trạng thái"
-                selectedKeys={formData.status ? [formData.status] : []}
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
-                  handleInputChange("status", selectedKey);
-                }}
-                variant="bordered"
-              >
-                {statusOptions.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
-                ))}
-              </Select>
+              <div className="md:col-span-2">
+                <Select
+                  fullWidth
+                  errorMessage={isCategoryInvalid ? "Vui lòng chọn danh mục" : ""}
+                  isInvalid={isCategoryInvalid}
+                  label="Danh mục *"
+                  placeholder="Chọn danh mục"
+                  selectedKeys={formData.category ? [formData.category] : []}
+                  onSelectionChange={(keys) => {
+                    const selectedKey = Array.from(keys)[0] as string;
+                    handleInputChange("category", selectedKey);
+                  }}
+                  variant="bordered"
+                >
+                  {categoryOptions.map((option) => (
+                    <SelectItem key={option.key}>{option.label}</SelectItem>
+                  ))}
+                </Select>
+              </div>
             </div>
 
             <div className="flex justify-end space-x-4 pt-4">
@@ -300,13 +258,13 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                 Hủy
               </Button>
               <Button
-                className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5]"
+                className="bg-green-600 text-white hover:bg-green-700"
                 isDisabled={isSubmitting}
                 isLoading={isSubmitting}
                 type="submit"
                 variant="solid"
               >
-                {isSubmitting ? "Đang cập nhật..." : "Cập nhật dịch vụ"}
+                {isSubmitting ? "Đang thêm..." : "Thêm dịch vụ"}
               </Button>
             </div>
           </Form>
@@ -316,4 +274,6 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
   );
 };
 
-export default EditServiceModal;
+export default AddServiceModal;
+
+

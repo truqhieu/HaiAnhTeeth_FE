@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -6,9 +6,11 @@ import {
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
 import { AddUserModal, EditUserModal } from "@/components";
+import { adminApi, AdminUser } from "@/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface User {
-  id: number;
+  id: string;
   role: string;
   name: string;
   email: string;
@@ -17,6 +19,7 @@ interface User {
 }
 
 const AccountManagement = () => {
+  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,66 +27,97 @@ const AccountManagement = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const itemsPerPage = 10;
+  const [users, setUsers] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock data
-  const [users] = useState<User[]>([
-    {
-      id: 1,
-      role: "Bác sĩ",
-      name: "Eve Brooks",
-      email: "Hardy@googlemail.com",
-      phone: "124456789",
-      status: "active",
-    },
-    {
-      id: 2,
-      role: "Lễ Tân",
-      name: "Deborah Adams",
-      email: "Morgan@outlook.com",
-      phone: "124456789",
-      status: "active",
-    },
-    {
-      id: 3,
-      role: "Bệnh nhân",
-      name: "Fairy Allen",
-      email: "Jesse@sogou.com",
-      phone: "124456789",
-      status: "inactive",
-    },
-    {
-      id: 4,
-      role: "Bác sĩ",
-      name: "John Doe",
-      email: "john@example.com",
-      phone: "987654321",
-      status: "active",
-    },
-    {
-      id: 5,
-      role: "Điều dưỡng",
-      name: "Jane Smith",
-      email: "jane@example.com",
-      phone: "123456789",
-      status: "active",
-    },
-    {
-      id: 6,
-      role: "Manager",
-      name: "Admin Manager",
-      email: "manager@example.com",
-      phone: "987654321",
-      status: "active",
-    },
-    {
-      id: 7,
-      role: "Lễ Tân",
-      name: "Reception Staff",
-      email: "reception@example.com",
-      phone: "555555555",
-      status: "active",
-    },
-  ]);
+  // Debug user info
+  useEffect(() => {
+    console.log('👤 Current User:', currentUser);
+    console.log('🔑 User Role:', currentUser?.role);
+  }, [currentUser]);
+
+  // Role mapping từ tiếng Anh sang tiếng Việt
+  const roleMap: { [key: string]: string } = {
+    'Doctor': 'Bác sĩ',
+    'Nurse': 'Điều dưỡng',
+    'Staff': 'Lễ Tân',
+    'Patient': 'Bệnh nhân',
+    'Manager': 'Manager',
+    'Admin': 'Admin'
+  };
+
+  // Fetch accounts from API
+  const fetchAccounts = async () => {
+    setIsLoading(true);
+    try {
+      console.log('🔍 Fetching accounts with params:', {
+        page: currentPage,
+        limit: itemsPerPage,
+        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Inactive') : undefined,
+        search: searchTerm || undefined,
+      });
+
+      const response = await adminApi.getAllAccounts({
+        page: currentPage,
+        limit: itemsPerPage,
+        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Inactive') : undefined,
+        search: searchTerm || undefined,
+      });
+
+      console.log('📥 Response received:', response);
+      console.log('📊 Response data:', response.data);
+
+      // Backend returns 'status' directly in response (not wrapped in data)
+      const isSuccess = response.status;
+      console.log('✅ Is success?', isSuccess);
+      
+      if (isSuccess && response.data) {
+        // Map API data to local User interface
+        const mappedUsers: User[] = response.data.map((user: AdminUser) => ({
+          id: user._id,
+          role: roleMap[user.role] || user.role,
+          name: user.fullName,
+          email: user.email,
+          phone: user.phoneNumber || '',
+          status: user.status === 'Active' ? 'active' as const : 'inactive' as const,
+        }));
+        
+        console.log('👥 Mapped users:', mappedUsers);
+        setUsers(mappedUsers);
+        setTotal(response.total || 0);
+        setTotalPages(response.totalPages || 1);
+      } else {
+        console.warn('⚠️ Response not successful or no data');
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching accounts:', error);
+      alert(error.message || 'Không thể tải danh sách tài khoản');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch data when component mounts or filters change
+  useEffect(() => {
+    fetchAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, statusFilter]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchAccounts();
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
 
   const statusOptions = [
@@ -92,28 +126,16 @@ const AccountManagement = () => {
     { key: "inactive", label: "Không hoạt động" },
   ];
 
-  // Filter users based on search and status
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone.includes(searchTerm);
-    const matchesStatus =
-      statusFilter === "all" || user.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  // Pagination info
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentUsers = filteredUsers.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, total);
+  const currentUsers = users;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const handleEdit = (userId: number) => {
+  const handleEdit = (userId: string) => {
     const user = users.find((u) => u.id === userId);
     if (user) {
       // Không cho phép chỉnh sửa tài khoản bệnh nhân
@@ -132,13 +154,14 @@ const AccountManagement = () => {
   };
 
   const handleAddSuccess = () => {
-    // TODO: Refresh the user list after successful addition
-    console.log("User added successfully, refreshing list...");
+    // Refresh the user list after successful addition
+    fetchAccounts();
+    setIsAddModalOpen(false);
   };
 
   const handleEditSuccess = () => {
-    // TODO: Refresh the user list after successful edit
-    console.log("User updated successfully, refreshing list...");
+    // Refresh the user list after successful edit
+    fetchAccounts();
     setIsEditModalOpen(false);
     setSelectedUser(null);
   };
@@ -176,6 +199,10 @@ const AccountManagement = () => {
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
               setStatusFilter(selectedKey);
+              // Reset to page 1 when filter changes
+              if (currentPage !== 1) {
+                setCurrentPage(1);
+              }
             }}
             className="w-48"
             variant="bordered"
@@ -203,7 +230,7 @@ const AccountManagement = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
+                  STT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Vai trò
@@ -226,10 +253,10 @@ const AccountManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {currentUsers.map((user) => (
+              {currentUsers.map((user, index) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {user.id}
+                    {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -280,8 +307,15 @@ const AccountManagement = () => {
           </table>
         </div>
 
+        {/* Loading state */}
+        {isLoading && (
+          <div className="text-center py-12">
+            <div className="text-gray-500 text-lg">Đang tải dữ liệu...</div>
+          </div>
+        )}
+
         {/* Empty state */}
-        {currentUsers.length === 0 && (
+        {!isLoading && currentUsers.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-500 text-lg">Không tìm thấy dữ liệu</div>
             <div className="text-gray-400 text-sm mt-2">
@@ -292,11 +326,11 @@ const AccountManagement = () => {
       </div>
 
       {/* Pagination */}
-      {filteredUsers.length > 0 && (
+      {!isLoading && total > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
           <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredUsers.length)} trong{" "}
-            {filteredUsers.length} kết quả
+            Hiển thị {startIndex + 1} đến {endIndex} trong{" "}
+            {total} kết quả
           </div>
 
           <div className="flex items-center space-x-2">

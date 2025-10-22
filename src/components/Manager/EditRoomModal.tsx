@@ -1,30 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem, Textarea } from "@heroui/react";
-
-interface Doctor {
-  id: number;
-  name: string;
-  specialty: string;
-}
-
-interface Room {
-  id: number;
-  roomNumber: string;
-  roomName: string;
-  floor: number;
-  status: "available" | "occupied" | "maintenance";
-  assignedDoctor: Doctor | null;
-  capacity: number;
-  equipment: string[];
-}
+import { managerApi, ManagerDoctor } from "@/api";
+import { Room } from "@/types";
 
 interface EditRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
   room: Room | null;
   onSuccess?: () => void;
-  doctors: Doctor[];
+  doctors: ManagerDoctor[];
 }
 
 const EditRoomModal: React.FC<EditRoomModalProps> = ({
@@ -35,59 +20,36 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
   doctors,
 }) => {
   const [formData, setFormData] = useState({
-    roomNumber: "",
-    roomName: "",
-    floor: "",
+    name: "",
+    description: "",
+    status: "active",
     assignedDoctorId: "",
-    capacity: "",
-    equipment: "",
-    status: "available",
   });
 
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const statusOptions = [
-    { key: "available", label: "Sẵn sàng" },
-    { key: "occupied", label: "Đang sử dụng" },
-    { key: "maintenance", label: "Bảo trì" },
-  ];
-
-  const floorOptions = [
-    { key: "1", label: "Tầng 1" },
-    { key: "2", label: "Tầng 2" },
-    { key: "3", label: "Tầng 3" },
-    { key: "4", label: "Tầng 4" },
-    { key: "5", label: "Tầng 5" },
+    { key: "active", label: "Hoạt động" },
+    { key: "inactive", label: "Không hoạt động" },
   ];
 
   // Load room data when modal opens
   useEffect(() => {
     if (isOpen && room) {
       setFormData({
-        roomNumber: room.roomNumber,
-        roomName: room.roomName,
-        floor: room.floor.toString(),
-        assignedDoctorId: room.assignedDoctor
-          ? room.assignedDoctor.id.toString()
-          : "",
-        capacity: room.capacity.toString(),
-        equipment: room.equipment.join(", "),
+        name: room.name,
+        description: room.description,
         status: room.status,
+        assignedDoctorId: room.assignedDoctorId || "",
       });
       setShowValidation(false);
     }
   }, [isOpen, room]);
 
   // Validation states
-  const isRoomNumberInvalid = showValidation && !formData.roomNumber.trim();
-  const isRoomNameInvalid = showValidation && !formData.roomName.trim();
-  const isFloorInvalid = showValidation && !formData.floor;
-  const isCapacityInvalid =
-    showValidation &&
-    (!formData.capacity ||
-      isNaN(Number(formData.capacity)) ||
-      Number(formData.capacity) <= 0);
+  const isNameInvalid = showValidation && !formData.name.trim();
+  const isDescriptionInvalid = showValidation && !formData.description.trim();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -101,13 +63,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
     setShowValidation(true);
 
     // Check validation
-    const hasErrors =
-      !formData.roomNumber.trim() ||
-      !formData.roomName.trim() ||
-      !formData.floor ||
-      !formData.capacity ||
-      isNaN(Number(formData.capacity)) ||
-      Number(formData.capacity) <= 0;
+    const hasErrors = !formData.name.trim() || !formData.description.trim();
 
     if (hasErrors) {
       return;
@@ -116,49 +72,47 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Prepare data for API call
-      const equipmentList = formData.equipment
-        .split(",")
-        .map((item) => item.trim())
-        .filter((item) => item !== "");
+      if (!room?.id) {
+        throw new Error('Không tìm thấy ID phòng khám');
+      }
 
+      // Prepare data for API call
       const updateData = {
-        id: room?.id,
-        roomNumber: formData.roomNumber.trim(),
-        roomName: formData.roomName.trim(),
-        floor: Number(formData.floor),
-        assignedDoctorId: formData.assignedDoctorId
-          ? Number(formData.assignedDoctorId)
-          : null,
-        capacity: Number(formData.capacity),
-        equipment: equipmentList,
-        status: formData.status,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        status: formData.status === 'active' ? 'Active' as const : 'Inactive' as const,
       };
 
-      // TODO: Gửi request lên backend để cập nhật room
-      // const response = await fetch(`/api/rooms/${room?.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(updateData),
-      // });
-      //
-      // if (!response.ok) {
-      //   throw new Error('Không thể cập nhật phòng');
-      // }
+      // Gọi API cập nhật
+      const response = await managerApi.updateClinic(room.id, updateData);
 
-      // Giả lập API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (response.status) {
+        // Handle assign/unassign doctor nếu có thay đổi
+        const oldDoctorId = room.assignedDoctorId;
+        const newDoctorId = formData.assignedDoctorId;
 
-      console.log("Updating room:", updateData);
+        if (oldDoctorId !== newDoctorId) {
+          if (newDoctorId) {
+            // Assign doctor
+            await managerApi.assignDoctor(room.id, newDoctorId);
+          } else if (oldDoctorId) {
+            // Unassign doctor
+            await managerApi.unassignDoctor(room.id);
+          }
+        }
 
-      // Close modal and notify success
-      onClose();
-      if (onSuccess) {
-        onSuccess();
+        alert(response.message || "Cập nhật phòng khám thành công!");
+        // Close modal and notify success
+        onClose();
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        throw new Error(response.message || 'Không thể cập nhật phòng khám');
       }
-    } catch (error) {
-      console.error("Error updating room:", error);
-      alert("Có lỗi xảy ra khi cập nhật phòng. Vui lòng thử lại.");
+    } catch (error: any) {
+      console.error("Error updating clinic:", error);
+      alert(error.message || "Có lỗi xảy ra khi cập nhật phòng khám. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -166,13 +120,10 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
 
   const handleClose = () => {
     setFormData({
-      roomNumber: "",
-      roomName: "",
-      floor: "",
+      name: "",
+      description: "",
+      status: "active",
       assignedDoctorId: "",
-      capacity: "",
-      equipment: "",
-      status: "available",
     });
     setShowValidation(false);
     onClose();
@@ -207,9 +158,9 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
               src="/Screenshot_2025-09-19_141436-removebg-preview.png"
             />
             <div>
-              <h2 className="text-2xl font-bold">Chỉnh sửa phòng</h2>
+              <h2 className="text-2xl font-bold">Chỉnh sửa phòng khám</h2>
               <p className="text-sm text-gray-600">
-                {room.roomNumber} - {room.roomName}
+                {room.name}
               </p>
             </div>
           </div>
@@ -226,69 +177,31 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
         {/* Body */}
         <div className="p-6">
           <Form autoComplete="off" className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={
-                  isRoomNumberInvalid ? "Vui lòng nhập số phòng" : ""
-                }
-                isInvalid={isRoomNumberInvalid}
-                label="Số phòng *"
-                placeholder="Ví dụ: 101, 102, 201..."
-                type="text"
-                value={formData.roomNumber}
-                onValueChange={(value) => handleInputChange("roomNumber", value)}
-                variant="bordered"
-              />
-
-              <Input
-                fullWidth
-                autoComplete="off"
-                errorMessage={isRoomNameInvalid ? "Vui lòng nhập tên phòng" : ""}
-                isInvalid={isRoomNameInvalid}
-                label="Tên phòng *"
+                errorMessage={isNameInvalid ? "Vui lòng nhập tên phòng khám" : ""}
+                isInvalid={isNameInvalid}
+                label="Tên phòng khám *"
                 placeholder="Ví dụ: Phòng khám tổng quát 1"
                 type="text"
-                value={formData.roomName}
-                onValueChange={(value) => handleInputChange("roomName", value)}
+                value={formData.name}
+                onValueChange={(value) => handleInputChange("name", value)}
                 variant="bordered"
               />
 
-              <Select
-                fullWidth
-                errorMessage={isFloorInvalid ? "Vui lòng chọn tầng" : ""}
-                isInvalid={isFloorInvalid}
-                label="Tầng *"
-                placeholder="Chọn tầng"
-                selectedKeys={formData.floor ? [formData.floor] : []}
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
-                  handleInputChange("floor", selectedKey);
-                }}
-                variant="bordered"
-              >
-                {floorOptions.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
-                ))}
-              </Select>
-
-              <Input
+              <Textarea
                 fullWidth
                 autoComplete="off"
-                errorMessage={
-                  isCapacityInvalid
-                    ? "Vui lòng nhập sức chứa hợp lệ (lớn hơn 0)"
-                    : ""
-                }
-                isInvalid={isCapacityInvalid}
-                label="Sức chứa *"
-                placeholder="Số người"
-                type="number"
-                value={formData.capacity}
-                onValueChange={(value) => handleInputChange("capacity", value)}
+                errorMessage={isDescriptionInvalid ? "Vui lòng nhập mô tả" : ""}
+                isInvalid={isDescriptionInvalid}
+                label="Mô tả phòng khám *"
+                placeholder="Nhập mô tả chi tiết về phòng khám"
+                value={formData.description}
+                onValueChange={(value) => handleInputChange("description", value)}
                 variant="bordered"
-                endContent={<span className="text-gray-500 text-sm">người</span>}
+                minRows={4}
               />
 
               <Select
@@ -300,17 +213,16 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                 }
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
-                  handleInputChange("assignedDoctorId", selectedKey);
+                  handleInputChange("assignedDoctorId", selectedKey || "");
                 }}
                 variant="bordered"
+                description="Để trống nếu muốn gỡ bác sĩ"
               >
                 {doctors.map((doctor) => (
-                  <SelectItem key={doctor.id.toString()} textValue={doctor.name}>
+                  <SelectItem key={doctor._id} textValue={doctor.fullName}>
                     <div>
-                      <div className="font-medium">{doctor.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {doctor.specialty}
-                      </div>
+                      <div className="font-medium">{doctor.fullName}</div>
+                      <div className="text-xs text-gray-500">{doctor.email}</div>
                     </div>
                   </SelectItem>
                 ))}
@@ -331,20 +243,6 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                   <SelectItem key={option.key}>{option.label}</SelectItem>
                 ))}
               </Select>
-
-              <div className="md:col-span-2">
-                <Textarea
-                  fullWidth
-                  autoComplete="off"
-                  label="Thiết bị"
-                  placeholder="Nhập danh sách thiết bị, cách nhau bởi dấu phẩy. Ví dụ: Ghế nha khoa, Máy X-quang, Đèn chiếu"
-                  value={formData.equipment}
-                  onValueChange={(value) => handleInputChange("equipment", value)}
-                  variant="bordered"
-                  minRows={3}
-                  description="Các thiết bị cách nhau bởi dấu phẩy"
-                />
-              </div>
             </div>
 
             <div className="flex justify-end space-x-4 pt-4">
@@ -362,7 +260,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                 type="submit"
                 variant="solid"
               >
-                {isSubmitting ? "Đang cập nhật..." : "Cập nhật phòng"}
+                {isSubmitting ? "Đang cập nhật..." : "Cập nhật phòng khám"}
               </Button>
             </div>
           </Form>
