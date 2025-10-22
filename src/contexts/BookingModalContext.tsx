@@ -2,9 +2,8 @@
 
 import React, { createContext, useContext, useState } from 'react';
 // Đảm bảo đường dẫn này đúng với vị trí file của bạn
-import BookingConsultation from '../components/Patient/BookingConsultation'; 
 import PaymentModal from '../components/Patient/PaymentModal'; // File bạn vừa tạo ở bước trước
-
+import BookingModal from '../components/Patient/BookingModal'
 interface BookingModalContextType {
   openBookingModal: () => void;
 }
@@ -14,15 +13,16 @@ const BookingModalContext = createContext<BookingModalContextType | undefined>(u
 export const BookingModalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
-
+  const [currentPaymentId, setCurrentPaymentId] = useState<string | null>(null);
   // Hàm để các component khác (như Navbar) gọi để MỞ modal
   const openBookingModal = () => setIsBookingOpen(true);
 
   // Hàm để ĐÓNG modal đặt lịch (khi nhấn Hủy hoặc backdrop)
   const closeBookingModal = () => setIsBookingOpen(false);
 
-  // Hàm để XỬ LÝ KHI ĐẶT LỊCH THÀNH CÔNG
-  const handleBookingSuccess = () => {
+  // Hàm để XỬ LÝ KHI ĐẶT LỊCH THÀNH CÔNG (NHẬN paymentId)
+  const handleBookingSuccess = (paymentId: string) => {
+    setCurrentPaymentId(paymentId); // 0. Lưu paymentId
     setIsBookingOpen(false); // 1. Đóng modal đặt lịch
     setIsPaymentOpen(true); // 2. Mở modal thanh toán
   };
@@ -30,6 +30,7 @@ export const BookingModalProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Hàm để ĐÓNG modal thanh toán (hết giờ hoặc nhấn Hủy)
   const closePaymentModal = () => {
     setIsPaymentOpen(false);
+    setCurrentPaymentId(null);
     // Bạn có thể alert ở đây nếu muốn
     // alert('Giao dịch đã bị hủy hoặc hết hạn.'); 
   };
@@ -41,15 +42,16 @@ export const BookingModalProvider: React.FC<{ children: React.ReactNode }> = ({ 
       {/* Render cả 2 modal ở đây. 
         Chúng được điều khiển bởi state nội bộ của Provider này.
       */}
-      <BookingConsultation
+      <BookingModal
         isOpen={isBookingOpen}
         onClose={closeBookingModal}
-        onBookingSuccess={handleBookingSuccess} 
+        onBookingSuccess={handleBookingSuccess}
       />
       
       <PaymentModal
         isOpen={isPaymentOpen}
         onClose={closePaymentModal}
+        paymentId={currentPaymentId}
       />
     </BookingModalContext.Provider>
   );

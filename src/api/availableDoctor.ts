@@ -1,0 +1,78 @@
+// src/api/availableDoctor.ts
+export interface AvailableDoctor {
+  doctorId: string;
+  doctorScheduleId: string;
+  doctorName: string;
+  email: string;
+  phoneNumber: string;
+}
+
+export interface GetAvailableDoctorsParams {
+  serviceId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface GetAvailableDoctorsResponse {
+  success: boolean;
+  data: {
+    date: string;
+    serviceId: string;
+    serviceName: string;
+    requestedTime: {
+      startTime: string;
+      endTime: string;
+      displayTime: string;
+    };
+    availableDoctors: AvailableDoctor[];
+    totalDoctors: number;
+  };
+  message?: string;
+}
+
+export const availableDoctorApi = {
+  /**
+   * Lấy danh sách bác sĩ có khung giờ rảnh tại một time-slot cụ thể
+   * (GET /api/available-slots/doctors/time-slot)
+   */
+  getByTimeSlot: async (
+    params: GetAvailableDoctorsParams
+  ): Promise<GetAvailableDoctorsResponse> => {
+    try {
+      // Convert params to query string
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+
+      const query = queryParams.toString();
+      const endpoint = query
+        ? `/api/available-slots/doctors/list?${query}`
+        : "/api/available-slots/doctors/list";
+
+      // Gọi trực tiếp fetch (giống serviceApi)
+      const response = await fetch(
+        `${import.meta.env.VITE_API1_URL || "http://localhost:9999"}${endpoint}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: GetAvailableDoctorsResponse = await response.json();
+      return data;
+    } catch (error: any) {
+      console.error("Error fetching available doctors:", error);
+      throw error;
+    }
+  },
+};

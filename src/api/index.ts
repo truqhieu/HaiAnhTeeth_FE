@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9999/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9999';
 
 // API Response Types
 export interface ApiResponse<T = any> {
@@ -62,6 +62,26 @@ export const authenticatedApiCall = async <T = any>(
 
 // Export auth API
 export { authApi } from './auth';
+// Export appointment API
+export { appointmentApi } from './appointment';
+// Export payment API
+export { paymentApi } from './payment';
+// Export availableSlot API
+export { availableSlotApi } from './availableSlot';
 
 // Export types
-export type { RegisterData, LoginData, ForgotPasswordData, ResetPasswordData, User as AuthUser, AuthResponse } from './auth';
+
+// Lấy kiểu User từ auth.ts và thêm thuộc tính _id
+import type { User } from './auth';
+export type AuthUser = User & { _id: string };
+
+export type { RegisterData, LoginData, ForgotPasswordData, ResetPasswordData, AuthResponse } from './auth';
+export type { AppointmentCreationData } from './appointment';
+export type { PaymentInfo, AppointmentInfo, CheckPaymentStatusResponse } from './payment';
+export type { GetAvailableSlotsParams, AvailableSlotsData } from './availableSlot';
+export { serviceApi } from './service';
+export type { Service } from './service'; // THÊM DÒNG NÀY
+export { availableDoctorApi } from "./availableDoctor";
+export type { AvailableDoctor } from "./availableDoctor";
+export { generateByDateApi } from "./generateByDate";
+export type { GeneratedSlot } from "./generateByDate";

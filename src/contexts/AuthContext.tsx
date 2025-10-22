@@ -20,23 +20,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Initialize auth state from localStorage on mount
   useEffect(() => {
+    let isMounted = true;
+
     const initializeAuth = () => {
       try {
         const currentUser = authApi.getCurrentUser();
         const token = authApi.getToken();
 
         if (currentUser && token) {
-          setUser(currentUser);
+          // SỬA LỖI: Ép kiểu currentUser thành AuthUser để khớp với state
+          if (isMounted) {
+            setUser(currentUser as AuthUser);
+          }
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
         authApi.logout();
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     initializeAuth();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = (userData: AuthUser, token: string) => {
@@ -74,4 +85,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

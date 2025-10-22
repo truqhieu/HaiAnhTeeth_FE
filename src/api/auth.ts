@@ -31,6 +31,7 @@ export interface User {
   role: string;
   status: string;
   gender: string;
+  phoneNumber: string; // THÊM DÒNG NÀY
   dob: string;
 }
 
@@ -42,16 +43,16 @@ export interface AuthResponse {
 // Auth API Functions
 export const authApi = {
   // Register new user
-  register: async (data: RegisterData): Promise<ApiResponse> => {
-    return apiCall('/auth/register', {
+  register: async (data: RegisterData): Promise<ApiResponse> => { // Thêm /api
+    return apiCall('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   // Login user
-  login: async (data: LoginData): Promise<ApiResponse<AuthResponse>> => {
-    const response = await apiCall<AuthResponse>('/auth/login', {
+  login: async (data: LoginData): Promise<ApiResponse<AuthResponse>> => { // Thêm /api
+    const response = await apiCall<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -66,31 +67,31 @@ export const authApi = {
   },
 
   // Forgot password
-  forgotPassword: async (data: ForgotPasswordData): Promise<ApiResponse> => {
-    return apiCall('/auth/forgot-password', {
+  forgotPassword: async (data: ForgotPasswordData): Promise<ApiResponse> => { // Thêm /api
+    return apiCall('/api/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   // Reset password
-  resetPassword: async (data: ResetPasswordData): Promise<ApiResponse> => {
-    return apiCall('/auth/reset-password', {
+  resetPassword: async (data: ResetPasswordData): Promise<ApiResponse> => { // Thêm /api
+    return apiCall('/api/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   // Verify email
-  verifyEmail: async (token: string, email: string): Promise<ApiResponse<AuthResponse>> => {
-    return apiCall<AuthResponse>(`/auth/verify-email?token=${token}&email=${email}`, {
+  verifyEmail: async (token: string, email: string): Promise<ApiResponse<AuthResponse>> => { // Thêm /api
+    return apiCall<AuthResponse>(`/api/auth/verify-email?token=${token}&email=${email}`, {
       method: 'GET',
     });
   },
 
   // Get current user profile
   getProfile: async (): Promise<ApiResponse<User>> => {
-    return authenticatedApiCall<User>('/auth/profile', {
+    return authenticatedApiCall<User>('/api/auth/profile', { // Thêm /api
       method: 'GET',
     });
   },

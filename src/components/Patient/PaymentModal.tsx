@@ -4,11 +4,16 @@ import {
   ViewfinderCircleIcon,
   CheckCircleIcon,
   ArrowPathIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline'; // Sử dụng outline icons cho thanh lịch
+import { paymentApi } from '@/api'; // Import API vừa tạo
 
+type PaymentStatus = 'pending' | 'checking' | 'success' | 'error' | 'expired';
 interface PaymentModalProps {
   isOpen: boolean;
-  onClose: () => void; // Hàm này sẽ được gọi khi hết giờ hoặc khi nhấn "Hủy"
+  onClose: () => void;
+  // Prop mới để nhận paymentId từ context
+  paymentId: string | null;
 }
 
 // Hằng số thời gian đếm ngược (10 phút * 60 giây)
@@ -26,8 +31,10 @@ const formatTime = (timeInSeconds: number) => {
   };
 };
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
+const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId }) => {
   const [timeLeft, setTimeLeft] = useState(COUNTDOWN_SECONDS);
+  const [status, setStatus] = useState<PaymentStatus>('pending');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { minutes, seconds } = formatTime(timeLeft);
 
   /**
@@ -39,12 +46,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
    */
   useEffect(() => {
     // Không làm gì nếu modal đang đóng
-    if (!isOpen) {
+    if (!isOpen || !paymentId) {
+      setStatus('pending');
       return;
     }
 
     // Reset lại thời gian mỗi khi mở modal
     setTimeLeft(COUNTDOWN_SECONDS);
+    setStatus('pending'); // Reset trạng thái
+    setErrorMessage(null); // Reset lỗi
 
     // Bắt đầu đếm ngược
     const intervalId = setInterval(() => {
@@ -52,6 +62,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
         if (prevTime <= 1) {
           clearInterval(intervalId); // Dừng đếm ngược
           onClose(); // Tự động đóng modal khi hết giờ
+          setStatus('expired');
           return 0;
         }
         return prevTime - 1; // Giảm 1 giây
@@ -63,8 +74,55 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [isOpen, onClose]); // Phụ thuộc vào `isOpen` và `onClose`
+  }, [isOpen, paymentId, onClose]); // Phụ thuộc vào `isOpen` và `onClose`
 
+   /**
+   * Logic kiểm tra thanh toán
+   * 1. Chỉ chạy khi modal mở, có paymentId và chưa thành công
+   * 2. Gọi API checkPaymentStatus mỗi 5 giây
+   * 3. Nếu thành công, hiển thị màn hình success và dừng kiểm tra
+   * 4. Nếu lỗi, hiển thị lỗi và dừng kiểm tra
+   */
+  useEffect(() => {
+    if (!isOpen || !paymentId || status === 'success' || status === 'error') {
+      return;
+    }
+
+    const checkStatus = async () => {
+      try {
+        setStatus('checking');
+        console.log(`🔍 Checking payment status for ID: ${paymentId}...`);
+        const response = await paymentApi.checkPaymentStatus(paymentId);
+
+        if (response.success && response.data?.confirmed) {
+          console.log('✅ Payment confirmed!', response.data);
+          setStatus('success');
+          // Tự động đóng modal sau 5 giây
+          setTimeout(() => {
+            onClose();
+          }, 5000);
+        } else {
+          // Vẫn đang chờ, không làm gì cả, lần check tiếp theo sẽ chạy
+          console.log('...Payment not yet confirmed.');
+          setStatus('pending');
+        }
+      } catch (error: any) {
+        console.error('❌ Error checking payment status:', error);
+        setErrorMessage(error.message || 'Lỗi kết nối khi kiểm tra thanh toán.');
+        setStatus('error');
+      }
+    };
+
+    // Gọi lần đầu tiên ngay lập tức
+    checkStatus();
+    // Sau đó gọi mỗi 5 giây
+    const paymentIntervalId = setInterval(checkStatus, 5000);
+
+    // Dọn dẹp khi modal đóng hoặc paymentId thay đổi
+    return () => {
+      clearInterval(paymentIntervalId);
+    };
+  }, [isOpen, paymentId, onClose, status]);
   // Không render gì nếu modal không mở
   if (!isOpen) {
     return null;
@@ -76,7 +134,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 transition-all duration-300">
         {/* Tiêu đề chính */}
         <div className="text-center p-6 border-b border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800">
@@ -89,10 +147,53 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Thân Modal (Chia 2 cột) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8">
+        <div className={`grid grid-cols-1 ${status === 'success' ? '' : 'md:grid-cols-2'} gap-8 p-8`}>
           
-          {/* Cột trái: QR và Đếm ngược */}
-          <div className="flex flex-col items-center p-6 bg-gray-50 rounded-lg">
+          {/* --- TRẠNG THÁI THÀNH CÔNG --- */}
+          {status === 'success' && (
+            <div className="flex flex-col items-center justify-center text-center p-8">
+              <CheckCircleIcon className="w-24 h-24 text-green-500 mb-6" />
+              <h2 className="text-3xl font-bold text-gray-800">Thanh toán thành công!</h2>
+              <p className="text-gray-600 mt-3">
+                Lịch hẹn của bạn đã được xác nhận. Chúng tôi sẽ liên hệ với bạn sớm nhất.
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Cửa sổ này sẽ tự động đóng sau 5 giây.
+              </p>
+              <button
+                onClick={onClose}
+                className="w-full max-w-xs px-6 py-3 mt-8 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition"
+              >
+                Đóng ngay
+              </button>
+            </div>
+          )}
+
+          {/* --- TRẠNG THÁI LỖI --- */}
+          {status === 'error' && (
+            <div className="flex flex-col items-center justify-center text-center p-8 md:col-span-2">
+              <ExclamationTriangleIcon className="w-24 h-24 text-red-500 mb-6" />
+              <h2 className="text-3xl font-bold text-gray-800">Đã có lỗi xảy ra</h2>
+              <p className="text-red-600 bg-red-50 rounded-md p-3 mt-3">
+                {errorMessage || 'Không thể kiểm tra trạng thái thanh toán.'}
+              </p>
+              <div className="flex gap-4 mt-8">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition"
+                >
+                  Đóng
+                </button>
+                <a href="#" className="px-6 py-3 bg-[#39BDCC] text-white rounded-lg font-semibold hover:bg-[#2ca6b5] transition">
+                  Liên hệ hỗ trợ
+                </a>
+              </div>
+            </div>
+          )}
+
+          {['pending', 'checking'].includes(status) && (<>
+            {/* Cột trái: QR và Đếm ngược */}
+            <div className="flex flex-col items-center p-6 bg-gray-50 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-800">
               Quét mã QR để thanh toán
             </h3>
@@ -116,8 +217,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
             {/* Mã QR (Sử dụng placeholder) */}
             <div className="p-2 border bg-white rounded-lg shadow-md">
               <img
-                // Sử dụng API placeholder cho mã QR. Thay bằng mã QR thật của bạn
-                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=ThanhToanTuVanNhaKhoa"
+                // TODO: Thay bằng API tạo QR động với nội dung thanh toán từ backend
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=APPOINTMENT ${paymentId?.slice(-8).toUpperCase()}`}
                 alt="Mã QR thanh toán"
                 className="w-48 h-48"
               />
@@ -127,7 +228,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
               Vui lòng kiểm tra lại thông tin và xác nhận thanh toán trên ứng
               dụng của bạn.
             </p>
-
+            {/* Trạng thái đang kiểm tra */}
+            {status === 'checking' && (
+              <div className="flex items-center text-sm text-blue-600 mt-4">
+                <ArrowPathIcon className="w-4 h-4 mr-2 animate-spin" />
+                Đang kiểm tra giao dịch...
+              </div>
+            )}
             {/* Nút Hủy */}
             <button
               onClick={onClose}
@@ -181,6 +288,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
                     Kiểm tra lại thông tin và xác nhận thanh toán trên ứng dụng
                     của bạn.
                   </p>
+                  
                 </div>
               </li>
               
@@ -212,6 +320,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose }) => {
               </p>
             </div>
           </div>
+          </>)}
         </div>
       </div>
     </div>
