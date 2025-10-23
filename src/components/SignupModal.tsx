@@ -7,8 +7,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { DatePicker, Input, Button, Form } from "@heroui/react";
 
-import { useAuthModal } from "@/contexts/AuthModalContext";
-import { authApi } from "@/api";
+import { useAuthModal } from "../contexts/AuthModalContext";
 
 const SignupModal = () => {
   const { isSignupModalOpen, closeModals, openLoginModal } = useAuthModal();
@@ -23,8 +22,6 @@ const SignupModal = () => {
   const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
     React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState("");
 
   // Reset form when modal opens
   React.useEffect(() => {
@@ -39,8 +36,6 @@ const SignupModal = () => {
       setShowValidation(false);
       setIsPasswordVisible(false);
       setIsConfirmPasswordVisible(false);
-      setIsLoading(false);
-      setError("");
     }
   }, [isSignupModalOpen]);
 
@@ -78,10 +73,9 @@ const SignupModal = () => {
   const isConfirmPasswordInvalid =
     showValidation && (!confirmPassword || password !== confirmPassword);
 
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setShowValidation(true);
-    setError("");
 
     // Kiểm tra validation cho tất cả các trường
     const hasErrors =
@@ -99,47 +93,17 @@ const SignupModal = () => {
       return;
     }
 
-    setIsLoading(true);
+    const data = { name, email, gender, birthdate, password };
 
-    try {
-      // Format birthdate to ISO string
-      const formattedBirthdate = birthdate ? new Date(
-        birthdate.year,
-        birthdate.month - 1,
-        birthdate.day
-      ).toISOString() : "";
+    setSubmitted(data);
+    // TODO: Gửi data lên server
+    // eslint-disable-next-line no-console
+    console.log("Đăng ký thành công:", data);
 
-      // Map Vietnamese gender to English
-      const genderMap: { [key: string]: string } = {
-        "Nam": "Male",
-        "Nữ": "Female"
-      };
-
-      const response = await authApi.register({
-        fullName: name,
-        email,
-        gender: genderMap[gender] || gender,
-        dateOfBirth: formattedBirthdate,
-        password,
-      });
-
-      if (response.success) {
-        setSubmitted({ name, email });
-        // eslint-disable-next-line no-console
-        console.log("Đăng ký thành công:", response.data);
-
-        // Close modal after successful signup
-        setTimeout(() => {
-          closeModals();
-        }, 3000);
-      } else {
-        setError(response.message || "Đăng ký thất bại");
-      }
-    } catch (error: any) {
-      setError(error.message || "Lỗi kết nối đến server");
-    } finally {
-      setIsLoading(false);
-    }
+    // Close modal after successful signup
+    setTimeout(() => {
+      closeModals();
+    }, 2000);
   };
 
   const handleSwitchToLogin = () => {
@@ -196,12 +160,6 @@ const SignupModal = () => {
 
         {/* Body */}
         <div className="p-6 overflow-y-auto">
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-sm text-red-700">
-              {error}
-            </div>
-          )}
-          
           <Form autoComplete="off" className="space-y-4" onSubmit={onSubmit}>
             <Input
               fullWidth
@@ -367,25 +325,17 @@ const SignupModal = () => {
 
             <Button
               className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"
-              isDisabled={isLoading}
-              isLoading={isLoading}
               type="submit"
               variant="solid"
             >
-              {!isLoading && <UserIcon className="w-5 h-5 mr-2" />}
-              {isLoading ? "Đang đăng ký..." : "Đăng ký"}
+              <UserIcon className="w-5 h-5 mr-2" />
+              Đăng ký
             </Button>
           </Form>
 
           {submitted && (
-            <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded text-sm text-green-700">
-              <div className="text-center font-semibold mb-2">
-                ✅ Đăng ký thành công!
-              </div>
-              <p className="text-center text-xs">
-                Chúng tôi đã gửi email xác thực đến <strong>{submitted.email}</strong>.
-                Vui lòng kiểm tra hộp thư và click vào link trong email để kích hoạt tài khoản.
-              </p>
+            <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded text-center text-sm text-green-700">
+              ✅ Đăng ký thành công! Chào mừng {submitted.name}
             </div>
           )}
 

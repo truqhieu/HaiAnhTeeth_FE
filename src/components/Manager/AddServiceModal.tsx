@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem, Textarea } from "@heroui/react";
+import toast from "react-hot-toast";
 import { managerApi } from "@/api";
 
 interface AddServiceModalProps {
@@ -87,7 +88,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       const response = await managerApi.createService(createData);
 
       if (response.status) {
-        alert(response.message || "Thêm dịch vụ mới thành công!");
+        toast.success(response.message || "Thêm dịch vụ mới thành công!");
         // Reset form
         handleClose();
         // Notify success
@@ -99,7 +100,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       }
     } catch (error: any) {
       console.error("Error creating service:", error);
-      alert(error.message || "Có lỗi xảy ra khi thêm dịch vụ. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi thêm dịch vụ. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }

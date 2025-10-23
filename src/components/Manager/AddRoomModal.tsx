@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Textarea } from "@heroui/react";
+import toast from "react-hot-toast";
 import { managerApi } from "@/api";
 
 interface AddRoomModalProps {
@@ -68,7 +69,7 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
       const response = await managerApi.createClinic(createData);
 
       if (response.status) {
-        alert(response.message || "Thêm phòng khám mới thành công!");
+        toast.success(response.message || "Thêm phòng khám mới thành công!");
         // Reset form
         handleClose();
         // Notify success
@@ -80,7 +81,7 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
       }
     } catch (error: any) {
       console.error("Error creating clinic:", error);
-      alert(error.message || "Có lỗi xảy ra khi tạo phòng khám. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi tạo phòng khám. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }

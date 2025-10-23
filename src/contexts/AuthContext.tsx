@@ -1,5 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { authApi, AuthUser } from "@/api";
+import React, { createContext, useContext, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AuthUser } from "@/api";
+import type { RootState, AppDispatch } from "@/store/index";
+import { setAuth, clearAuth, updateUser, setLoading, restoreAuth } from "@/store/slices/authSlice";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -14,54 +17,102 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
+}: {
+  children: React.ReactNode;
 }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useDispatch<AppDispatch>();
+  const { user, isAuthenticated, isLoading } = useSelector((state: RootState) => state.auth);
 
-  // Initialize auth state from localStorage on mount
+  // Initialize auth state from sessionStorage on mount
   useEffect(() => {
+    let isMounted = true;
+
     const initializeAuth = () => {
       try {
-        const currentUser = authApi.getCurrentUser();
-        const token = authApi.getToken();
+        dispatch(setLoading(true));
+        
+        // Try to restore from sessionStorage
+        const storedUser = sessionStorage.getItem('user');
+        const storedToken = sessionStorage.getItem('authToken');
 
-        if (currentUser && token) {
-          setUser(currentUser);
+        if (storedUser && storedToken && isMounted) {
+          const parsedUser = JSON.parse(storedUser) as AuthUser;
+          // Normalize user data: ensure _id is set
+          const normalizedUser = {
+            ...parsedUser,
+            _id: parsedUser._id || parsedUser.id || '',
+            id: parsedUser.id || parsedUser._id || '',
+          };
+          dispatch(restoreAuth({ user: normalizedUser, token: storedToken }));
+        } else if (isMounted) {
+          dispatch(restoreAuth({ user: null, token: null }));
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
-        authApi.logout();
+        if (isMounted) {
+          dispatch(restoreAuth({ user: null, token: null }));
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          dispatch(setLoading(false));
+        }
       }
     };
 
     initializeAuth();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [dispatch]);
 
   const login = (userData: AuthUser, token: string) => {
-    localStorage.setItem("authToken", token);
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
+    // Normalize user data: ensure _id is set from either id or _id
+    const normalizedUser = {
+      ...userData,
+      _id: userData._id || userData.id || '',
+      id: userData.id || userData._id || '',
+    };
+    
+    // Save to sessionStorage
+    sessionStorage.setItem('authToken', token);
+    sessionStorage.setItem('user', JSON.stringify(normalizedUser));
+    
+    // Dispatch Redux action
+    dispatch(setAuth({ user: normalizedUser, token }));
   };
 
   const logout = () => {
-    authApi.logout();
-    setUser(null);
+    // Clear sessionStorage
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('user');
+    
+    // Dispatch Redux action
+    dispatch(clearAuth());
   };
 
-  const updateUser = (userData: AuthUser) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
+  const updateUserInfo = (userData: AuthUser) => {
+    // Normalize user data: ensure _id is set
+    const normalizedUser = {
+      ...userData,
+      _id: userData._id || userData.id || '',
+      id: userData.id || userData._id || '',
+    };
+    
+    // Update sessionStorage
+    sessionStorage.setItem('user', JSON.stringify(normalizedUser));
+    
+    // Dispatch Redux action
+    dispatch(updateUser(normalizedUser));
   };
 
   const value = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated,
     isLoading,
     login,
     logout,
-    updateUser,
+    updateUser: updateUserInfo,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -74,4 +125,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

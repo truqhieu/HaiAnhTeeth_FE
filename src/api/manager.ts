@@ -94,6 +94,55 @@ export interface GetClinicsResponse {
   data: ManagerClinic[];
 }
 
+// Manager Schedule Types
+export interface ManagerSchedule {
+  _id: string;
+  doctorUserId: any; // Có thể là string hoặc object {_id, fullName} khi populated
+  date: string;
+  shift: 'Morning' | 'Afternoon';
+  startTime: string;
+  endTime: string;
+  status: 'Available' | 'Unavailable' | 'Booked' | 'Cancelled';
+  roomId?: any; // Có thể là string hoặc object {_id, name} khi populated
+  maxSlots: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateScheduleData {
+  doctorId: string;
+  date: string;
+  shift: 'Morning' | 'Afternoon';
+  startTime: string;
+  endTime: string;
+  roomId?: string;
+  maxSlots: number;
+}
+
+export interface UpdateScheduleData {
+  shift?: 'Morning' | 'Afternoon';
+  startTime?: string;
+  endTime?: string;
+  status?: 'Available' | 'Unavailable' | 'Booked' | 'Cancelled';
+  roomId?: string;
+}
+
+export interface GetSchedulesParams {
+  page?: number;
+  limit?: number;
+  shift?: string;
+  status?: string;
+}
+
+export interface GetSchedulesResponse {
+  status: boolean;
+  total: number;
+  totalPages: number;
+  page: number;
+  limit: number;
+  data: ManagerSchedule[];
+}
+
 // Manager API Functions
 export const managerApi = {
   // Get all services with pagination and filters
@@ -242,6 +291,75 @@ export const managerApi = {
   unassignDoctor: async (clinicId: string): Promise<ApiResponse<{ status: boolean; message: string; data: ManagerClinic }>> => {
     return authenticatedApiCall<{ status: boolean; message: string; data: ManagerClinic }>(`/manager/clinics/unssign-doctor/${clinicId}`, {
       method: 'PATCH',
+    });
+  },
+
+  // ==================== SCHEDULE APIs ====================
+  
+  // Get available doctors (doctors có ít hơn 2 ca trong ngày)
+  getAvailableDoctorsForSchedule: async (): Promise<ApiResponse<{ status: boolean; message: string; data: ManagerDoctor[] }>> => {
+    return authenticatedApiCall<{ status: boolean; message: string; data: ManagerDoctor[] }>('/manager/schedules/doctor-available', {
+      method: 'GET',
+    });
+  },
+
+  // Get all schedules with pagination and filters
+  getAllSchedules: async (params?: GetSchedulesParams): Promise<GetSchedulesResponse> => {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.shift) queryParams.append('shift', params.shift);
+    if (params?.status) queryParams.append('status', params.status);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/manager/schedules${queryString ? `?${queryString}` : ''}`;
+
+    try {
+      const result = await authenticatedApiCall<any>(endpoint, {
+        method: 'GET',
+      });
+      
+      return result as unknown as GetSchedulesResponse;
+    } catch (error) {
+      console.error('🌐 API Error:', error);
+      throw error;
+    }
+  },
+
+  // Get schedule detail by ID
+  getScheduleDetail: async (id: string): Promise<ApiResponse<{ status: boolean; message: string; data: ManagerSchedule }>> => {
+    return authenticatedApiCall<{ status: boolean; message: string; data: ManagerSchedule }>(`/manager/schedules/${id}`, {
+      method: 'GET',
+    });
+  },
+
+  // Create new schedule
+  createSchedule: async (data: CreateScheduleData): Promise<ApiResponse<{ status: boolean; message: string; data: ManagerSchedule }>> => {
+    return authenticatedApiCall<{ status: boolean; message: string; data: ManagerSchedule }>('/manager/schedules', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Update schedule
+  updateSchedule: async (id: string, data: UpdateScheduleData): Promise<ApiResponse<{ status: boolean; message: string; data: ManagerSchedule }>> => {
+    return authenticatedApiCall<{ status: boolean; message: string; data: ManagerSchedule }>(`/manager/schedules/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete schedule
+  deleteSchedule: async (id: string): Promise<ApiResponse<{ status: boolean; message: string }>> => {
+    return authenticatedApiCall<{ status: boolean; message: string }>(`/manager/schedules/${id}`, {
+      method: 'DELETE',
     });
   },
 };

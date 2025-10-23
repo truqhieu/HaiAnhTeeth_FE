@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem, Textarea } from "@heroui/react";
+import toast from "react-hot-toast";
 import { managerApi } from "@/api";
 import { Service } from "@/types";
 
@@ -115,7 +116,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
       const response = await managerApi.updateService(service.id, updateData);
 
       if (response.status) {
-        alert(response.message || "Cập nhật dịch vụ thành công!");
+        toast.success(response.message || "Cập nhật dịch vụ thành công!");
         // Close modal and notify success
         onClose();
         if (onSuccess) {
@@ -126,7 +127,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
       }
     } catch (error: any) {
       console.error("Error updating service:", error);
-      alert(error.message || "Có lỗi xảy ra khi cập nhật dịch vụ. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi cập nhật dịch vụ. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }

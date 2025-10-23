@@ -4,71 +4,48 @@ import {
   BellIcon,
   ChevronDownIcon,
   HomeIcon,
-  Cog6ToothIcon,
-  MagnifyingGlassIcon,
-  ChevronRightIcon,
+  UserCircleIcon,
 } from "@heroicons/react/24/outline";
-import { Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Input } from "@heroui/react";
+import {
+  Button,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Navbar,
+  NavbarContent,
+  NavbarItem,
+  Link,
+  Input,
+} from "@heroui/react";
+import Lottie from "lottie-react";
+
+import searchAnimation from "../../icons/search.json";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useBookingModal } from "@/contexts/BookingModalContext";
 
 const PatientHeader = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isDashboardExpanded, setIsDashboardExpanded] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
+  const { openBookingModal } = useBookingModal();
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
-  const menuItems = [
-    {
-      key: "appointments",
-      label: "Ca khám của tôi",
-      action: () => navigate("/patient/appointments"),
-    },
-    {
-      key: "medical-records", 
-      label: "Hồ sơ khám bệnh",
-      action: () => navigate("/patient/medical-records"),
-    },
-    {
-      key: "complaints",
-      label: "Khiếu nại", 
-      action: () => navigate("/patient/complaints"),
-    },
-    {
-      key: "settings",
-      label: "Cài đặt",
-      icon: <Cog6ToothIcon className="w-4 h-4" />,
-      action: () => navigate("/patient/account-settings"),
-    },
-  ];
-
-  const navigationItems = [
-    { label: "Giới thiệu", href: "/about", active: true },
-    { label: "Dịch vụ", href: "/services", active: false },
-    { label: "Danh sách bác sĩ", href: "/doctors", active: false },
-    { label: "Chuyên khoa", href: "/departments", active: false },
-    { label: "Tư vấn", href: "/consultation", active: false },
-    { label: "Ưu đãi", href: "/offers", active: false },
-  ];
-
   return (
-    <header className="w-full">
-      {/* Top Header */}
+    <header className="w-full shadow bg-white">
+      {/* Top bar - Giữ nguyên từ PatientHeader */}
       <div className="bg-[#39BDCC] text-white">
         <div className="max-w-7xl mx-auto px-4 flex justify-between items-center py-3">
-          {/* Left side - Logo */}
+          {/* Left side - User info placeholder hoặc logo nhỏ nếu cần */}
           <div className="flex items-center">
-            <img
-              alt="Logo"
-              className="h-8 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
-            />
+            {/* Có thể để trống hoặc thêm thông tin */}
           </div>
 
           {/* Right side - User info and dropdown */}
@@ -84,10 +61,12 @@ const PatientHeader = () => {
             </Button>
 
             {/* User name */}
-            <span className="text-white font-medium">{user?.fullName || "Patient"}</span>
+            <span className="text-white font-medium">
+              {user?.fullName || "Patient"}
+            </span>
 
             {/* User dropdown */}
-            <Dropdown 
+            <Dropdown
               isOpen={isDropdownOpen}
               onOpenChange={setIsDropdownOpen}
               placement="bottom-end"
@@ -114,17 +93,12 @@ const PatientHeader = () => {
                   </div>
                 </Button>
               </DropdownTrigger>
-              <DropdownMenu 
-                aria-label="User menu"
-                className="w-56"
-              >
-                {/* Bảng điều khiển header - clickable */}
+              <DropdownMenu aria-label="User menu" className="w-56">
                 <DropdownItem
                   key="dashboard-header"
                   className="font-semibold text-gray-800 bg-gray-100 whitespace-nowrap"
                   onPress={() => {
                     setIsDashboardExpanded(!isDashboardExpanded);
-                    // Prevent dropdown from closing
                     setTimeout(() => {
                       setIsDropdownOpen(true);
                     }, 0);
@@ -135,40 +109,56 @@ const PatientHeader = () => {
                       <HomeIcon className="w-4 h-4" />
                       <span>Bảng điều khiển</span>
                     </div>
-                    <ChevronDownIcon 
+                    <ChevronDownIcon
                       className={`w-4 h-4 transition-transform ${
-                        isDashboardExpanded ? 'rotate-180' : ''
-                      }`} 
+                        isDashboardExpanded ? "rotate-180" : ""
+                      }`}
                     />
                   </div>
                 </DropdownItem>
-                
-                {/* Menu items - conditional render */}
-                {isDashboardExpanded ? menuItems.slice(0, 3).map((item) => (
-                  <DropdownItem
-                    key={item.key}
-                    onPress={item.action}
-                  >
-                    <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
-                      {item.icon && <span>{item.icon}</span>}
-                      <span>{item.label}</span>
-                    </div>
-                  </DropdownItem>
-                )) : null}
-                
-                {/* Settings */}
+
                 <DropdownItem
-                  key="settings"
-                  onPress={() => navigate("/patient/account-settings")}
+                  key="appointments"
+                  onPress={() => navigate("/patient/appointments")}
+                  className={isDashboardExpanded ? "" : "hidden"}
                 >
-                  <div className="flex items-center space-x-3 whitespace-nowrap">
-                    <Cog6ToothIcon className="w-4 h-4" />
-                    <span>Cài đặt</span>
+                  <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
+                    <span>Ca khám của tôi</span>
                   </div>
                 </DropdownItem>
                 
                 <DropdownItem
-                  key="logout"
+                  key="medical-records"
+                  onPress={() => navigate("/patient/medical-records")}
+                  className={isDashboardExpanded ? "" : "hidden"}
+                >
+                  <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
+                    <span>Hồ sơ khám bệnh</span>
+                  </div>
+                </DropdownItem>
+                
+                <DropdownItem
+                  key="complaints"
+                  onPress={() => navigate("/patient/complaints")}
+                  className={isDashboardExpanded ? "" : "hidden"}
+                >
+                  <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
+                    <span>Khiếu nại</span>
+                  </div>
+                </DropdownItem>
+
+                <DropdownItem
+                  key="settings-item"
+                  onPress={() => navigate("/patient/account-settings")}
+                >
+                  <div className="flex items-center space-x-3 whitespace-nowrap">
+                    <UserCircleIcon className="w-4 h-4" />
+                    <span>Hồ sơ</span>
+                  </div>
+                </DropdownItem>
+
+                <DropdownItem
+                  key="logout-item"
                   className="text-red-600"
                   onPress={handleLogout}
                 >
@@ -180,43 +170,90 @@ const PatientHeader = () => {
         </div>
       </div>
 
-      {/* Navigation Bar */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 flex justify-between items-center py-3">
-          {/* Navigation Items */}
-          <nav className="flex items-center space-x-8">
-            {navigationItems.map((item) => (
-              <button
-                key={item.label}
-                className={`text-sm font-medium transition-colors ${
-                  item.active
-                    ? "text-blue-600 border-b-2 border-blue-600 pb-1"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-                onClick={() => navigate(item.href)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
+      {/* Main Navbar */}
+      <Navbar maxWidth="full" className="h-24">
+        {/* Logo bên trái */}
+        <NavbarContent justify="start">
+          <Link className="flex items-center" href="/">
+            <img
+              alt="Logo"
+              className="h-20 w-auto object-contain"
+              src="/logo1.png"
+            />
+            <img
+              alt="Logo Text"
+              className="h-12 w-auto object-contain ml-2"
+              src="/logo2.png"
+            />
+          </Link>
+        </NavbarContent>
 
-          {/* Search Bar */}
-          <div className="flex items-center">
-            <div className="relative">
-              <Input
-                placeholder="Tìm kiếm..."
-                value={searchQuery}
-                onValueChange={setSearchQuery}
-                className="w-64"
-                size="sm"
-                startContent={
-                  <MagnifyingGlassIcon className="w-4 h-4 text-gray-400" />
-                }
+        {/* Menu Items ở giữa */}
+        <NavbarContent className="hidden sm:flex gap-6" justify="center">
+          <NavbarItem>
+            <Link color="foreground" href="/about">
+              Giới thiệu
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/services">
+              Dịch vụ
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/doctors">
+              Danh sách bác sĩ
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/departments">
+              Chuyên khoa
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/news">
+              Tin tức & Ưu đãi
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/contact">
+              Liên hệ
+            </Link>
+          </NavbarItem>
+        </NavbarContent>
+
+        {/* Search bên phải */}
+        <NavbarContent justify="end">
+          <NavbarItem className="flex items-center gap-2">
+            <button
+              className="w-10 h-10 flex items-center justify-center"
+              onClick={() => setShowSearch(!showSearch)}
+            >
+              <Lottie
+                animationData={searchAnimation}
+                autoplay={false}
+                loop={false}
+                style={{ width: 32, height: 32 }}
               />
+            </button>
+
+            <div
+              className={`transition-all duration-300 overflow-hidden ${
+                showSearch ? "w-48 opacity-100" : "w-0 opacity-0"
+              }`}
+            >
+              <Input className="w-full" placeholder="Tìm kiếm..." size="sm" />
             </div>
-          </div>
-        </div>
-      </div>
+            <Button
+              className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5] ml-2"
+              size="sm"
+              onPress={openBookingModal}
+            >
+              Để lại thông tin tư vấn
+            </Button>
+          </NavbarItem>
+        </NavbarContent>
+      </Navbar>
     </header>
   );
 };

@@ -4,27 +4,28 @@ import {
   UserIcon,
   ChatBubbleLeftIcon,
 } from "@heroicons/react/24/outline";
-
-import { BookingModal } from "@/components";
+import { useBookingModal } from "@/contexts/BookingModalContext";
 
 const Home = () => {
+
+
   const images = [
     "/your-banner.jpg",
     "/your-banner-2.jpg",
     "/your-banner-3.jpg",
   ];
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-
   const handlePrev = () =>
     setCurrentImageIndex((prevIndex) =>
       prevIndex === 0 ? images.length - 1 : prevIndex - 1,
     );
-
   const handleNext = () =>
     setCurrentImageIndex((prevIndex) =>
       prevIndex === images.length - 1 ? 0 : prevIndex + 1,
     );
+
+  // Sử dụng context để mở modal
+  const { openBookingModal } = useBookingModal();
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-white">
@@ -39,7 +40,7 @@ const Home = () => {
         {/* Nút trái */}
         <button
           className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-white text-[#39BDCC] p-2 rounded-full shadow hover:bg-gray-100"
-          onClick={handlePrev}
+          onClick={openBookingModal}
         >
           &#8249;
         </button>
@@ -56,7 +57,7 @@ const Home = () => {
         <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-md px-8 py-4 flex space-x-12">
           <button
             className="text-[#39BDCC] font-medium hover:underline cursor-pointer flex items-center space-x-2"
-            onClick={() => setIsBookingOpen(true)}
+            onClick={openBookingModal}
           >
             <CalendarIcon className="w-5 h-5 text-[#39BDCC]" />
             <span>Đặt lịch khám</span>
@@ -77,11 +78,8 @@ const Home = () => {
           </a>
         </div>
       </div>
-      {/* Booking Modal */}
-      <BookingModal
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-      />
+      {/* KHÔNG cần render BookingModal ở đây nữa,
+          vì nó đã được quản lý bởi BookingModalProvider. */}
       {/* Section dưới banner (sử dụng container) */}
       <div className="max-w-6xl mx-auto py-20 px-6 space-y-16">
         {/* Card 1 - Text trái, ảnh phải */}

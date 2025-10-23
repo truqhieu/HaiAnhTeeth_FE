@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   UserIcon,
   HomeIcon,
-  CogIcon,
   Bars3Icon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
@@ -22,13 +21,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       name: "Quản lý tài khoản",
       href: "/admin/accounts",
       icon: HomeIcon,
-      current: location.pathname === "/admin/accounts",
-    },
-    {
-      name: "Cài đặt",
-      href: "/admin/settings",
-      icon: CogIcon,
-      current: location.pathname === "/admin/settings",
+      current: location.pathname === "/admin/accounts" || location.pathname === "/admin" || location.pathname === "/admin/",
     },
   ];
 

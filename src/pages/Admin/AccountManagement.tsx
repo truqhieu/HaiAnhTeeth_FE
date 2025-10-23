@@ -5,6 +5,7 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
+import toast from "react-hot-toast";
 import { AddUserModal, EditUserModal } from "@/components";
 import { adminApi, AdminUser } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,7 +63,7 @@ const AccountManagement = () => {
       const response = await adminApi.getAllAccounts({
         page: currentPage,
         limit: itemsPerPage,
-        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Inactive') : undefined,
+        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Lock') : undefined,
         search: searchTerm || undefined,
       });
 
@@ -81,7 +82,9 @@ const AccountManagement = () => {
           name: user.fullName,
           email: user.email,
           phone: user.phoneNumber || '',
-          status: user.status === 'Active' ? 'active' as const : 'inactive' as const,
+          status: user.status === 'Active' ? 'active' as const : 
+                  user.status === 'Lock' ? 'inactive' as const :
+                  'inactive' as const, // Banned cũng map thành inactive
         }));
         
         console.log('👥 Mapped users:', mappedUsers);
@@ -93,7 +96,7 @@ const AccountManagement = () => {
       }
     } catch (error: any) {
       console.error('❌ Error fetching accounts:', error);
-      alert(error.message || 'Không thể tải danh sách tài khoản');
+      toast.error(error.message || 'Không thể tải danh sách tài khoản');
     } finally {
       setIsLoading(false);
     }
@@ -123,7 +126,7 @@ const AccountManagement = () => {
   const statusOptions = [
     { key: "all", label: "Tất cả" },
     { key: "active", label: "Hoạt động" },
-    { key: "inactive", label: "Không hoạt động" },
+    { key: "inactive", label: "Bị khóa" },
   ];
 
   // Pagination info
@@ -140,7 +143,7 @@ const AccountManagement = () => {
     if (user) {
       // Không cho phép chỉnh sửa tài khoản bệnh nhân
       if (user.role === "Bệnh nhân") {
-        alert("Không thể chỉnh sửa tài khoản bệnh nhân");
+        toast.error("Không thể chỉnh sửa tài khoản bệnh nhân");
         return;
       }
       setSelectedUser(user);

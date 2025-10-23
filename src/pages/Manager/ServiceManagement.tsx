@@ -6,6 +6,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
+import toast from "react-hot-toast";
 import { AddServiceModal, EditServiceModal } from "@/components";
 import { managerApi, ManagerService } from "@/api";
 import { Service } from "@/types";
@@ -66,7 +67,7 @@ const ServiceManagement = () => {
       }
     } catch (error: any) {
       console.error('❌ Error fetching services:', error);
-      alert(error.message || 'Không thể tải danh sách dịch vụ');
+      toast.error(error.message || 'Không thể tải danh sách dịch vụ');
     } finally {
       setIsLoading(false);
     }
@@ -154,7 +155,7 @@ const ServiceManagement = () => {
       const response = await managerApi.deleteService(serviceId);
 
       if ((response as any).status || response.success) {
-        alert(response.message || "Xóa dịch vụ thành công!");
+        toast.success(response.message || "Xóa dịch vụ thành công!");
         // Refresh list
         fetchServices();
       } else {
@@ -162,7 +163,7 @@ const ServiceManagement = () => {
       }
     } catch (error: any) {
       console.error("Error deleting service:", error);
-      alert(error.message || "Có lỗi xảy ra khi xóa dịch vụ. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi xóa dịch vụ. Vui lòng thử lại.");
     }
   };
 

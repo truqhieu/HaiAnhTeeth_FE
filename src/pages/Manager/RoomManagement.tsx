@@ -6,6 +6,7 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
+import toast from "react-hot-toast";
 import { AddRoomModal, EditRoomModal } from "@/components";
 import { managerApi, ManagerClinic, ManagerDoctor } from "@/api";
 import { Room } from "@/types";
@@ -49,13 +50,31 @@ const RoomManagement = () => {
 
       if (response.status && response.data) {
         // Map API data to local Room interface
-        const mappedRooms: Room[] = response.data.map((clinic: ManagerClinic) => ({
-          id: clinic._id,
-          name: clinic.name,
-          description: clinic.description,
-          status: clinic.status === 'Active' ? 'active' as const : 'inactive' as const,
-          assignedDoctorId: clinic.assignedDoctorId,
-        }));
+        const mappedRooms: Room[] = response.data.map((clinic: ManagerClinic) => {
+          // Backend populate assignedDoctorId thành object {_id, fullName}
+          let doctorId = null;
+          let doctorName = undefined;
+          
+          if (clinic.assignedDoctorId) {
+            if (typeof clinic.assignedDoctorId === 'object') {
+              // Populated object
+              doctorId = (clinic.assignedDoctorId as any)._id;
+              doctorName = (clinic.assignedDoctorId as any).fullName;
+            } else {
+              // Chỉ có string ID (không populate)
+              doctorId = clinic.assignedDoctorId;
+            }
+          }
+          
+          return {
+            id: clinic._id,
+            name: clinic.name,
+            description: clinic.description,
+            status: clinic.status === 'Active' ? 'active' as const : 'inactive' as const,
+            assignedDoctorId: doctorId,
+            assignedDoctorName: doctorName,
+          };
+        });
         
         setRooms(mappedRooms);
         setTotal(response.total || 0);
@@ -63,7 +82,7 @@ const RoomManagement = () => {
       }
     } catch (error: any) {
       console.error('❌ Error fetching clinics:', error);
-      alert(error.message || 'Không thể tải danh sách phòng khám');
+      toast.error(error.message || 'Không thể tải danh sách phòng khám');
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +143,7 @@ const RoomManagement = () => {
       const response = await managerApi.deleteClinic(roomId);
 
       if ((response as any).status || response.success) {
-        alert(response.message || "Xóa phòng khám thành công!");
+        toast.success(response.message || "Xóa phòng khám thành công!");
         // Refresh list
         fetchClinics();
         fetchDoctors(); // Refresh doctors list vì có thể doctor được unassign
@@ -133,7 +152,7 @@ const RoomManagement = () => {
       }
     } catch (error: any) {
       console.error("Error deleting clinic:", error);
-      alert(error.message || "Có lỗi xảy ra khi xóa phòng khám. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi xóa phòng khám. Vui lòng thử lại.");
     }
   };
 
@@ -286,7 +305,9 @@ const RoomManagement = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {room.assignedDoctorId ? (
-                      <span className="text-blue-600 font-medium">Đã có bác sĩ</span>
+                      <div className="font-medium text-blue-600">
+                        {room.assignedDoctorName || "BS. (Đang tải...)"}
+                      </div>
                     ) : (
                       <span className="text-gray-400 italic">Chưa phân công</span>
                     )}

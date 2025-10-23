@@ -10,23 +10,16 @@ import {
 } from "@heroui/react";
 import Lottie from "lottie-react";
 
-import searchAnimation from "./search.json";
+import searchAnimation from "../icons/search.json";
 
 import { useAuthModal } from "@/contexts/AuthModalContext";
-import { useAuth } from "@/contexts/AuthContext";
-import PatientHeader from "../Patient/PatientHeader";
+// THAY ĐỔI: Import `useBookingModal`
+import { useBookingModal } from "@/contexts/BookingModalContext";
 
 const AppNavbar = () => {
   const [showSearch, setShowSearch] = useState(false);
   const { openLoginModal, openSignupModal } = useAuthModal();
-  const { isAuthenticated, user } = useAuth();
-
-  // Nếu user đã login và là Patient, hiển thị PatientHeader
-  if (isAuthenticated && user?.role === "Patient") {
-    return <PatientHeader />;
-  }
-
-  // Nếu chưa login hoặc không phải Patient, hiển thị navbar thông thường
+  const { openBookingModal } = useBookingModal(); // THAY ĐỔI: Lấy hàm từ context
 
   return (
     <header className="w-full shadow bg-white">
@@ -156,7 +149,9 @@ const AppNavbar = () => {
               </div>
               <Button
                 className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5] ml-2"
-                size="sm">
+                size="sm"
+                onPress={openBookingModal} // THAY ĐỔI: Gọi modal tư vấn khi nhấn nút
+              >
                 Để lại thông tin tư vấn
               </Button>
             </NavbarItem>

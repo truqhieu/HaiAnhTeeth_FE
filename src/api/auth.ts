@@ -25,12 +25,14 @@ export interface ResetPasswordData {
 }
 
 export interface User {
-  id: string;
+  _id?: string;
+  id?: string;
   fullName: string;
   email: string;
   role: string;
   status: string;
   gender?: string;
+  phoneNumber?: string;
   dob?: string;
   phone?: string;
   address?: string;
@@ -38,6 +40,11 @@ export interface User {
   dateOfBirth?: string;
   createdAt?: string;
   updatedAt?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
 }
 
 export interface UpdateProfileData {
@@ -65,18 +72,10 @@ export const authApi = {
 
   // Login user
   login: async (data: LoginData): Promise<ApiResponse<AuthResponse>> => {
-    const response = await apiCall<AuthResponse>('/auth/login', {
+    return apiCall<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-
-    // Save token and user to localStorage
-    if (response.success && response.data) {
-      localStorage.setItem('authToken', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-    }
-
-    return response;
   },
 
   // Forgot password
@@ -148,4 +147,10 @@ export const authApi = {
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem('authToken');
   },
+
+  // getProfile: async (): Promise<ApiResponse<User>> => {
+  //   return authenticatedApiCall<User>('/api/auth/profile', { // Thêm /api
+  //     method: 'GET',
+  //   });
+  // },
 };

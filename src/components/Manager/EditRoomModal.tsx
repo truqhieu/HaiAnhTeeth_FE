@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem, Textarea } from "@heroui/react";
+import toast from "react-hot-toast";
 import { managerApi, ManagerDoctor } from "@/api";
 import { Room } from "@/types";
 
@@ -101,7 +102,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
           }
         }
 
-        alert(response.message || "Cập nhật phòng khám thành công!");
+        toast.success(response.message || "Cập nhật phòng khám thành công!");
         // Close modal and notify success
         onClose();
         if (onSuccess) {
@@ -112,7 +113,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
       }
     } catch (error: any) {
       console.error("Error updating clinic:", error);
-      alert(error.message || "Có lỗi xảy ra khi cập nhật phòng khám. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi cập nhật phòng khám. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -207,7 +208,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
               <Select
                 fullWidth
                 label="Phân công bác sĩ"
-                placeholder="Chọn bác sĩ (tùy chọn)"
+                placeholder="Chọn bác sĩ"
                 selectedKeys={
                   formData.assignedDoctorId ? [formData.assignedDoctorId] : []
                 }
@@ -216,8 +217,11 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                   handleInputChange("assignedDoctorId", selectedKey || "");
                 }}
                 variant="bordered"
-                description="Để trống nếu muốn gỡ bác sĩ"
+                description="Chọn 'Không có bác sĩ' để gỡ bác sĩ hiện tại"
               >
+                <SelectItem key="" value="">
+                  <span className="text-gray-500 italic">Không có bác sĩ</span>
+                </SelectItem>
                 {doctors.map((doctor) => (
                   <SelectItem key={doctor._id} textValue={doctor.fullName}>
                     <div>

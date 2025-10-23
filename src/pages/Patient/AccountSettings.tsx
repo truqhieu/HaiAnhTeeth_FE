@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Input, Button, Select, SelectItem } from "@heroui/react";
+import toast from "react-hot-toast";
 import { authApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -28,12 +29,22 @@ const AccountSettings = () => {
     { key: "Other", label: "Khác" },
   ];
 
+  const relationshipOptions = [
+    { key: "Father", label: "Cha" },
+    { key: "Mother", label: "Mẹ" },
+    { key: "Brother", label: "Anh trai/Em trai" },
+    { key: "Sister", label: "Chị gái/Em gái" },
+    { key: "Spouse", label: "Vợ/Chồng" },
+    { key: "Friend", label: "Bạn bè" },
+    { key: "Other", label: "Khác" },
+  ];
+
   // Load user data from context
   useEffect(() => {
     if (user) {
       setFullName(user.fullName || "");
       setEmail(user.email || "");
-      setPhone(user.phone || "");
+      setPhone(user.phone || user.phoneNumber || "");
       setAddress(user.address || "");
       setGender(user.gender || "");
       
@@ -61,30 +72,30 @@ const AccountSettings = () => {
     
     // Validation
     if (!fullName.trim()) {
-      alert("Vui lòng nhập họ tên");
+      toast.error("Vui lòng nhập họ tên");
       return;
     }
 
     // Validate phone number - chỉ cho phép số
     const phoneRegex = /^[0-9]*$/;
     if (phone.trim() && !phoneRegex.test(phone.trim())) {
-      alert("Số điện thoại chỉ được nhập số");
+      toast.error("Số điện thoại chỉ được nhập số");
       return;
     }
 
     if (emergencyPhone.trim() && !phoneRegex.test(emergencyPhone.trim())) {
-      alert("Số điện thoại người liên hệ khẩn cấp chỉ được nhập số");
+      toast.error("Số điện thoại người liên hệ khẩn cấp chỉ được nhập số");
       return;
     }
 
     // Validate phone length (optional - thường là 10-11 số)
     if (phone.trim() && (phone.trim().length < 10 || phone.trim().length > 11)) {
-      alert("Số điện thoại phải có 10-11 chữ số");
+      toast.error("Số điện thoại phải có 10-11 chữ số");
       return;
     }
 
     if (emergencyPhone.trim() && (emergencyPhone.trim().length < 10 || emergencyPhone.trim().length > 11)) {
-      alert("Số điện thoại người liên hệ khẩn cấp phải có 10-11 chữ số");
+      toast.error("Số điện thoại người liên hệ khẩn cấp phải có 10-11 chữ số");
       return;
     }
 
@@ -112,26 +123,39 @@ const AccountSettings = () => {
         updateData.dob = birthDate;
       }
 
-      // Add emergency contact if any field is filled
-      if (emergencyName.trim() || emergencyPhone.trim() || emergencyRelationship) {
+      // Add emergency contact chỉ khi CẢ 3 fields đều có giá trị (backend require all)
+      if (emergencyName.trim() && emergencyPhone.trim() && emergencyRelationship.trim()) {
         updateData.emergencyContact = {
           name: emergencyName.trim(),
           phone: emergencyPhone.trim(),
-          relationship: emergencyRelationship
+          relationship: emergencyRelationship.trim()
         };
+      } else if (emergencyName.trim() || emergencyPhone.trim() || emergencyRelationship.trim()) {
+        // Nếu chỉ điền 1-2 field → warning
+        toast.error("Vui lòng điền đầy đủ thông tin liên hệ khẩn cấp (Họ tên, SĐT, Mối quan hệ) hoặc bỏ trống tất cả");
+        setIsLoading(false);
+        return;
       }
 
       const response = await authApi.updateProfile(updateData);
 
       if (response.success && response.data) {
-        updateUser(response.data.user);
-        alert(response.message || "Cập nhật thông tin thành công!");
+        // Ensure _id is present for AuthUser type
+        const userData = response.data.user;
+        if (userData && user) {
+          const updatedUser = {
+            ...userData,
+            _id: userData.id || userData._id || user._id
+          };
+          updateUser(updatedUser);
+        }
+        toast.success(response.message || "Cập nhật thông tin thành công!");
       } else {
-        alert(response.message || "Có lỗi xảy ra khi cập nhật");
+        toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
     } catch (error: any) {
       console.error("Lỗi cập nhật profile:", error);
-      alert(error.message || "Không thể cập nhật thông tin. Vui lòng thử lại");
+      toast.error(error.message || "Không thể cập nhật thông tin. Vui lòng thử lại");
     } finally {
       setIsLoading(false);
     }
@@ -142,7 +166,7 @@ const AccountSettings = () => {
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          Cài đặt tài khoản
+          Hồ sơ cá nhân
         </h1>
         <p className="text-gray-600 mb-8">
           Quản lý thông tin, địa chỉ liên lạc của bạn
@@ -280,15 +304,21 @@ const AccountSettings = () => {
                 maxLength={11}
               />
 
-              <Input
+              <Select
                 label="Mối quan hệ"
                 labelPlacement="outside"
-                placeholder="VD: Cha, Mẹ, Vợ, Chồng, Anh, Chị..."
-                type="text"
-                value={emergencyRelationship}
+                placeholder="Chọn mối quan hệ"
+                selectedKeys={emergencyRelationship ? [emergencyRelationship] : []}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as string;
+                  setEmergencyRelationship(selectedKey);
+                }}
                 variant="bordered"
-                onValueChange={setEmergencyRelationship}
-              />
+              >
+                {relationshipOptions.map((option) => (
+                  <SelectItem key={option.key}>{option.label}</SelectItem>
+                ))}
+              </Select>
             </div>
           </div>
 

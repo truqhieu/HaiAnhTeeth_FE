@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
+import toast from "react-hot-toast";
 import { adminApi } from "@/api";
 
 interface User {
@@ -102,7 +103,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
     try {
       if (!user?.id) {
-        alert('Không tìm thấy ID người dùng');
+        toast.error('Không tìm thấy ID người dùng');
         return;
       }
 
@@ -119,18 +120,18 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       const isSuccess = response.success || (response.data as any)?.status;
       
       if (isSuccess) {
-        alert(response.message || 'Cập nhật tài khoản thành công!');
+        toast.success(response.message || 'Cập nhật tài khoản thành công!');
         
         // Close modal and notify success
         if (onSuccess) {
           onSuccess();
         }
       } else {
-        alert(response.message || 'Có lỗi xảy ra khi cập nhật tài khoản');
+        toast.error(response.message || 'Có lỗi xảy ra khi cập nhật tài khoản');
       }
     } catch (error: any) {
       console.error("Error updating user:", error);
-      alert(error.message || "Có lỗi xảy ra khi cập nhật tài khoản. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi cập nhật tài khoản. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }

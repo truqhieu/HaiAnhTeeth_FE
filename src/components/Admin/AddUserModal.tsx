@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
+import toast from "react-hot-toast";
 import { adminApi } from "@/api";
 
 interface AddUserModalProps {
@@ -122,7 +123,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
       const isSuccess = response.success || (response.data as any)?.status;
       
       if (isSuccess) {
-        alert(response.message || 'Tạo tài khoản thành công!');
+        toast.success(response.message || 'Tạo tài khoản thành công!');
         
         // Reset form
         setFormData({
@@ -141,11 +142,11 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
           onSuccess();
         }
       } else {
-        alert(response.message || 'Có lỗi xảy ra khi tạo tài khoản');
+        toast.error(response.message || 'Có lỗi xảy ra khi tạo tài khoản');
       }
     } catch (error: any) {
       console.error("Error creating user:", error);
-      alert(error.message || "Có lỗi xảy ra khi tạo tài khoản. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi tạo tài khoản. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }

@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:9999/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://haianhteethbe-production.up.railway.app/api';
 
 // API Response Types
 export interface ApiResponse<T = any> {
@@ -52,7 +52,10 @@ export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  const token = localStorage.getItem('authToken');
+  // Import store dynamically to avoid circular dependencies
+  const { store } = await import('../store/index');
+  const state = store.getState();
+  const token = state.auth.token;
   
   console.log('🔐 Auth check - Token exists?', !!token);
   
@@ -66,6 +69,7 @@ export const authenticatedApiCall = async <T = any>(
   return apiCall<T>(endpoint, {
     ...options,
     headers: {
+      'Content-Type': 'application/json',
       ...options.headers,
       'Authorization': `Bearer ${token}`,
     },
@@ -74,6 +78,12 @@ export const authenticatedApiCall = async <T = any>(
 
 // Export auth API
 export { authApi } from './auth';
+// Export appointment API
+export { appointmentApi } from './appointment';
+// Export payment API
+export { paymentApi } from './payment';
+// Export availableSlot API
+export { availableSlotApi } from './availableSlot';
 
 // Export admin API
 export { adminApi } from './admin';
@@ -82,6 +92,20 @@ export { adminApi } from './admin';
 export { managerApi } from './manager';
 
 // Export types
-export type { RegisterData, LoginData, ForgotPasswordData, ResetPasswordData, UpdateProfileData, User as AuthUser, AuthResponse } from './auth';
+
+// Lấy kiểu User từ auth.ts và thêm thuộc tính _id
+import type { User } from './auth';
+export type AuthUser = User & { _id: string };
+
+export type { RegisterData, LoginData, ForgotPasswordData, ResetPasswordData, AuthResponse } from './auth';
+export type { AppointmentCreationData } from './appointment';
+export type { PaymentInfo, AppointmentInfo, CheckPaymentStatusResponse } from './payment';
+export type { GetAvailableSlotsParams, AvailableSlotsData } from './availableSlot';
+export { serviceApi } from './service';
+export type { Service } from './service';
+export { availableDoctorApi } from "./availableDoctor";
+export type { AvailableDoctor } from "./availableDoctor";
+export { generateByDateApi } from "./generateByDate";
+export type { GeneratedSlot } from "./generateByDate";
 export type { AdminUser, CreateUserData, UpdateUserData, ChangePasswordData, GetAccountsParams, GetAccountsResponse } from './admin';
-export type { ManagerService, CreateServiceData, UpdateServiceData, GetServicesParams, GetServicesResponse, ManagerClinic, ManagerDoctor, CreateClinicData, UpdateClinicData, GetClinicsParams, GetClinicsResponse } from './manager';
+export type { ManagerService, CreateServiceData, UpdateServiceData, GetServicesParams, GetServicesResponse, ManagerClinic, ManagerDoctor, CreateClinicData, UpdateClinicData, GetClinicsParams, GetClinicsResponse, ManagerSchedule, CreateScheduleData, UpdateScheduleData, GetSchedulesParams, GetSchedulesResponse } from './manager';
