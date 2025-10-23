@@ -94,11 +94,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
         console.log(`🔍 Checking payment status for ID: ${paymentId}...`);
         const response = await paymentApi.checkPaymentStatus(paymentId);
 
-        // ⚠️ Check nếu payment đã expired từ backend
+        // ⚠️ Check nếu payment đã expired hoặc cancelled từ backend
         if (response.success && response.data?.expired) {
-          console.log('⏰ Payment expired from backend!');
+          console.log('⏰ Payment expired/cancelled from backend!');
+          console.log('📋 Message from backend:', response.message);
           setStatus('expired');
-          setErrorMessage('Thanh toán đã hết hạn. Vui lòng đặt lại lịch hẹn.');
+          setErrorMessage(response.message || 'Thanh toán đã hết hạn. Vui lòng đặt lại lịch hẹn.');
           // Tự động redirect về trang appointments sau 5 giây
           setTimeout(() => {
             window.location.href = '/patient/appointments';
@@ -207,13 +208,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
             </div>
           )}
 
-          {/* --- TRẠNG THÁI HẾT HẠN --- */}
+          {/* --- TRẠNG THÁI HẾT HẠN / BỊ HỦY --- */}
           {status === 'expired' && (
             <div className="flex flex-col items-center justify-center text-center p-8 md:col-span-2">
               <ClockIcon className="w-24 h-24 text-orange-500 mb-6" />
-              <h2 className="text-3xl font-bold text-gray-800">Mã thanh toán đã hết hạn</h2>
+              <h2 className="text-3xl font-bold text-gray-800">Thanh toán không thành công</h2>
               <p className="text-gray-600 mt-3">
-                Thời gian thanh toán đã quá 3 phút. Lịch hẹn của bạn đã bị hủy.
+                {errorMessage || 'Lịch hẹn của bạn đã bị hủy do quá thời gian thanh toán.'}
               </p>
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-6 max-w-md">
                 <p className="text-sm text-orange-800">
