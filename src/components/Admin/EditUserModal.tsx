@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
+import toast from "react-hot-toast";
+import { adminApi } from "@/api";
 
 interface User {
-  id: number;
+  id: string;
   role: string;
   name: string;
   email: string;
@@ -100,40 +102,36 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      if (!user?.id) {
+        toast.error('Không tìm thấy ID người dùng');
+        return;
+      }
+
       // Prepare data for API call
       const updateData = {
-        id: user?.id,
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        role: formData.role,
-        status: formData.status,
+        fullName: formData.name,
+        phoneNumber: formData.phone,
       };
 
-      // TODO: Gửi request lên backend để cập nhật user
-      // const response = await fetch(`/api/users/${user?.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(updateData),
-      // });
-      //
-      // if (!response.ok) {
-      //   throw new Error('Không thể cập nhật tài khoản');
-      // }
+      // Call API to update user
+      const response = await adminApi.updateAccount(user.id, updateData);
 
-      // Giả lập API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      console.log("Updating user:", updateData);
-
-      // Close modal and notify success
-      onClose();
-      if (onSuccess) {
-        onSuccess();
+      // Backend returns 'status' instead of 'success'
+      const isSuccess = response.success || (response.data as any)?.status;
+      
+      if (isSuccess) {
+        toast.success(response.message || 'Cập nhật tài khoản thành công!');
+        
+        // Close modal and notify success
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        toast.error(response.message || 'Có lỗi xảy ra khi cập nhật tài khoản');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating user:", error);
-      alert("Có lỗi xảy ra khi cập nhật tài khoản. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi cập nhật tài khoản. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }

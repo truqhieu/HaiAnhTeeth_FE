@@ -4,7 +4,7 @@ import {
   BellIcon,
   ChevronDownIcon,
   HomeIcon,
-  Cog6ToothIcon,
+  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import {
   Button,
@@ -37,30 +37,6 @@ const PatientHeader = () => {
     logout();
     navigate("/");
   };
-
-  const menuItems = [
-    {
-      key: "appointments",
-      label: "Ca khám của tôi",
-      action: () => navigate("/patient/appointments"),
-    },
-    {
-      key: "medical-records",
-      label: "Hồ sơ khám bệnh",
-      action: () => navigate("/patient/medical-records"),
-    },
-    {
-      key: "complaints",
-      label: "Khiếu nại",
-      action: () => navigate("/patient/complaints"),
-    },
-    {
-      key: "settings",
-      label: "Cài đặt",
-      icon: <Cog6ToothIcon className="w-4 h-4" />,
-      action: () => navigate("/patient/account-settings"),
-    },
-  ];
 
   return (
     <header className="w-full shadow bg-white">
@@ -176,8 +152,8 @@ const PatientHeader = () => {
                   onPress={() => navigate("/patient/account-settings")}
                 >
                   <div className="flex items-center space-x-3 whitespace-nowrap">
-                    <Cog6ToothIcon className="w-4 h-4" />
-                    <span>Cài đặt</span>
+                    <UserCircleIcon className="w-4 h-4" />
+                    <span>Hồ sơ</span>
                   </div>
                 </DropdownItem>
 
@@ -194,10 +170,10 @@ const PatientHeader = () => {
         </div>
       </div>
 
-      {/* Main Navbar - Giống y hệt AppNavbar */}
-      <div className="flex items-center h-30 px-4">
+      {/* Main Navbar */}
+      <Navbar maxWidth="full" className="h-24">
         {/* Logo bên trái */}
-        <div className="flex-shrink-0">
+        <NavbarContent justify="start">
           <Link className="flex items-center" href="/">
             <img
               alt="Logo"
@@ -210,77 +186,74 @@ const PatientHeader = () => {
               src="/logo2.png"
             />
           </Link>
-        </div>
+        </NavbarContent>
 
-        {/* Navbar Items + Search */}
-        <Navbar className="flex-1">
-          {/* Menu Items ở giữa */}
-          <NavbarContent className="hidden sm:flex gap-6" justify="center">
-            <NavbarItem>
-              <Link color="foreground" href="/about">
-                Giới thiệu
-              </Link>
-            </NavbarItem>
-            <NavbarItem>
-              <Link color="foreground" href="/services">
-                Dịch vụ
-              </Link>
-            </NavbarItem>
-            <NavbarItem>
-              <Link color="foreground" href="/doctors">
-                Danh sách bác sĩ
-              </Link>
-            </NavbarItem>
-            <NavbarItem>
-              <Link color="foreground" href="/departments">
-                Chuyên khoa
-              </Link>
-            </NavbarItem>
-            <NavbarItem>
-              <Link color="foreground" href="/news">
-                Tin tức & Ưu đãi
-              </Link>
-            </NavbarItem>
-            <NavbarItem>
-              <Link color="foreground" href="/contact">
-                Liên hệ
-              </Link>
-            </NavbarItem>
-          </NavbarContent>
+        {/* Menu Items ở giữa */}
+        <NavbarContent className="hidden sm:flex gap-6" justify="center">
+          <NavbarItem>
+            <Link color="foreground" href="/about">
+              Giới thiệu
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/services">
+              Dịch vụ
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/doctors">
+              Danh sách bác sĩ
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/departments">
+              Chuyên khoa
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/news">
+              Tin tức & Ưu đãi
+            </Link>
+          </NavbarItem>
+          <NavbarItem>
+            <Link color="foreground" href="/contact">
+              Liên hệ
+            </Link>
+          </NavbarItem>
+        </NavbarContent>
 
-          {/* Search */}
-          <NavbarContent justify="end">
-            <NavbarItem className="flex items-center gap-2">
-              <button
-                className="w-10 h-10 flex items-center justify-center"
-                onClick={() => setShowSearch(!showSearch)}
-              >
-                <Lottie
-                  animationData={searchAnimation}
-                  autoplay={false}
-                  loop={false}
-                  style={{ width: 32, height: 32 }}
-                />
-              </button>
+        {/* Search bên phải */}
+        <NavbarContent justify="end">
+          <NavbarItem className="flex items-center gap-2">
+            <button
+              className="w-10 h-10 flex items-center justify-center"
+              onClick={() => setShowSearch(!showSearch)}
+            >
+              <Lottie
+                animationData={searchAnimation}
+                autoplay={false}
+                loop={false}
+                style={{ width: 32, height: 32 }}
+              />
+            </button>
 
-              <div
-                className={`transition-all duration-300 overflow-hidden ${
-                  showSearch ? "w-48 opacity-100" : "w-0 opacity-0"
-                }`}
-              >
-                <Input className="w-full" placeholder="Tìm kiếm..." size="sm" />
-              </div>
-              <Button
-                className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5] ml-2"
-                size="sm"
-                onPress={openBookingModal}
-              >
-                Để lại thông tin tư vấn
-              </Button>
-            </NavbarItem>
-          </NavbarContent>
-        </Navbar>
-      </div>
+            <div
+              className={`transition-all duration-300 overflow-hidden ${
+                showSearch ? "w-48 opacity-100" : "w-0 opacity-0"
+              }`}
+            >
+              <Input className="w-full" placeholder="Tìm kiếm..." size="sm" />
+            </div>
+            <Button
+              className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5] ml-2"
+              size="sm"
+              onPress={openBookingModal}
+            >
+              Để lại thông tin tư vấn
+            </Button>
+          </NavbarItem>
+        </NavbarContent>
+      </Navbar>
     </header>
   );
 };

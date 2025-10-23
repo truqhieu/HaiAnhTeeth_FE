@@ -35,7 +35,7 @@ export interface AppointmentResponseData {
 
 export const appointmentApi = {
   create: async (data: AppointmentCreationData): Promise<ApiResponse<AppointmentResponseData>> => {
-    return authenticatedApiCall('/api/appointments/consultation/create', {
+    return authenticatedApiCall('/appointments/consultation/create', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -63,7 +63,7 @@ export const appointmentApi = {
     }
     
     const queryString = queryParams.toString();
-    const url = `/api/appointments/my-appointments${queryString ? `?${queryString}` : ''}`;
+    const url = `/appointments/my-appointments${queryString ? `?${queryString}` : ''}`;
     
     return authenticatedApiCall(url, {
       method: 'GET',

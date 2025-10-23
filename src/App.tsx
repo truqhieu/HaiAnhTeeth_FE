@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 
 import { Navbar, LoginModal, SignupModal, ForgotPasswordModal } from "@/components";
 
@@ -14,7 +15,6 @@ import Appointments from "@/pages/Patient/Appointments";
 import MedicalRecords from "@/pages/Patient/MedicalRecords";
 import PaymentPage from "@/pages/Patient/PaymentPage";
 import AccountManagement from "@/pages/Admin/AccountManagement";
-import AdminSettings from "@/pages/Admin/AdminSettings";
 import AdminLayout from "@/layouts/AdminLayout";
 import ServiceManagement from "@/pages/Manager/ServiceManagement";
 import RoomManagement from "@/pages/Manager/RoomManagement";
@@ -37,6 +37,34 @@ function App() {
           Điều này đảm bảo các modal có thể được gọi từ bất kỳ đâu.
         */}
         <BookingModalProvider>
+          <Toaster
+            position="top-right"
+            reverseOrder={false}
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#fff',
+                color: '#363636',
+                fontSize: '14px',
+                padding: '16px',
+                borderRadius: '8px',
+              },
+              success: {
+                duration: 3000,
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
+              },
+              error: {
+                duration: 4000,
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
           <Routes>
           {/* Admin Routes */}
           <Route
@@ -48,7 +76,10 @@ function App() {
                     element={<AccountManagement />}
                     path="accounts"
                   />
-                  <Route element={<AdminSettings />} path="settings" />
+                  <Route
+                    element={<AccountManagement />}
+                    path=""
+                  />
                 </Routes>
               </AdminLayout>
             }

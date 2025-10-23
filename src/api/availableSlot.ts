@@ -45,10 +45,10 @@ export const availableSlotApi = {
       if (params.date) queryParams.append("date", params.date);
 
       const query = queryParams.toString();
-      const endpoint = query ? `/api/available-slots?${query}` : "/api/available-slots";
+      const endpoint = query ? `/available-slots?${query}` : "/available-slots";
 
       const response = await fetch(
-        `${import.meta.env.VITE_API1_URL || "https://haianhteethbe-production.up.railway.app"}${endpoint}`,
+        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
         {
           method: "GET",
           headers: {

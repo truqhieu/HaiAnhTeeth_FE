@@ -1,21 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   MagnifyingGlassIcon,
   PlusIcon,
   PencilIcon,
+  TrashIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
-import { EditServiceModal } from "@/components";
-
-interface Service {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  duration: number; // in minutes
-  category: string;
-  status: "active" | "inactive";
-}
+import toast from "react-hot-toast";
+import { AddServiceModal, EditServiceModal } from "@/components";
+import { managerApi, ManagerService } from "@/api";
+import { Service } from "@/types";
 
 const ServiceManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,57 +17,81 @@ const ServiceManagement = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock data
-  const [services] = useState<Service[]>([
-    {
-      id: 1,
-      name: "Khám răng tổng quát",
-      description: "Kiểm tra sức khỏe răng miệng tổng thể",
-      price: 200000,
-      duration: 30,
-      category: "Khám tổng quát",
-      status: "active",
-    },
-    {
-      id: 2,
-      name: "Lấy cao răng",
-      description: "Làm sạch cao răng và mảng bám",
-      price: 300000,
-      duration: 45,
-      category: "Vệ sinh răng miệng",
-      status: "active",
-    },
-    {
-      id: 3,
-      name: "Trám răng",
-      description: "Trám răng sâu bằng composite",
-      price: 500000,
-      duration: 60,
-      category: "Điều trị",
-      status: "active",
-    },
-    {
-      id: 4,
-      name: "Nhổ răng khôn",
-      description: "Nhổ răng khôn mọc lệch",
-      price: 1500000,
-      duration: 90,
-      category: "Phẫu thuật",
-      status: "active",
-    },
-    {
-      id: 5,
-      name: "Bọc răng sứ",
-      description: "Bọc răng sứ thẩm mỹ",
-      price: 3000000,
-      duration: 120,
-      category: "Thẩm mỹ",
-      status: "inactive",
-    },
-  ]);
+  // Category mapping từ backend enum sang tiếng Việt
+  const categoryMap: { [key: string]: string } = {
+    'Examination': 'Khám',
+    'Consultation': 'Tư vấn'
+  };
+
+  // Reverse mapping để gửi lên backend
+  const categoryReverseMap: { [key: string]: string } = {
+    'Khám': 'Examination',
+    'Tư vấn': 'Consultation'
+  };
+
+  // Fetch services from API
+  const fetchServices = async () => {
+    setIsLoading(true);
+    try {
+      const response = await managerApi.getAllServices({
+        page: currentPage,
+        limit: itemsPerPage,
+        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Inactive') : undefined,
+        category: categoryFilter !== 'all' ? categoryReverseMap[categoryFilter] : undefined,
+        search: searchTerm || undefined,
+      });
+
+      if (response.status && response.data) {
+        // Map API data to local Service interface
+        const mappedServices: Service[] = response.data.map((service: ManagerService) => ({
+          id: service._id,
+          name: service.serviceName,
+          description: service.description,
+          price: service.price,
+          duration: service.durationMinutes,
+          category: categoryMap[service.category] || service.category,
+          status: service.status === 'Active' ? 'active' as const : 'inactive' as const,
+        }));
+        
+        setServices(mappedServices);
+        setTotal(response.total || 0);
+        setTotalPages(response.totalPages || 1);
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching services:', error);
+      toast.error(error.message || 'Không thể tải danh sách dịch vụ');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch data when component mounts or filters change
+  useEffect(() => {
+    fetchServices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, statusFilter, categoryFilter]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchServices();
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   const statusOptions = [
     { key: "all", label: "Tất cả" },
@@ -83,37 +101,20 @@ const ServiceManagement = () => {
 
   const categoryOptions = [
     { key: "all", label: "Tất cả" },
-    { key: "Khám tổng quát", label: "Khám tổng quát" },
-    { key: "Vệ sinh răng miệng", label: "Vệ sinh răng miệng" },
-    { key: "Điều trị", label: "Điều trị" },
-    { key: "Phẫu thuật", label: "Phẫu thuật" },
-    { key: "Thẩm mỹ", label: "Thẩm mỹ" },
+    { key: "Khám", label: "Khám" },
+    { key: "Tư vấn", label: "Tư vấn" },
   ];
 
-  // Filter services based on search, status and category
-  const filteredServices = services.filter((service) => {
-    const matchesSearch =
-      service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || service.status === statusFilter;
-    const matchesCategory =
-      categoryFilter === "all" || service.category === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredServices.length / itemsPerPage);
+  // Pagination info
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentServices = filteredServices.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, total);
+  const currentServices = services;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const handleEdit = (serviceId: number) => {
+  const handleEdit = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId);
     if (service) {
       setSelectedService(service);
@@ -122,10 +123,10 @@ const ServiceManagement = () => {
   };
 
   const handleEditSuccess = () => {
-    // TODO: Refresh service list after successful edit
-    console.log("Service updated successfully");
-    // You can add logic here to refresh the services list
-    // For example: fetchServices();
+    // Refresh service list after successful edit
+    fetchServices();
+    setIsEditModalOpen(false);
+    setSelectedService(null);
   };
 
   const handleCloseEditModal = () => {
@@ -134,8 +135,36 @@ const ServiceManagement = () => {
   };
 
   const handleAddNew = () => {
-    // TODO: Implement add new service functionality
-    console.log("Add new service");
+    setIsAddModalOpen(true);
+  };
+
+  const handleAddSuccess = () => {
+    // Refresh service list after successful addition
+    fetchServices();
+    setIsAddModalOpen(false);
+  };
+
+  const handleDelete = async (serviceId: string, serviceName: string) => {
+    const confirmDelete = window.confirm(
+      `Bạn có chắc chắn muốn xóa dịch vụ "${serviceName}"?\n\nHành động này không thể hoàn tác.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const response = await managerApi.deleteService(serviceId);
+
+      if ((response as any).status || response.success) {
+        toast.success(response.message || "Xóa dịch vụ thành công!");
+        // Refresh list
+        fetchServices();
+      } else {
+        throw new Error(response.message || 'Không thể xóa dịch vụ');
+      }
+    } catch (error: any) {
+      console.error("Error deleting service:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi xóa dịch vụ. Vui lòng thử lại.");
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -193,6 +222,10 @@ const ServiceManagement = () => {
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
               setCategoryFilter(selectedKey);
+              // Reset to page 1 when filter changes
+              if (currentPage !== 1) {
+                setCurrentPage(1);
+              }
             }}
             className="w-48"
             variant="bordered"
@@ -209,6 +242,10 @@ const ServiceManagement = () => {
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
               setStatusFilter(selectedKey);
+              // Reset to page 1 when filter changes
+              if (currentPage !== 1) {
+                setCurrentPage(1);
+              }
             }}
             className="w-48"
             variant="bordered"
@@ -236,7 +273,7 @@ const ServiceManagement = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
+                  STT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tên dịch vụ
@@ -257,15 +294,15 @@ const ServiceManagement = () => {
                   Trạng thái
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Chỉnh sửa
+                  Thao tác
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {currentServices.map((service) => (
+              {currentServices.map((service, index) => (
                 <tr key={service.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {service.id}
+                    {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {service.name}
@@ -296,13 +333,22 @@ const ServiceManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleEdit(service.id)}
-                      className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
-                      title="Chỉnh sửa dịch vụ"
-                    >
-                      <PencilIcon className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(service.id)}
+                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                        title="Chỉnh sửa dịch vụ"
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(service.id, service.name)}
+                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                        title="Xóa dịch vụ"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -310,8 +356,15 @@ const ServiceManagement = () => {
           </table>
         </div>
 
+        {/* Loading state */}
+        {isLoading && (
+          <div className="text-center py-12">
+            <div className="text-gray-500 text-lg">Đang tải dữ liệu...</div>
+          </div>
+        )}
+
         {/* Empty state */}
-        {currentServices.length === 0 && (
+        {!isLoading && currentServices.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-500 text-lg">Không tìm thấy dịch vụ</div>
             <div className="text-gray-400 text-sm mt-2">
@@ -322,11 +375,11 @@ const ServiceManagement = () => {
       </div>
 
       {/* Pagination */}
-      {filteredServices.length > 0 && (
+      {!isLoading && total > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
           <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredServices.length)} trong{" "}
-            {filteredServices.length} kết quả
+            Hiển thị {startIndex + 1} đến {endIndex} trong{" "}
+            {total} kết quả
           </div>
 
           <div className="flex items-center space-x-2">
@@ -366,6 +419,13 @@ const ServiceManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Add Service Modal */}
+      <AddServiceModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={handleAddSuccess}
+      />
 
       {/* Edit Service Modal */}
       <EditServiceModal

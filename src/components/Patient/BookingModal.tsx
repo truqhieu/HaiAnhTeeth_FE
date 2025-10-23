@@ -2,6 +2,7 @@ import type React from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon, CalendarDaysIcon } from "@heroicons/react/24/solid";
+import toast from "react-hot-toast";
 import {
   appointmentApi,
   serviceApi,
@@ -395,7 +396,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
           onClose();
           
           // Show success message
-          alert(res.message || "Đặt lịch thành công!");
+          toast.success(res.message || "Đặt lịch thành công!");
           
           // Navigate to appointments page và reload để fetch lại
           navigate('/patient/appointments');
