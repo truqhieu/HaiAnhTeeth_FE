@@ -5,6 +5,7 @@ import {
   CheckCircleIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline'; // Sử dụng outline icons cho thanh lịch
 import { paymentApi } from '@/api'; // Import API vừa tạo
 
@@ -16,8 +17,8 @@ interface PaymentModalProps {
   paymentId: string | null;
 }
 
-// Hằng số thời gian đếm ngược (10 phút * 60 giây)
-const COUNTDOWN_SECONDS = 10 * 60;
+// Hằng số thời gian đếm ngược (3 phút * 60 giây) - CHO DEMO
+const COUNTDOWN_SECONDS = 3 * 60;
 
 /**
  * Helper function để định dạng giây thành MM:SS
@@ -61,8 +62,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
       setTimeLeft((prevTime) => {
         if (prevTime <= 1) {
           clearInterval(intervalId); // Dừng đếm ngược
-          onClose(); // Tự động đóng modal khi hết giờ
-          setStatus('expired');
+          setStatus('expired'); // ⚠️ Hiển thị UI hết hạn thay vì đóng ngay
           return 0;
         }
         return prevTime - 1; // Giảm 1 giây
@@ -78,13 +78,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
 
    /**
    * Logic kiểm tra thanh toán
-   * 1. Chỉ chạy khi modal mở, có paymentId và chưa thành công
+   * 1. Chỉ chạy khi modal mở, có paymentId và chưa thành công/lỗi/hết hạn
    * 2. Gọi API checkPaymentStatus mỗi 5 giây
    * 3. Nếu thành công, hiển thị màn hình success và dừng kiểm tra
-   * 4. Nếu lỗi, hiển thị lỗi và dừng kiểm tra
+   * 4. Nếu lỗi hoặc hết hạn, hiển thị lỗi/expired và dừng kiểm tra
    */
   useEffect(() => {
-    if (!isOpen || !paymentId || status === 'success' || status === 'error') {
+    if (!isOpen || !paymentId || ['success', 'error', 'expired'].includes(status)) {
       return;
     }
 
@@ -184,9 +184,43 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
                 >
                   Đóng
                 </button>
-                <a href="#" className="px-6 py-3 bg-[#39BDCC] text-white rounded-lg font-semibold hover:bg-[#2ca6b5] transition">
+                <button
+                  onClick={() => window.location.href = 'tel:0123456789'}
+                  className="px-6 py-3 bg-[#39BDCC] text-white rounded-lg font-semibold hover:bg-[#2ca6b5] transition"
+                >
                   Liên hệ hỗ trợ
-                </a>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* --- TRẠNG THÁI HẾT HẠN --- */}
+          {status === 'expired' && (
+            <div className="flex flex-col items-center justify-center text-center p-8 md:col-span-2">
+              <ClockIcon className="w-24 h-24 text-orange-500 mb-6" />
+              <h2 className="text-3xl font-bold text-gray-800">Mã thanh toán đã hết hạn</h2>
+              <p className="text-gray-600 mt-3">
+                Thời gian thanh toán đã quá 3 phút. Vui lòng đặt lại lịch hẹn hoặc tạo mã thanh toán mới.
+              </p>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-6 max-w-md">
+                <p className="text-sm text-orange-800">
+                  💡 <strong>Lưu ý:</strong> Lịch hẹn của bạn vẫn được giữ trong hệ thống. 
+                  Bạn có thể thanh toán lại hoặc liên hệ để được hỗ trợ.
+                </p>
+              </div>
+              <div className="flex gap-4 mt-8">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition"
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-6 py-3 bg-[#39BDCC] text-white rounded-lg font-semibold hover:bg-[#2ca6b5] transition"
+                >
+                  Làm mới trang
+                </button>
               </div>
             </div>
           )}
@@ -311,12 +345,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
             <div className="mt-8 pt-6 border-t border-gray-200">
               <p className="text-sm text-gray-600">
                 Gặp sự cố khi thanh toán?{' '}
-                <a
-                  href="#"
+                <button
+                  onClick={() => window.location.href = 'tel:0123456789'}
                   className="font-semibold text-[#39BDCC] hover:underline"
                 >
                   Liên hệ hỗ trợ
-                </a>
+                </button>
               </p>
             </div>
           </div>
