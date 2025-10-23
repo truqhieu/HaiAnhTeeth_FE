@@ -12,7 +12,6 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-  Chip,
 } from "@heroui/react";
 import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
 import { appointmentApi } from "@/api";
@@ -78,7 +77,7 @@ const TodayAppointments = () => {
         });
 
         // Filter appointments hôm nay
-        const todayAppointments = allMapped.filter((apt) => {
+        const todayAppointments = allMapped.filter((apt: Appointment) => {
           return apt.startTime && apt.startTime.startsWith(today);
         });
 
@@ -153,6 +152,41 @@ const TodayAppointments = () => {
       } else {
         alert(`❌ ${error.message || "Thao tác thất bại, vui lòng thử lại."}`);
       }
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  /**
+   * Cập nhật trạng thái ca khám (Check-in, Hoàn thành)
+   */
+  const handleUpdateStatus = async (appointmentId: string, newStatus: 'CheckedIn' | 'Completed' | 'Cancelled') => {
+    try {
+      setProcessingId(appointmentId);
+      
+      console.log("=== UPDATING APPOINTMENT STATUS ===");
+      console.log("Appointment ID:", appointmentId);
+      console.log("New status:", newStatus);
+      
+      const res = await appointmentApi.updateAppointmentStatus(appointmentId, newStatus);
+      
+      console.log("Update status response:", res);
+      
+      if (res.success) {
+        const statusMessages = {
+          'CheckedIn': 'Đã check-in bệnh nhân thành công!',
+          'Completed': 'Đã đánh dấu hoàn thành ca khám!',
+          'Cancelled': 'Đã hủy ca khám!'
+        };
+        alert(`✅ ${statusMessages[newStatus]}`);
+        await refetchAppointments();
+      } else {
+        alert(`❌ ${res.message || "Thao tác thất bại"}`);
+      }
+    } catch (error: any) {
+      console.error("=== UPDATE STATUS ERROR ===");
+      console.error("Error:", error);
+      alert(`❌ ${error.message || "Thao tác thất bại, vui lòng thử lại."}`);
     } finally {
       setProcessingId(null);
     }
@@ -245,54 +279,72 @@ const TodayAppointments = () => {
               <TableCell>{appointment.doctorName}</TableCell>
               <TableCell>{appointment.serviceName}</TableCell>
               <TableCell>
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    getStatusClassName(appointment.status)
-                  }`}
-                >
-                  {getStatusText(appointment.status)}
-                </span>
+                {appointment.status === 'Approved' ? (
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer ${getStatusClassName(appointment.status)}`}
+                        isDisabled={processingId === appointment.id}
+                      >
+                        {getStatusText(appointment.status)}
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Cập nhật trạng thái">
+                      <DropdownItem 
+                        key="checkin"
+                        onPress={() => handleUpdateStatus(appointment.id, 'CheckedIn')}
+                        className="text-primary"
+                        color="primary"
+                      >
+                        👤 Check-in
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                ) : (
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      getStatusClassName(appointment.status)
+                    }`}
+                  >
+                    {getStatusText(appointment.status)}
+                  </span>
+                )}
               </TableCell>
               <TableCell>
-                <Dropdown>
-                  <DropdownTrigger>
-                    <Button 
-                      size="sm" 
-                      variant="light" 
-                      isIconOnly
-                      isDisabled={processingId === appointment.id}
-                    >
-                      <EllipsisVerticalIcon className="w-5 h-5" />
-                    </Button>
-                  </DropdownTrigger>
-                  <DropdownMenu aria-label="Hành động">
-                    {appointment.status === 'Pending' ? (
-                      <>
-                        <DropdownItem 
-                          key="approve"
-                          onPress={() => handleReview(appointment.id, 'approve')}
-                        >
-                          Duyệt
-                        </DropdownItem>
-                        <DropdownItem 
-                          key="cancel"
-                          onPress={() => handleReview(appointment.id, 'cancel')} 
-                          className="text-danger" 
-                          color="danger"
-                        >
-                          Hủy
-                        </DropdownItem>
-                      </>
-                    ) : (
-                      <DropdownItem 
-                        key="no-action"
-                        isDisabled
+                {appointment.status === 'Pending' ? (
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button 
+                        size="sm" 
+                        variant="light" 
+                        isIconOnly
+                        isDisabled={processingId === appointment.id}
                       >
-                        Không có hành động
+                        <EllipsisVerticalIcon className="w-5 h-5" />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Hành động">
+                      <DropdownItem 
+                        key="approve"
+                        onPress={() => handleReview(appointment.id, 'approve')}
+                      >
+                        ✅ Duyệt
                       </DropdownItem>
-                    )}
-                  </DropdownMenu>
-                </Dropdown>
+                      <DropdownItem 
+                        key="cancel"
+                        onPress={() => handleReview(appointment.id, 'cancel')} 
+                        className="text-danger" 
+                        color="danger"
+                      >
+                        ❌ Hủy
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                ) : (
+                  <span className="text-gray-400">-</span>
+                )}
               </TableCell>
             </TableRow>
           )}

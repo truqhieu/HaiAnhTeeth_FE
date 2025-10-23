@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { adminApi } from "@/api";
 
 interface User {
@@ -67,13 +68,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     value.match(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i) !== null;
 
   // Kiểm tra xem có được phép thay đổi role không
-  const canChangeRole = user ? (user.role === "Bác sĩ" || user.role === "Điều dưỡng") : false;
+  const canChangeRole = user
+    ? user.role === "Bác sĩ" || user.role === "Điều dưỡng"
+    : false;
 
   // Validation states
   const isNameInvalid = showValidation && !formData.name;
   const isEmailInvalid =
     showValidation && (!formData.email || !validateEmail(formData.email));
-  const isPhoneInvalid = showValidation && !formData.phone;
   const isRoleInvalid = canChangeRole && showValidation && !formData.role;
 
   const handleInputChange = (field: string, value: string) => {
@@ -87,12 +89,11 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     e.preventDefault();
     setShowValidation(true);
 
-    // Check validation
+    // Check validation - phone is optional now
     const hasErrors =
       !formData.name ||
       !formData.email ||
       !validateEmail(formData.email) ||
-      !formData.phone ||
       (canChangeRole && !formData.role);
 
     if (hasErrors) {
@@ -103,35 +104,62 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
     try {
       if (!user?.id) {
-        toast.error('Không tìm thấy ID người dùng');
+        toast.error("Không tìm thấy ID người dùng");
+
         return;
       }
 
-      // Prepare data for API call
-      const updateData = {
+      // Prepare data for API call - only include phone if it's not empty
+      const updateData: any = {
         fullName: formData.name,
-        phoneNumber: formData.phone,
       };
 
-      // Call API to update user
+      if (formData.phone && formData.phone.trim() !== "") {
+        updateData.phoneNumber = formData.phone;
+      }
+
+      // Call API to update user info
       const response = await adminApi.updateAccount(user.id, updateData);
 
       // Backend returns 'status' instead of 'success'
       const isSuccess = response.success || (response.data as any)?.status;
-      
-      if (isSuccess) {
-        toast.success(response.message || 'Cập nhật tài khoản thành công!');
-        
-        // Close modal and notify success
-        if (onSuccess) {
-          onSuccess();
+
+      if (!isSuccess) {
+        toast.error(response.message || "Có lỗi xảy ra khi cập nhật tài khoản");
+
+        return;
+      }
+
+      // Handle status change separately if status changed
+      if (user.status !== formData.status) {
+        try {
+          if (formData.status === "inactive") {
+            // Lock account
+            await adminApi.lockAccount(user.id);
+            toast.success("Đã khóa tài khoản thành công");
+          } else {
+            // Unlock account
+            await adminApi.unlockAccount(user.id);
+            toast.success("Đã mở khóa tài khoản thành công");
+          }
+        } catch (statusError: any) {
+          toast.error(
+            statusError.message || "Có lỗi khi cập nhật trạng thái tài khoản",
+          );
+          // Continue anyway since basic info was updated
         }
-      } else {
-        toast.error(response.message || 'Có lỗi xảy ra khi cập nhật tài khoản');
+      }
+
+      toast.success("Cập nhật tài khoản thành công!");
+
+      // Close modal and notify success
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (error: any) {
-      console.error("Error updating user:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật tài khoản. Vui lòng thử lại.");
+      toast.error(
+        error.message || "Có lỗi xảy ra khi cập nhật tài khoản. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -238,9 +266,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={isPhoneInvalid ? "Vui lòng nhập số điện thoại" : ""}
-                isInvalid={isPhoneInvalid}
-                label="Số điện thoại *"
+                label="Số điện thoại"
                 placeholder="Nhập số điện thoại"
                 type="tel"
                 value={formData.phone}

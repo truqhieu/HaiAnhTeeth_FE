@@ -88,4 +88,16 @@ export const appointmentApi = {
       body: JSON.stringify({ appointmentId, action, cancelReason }),
     });
   },
+
+  /**
+   * Cập nhật trạng thái ca khám (Staff check-in bệnh nhân, cập nhật trạng thái)
+   * PUT /api/appointments/:appointmentId/status
+   * Body: { status: 'CheckedIn' | 'Completed' | 'Cancelled' }
+   */
+  updateAppointmentStatus: async (appointmentId: string, status: 'CheckedIn' | 'Completed' | 'Cancelled'): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  },
 };

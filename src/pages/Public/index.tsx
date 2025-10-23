@@ -10,9 +10,9 @@ const Home = () => {
 
 
   const images = [
-    "/your-banner.jpg",
-    "/your-banner-2.jpg",
-    "/your-banner-3.jpg",
+    "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/566204463_122193638510359809_5577540246052546034_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=103&ccb=1-7&_nc_sid=833d8c&_nc_ohc=HJocOZy1OzIQ7kNvwFzJ4kO&_nc_oc=Adlr3PH49XeMVBwfqmLMna5YTHQhU2ZYQEPusr_HGV2pfSwArjaPCpyDCwT1eMNbWmI&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=Dttcniqd_4S8scHPaPnxcw&oh=00_AfcPtXDO_oUR5oCdoukdKOgnyB-ngA7UdapOL97Ca1SXrg&oe=68FF8213",
+    "https://scontent.fhan14-5.fna.fbcdn.net/v/t39.30808-6/561145387_122192341532359809_300409251944642402_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=106&ccb=1-7&_nc_sid=833d8c&_nc_ohc=2NbXa8V9e2kQ7kNvwFJClFB&_nc_oc=AdkZwuRDXIT7YpYdSkJiqtNZUNlFZaQ7K62e0SxTiIBvkCqFKKKwm0yE6asfFIwkXiw&_nc_zt=23&_nc_ht=scontent.fhan14-5.fna&_nc_gid=mQCQe9wYq4JQk8wmZsKcYg&oh=00_AfdtiR4SmFrVxl1xhvExkFlR5cJAMg_9wBKx3cuJCm8iVw&oe=68FF8C90",
+    "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/555076308_122190721040359809_5009409531579541387_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=127cfc&_nc_ohc=oqTWmsqj1EwQ7kNvwGZ8BlS&_nc_oc=AdkOALoyNRgI9RWeooD57j2tcHiUB2N08bu_N-YQll_klpiMkiblBrP-n-V5d0quUcs&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=zZmHitR5FR62-TdHjxKNGQ&oh=00_AfdqHtbujk0WfULM7GiPZI0pX9iN2JRD-IiKdrHy5OofxA&oe=68FF71AB",
   ];
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const handlePrev = () =>
@@ -80,71 +80,66 @@ const Home = () => {
       </div>
       {/* KHÔNG cần render BookingModal ở đây nữa,
           vì nó đã được quản lý bởi BookingModalProvider. */}
-      {/* Section dưới banner (sử dụng container) */}
-      <div className="max-w-6xl mx-auto py-20 px-6 space-y-16">
+      {/* Section dưới banner - Tăng padding-top để box không bị che */}
+      <div className="max-w-6xl mx-auto pt-24 pb-16 px-6 space-y-14">
         {/* Card 1 - Text trái, ảnh phải */}
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <div className="max-w-md text-center md:text-left md:mr-auto">
-            <h3 className="text-xl font-semibold text-[#39BDCC]">Dịch vụ 1</h3>
-            <p className="text-gray-500">
-              {" "}
-              Mô tả ngắn gọn về dịch vụ 1. Thông tin giới thiệu sẽ nằm ở
-              đây.{" "}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex-1 max-w-lg text-center md:text-left">
+            <h3 className="text-2xl font-semibold text-[#39BDCC] mb-3">Dịch vụ 1</h3>
+            <p className="text-gray-600 leading-relaxed">
+              Mô tả ngắn gọn về dịch vụ 1. Thông tin giới thiệu sẽ nằm ở đây.
             </p>
-          </div>{" "}
+          </div>
           <img
             alt="Card 1"
-            className="w-56 h-56 object-cover rounded-md shadow md:ml-auto mt-6 md:mt-0"
-            src="/card1.jpg"
+            className="w-48 h-48 md:w-52 md:h-52 object-cover rounded-lg shadow-md flex-shrink-0"
+            src="https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/555076308_122190721040359809_5009409531579541387_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=127cfc&_nc_ohc=oqTWmsqj1EwQ7kNvwGZ8BlS&_nc_oc=AdkOALoyNRgI9RWeooD57j2tcHiUB2N08bu_N-YQll_klpiMkiblBrP-n-V5d0quUcs&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=zZmHitR5FR62-TdHjxKNGQ&oh=00_AfdqHtbujk0WfULM7GiPZI0pX9iN2JRD-IiKdrHy5OofxA&oe=68FF71AB"
           />
-        </div>{" "}
+        </div>
+
         {/* Card 2 - Ảnh trái, text phải */}
-        <div className="flex flex-col md:flex-row items-center justify-between">
+        <div className="flex flex-col md:flex-row-reverse items-center justify-between gap-8">
+          <div className="flex-1 max-w-lg text-center md:text-left">
+            <h3 className="text-2xl font-semibold text-[#39BDCC] mb-3">Dịch vụ 2</h3>
+            <p className="text-gray-600 leading-relaxed">
+              Mô tả ngắn gọn về dịch vụ 2. Thông tin giới thiệu sẽ nằm ở đây.
+            </p>
+          </div>
           <img
             alt="Card 2"
-            className="w-56 h-56 object-cover rounded-md shadow md:mr-auto mb-6 md:mb-0"
-            src="/card2.jpg"
+            className="w-48 h-48 md:w-52 md:h-52 object-cover rounded-lg shadow-md flex-shrink-0"
+            src="https://scontent.fhan14-4.fna.fbcdn.net/v/t39.30808-6/553068952_122190134954359809_8353379584978656470_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_ohc=l278OBuf71kQ7kNvwF8WyY_&_nc_oc=AdnAULq5Y4Se2BOaH4p95zlUdBFDqW1daV41RnmcBOEOeVklyRzMQmfisPOYA--1eNc&_nc_zt=23&_nc_ht=scontent.fhan14-4.fna&_nc_gid=dFRVrKjeRYdaTjsGNXeT-g&oh=00_AfcAxqJdelMjrqyV5O3cVNLX38RW6SZTJ_Bjx3mv0NjRtg&oe=68FF771B"
           />
-          <div className="max-w-md text-center md:text-left md:ml-auto">
-            <h3 className="text-xl font-semibold text-[#39BDCC]">Dịch vụ 2</h3>
-            <p className="text-gray-500">
-              {" "}
-              Mô tả ngắn gọn về dịch vụ 2. Thông tin giới thiệu sẽ nằm ở
-              đây.{" "}
+        </div>
+
+        {/* Card 3 - Text trái, ảnh phải */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex-1 max-w-lg text-center md:text-left">
+            <h3 className="text-2xl font-semibold text-[#39BDCC] mb-3">Dịch vụ 3</h3>
+            <p className="text-gray-600 leading-relaxed">
+              Mô tả ngắn gọn về dịch vụ 3. Thông tin giới thiệu sẽ nằm ở đây.
             </p>
           </div>
-        </div>{" "}
-        {/* Card 3 - Text trái, ảnh phải */}
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <div className="max-w-md text-center md:text-left md:mr-auto">
-            <h3 className="text-xl font-semibold text-[#39BDCC]">Dịch vụ 3</h3>
-            <p className="text-gray-500">
-              {" "}
-              Mô tả ngắn gọn về dịch vụ 3. Thông tin giới thiệu sẽ nằm ở
-              đây.{" "}
-            </p>
-          </div>{" "}
           <img
             alt="Card 3"
-            className="w-56 h-56 object-cover rounded-md shadow md:ml-auto mt-6 md:mt-0"
-            src="/card3.jpg"
+            className="w-48 h-48 md:w-52 md:h-52 object-cover rounded-lg shadow-md flex-shrink-0"
+            src="https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/548260292_122189545454359809_8477717599939397988_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_ohc=UUADYr0OLswQ7kNvwHqyYHQ&_nc_oc=Adm0u22TUEjm26SI4ElPJOPQS9g0w_Vj12046yglurCd8ItwLyxRYRlMTaf7fikgsQU&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=KASGy301gaZErmzldIj2tQ&oh=00_AfcyCcAlLjWUdcajycmOYpblxj-7X6YHHIAMnXp1gAxhvg&oe=68FF82BA"
           />
-        </div>{" "}
-        {/* Card 4 - Ảnh trái, text phải */}{" "}
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <img
-            alt="Card 4"
-            className="w-56 h-56 object-cover rounded-md shadow md:mr-auto mb-6 md:mb-0"
-            src="/card4.jpg"
-          />
-          <div className="max-w-md text-center md:text-left md:ml-auto">
-            <h3 className="text-xl font-semibold text-[#39BDCC]">Dịch vụ 4</h3>
-            <p className="text-gray-500">
-              {" "}
-              Mô tả ngắn gọn về dịch vụ 4. Thông tin giới thiệu sẽ nằm ở
-              đây.{" "}
+        </div>
+
+        {/* Card 4 - Ảnh trái, text phải */}
+        <div className="flex flex-col md:flex-row-reverse items-center justify-between gap-8">
+          <div className="flex-1 max-w-lg text-center md:text-left">
+            <h3 className="text-2xl font-semibold text-[#39BDCC] mb-3">Dịch vụ 4</h3>
+            <p className="text-gray-600 leading-relaxed">
+              Mô tả ngắn gọn về dịch vụ 4. Thông tin giới thiệu sẽ nằm ở đây.
             </p>
           </div>
+          <img
+            alt="Card 4"
+            className="w-48 h-48 md:w-52 md:h-52 object-cover rounded-lg shadow-md flex-shrink-0"
+            src="/card4.jpg"
+          />
         </div>
       </div>
       {/* Section đội ngũ bác sĩ */}

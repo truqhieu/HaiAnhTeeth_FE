@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   QrCodeIcon,
   ViewfinderCircleIcon,
@@ -37,6 +37,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
   const [status, setStatus] = useState<PaymentStatus>('pending');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { minutes, seconds } = formatTime(timeLeft);
+  
+  // ⭐ Ref để track xem payment đã hoàn thành chưa (success/expired/error)
+  const isCompletedRef = useRef(false);
 
   /**
    * Logic đếm ngược
@@ -78,28 +81,53 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
 
    /**
    * Logic kiểm tra thanh toán
-   * 1. Chỉ chạy khi modal mở, có paymentId và chưa thành công/lỗi/hết hạn
+   * 1. Chỉ chạy khi modal mở, có paymentId
    * 2. Gọi API checkPaymentStatus mỗi 5 giây
    * 3. Nếu thành công, hiển thị màn hình success và dừng kiểm tra
    * 4. Nếu lỗi hoặc hết hạn, hiển thị lỗi/expired và dừng kiểm tra
    */
   useEffect(() => {
-    if (!isOpen || !paymentId || ['success', 'error', 'expired'].includes(status)) {
+    if (!isOpen || !paymentId) {
       return;
     }
 
+    // Reset completed ref khi modal mở
+    isCompletedRef.current = false;
+
+    let intervalId: NodeJS.Timeout | null = null;
+
     const checkStatus = async () => {
+      // ⭐ Nếu đã completed, không check nữa
+      if (isCompletedRef.current) {
+        console.log('⏭️ Already completed, skipping check');
+        return;
+      }
+
       try {
         setStatus('checking');
         console.log(`🔍 Checking payment status for ID: ${paymentId}...`);
         const response = await paymentApi.checkPaymentStatus(paymentId);
+        
+        // 🐛 DEBUG: Log toàn bộ response để kiểm tra
+        console.log('🔍 FULL RESPONSE:', JSON.stringify(response, null, 2));
+        console.log('🔍 response.data:', response.data);
+        console.log('🔍 response.data?.expired:', response.data?.expired);
 
         // ⚠️ Check nếu payment đã expired hoặc cancelled từ backend
         if (response.success && response.data?.expired) {
           console.log('⏰ Payment expired/cancelled from backend!');
           console.log('📋 Message from backend:', response.message);
+          
+          // ⭐ QUAN TRỌNG: Đánh dấu completed và dừng interval
+          isCompletedRef.current = true;
+          if (intervalId) {
+            clearInterval(intervalId);
+            console.log('🛑 Interval cleared!');
+          }
+          
           setStatus('expired');
           setErrorMessage(response.message || 'Thanh toán đã hết hạn. Vui lòng đặt lại lịch hẹn.');
+          
           // Tự động redirect về trang appointments sau 5 giây
           setTimeout(() => {
             window.location.href = '/patient/appointments';
@@ -110,6 +138,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
         // ✅ Check nếu payment đã completed
         if (response.success && response.data?.confirmed) {
           console.log('✅ Payment confirmed!', response.data);
+          
+          // ⭐ Đánh dấu completed và dừng interval
+          isCompletedRef.current = true;
+          if (intervalId) {
+            clearInterval(intervalId);
+          }
+          
           setStatus('success');
           // Tự động đóng modal sau 5 giây
           setTimeout(() => {
@@ -122,6 +157,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
         }
       } catch (error: any) {
         console.error('❌ Error checking payment status:', error);
+        
+        // ⭐ Đánh dấu completed và dừng interval khi có lỗi
+        isCompletedRef.current = true;
+        if (intervalId) {
+          clearInterval(intervalId);
+        }
+        
         setErrorMessage(error.message || 'Lỗi kết nối khi kiểm tra thanh toán.');
         setStatus('error');
       }
@@ -130,13 +172,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
     // Gọi lần đầu tiên ngay lập tức
     checkStatus();
     // Sau đó gọi mỗi 5 giây
-    const paymentIntervalId = setInterval(checkStatus, 5000);
+    intervalId = setInterval(checkStatus, 5000);
 
     // Dọn dẹp khi modal đóng hoặc paymentId thay đổi
     return () => {
-      clearInterval(paymentIntervalId);
+      if (intervalId) {
+        clearInterval(intervalId);
+        console.log('🧹 Cleanup: Interval cleared');
+      }
     };
-  }, [isOpen, paymentId, onClose, status]);
+  }, [isOpen, paymentId, onClose]); // ⭐ BỎ status ra khỏi dependency
   // Không render gì nếu modal không mở
   if (!isOpen) {
     return null;
