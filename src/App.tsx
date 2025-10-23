@@ -22,6 +22,8 @@ import ScheduleManagement from "@/pages/Manager/ScheduleManagement";
 import ManagerLayout from "@/layouts/ManagerLayout";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
+import DoctorLayout from "@/layouts/DoctorLayout";
+import { DoctorSchedule } from "@/pages/Doctor";
 import { AuthModalProvider } from "@/contexts/AuthModalContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 
@@ -109,6 +111,19 @@ function App() {
                   <Route element={<StaffDashboard />} path="dashboard" />
                 </Routes>
               </StaffLayout>
+            }
+          />
+
+          {/* Doctor Routes */}
+          <Route
+            path="/doctor/*"
+            element={
+              <DoctorLayout>
+                <Routes>
+                  <Route element={<DoctorSchedule />} path="schedule" />
+                  <Route element={<DoctorSchedule />} path="" />
+                </Routes>
+              </DoctorLayout>
             }
           />
 

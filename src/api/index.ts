@@ -109,3 +109,5 @@ export { generateByDateApi } from "./generateByDate";
 export type { GeneratedSlot } from "./generateByDate";
 export type { AdminUser, CreateUserData, UpdateUserData, ChangePasswordData, GetAccountsParams, GetAccountsResponse } from './admin';
 export type { ManagerService, CreateServiceData, UpdateServiceData, GetServicesParams, GetServicesResponse, ManagerClinic, ManagerDoctor, CreateClinicData, UpdateClinicData, GetClinicsParams, GetClinicsResponse, ManagerSchedule, CreateScheduleData, UpdateScheduleData, GetSchedulesParams, GetSchedulesResponse } from './manager';
+export { doctorApi } from './doctor';
+export type { DoctorAppointment, AppointmentDetail, PatientDetail } from './doctor';

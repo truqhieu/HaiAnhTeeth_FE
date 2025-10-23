@@ -103,6 +103,8 @@ const LoginModal = () => {
           window.location.href = "/manager/rooms";
         } else if (role === "Staff") {
           window.location.href = "/staff/dashboard";
+        } else if (role === "Doctor") {
+          window.location.href = "/doctor/schedule";
         }
         // Patient stays on homepage - no redirect
       } else {

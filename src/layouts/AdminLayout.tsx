@@ -5,7 +5,9 @@ import {
   HomeIcon,
   Bars3Icon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -15,6 +17,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   const navigation = [
     {
@@ -37,6 +45,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setSidebarOpen(false)}
+          role="button"
+          tabIndex={0}
+          aria-label="Close sidebar"
         />
       )}
 
@@ -84,6 +96,23 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             })}
           </div>
         </nav>
+
+        {/* Logout Button - Fixed at bottom */}
+        <div className="px-4 py-4 border-t border-gray-200">
+          <div className="mb-3 px-4">
+            <p className="text-xs text-gray-500 mb-1">Đang đăng nhập</p>
+            <p className="text-sm font-medium text-gray-700 truncate">
+              {user?.fullName || user?.email || "Admin"}
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+          >
+            <ArrowRightOnRectangleIcon className="w-5 h-5 mr-3" />
+            Đăng xuất
+          </button>
+        </div>
       </div>
 
       {/* Main content area */}
