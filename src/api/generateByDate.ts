@@ -47,8 +47,8 @@ export const generateByDateApi = {
 
       const query = queryParams.toString();
       const endpoint = query
-        ? `/api/available-slots/generate?${query}`
-        : `/api/available-slots/generate`;
+        ? `/available-slots/generate?${query}`
+        : `/available-slots/generate`;
 
       // ⭐ Lấy token từ store để gửi Authorization header
       const { store } = await import('../store/index');
@@ -68,7 +68,7 @@ export const generateByDateApi = {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_API1_URL || "https://haianhteethbe-production.up.railway.app"}${endpoint}`,
+        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
         {
           method: "GET",
           headers,

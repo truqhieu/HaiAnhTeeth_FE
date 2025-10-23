@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API1_URL || 'https://haianhteethbe-production.up.railway.app';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://haianhteethbe-production.up.railway.app/api';
 
 // API Response Types
 export interface ApiResponse<T = any> {
@@ -20,15 +20,21 @@ export const apiCall = async <T = any>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const url = `${API_BASE_URL}${endpoint}`;
+    console.log('🚀 Fetching:', url);
+    
+    const response = await fetch(url, {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      ...options,
     });
 
+    console.log('📡 Response status:', response.status, response.statusText);
+    
     const result = await response.json();
+    console.log('📦 Response body:', result);
 
     if (!response.ok) {
       throw new Error(result.message || `HTTP error! status: ${response.status}`);
@@ -36,6 +42,7 @@ export const apiCall = async <T = any>(
 
     return result;
   } catch (error: any) {
+    console.error('💥 API Call Error:', error);
     throw new Error(error.message || 'Lỗi kết nối đến server');
   }
 };
@@ -50,9 +57,14 @@ export const authenticatedApiCall = async <T = any>(
   const state = store.getState();
   const token = state.auth.token;
   
+  console.log('🔐 Auth check - Token exists?', !!token);
+  
   if (!token) {
+    console.error('❌ No token found in localStorage');
     throw new Error('Token không tồn tại. Vui lòng đăng nhập lại.');
   }
+
+  console.log('✅ Token found, adding to headers');
 
   return apiCall<T>(endpoint, {
     ...options,
@@ -73,6 +85,12 @@ export { paymentApi } from './payment';
 // Export availableSlot API
 export { availableSlotApi } from './availableSlot';
 
+// Export admin API
+export { adminApi } from './admin';
+
+// Export manager API
+export { managerApi } from './manager';
+
 // Export types
 
 // Lấy kiểu User từ auth.ts và thêm thuộc tính _id
@@ -84,8 +102,10 @@ export type { AppointmentCreationData } from './appointment';
 export type { PaymentInfo, AppointmentInfo, CheckPaymentStatusResponse } from './payment';
 export type { GetAvailableSlotsParams, AvailableSlotsData } from './availableSlot';
 export { serviceApi } from './service';
-export type { Service } from './service'; // THÊM DÒNG NÀY
+export type { Service } from './service';
 export { availableDoctorApi } from "./availableDoctor";
 export type { AvailableDoctor } from "./availableDoctor";
 export { generateByDateApi } from "./generateByDate";
 export type { GeneratedSlot } from "./generateByDate";
+export type { AdminUser, CreateUserData, UpdateUserData, ChangePasswordData, GetAccountsParams, GetAccountsResponse } from './admin';
+export type { ManagerService, CreateServiceData, UpdateServiceData, GetServicesParams, GetServicesResponse, ManagerClinic, ManagerDoctor, CreateClinicData, UpdateClinicData, GetClinicsParams, GetClinicsResponse, ManagerSchedule, CreateScheduleData, UpdateScheduleData, GetSchedulesParams, GetSchedulesResponse } from './manager';

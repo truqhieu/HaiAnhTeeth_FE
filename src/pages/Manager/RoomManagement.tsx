@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -6,136 +6,125 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
+import toast from "react-hot-toast";
 import { AddRoomModal, EditRoomModal } from "@/components";
-
-interface Doctor {
-  id: number;
-  name: string;
-  specialty: string;
-}
-
-interface Room {
-  id: number;
-  roomNumber: string;
-  roomName: string;
-  floor: number;
-  status: "available" | "occupied" | "maintenance";
-  assignedDoctor: Doctor | null;
-  capacity: number;
-  equipment: string[];
-}
+import { managerApi, ManagerClinic, ManagerDoctor } from "@/api";
+import { Room } from "@/types";
 
 const RoomManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [floorFilter, setFloorFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [doctors, setDoctors] = useState<ManagerDoctor[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock data - Danh sách bác sĩ
-  const doctors: Doctor[] = [
-    { id: 1, name: "BS. Nguyễn Văn A", specialty: "Nha khoa tổng quát" },
-    { id: 2, name: "BS. Trần Thị B", specialty: "Chỉnh nha" },
-    { id: 3, name: "BS. Lê Văn C", specialty: "Phẫu thuật" },
-    { id: 4, name: "BS. Phạm Thị D", specialty: "Nha chu" },
-    { id: 5, name: "BS. Hoàng Văn E", specialty: "Implant" },
-  ];
+  // Fetch available doctors
+  const fetchDoctors = async () => {
+    try {
+      const response = await managerApi.getAvailableDoctors();
+      if (response.status && response.data) {
+        setDoctors(response.data);
+      }
+    } catch (error: any) {
+      console.error('Error fetching doctors:', error);
+    }
+  };
 
-  // Mock data - Danh sách phòng
-  const [rooms] = useState<Room[]>([
-    {
-      id: 1,
-      roomNumber: "101",
-      roomName: "Phòng khám tổng quát 1",
-      floor: 1,
-      status: "available",
-      assignedDoctor: doctors[0],
-      capacity: 1,
-      equipment: ["Ghế nha khoa", "Máy X-quang", "Đèn chiếu"],
-    },
-    {
-      id: 2,
-      roomNumber: "102",
-      roomName: "Phòng khám tổng quát 2",
-      floor: 1,
-      status: "occupied",
-      assignedDoctor: doctors[1],
-      capacity: 1,
-      equipment: ["Ghế nha khoa", "Máy cạo vôi"],
-    },
-    {
-      id: 3,
-      roomNumber: "201",
-      roomName: "Phòng phẫu thuật 1",
-      floor: 2,
-      status: "available",
-      assignedDoctor: doctors[2],
-      capacity: 2,
-      equipment: ["Ghế phẫu thuật", "Máy X-quang", "Đèn mổ", "Máy hút"],
-    },
-    {
-      id: 4,
-      roomNumber: "202",
-      roomName: "Phòng phẫu thuật 2",
-      floor: 2,
-      status: "maintenance",
-      assignedDoctor: null,
-      capacity: 2,
-      equipment: ["Ghế phẫu thuật", "Máy X-quang"],
-    },
-    {
-      id: 5,
-      roomNumber: "301",
-      roomName: "Phòng chỉnh nha",
-      floor: 3,
-      status: "available",
-      assignedDoctor: doctors[1],
-      capacity: 1,
-      equipment: ["Ghế nha khoa", "Máy scan 3D"],
-    },
-  ]);
+  // Fetch clinic rooms
+  const fetchClinics = async () => {
+    setIsLoading(true);
+    try {
+      const response = await managerApi.getAllClinics({
+        page: currentPage,
+        limit: itemsPerPage,
+        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Inactive') : undefined,
+        search: searchTerm || undefined,
+      });
+
+      if (response.status && response.data) {
+        // Map API data to local Room interface
+        const mappedRooms: Room[] = response.data.map((clinic: ManagerClinic) => {
+          // Backend populate assignedDoctorId thành object {_id, fullName}
+          let doctorId = null;
+          let doctorName = undefined;
+          
+          if (clinic.assignedDoctorId) {
+            if (typeof clinic.assignedDoctorId === 'object') {
+              // Populated object
+              doctorId = (clinic.assignedDoctorId as any)._id;
+              doctorName = (clinic.assignedDoctorId as any).fullName;
+            } else {
+              // Chỉ có string ID (không populate)
+              doctorId = clinic.assignedDoctorId;
+            }
+          }
+          
+          return {
+            id: clinic._id,
+            name: clinic.name,
+            description: clinic.description,
+            status: clinic.status === 'Active' ? 'active' as const : 'inactive' as const,
+            assignedDoctorId: doctorId,
+            assignedDoctorName: doctorName,
+          };
+        });
+        
+        setRooms(mappedRooms);
+        setTotal(response.total || 0);
+        setTotalPages(response.totalPages || 1);
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching clinics:', error);
+      toast.error(error.message || 'Không thể tải danh sách phòng khám');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch data when component mounts or filters change
+  useEffect(() => {
+    fetchClinics();
+    fetchDoctors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, statusFilter]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchClinics();
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]);
 
   const statusOptions = [
     { key: "all", label: "Tất cả" },
-    { key: "available", label: "Sẵn sàng" },
-    { key: "occupied", label: "Đang sử dụng" },
-    { key: "maintenance", label: "Bảo trì" },
+    { key: "active", label: "Hoạt động" },
+    { key: "inactive", label: "Không hoạt động" },
   ];
 
-  const floorOptions = [
-    { key: "all", label: "Tất cả" },
-    { key: "1", label: "Tầng 1" },
-    { key: "2", label: "Tầng 2" },
-    { key: "3", label: "Tầng 3" },
-  ];
-
-  // Filter rooms based on search, status and floor
-  const filteredRooms = rooms.filter((room) => {
-    const matchesSearch =
-      room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      room.roomName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      room.assignedDoctor?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || room.status === statusFilter;
-    const matchesFloor =
-      floorFilter === "all" || room.floor.toString() === floorFilter;
-    return matchesSearch && matchesStatus && matchesFloor;
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(filteredRooms.length / itemsPerPage);
+  // Pagination info
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentRooms = filteredRooms.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, total);
+  const currentRooms = rooms;
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  const handleEdit = (roomId: number) => {
+  const handleEdit = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
     if (room) {
       setSelectedRoom(room);
@@ -143,17 +132,27 @@ const RoomManagement = () => {
     }
   };
 
-  const handleDelete = (roomId: number) => {
-    const room = rooms.find((r) => r.id === roomId);
-    if (room) {
-      const confirmDelete = window.confirm(
-        `Bạn có chắc chắn muốn xóa phòng ${room.roomNumber} - ${room.roomName}?`
-      );
-      if (confirmDelete) {
-        // TODO: Call API to delete room
-        console.log("Delete room:", roomId);
-        // After successful deletion, refresh the list
+  const handleDelete = async (roomId: string, roomName: string) => {
+    const confirmDelete = window.confirm(
+      `Bạn có chắc chắn muốn xóa phòng khám "${roomName}"?\n\nHành động này không thể hoàn tác.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const response = await managerApi.deleteClinic(roomId);
+
+      if ((response as any).status || response.success) {
+        toast.success(response.message || "Xóa phòng khám thành công!");
+        // Refresh list
+        fetchClinics();
+        fetchDoctors(); // Refresh doctors list vì có thể doctor được unassign
+      } else {
+        throw new Error(response.message || 'Không thể xóa phòng khám');
       }
+    } catch (error: any) {
+      console.error("Error deleting clinic:", error);
+      toast.error(error.message || "Có lỗi xảy ra khi xóa phòng khám. Vui lòng thử lại.");
     }
   };
 
@@ -162,13 +161,17 @@ const RoomManagement = () => {
   };
 
   const handleAddSuccess = () => {
-    // TODO: Refresh room list after successful add
-    console.log("Room added successfully");
+    // Refresh room list after successful add
+    fetchClinics();
+    setIsAddModalOpen(false);
   };
 
   const handleEditSuccess = () => {
-    // TODO: Refresh room list after successful edit
-    console.log("Room updated successfully");
+    // Refresh room list after successful edit
+    fetchClinics();
+    fetchDoctors(); // Refresh doctors list nếu có assign/unassign
+    setIsEditModalOpen(false);
+    setSelectedRoom(null);
   };
 
   const handleCloseAddModal = () => {
@@ -182,12 +185,10 @@ const RoomManagement = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "available":
+      case "active":
         return "bg-green-100 text-green-800";
-      case "occupied":
-        return "bg-blue-100 text-blue-800";
-      case "maintenance":
-        return "bg-orange-100 text-orange-800";
+      case "inactive":
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -195,12 +196,10 @@ const RoomManagement = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case "available":
-        return "Sẵn sàng";
-      case "occupied":
-        return "Đang sử dụng";
-      case "maintenance":
-        return "Bảo trì";
+      case "active":
+        return "Hoạt động";
+      case "inactive":
+        return "Không hoạt động";
       default:
         return status;
     }
@@ -224,7 +223,7 @@ const RoomManagement = () => {
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Input
-              placeholder="Tìm kiếm phòng, bác sĩ..."
+              placeholder="Tìm kiếm phòng khám..."
               value={searchTerm}
               onValueChange={setSearchTerm}
               startContent={
@@ -235,22 +234,6 @@ const RoomManagement = () => {
             />
           </div>
 
-          {/* Floor Filter */}
-          <Select
-            placeholder="Chọn tầng"
-            selectedKeys={floorFilter ? [floorFilter] : []}
-            onSelectionChange={(keys) => {
-              const selectedKey = Array.from(keys)[0] as string;
-              setFloorFilter(selectedKey);
-            }}
-            className="w-48"
-            variant="bordered"
-          >
-            {floorOptions.map((option) => (
-              <SelectItem key={option.key}>{option.label}</SelectItem>
-            ))}
-          </Select>
-
           {/* Status Filter */}
           <Select
             placeholder="Chọn trạng thái"
@@ -258,6 +241,10 @@ const RoomManagement = () => {
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
               setStatusFilter(selectedKey);
+              // Reset to page 1 when filter changes
+              if (currentPage !== 1) {
+                setCurrentPage(1);
+              }
             }}
             className="w-48"
             variant="bordered"
@@ -285,80 +272,45 @@ const RoomManagement = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Số phòng
+                  STT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tên phòng
+                  Tên phòng khám
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tầng
+                  Mô tả
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Bác sĩ phụ trách
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sức chứa
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thiết bị
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trạng thái
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hành động
+                  Thao tác
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {currentRooms.map((room) => (
+              {currentRooms.map((room, index) => (
                 <tr key={room.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                    {room.roomNumber}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {room.roomName}
+                    {room.name}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                    <div className="truncate">{room.description}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    Tầng {room.floor}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {room.assignedDoctor ? (
-                      <div>
-                        <div className="font-medium">{room.assignedDoctor.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {room.assignedDoctor.specialty}
-                        </div>
+                    {room.assignedDoctorId ? (
+                      <div className="font-medium text-blue-600">
+                        {room.assignedDoctorName || "BS. (Đang tải...)"}
                       </div>
                     ) : (
                       <span className="text-gray-400 italic">Chưa phân công</span>
                     )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {room.capacity} người
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    <div className="max-w-xs">
-                      {room.equipment.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {room.equipment.slice(0, 2).map((item, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800"
-                            >
-                              {item}
-                            </span>
-                          ))}
-                          {room.equipment.length > 2 && (
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">
-                              +{room.equipment.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 italic">Chưa có</span>
-                      )}
-                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -370,18 +322,18 @@ const RoomManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEdit(room.id)}
                         className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                        title="Chỉnh sửa phòng"
+                        title="Chỉnh sửa phòng khám"
                       >
                         <PencilIcon className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(room.id)}
+                        onClick={() => handleDelete(room.id, room.name)}
                         className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                        title="Xóa phòng"
+                        title="Xóa phòng khám"
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -393,10 +345,17 @@ const RoomManagement = () => {
           </table>
         </div>
 
-        {/* Empty state */}
-        {currentRooms.length === 0 && (
+        {/* Loading state */}
+        {isLoading && (
           <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">Không tìm thấy phòng</div>
+            <div className="text-gray-500 text-lg">Đang tải dữ liệu...</div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!isLoading && currentRooms.length === 0 && (
+          <div className="text-center py-12">
+            <div className="text-gray-500 text-lg">Không tìm thấy phòng khám</div>
             <div className="text-gray-400 text-sm mt-2">
               Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
             </div>
@@ -405,12 +364,11 @@ const RoomManagement = () => {
       </div>
 
       {/* Pagination */}
-      {filteredRooms.length > 0 && (
+      {!isLoading && total > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
           <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến{" "}
-            {Math.min(endIndex, filteredRooms.length)} trong{" "}
-            {filteredRooms.length} kết quả
+            Hiển thị {startIndex + 1} đến {endIndex} trong{" "}
+            {total} kết quả
           </div>
 
           <div className="flex items-center space-x-2">
@@ -456,7 +414,6 @@ const RoomManagement = () => {
         isOpen={isAddModalOpen}
         onClose={handleCloseAddModal}
         onSuccess={handleAddSuccess}
-        doctors={doctors}
       />
 
       {/* Edit Room Modal */}

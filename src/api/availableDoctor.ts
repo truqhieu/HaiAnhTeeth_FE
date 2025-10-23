@@ -52,12 +52,12 @@ export const availableDoctorApi = {
 
       const query = queryParams.toString();
       const endpoint = query
-        ? `/api/available-slots/doctors/time-slot?${query}`
-        : "/api/available-slots/doctors/time-slot";
+        ? `/available-slots/doctors/time-slot?${query}`
+        : "/available-slots/doctors/time-slot";
 
       // Gọi trực tiếp fetch (giống serviceApi)
       const response = await fetch(
-        `${import.meta.env.VITE_API1_URL || "https://haianhteethbe-production.up.railway.app"}${endpoint}`,
+        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
         {
           method: "GET",
           headers: {

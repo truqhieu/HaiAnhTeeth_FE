@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
-
-interface Doctor {
-  id: number;
-  name: string;
-  specialty: string;
-}
+import toast from "react-hot-toast";
+import { managerApi, ManagerDoctor, ManagerClinic } from "@/api";
 
 interface AddScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-  doctors: Doctor[];
-  rooms: string[];
+  doctors: ManagerDoctor[];
+  rooms: ManagerClinic[];
 }
 
 const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
@@ -25,29 +21,20 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     date: "",
-    shiftName: "",
+    shift: "",
     startTime: "",
     endTime: "",
     doctorId: "",
-    room: "",
-    maxPatients: "",
-    status: "active",
+    roomId: "",
+    maxSlots: "",
   });
 
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const shiftOptions = [
-    { key: "Sáng", label: "Ca Sáng (08:00 - 12:00)", start: "08:00", end: "12:00" },
-    { key: "Chiều", label: "Ca Chiều (13:00 - 17:00)", start: "13:00", end: "17:00" },
-    { key: "Tối", label: "Ca Tối (18:00 - 21:00)", start: "18:00", end: "21:00" },
-    { key: "Tùy chỉnh", label: "Tùy chỉnh thời gian", start: "", end: "" },
-  ];
-
-  const statusOptions = [
-    { key: "active", label: "Đang hoạt động" },
-    { key: "full", label: "Đã đầy" },
-    { key: "cancelled", label: "Đã hủy" },
+    { key: "Morning", label: "Ca Sáng (08:00 - 12:00)", start: "08:00", end: "12:00" },
+    { key: "Afternoon", label: "Ca Chiều (13:00 - 17:00)", start: "13:00", end: "17:00" },
   ];
 
   // Reset form when modal opens
@@ -57,13 +44,12 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
       const today = new Date().toISOString().split("T")[0];
       setFormData({
         date: today,
-        shiftName: "",
+        shift: "",
         startTime: "",
         endTime: "",
         doctorId: "",
-        room: "",
-        maxPatients: "",
-        status: "active",
+        roomId: "",
+        maxSlots: "10", // Default
       });
       setShowValidation(false);
     }
@@ -72,35 +58,27 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
   // Auto-fill time when shift is selected
   const handleShiftChange = (shift: string) => {
     const selectedShift = shiftOptions.find((s) => s.key === shift);
-    if (selectedShift && shift !== "Tùy chỉnh") {
+    if (selectedShift) {
       setFormData((prev) => ({
         ...prev,
-        shiftName: shift,
+        shift: shift,
         startTime: selectedShift.start,
         endTime: selectedShift.end,
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        shiftName: shift,
-        startTime: "",
-        endTime: "",
       }));
     }
   };
 
   // Validation states
   const isDateInvalid = showValidation && !formData.date;
-  const isShiftNameInvalid = showValidation && !formData.shiftName;
+  const isShiftInvalid = showValidation && !formData.shift;
   const isStartTimeInvalid = showValidation && !formData.startTime;
   const isEndTimeInvalid = showValidation && !formData.endTime;
   const isDoctorInvalid = showValidation && !formData.doctorId;
-  const isRoomInvalid = showValidation && !formData.room;
-  const isMaxPatientsInvalid =
+  const isMaxSlotsInvalid =
     showValidation &&
-    (!formData.maxPatients ||
-      isNaN(Number(formData.maxPatients)) ||
-      Number(formData.maxPatients) <= 0);
+    (!formData.maxSlots ||
+      isNaN(Number(formData.maxSlots)) ||
+      Number(formData.maxSlots) <= 0);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -116,14 +94,13 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
     // Check validation
     const hasErrors =
       !formData.date ||
-      !formData.shiftName ||
+      !formData.shift ||
       !formData.startTime ||
       !formData.endTime ||
       !formData.doctorId ||
-      !formData.room ||
-      !formData.maxPatients ||
-      isNaN(Number(formData.maxPatients)) ||
-      Number(formData.maxPatients) <= 0;
+      !formData.maxSlots ||
+      isNaN(Number(formData.maxSlots)) ||
+      Number(formData.maxSlots) <= 0;
 
     if (hasErrors) {
       return;
@@ -132,36 +109,40 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const newSchedule = {
+      // Tạo ISO datetime strings cho startTime và endTime
+      const dateObj = new Date(formData.date);
+      const [startHour, startMinute] = formData.startTime.split(':');
+      const [endHour, endMinute] = formData.endTime.split(':');
+      
+      const startDateTime = new Date(dateObj);
+      startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
+      
+      const endDateTime = new Date(dateObj);
+      endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
+
+      const scheduleData = {
+        doctorId: formData.doctorId,
         date: formData.date,
-        shiftName: formData.shiftName,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        doctorId: Number(formData.doctorId),
-        room: formData.room,
-        maxPatients: Number(formData.maxPatients),
-        currentPatients: 0,
-        status: formData.status,
+        shift: formData.shift as 'Morning' | 'Afternoon',
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        roomId: formData.roomId || undefined,
+        maxSlots: Number(formData.maxSlots),
       };
 
-      // TODO: Gửi request lên backend
-      // const response = await fetch('/api/schedules', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(newSchedule),
-      // });
+      console.log("Creating schedule:", scheduleData);
 
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await managerApi.createSchedule(scheduleData);
 
-      console.log("Creating schedule:", newSchedule);
-
-      onClose();
-      if (onSuccess) {
-        onSuccess();
+      if (response.status) {
+        toast.success(response.message || 'Tạo ca khám thành công');
+        if (onSuccess) {
+          onSuccess();
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating schedule:", error);
-      alert("Có lỗi xảy ra khi tạo ca khám. Vui lòng thử lại.");
+      toast.error(error.message || "Có lỗi xảy ra khi tạo ca khám. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -230,11 +211,11 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
               <Select
                 fullWidth
-                errorMessage={isShiftNameInvalid ? "Vui lòng chọn ca làm việc" : ""}
-                isInvalid={isShiftNameInvalid}
+                errorMessage={isShiftInvalid ? "Vui lòng chọn ca làm việc" : ""}
+                isInvalid={isShiftInvalid}
                 label="Ca làm việc *"
                 placeholder="Chọn ca"
-                selectedKeys={formData.shiftName ? [formData.shiftName] : []}
+                selectedKeys={formData.shift ? [formData.shift] : []}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
                   handleShiftChange(selectedKey);
@@ -256,7 +237,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
                 value={formData.startTime}
                 onValueChange={(value) => handleInputChange("startTime", value)}
                 variant="bordered"
-                isReadOnly={formData.shiftName !== "Tùy chỉnh" && formData.shiftName !== ""}
+                isReadOnly={formData.shift !== ""}
               />
 
               <Input
@@ -269,7 +250,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
                 value={formData.endTime}
                 onValueChange={(value) => handleInputChange("endTime", value)}
                 variant="bordered"
-                isReadOnly={formData.shiftName !== "Tùy chỉnh" && formData.shiftName !== ""}
+                isReadOnly={formData.shift !== ""}
               />
 
               <Select
@@ -286,32 +267,25 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
                 variant="bordered"
               >
                 {doctors.map((doctor) => (
-                  <SelectItem key={doctor.id.toString()} textValue={doctor.name}>
-                    <div>
-                      <div className="font-medium">{doctor.name}</div>
-                      <div className="text-xs text-gray-500">
-                        {doctor.specialty}
-                      </div>
-                    </div>
+                  <SelectItem key={doctor._id} textValue={doctor.fullName}>
+                    <div className="font-medium">{doctor.fullName}</div>
                   </SelectItem>
                 ))}
               </Select>
 
               <Select
                 fullWidth
-                errorMessage={isRoomInvalid ? "Vui lòng chọn phòng" : ""}
-                isInvalid={isRoomInvalid}
-                label="Phòng khám *"
+                label="Phòng khám (Tùy chọn)"
                 placeholder="Chọn phòng"
-                selectedKeys={formData.room ? [formData.room] : []}
+                selectedKeys={formData.roomId ? [formData.roomId] : []}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
-                  handleInputChange("room", selectedKey);
+                  handleInputChange("roomId", selectedKey);
                 }}
                 variant="bordered"
               >
                 {rooms.map((room) => (
-                  <SelectItem key={room}>Phòng {room}</SelectItem>
+                  <SelectItem key={room._id}>Phòng {room.name}</SelectItem>
                 ))}
               </Select>
 
@@ -320,34 +294,18 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
                 type="number"
                 autoComplete="off"
                 errorMessage={
-                  isMaxPatientsInvalid
-                    ? "Vui lòng nhập số bệnh nhân tối đa (lớn hơn 0)"
+                  isMaxSlotsInvalid
+                    ? "Vui lòng nhập số slot tối đa (lớn hơn 0)"
                     : ""
                 }
-                isInvalid={isMaxPatientsInvalid}
-                label="Số bệnh nhân tối đa *"
+                isInvalid={isMaxSlotsInvalid}
+                label="Số slot tối đa *"
                 placeholder="Ví dụ: 10"
-                value={formData.maxPatients}
-                onValueChange={(value) => handleInputChange("maxPatients", value)}
+                value={formData.maxSlots}
+                onValueChange={(value) => handleInputChange("maxSlots", value)}
                 variant="bordered"
-                endContent={<span className="text-gray-500 text-sm">người</span>}
+                endContent={<span className="text-gray-500 text-sm">slot</span>}
               />
-
-              <Select
-                fullWidth
-                label="Trạng thái"
-                placeholder="Chọn trạng thái"
-                selectedKeys={formData.status ? [formData.status] : []}
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
-                  handleInputChange("status", selectedKey);
-                }}
-                variant="bordered"
-              >
-                {statusOptions.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
-                ))}
-              </Select>
             </div>
 
             <div className="flex justify-end space-x-4 pt-4">
