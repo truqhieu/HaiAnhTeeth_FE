@@ -4,7 +4,7 @@ export interface PaymentInfo {
   _id: string;
   appointmentId: string;
   amount: number;
-  status: 'Pending' | 'Completed' | 'Failed' | 'Cancelled';
+  status: 'Pending' | 'Completed' | 'Failed' | 'Cancelled' | 'Expired'; // ⭐ Thêm Expired
   method: string;
   transactionId?: string;
   // ... các trường khác nếu có
@@ -18,8 +18,9 @@ export interface AppointmentInfo {
 
 export interface CheckPaymentStatusResponse {
   payment: PaymentInfo;
-  appointment: AppointmentInfo;
+  appointment?: AppointmentInfo; // Optional vì khi expired có thể không có
   confirmed: boolean;
+  expired: boolean; // ⭐ Thêm flag expired
 }
 
 

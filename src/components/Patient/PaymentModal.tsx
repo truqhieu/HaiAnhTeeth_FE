@@ -94,6 +94,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
         console.log(`🔍 Checking payment status for ID: ${paymentId}...`);
         const response = await paymentApi.checkPaymentStatus(paymentId);
 
+        // ⚠️ Check nếu payment đã expired từ backend
+        if (response.success && response.data?.expired) {
+          console.log('⏰ Payment expired from backend!');
+          setStatus('expired');
+          setErrorMessage('Thanh toán đã hết hạn. Vui lòng đặt lại lịch hẹn.');
+          // Tự động redirect về trang appointments sau 5 giây
+          setTimeout(() => {
+            window.location.href = '/patient/appointments';
+          }, 5000);
+          return;
+        }
+
+        // ✅ Check nếu payment đã completed
         if (response.success && response.data?.confirmed) {
           console.log('✅ Payment confirmed!', response.data);
           setStatus('success');
@@ -102,7 +115,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
             onClose();
           }, 5000);
         } else {
-          // Vẫn đang chờ, không làm gì cả, lần check tiếp theo sẽ chạy
+          // ⏳ Vẫn đang chờ, không làm gì cả, lần check tiếp theo sẽ chạy
           console.log('...Payment not yet confirmed.');
           setStatus('pending');
         }
@@ -200,26 +213,26 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ isOpen, onClose, paymentId 
               <ClockIcon className="w-24 h-24 text-orange-500 mb-6" />
               <h2 className="text-3xl font-bold text-gray-800">Mã thanh toán đã hết hạn</h2>
               <p className="text-gray-600 mt-3">
-                Thời gian thanh toán đã quá 3 phút. Vui lòng đặt lại lịch hẹn hoặc tạo mã thanh toán mới.
+                Thời gian thanh toán đã quá 3 phút. Lịch hẹn của bạn đã bị hủy.
               </p>
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-6 max-w-md">
                 <p className="text-sm text-orange-800">
-                  💡 <strong>Lưu ý:</strong> Lịch hẹn của bạn vẫn được giữ trong hệ thống. 
-                  Bạn có thể thanh toán lại hoặc liên hệ để được hỗ trợ.
+                  💡 <strong>Lưu ý:</strong> Bạn cần đặt lại lịch hẹn mới để tiếp tục. 
+                  Trang sẽ tự động chuyển về danh sách lịch hẹn sau 5 giây.
                 </p>
               </div>
               <div className="flex gap-4 mt-8">
+                <button
+                  onClick={() => window.location.href = '/patient/appointments'}
+                  className="px-6 py-3 bg-[#39BDCC] text-white rounded-lg font-semibold hover:bg-[#2ca6b5] transition"
+                >
+                  Xem lịch hẹn của tôi
+                </button>
                 <button
                   onClick={onClose}
                   className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition"
                 >
                   Đóng
-                </button>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-6 py-3 bg-[#39BDCC] text-white rounded-lg font-semibold hover:bg-[#2ca6b5] transition"
-                >
-                  Làm mới trang
                 </button>
               </div>
             </div>
