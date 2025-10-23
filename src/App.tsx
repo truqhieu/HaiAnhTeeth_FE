@@ -20,6 +20,8 @@ import ServiceManagement from "@/pages/Manager/ServiceManagement";
 import RoomManagement from "@/pages/Manager/RoomManagement";
 import ScheduleManagement from "@/pages/Manager/ScheduleManagement";
 import ManagerLayout from "@/layouts/ManagerLayout";
+import StaffLayout from "@/layouts/StaffLayout";
+import StaffDashboard from "@/pages/Staff/Dashboard";
 import { AuthModalProvider } from "@/contexts/AuthModalContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 
@@ -64,6 +66,18 @@ function App() {
                   <Route element={<ServiceManagement />} path="" />
                 </Routes>
               </ManagerLayout>
+            }
+          />
+
+          {/* Staff Routes */}
+          <Route
+            path="/staff/*"
+            element={
+              <StaffLayout>
+                <Routes>
+                  <Route element={<StaffDashboard />} path="dashboard" />
+                </Routes>
+              </StaffLayout>
             }
           />
 

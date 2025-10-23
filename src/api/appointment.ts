@@ -69,4 +69,23 @@ export const appointmentApi = {
       method: 'GET',
     });
   },
+
+  getAllAppointments: async (): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall('/api/appointments/all', {
+      method: 'GET',
+    });
+  },
+
+  getPendingAppointments: async (): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall('/api/appointments/pending', {
+      method: 'GET',
+    });
+  },
+
+  reviewAppointment: async (appointmentId: string, action: 'approve' | 'cancel', cancelReason?: string): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall('/api/appointments/review', {
+      method: 'POST',
+      body: JSON.stringify({ appointmentId, action, cancelReason }),
+    });
+  },
 };
