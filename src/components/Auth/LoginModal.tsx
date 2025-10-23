@@ -13,7 +13,7 @@ const LoginModal = () => {
     openSignupModal,
     openForgotPasswordModal,
   } = useAuthModal();
-  const { login } = useAuth();
+  const { login, updateUser } = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
@@ -59,13 +59,42 @@ const LoginModal = () => {
       if (response.success && response.data?.user && response.data?.token) {
         // eslint-disable-next-line no-console
         console.log("Đăng nhập thành công:", response.data);
-        
-        // Update auth state
-        login(response.data.user, response.data.token);
-        
+
+        // ⭐ Normalize user để ensure _id luôn có giá trị
+        const loginUser = {
+          ...response.data.user,
+          _id: response.data.user._id || response.data.user.id || "",
+        };
+
+        // ⭐ Lưu token và user từ login response
+        login(loginUser as any, response.data.token);
+
+        // ⭐ Gọi /auth/profile để lấy dữ liệu đầy đủ bao gồm emergencyContact
+        try {
+          const profileResponse = await authApi.getProfile();
+          console.log("🔍 [FE] Profile response:", profileResponse);
+          if (profileResponse.success && profileResponse.data?.user) {
+            console.log("🔍 [FE] EmergencyContact from profile:", profileResponse.data.user.emergencyContact);
+            // ⭐ Normalize user để ensure _id luôn có giá trị
+            const normalizedUser = {
+              ...profileResponse.data.user,
+              _id: profileResponse.data.user._id || profileResponse.data.user.id || "",
+            };
+            console.log("🔍 [FE] Saving to context/sessionStorage:", normalizedUser.emergencyContact);
+            // ⭐ Update user với dữ liệu đầy đủ từ backend (bao gồm emergencyContact)
+            updateUser(normalizedUser as any);
+          }
+        } catch (profileError) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            "Không thể tải profile đầy đủ, sử dụng dữ liệu từ login response:",
+            profileError,
+          );
+        }
+
         // Close modal
         closeModals();
-        
+
         // Redirect based on user role
         const role = response.data.user.role;
         if (role === "Admin") {

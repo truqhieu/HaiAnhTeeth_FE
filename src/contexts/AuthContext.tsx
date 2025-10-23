@@ -35,8 +35,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         const storedUser = sessionStorage.getItem('user');
         const storedToken = sessionStorage.getItem('authToken');
 
+        console.log('🔍 [AuthContext] Restoring from sessionStorage:', storedUser);
+
         if (storedUser && storedToken && isMounted) {
           const parsedUser = JSON.parse(storedUser) as AuthUser;
+          console.log('🔍 [AuthContext] Parsed user emergencyContact:', (parsedUser as any).emergencyContact);
           // Normalize user data: ensure _id is set
           const normalizedUser = {
             ...parsedUser,
@@ -99,8 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       id: userData.id || userData._id || '',
     };
     
+    console.log('🔍 [AuthContext] updateUserInfo called with emergencyContact:', (normalizedUser as any).emergencyContact);
+    
     // Update sessionStorage
     sessionStorage.setItem('user', JSON.stringify(normalizedUser));
+    console.log('🔍 [AuthContext] Saved to sessionStorage:', sessionStorage.getItem('user'));
     
     // Dispatch Redux action
     dispatch(updateUser(normalizedUser));

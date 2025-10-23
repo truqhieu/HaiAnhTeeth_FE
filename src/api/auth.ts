@@ -53,6 +53,11 @@ export interface UpdateProfileData {
   address?: string;
   dob?: string;
   gender?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
 }
 
 export interface AuthResponse {
@@ -118,9 +123,9 @@ export const authApi = {
       body: JSON.stringify(data),
     });
 
-    // Update user in localStorage if successful
+    // Update user in sessionStorage if successful
     if (response.success && response.data) {
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      sessionStorage.setItem('user', JSON.stringify(response.data.user));
     }
 
     return response;

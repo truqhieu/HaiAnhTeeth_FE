@@ -41,6 +41,7 @@ const AccountSettings = () => {
 
   // Load user data from context
   useEffect(() => {
+    console.log('🔍 [AccountSettings] User from context:', user);
     if (user) {
       setFullName(user.fullName || "");
       setEmail(user.email || "");
@@ -59,10 +60,21 @@ const AccountSettings = () => {
 
       // Load emergency contact
       const emergencyContact = (user as any).emergencyContact;
+      console.log('🔍 [AccountSettings] EmergencyContact from user:', emergencyContact);
       if (emergencyContact) {
+        console.log('🔍 [AccountSettings] Loading emergency contact fields:', {
+          name: emergencyContact.name,
+          phone: emergencyContact.phone,
+          relationship: emergencyContact.relationship
+        });
         setEmergencyName(emergencyContact.name || "");
         setEmergencyPhone(emergencyContact.phone || "");
         setEmergencyRelationship(emergencyContact.relationship || "");
+      } else {
+        console.log('🔍 [AccountSettings] No emergencyContact found, clearing fields');
+        setEmergencyName("");
+        setEmergencyPhone("");
+        setEmergencyRelationship("");
       }
     }
   }, [user]);
