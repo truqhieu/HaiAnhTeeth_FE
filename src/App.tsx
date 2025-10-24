@@ -1,11 +1,12 @@
 import { Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-
-import { Navbar, LoginModal, SignupModal, ForgotPasswordModal } from "@/components";
+import { Navbar } from "@/components";
 
 import DefaultLayout from "@/layouts/default";
 import IndexPage from "@/pages/Public/index";
 import AboutPage from "@/pages/Public/about";
+import LoginPage from "@/pages/Public/LoginPage";
+import SignupPage from "@/pages/Public/SignupPage";
 import ResetPassword from "@/pages/Public/reset-password";
 import VerifyEmail from "@/pages/Public/verify-email";
 import Dashboard from "@/pages/Patient/Dashboard";
@@ -24,70 +25,47 @@ import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
 import DoctorLayout from "@/layouts/DoctorLayout";
 import { DoctorSchedule } from "@/pages/Doctor";
-import { AuthModalProvider } from "@/contexts/AuthModalContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-
-// --- THÊM IMPORT MỚI ---
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
 
 function App() {
   return (
     <AuthProvider>
-      <AuthModalProvider>
-        {/* Bọc BookingModalProvider ở đây, bên ngoài <Routes>
-          giống như cách bạn làm với AuthModalProvider.
-          Điều này đảm bảo các modal có thể được gọi từ bất kỳ đâu.
-        */}
-        <BookingModalProvider>
-          <Toaster
-            position="top-right"
-            reverseOrder={false}
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#fff',
-                color: '#363636',
-                fontSize: '14px',
-                padding: '16px',
-                borderRadius: '8px',
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: '#10b981',
-                  secondary: '#fff',
-                },
-              },
-              error: {
-                duration: 4000,
-                iconTheme: {
-                  primary: '#ef4444',
-                  secondary: '#fff',
-                },
-              },
-            }}
-          />
-          <Routes>
-          {/* Admin Routes */}
+      <BookingModalProvider>
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: "#fff",
+              color: "#363636",
+              fontSize: "14px",
+              padding: "16px",
+              borderRadius: "8px",
+            },
+          }}
+        />
+
+        {/* 👇 Routes configuration */}
+        <Routes>
+          {/* Auth Pages */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+
+          {/* Admin */}
           <Route
             path="/admin/*"
             element={
               <AdminLayout>
                 <Routes>
-                  <Route
-                    element={<AccountManagement />}
-                    path="accounts"
-                  />
-                  <Route
-                    element={<AccountManagement />}
-                    path=""
-                  />
+                  <Route element={<AccountManagement />} path="accounts" />
                 </Routes>
               </AdminLayout>
             }
           />
 
-          {/* Manager Routes */}
+          {/* Manager */}
           <Route
             path="/manager/*"
             element={
@@ -96,13 +74,12 @@ function App() {
                   <Route element={<ServiceManagement />} path="services" />
                   <Route element={<RoomManagement />} path="rooms" />
                   <Route element={<ScheduleManagement />} path="schedules" />
-                  <Route element={<ServiceManagement />} path="" />
                 </Routes>
               </ManagerLayout>
             }
           />
 
-          {/* Staff Routes */}
+          {/* Staff */}
           <Route
             path="/staff/*"
             element={
@@ -114,63 +91,60 @@ function App() {
             }
           />
 
-          {/* Doctor Routes */}
+          {/* Doctor */}
           <Route
             path="/doctor/*"
             element={
               <DoctorLayout>
                 <Routes>
                   <Route element={<DoctorSchedule />} path="schedule" />
-                  <Route element={<DoctorSchedule />} path="" />
                 </Routes>
               </DoctorLayout>
             }
           />
 
-          {/* Public Routes */}
+          {/* Public and Patient Routes with Navbar and Footer */}
           <Route
             path="/*"
             element={
               <>
-                {/* Navbar hiển thị trên tất cả các trang */}
                 <Navbar />
-
-                {/* DefaultLayout bao bọc tất cả routes - có Footer */}
                 <DefaultLayout>
                   <Routes>
                     <Route element={<IndexPage />} path="/" />
                     <Route element={<AboutPage />} path="/about" />
                     <Route element={<VerifyEmail />} path="/verify-email" />
-                    <Route element={<ResetPassword />} path="/reset-password" />
-
-                    {/* Patient Routes */}
-                    <Route element={<Dashboard />} path="/patient/dashboard" />
-                    <Route element={<Appointments />} path="/patient/appointments" />
-                    <Route element={<MedicalRecords />} path="/patient/medical-records" />
-                    <Route element={<Complaints />} path="/patient/complaints" />
-                    <Route element={<PaymentPage />} path="/patient/payment/:paymentId" />
+                    <Route
+                      element={<ResetPassword />}
+                      path="/reset-password"
+                    />
+                    <Route
+                      element={<Appointments />}
+                      path="/patient/appointments"
+                    />
+                    <Route
+                      element={<MedicalRecords />}
+                      path="/patient/medical-records"
+                    />
+                    <Route
+                      element={<Complaints />}
+                      path="/patient/complaints"
+                    />
+                    <Route
+                      element={<PaymentPage />}
+                      path="/patient/payment/:paymentId"
+                    />
                     <Route
                       element={<AccountSettings />}
                       path="/patient/account-settings"
                     />
                   </Routes>
                 </DefaultLayout>
-
-                {/* Auth Modals - hiển thị ở mọi nơi */}
-                <LoginModal />
-                <SignupModal />
-                <ForgotPasswordModal />
-                
-                {/* Bạn KHÔNG cần render <BookingConsultation>
-                  hay <PaymentModal> ở đây nữa, vì chúng
-                  đã được render bên trong BookingModalProvider.
-                */}
               </>
             }
           />
-          </Routes>
-        </BookingModalProvider>
-      </AuthModalProvider>
+        </Routes>
+      </BookingModalProvider>
     </AuthProvider>
   );
 }
