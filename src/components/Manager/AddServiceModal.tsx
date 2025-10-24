@@ -1,7 +1,15 @@
 import React, { useState } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
-import { Input, Button, Form, Select, SelectItem, Textarea } from "@heroui/react";
+import {
+  Input,
+  Button,
+  Form,
+  Select,
+  SelectItem,
+  Textarea,
+} from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { managerApi } from "@/api";
 
 interface AddServiceModalProps {
@@ -34,15 +42,23 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
 
   // Reverse mapping để gửi lên backend
   const categoryReverseMap: { [key: string]: string } = {
-    'Khám': 'Examination',
-    'Tư vấn': 'Consultation'
+    Khám: "Examination",
+    "Tư vấn": "Consultation",
   };
 
   // Validation states
   const isNameInvalid = showValidation && !formData.name.trim();
   const isDescriptionInvalid = showValidation && !formData.description.trim();
-  const isPriceInvalid = showValidation && (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0);
-  const isDurationInvalid = showValidation && (!formData.duration || isNaN(Number(formData.duration)) || Number(formData.duration) <= 0);
+  const isPriceInvalid =
+    showValidation &&
+    (!formData.price ||
+      isNaN(Number(formData.price)) ||
+      Number(formData.price) <= 0);
+  const isDurationInvalid =
+    showValidation &&
+    (!formData.duration ||
+      isNaN(Number(formData.duration)) ||
+      Number(formData.duration) <= 0);
   const isCategoryInvalid = showValidation && !formData.category;
 
   const handleInputChange = (field: string, value: string) => {
@@ -81,7 +97,9 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
         description: formData.description.trim(),
         price: Number(formData.price),
         durationMinutes: Number(formData.duration),
-        category: categoryReverseMap[formData.category] as 'Examination' | 'Consultation',
+        category: categoryReverseMap[formData.category] as
+          | "Examination"
+          | "Consultation",
       };
 
       // Gọi API tạo mới
@@ -96,11 +114,13 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
           onSuccess();
         }
       } else {
-        throw new Error(response.message || 'Không thể thêm dịch vụ');
+        throw new Error(response.message || "Không thể thêm dịch vụ");
       }
     } catch (error: any) {
       console.error("Error creating service:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi thêm dịch vụ. Vui lòng thử lại.");
+      toast.error(
+        error.message || "Có lỗi xảy ra khi thêm dịch vụ. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -139,7 +159,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       {/* Modal Content */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between p-6 border-b border-blue-200">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
@@ -165,20 +185,30 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
 
         {/* Body */}
         <div className="p-6">
-          <Form autoComplete="off" className="space-y-6" onSubmit={handleSubmit}>
+          <Form
+            autoComplete="off"
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <Input
                   fullWidth
                   autoComplete="off"
-                  errorMessage={isNameInvalid ? "Vui lòng nhập tên dịch vụ" : ""}
+                  errorMessage={
+                    isNameInvalid ? "Vui lòng nhập tên dịch vụ" : ""
+                  }
                   isInvalid={isNameInvalid}
-                  label="Tên dịch vụ *"
+                  label={
+                    <>
+                      Tên dịch vụ <span className="text-red-500">*</span>
+                    </>
+                  }
                   placeholder="Nhập tên dịch vụ"
                   type="text"
                   value={formData.name}
-                  onValueChange={(value) => handleInputChange("name", value)}
                   variant="bordered"
+                  onValueChange={(value) => handleInputChange("name", value)}
                 />
               </div>
 
@@ -186,62 +216,87 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
                 <Textarea
                   fullWidth
                   autoComplete="off"
-                  errorMessage={isDescriptionInvalid ? "Vui lòng nhập mô tả dịch vụ" : ""}
+                  errorMessage={
+                    isDescriptionInvalid ? "Vui lòng nhập mô tả dịch vụ" : ""
+                  }
                   isInvalid={isDescriptionInvalid}
-                  label="Mô tả dịch vụ *"
+                  label={
+                    <>
+                      Mô tả dịch vụ <span className="text-red-500">*</span>
+                    </>
+                  }
+                  minRows={3}
                   placeholder="Nhập mô tả chi tiết về dịch vụ"
                   value={formData.description}
-                  onValueChange={(value) => handleInputChange("description", value)}
                   variant="bordered"
-                  minRows={3}
+                  onValueChange={(value) =>
+                    handleInputChange("description", value)
+                  }
                 />
               </div>
 
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={isPriceInvalid ? "Vui lòng nhập giá hợp lệ (lớn hơn 0)" : ""}
+                errorMessage={
+                  isPriceInvalid ? "Vui lòng nhập giá hợp lệ (lớn hơn 0)" : ""
+                }
                 isInvalid={isPriceInvalid}
-                label="Giá dịch vụ (VND) *"
+                label={
+                  <>
+                    Giá dịch vụ (VND) <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập giá dịch vụ"
+                startContent={<span className="text-gray-500 text-sm">₫</span>}
                 type="number"
                 value={formData.price}
-                onValueChange={(value) => handleInputChange("price", value)}
                 variant="bordered"
-                startContent={
-                  <span className="text-gray-500 text-sm">₫</span>
-                }
+                onValueChange={(value) => handleInputChange("price", value)}
               />
 
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={isDurationInvalid ? "Vui lòng nhập thời gian hợp lệ (lớn hơn 0)" : ""}
+                endContent={<span className="text-gray-500 text-sm">phút</span>}
+                errorMessage={
+                  isDurationInvalid
+                    ? "Vui lòng nhập thời gian hợp lệ (lớn hơn 0)"
+                    : ""
+                }
                 isInvalid={isDurationInvalid}
-                label="Thời gian (phút) *"
+                label={
+                  <>
+                    Thời gian (phút) <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập thời gian thực hiện"
                 type="number"
                 value={formData.duration}
-                onValueChange={(value) => handleInputChange("duration", value)}
                 variant="bordered"
-                endContent={
-                  <span className="text-gray-500 text-sm">phút</span>
-                }
+                onValueChange={(value) => handleInputChange("duration", value)}
               />
 
               <div className="md:col-span-2">
                 <Select
                   fullWidth
-                  errorMessage={isCategoryInvalid ? "Vui lòng chọn danh mục" : ""}
+                  errorMessage={
+                    isCategoryInvalid ? "Vui lòng chọn danh mục" : ""
+                  }
                   isInvalid={isCategoryInvalid}
-                  label="Danh mục *"
+                  label={
+                    <>
+                      Danh mục <span className="text-red-500">*</span>
+                    </>
+                  }
                   placeholder="Chọn danh mục"
                   selectedKeys={formData.category ? [formData.category] : []}
+                  variant="bordered"
                   onSelectionChange={(keys) => {
                     const selectedKey = Array.from(keys)[0] as string;
+
                     handleInputChange("category", selectedKey);
                   }}
-                  variant="bordered"
                 >
                   {categoryOptions.map((option) => (
                     <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -249,26 +304,27 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
                 </Select>
               </div>
             </div>
-
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                variant="bordered"
-                onPress={handleClose}
-                isDisabled={isSubmitting}
-              >
-                Hủy
-              </Button>
-              <Button
-                className="bg-green-600 text-white hover:bg-green-700"
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                type="submit"
-                variant="solid"
-              >
-                {isSubmitting ? "Đang thêm..." : "Thêm dịch vụ"}
-              </Button>
-            </div>
           </Form>
+
+          {/* Buttons outside Form */}
+          <div className="flex justify-end items-center gap-4 pt-4">
+            <Button
+              isDisabled={isSubmitting}
+              variant="bordered"
+              onPress={handleClose}
+            >
+              Hủy
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              isDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              onPress={handleSubmit}
+              variant="solid"
+            >
+              {isSubmitting ? "Đang thêm..." : "Thêm dịch vụ"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -276,5 +332,3 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
 };
 
 export default AddServiceModal;
-
-

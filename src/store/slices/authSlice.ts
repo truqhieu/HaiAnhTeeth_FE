@@ -1,5 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { AuthUser } from '@/api';
+import type { AuthUser } from "@/api";
+
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface AuthState {
   user: AuthUser | null;
@@ -16,11 +17,14 @@ const initialState: AuthState = {
 };
 
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     // Login action
-    setAuth: (state, action: PayloadAction<{ user: AuthUser; token: string }>) => {
+    setAuth: (
+      state,
+      action: PayloadAction<{ user: AuthUser; token: string }>,
+    ) => {
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = true;
@@ -44,7 +48,10 @@ const authSlice = createSlice({
     },
 
     // Restore from localStorage (for initialization)
-    restoreAuth: (state, action: PayloadAction<{ user: AuthUser | null; token: string | null }>) => {
+    restoreAuth: (
+      state,
+      action: PayloadAction<{ user: AuthUser | null; token: string | null }>,
+    ) => {
       state.user = action.payload.user;
       state.token = action.payload.token;
       state.isAuthenticated = !!action.payload.token;
@@ -52,5 +59,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { setAuth, clearAuth, updateUser, setLoading, restoreAuth } = authSlice.actions;
+export const { setAuth, clearAuth, updateUser, setLoading, restoreAuth } =
+  authSlice.actions;
 export default authSlice.reducer;

@@ -10,9 +10,12 @@ import {
   Button,
 } from "@heroui/react";
 import Lottie from "lottie-react";
-import searchAnimation from "./search.json";
-import { useAuth } from "@/contexts/AuthContext";
+
 import PatientHeader from "../Patient/PatientHeader";
+
+import searchAnimation from "./search.json";
+
+import { useAuth } from "@/contexts/AuthContext";
 
 const AppNavbar = () => {
   const [showSearch, setShowSearch] = useState(false);
@@ -112,9 +115,9 @@ const AppNavbar = () => {
             ].map((item) => (
               <NavbarItem key={item.href}>
                 <Link
+                  className="font-semibold text-gray-800 hover:text-[#39BDCC] transition-colors text-lg md:text-xl"
                   color="foreground"
                   href={item.href}
-                  className="font-semibold text-gray-800 hover:text-[#39BDCC] transition-colors text-lg md:text-xl"
                 >
                   {item.label}
                 </Link>
@@ -123,7 +126,7 @@ const AppNavbar = () => {
           </NavbarContent>
 
           {/* Search */}
-          <NavbarContent justify="end" className="flex items-center gap-3">
+          <NavbarContent className="flex items-center gap-3" justify="end">
             <NavbarItem className="flex items-center gap-3">
               <button
                 className="w-10 h-10 flex items-center justify-center hover:scale-110 transition-transform"

@@ -4,6 +4,7 @@ import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { adminApi } from "@/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface User {
   id: string;
@@ -27,6 +28,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   user,
   onSuccess,
 }) => {
+  const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -71,6 +73,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   const canChangeRole = user
     ? user.role === "Bác sĩ" || user.role === "Điều dưỡng"
     : false;
+
+  // Kiểm tra xem admin có đang chỉnh sửa chính mình không
+  const isEditingSelf = currentUser && user && currentUser._id === user.id;
+  const isCurrentUserAdmin = currentUser?.role === "Admin";
 
   // Validation states
   const isNameInvalid = showValidation && !formData.name;
@@ -132,6 +138,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
       // Handle status change separately if status changed
       if (user.status !== formData.status) {
+        // Ngăn admin tự disable chính mình
+        if (isEditingSelf && isCurrentUserAdmin && formData.status === "inactive") {
+          toast.error("Bạn không thể tự khóa tài khoản của chính mình");
+          return;
+        }
+
         try {
           if (formData.status === "inactive") {
             // Lock account
@@ -158,7 +170,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       }
     } catch (error: any) {
       toast.error(
-        error.message || "Có lỗi xảy ra khi cập nhật tài khoản. Vui lòng thử lại.",
+        error.message ||
+          "Có lỗi xảy ra khi cập nhật tài khoản. Vui lòng thử lại.",
       );
     } finally {
       setIsSubmitting(false);
@@ -198,7 +211,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       {/* Modal Content */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between p-6 border-b border-blue-200">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
@@ -229,19 +242,27 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
         {/* Body */}
         <div className="p-6">
-          <Form autoComplete="off" className="space-y-6" onSubmit={handleSubmit}>
+          <Form
+            autoComplete="off"
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
                 fullWidth
                 autoComplete="off"
                 errorMessage={isNameInvalid ? "Vui lòng nhập họ và tên" : ""}
                 isInvalid={isNameInvalid}
-                label="Họ và tên *"
+                label={
+                  <>
+                    Họ và tên <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập họ và tên"
                 type="text"
                 value={formData.name}
-                onValueChange={(value) => handleInputChange("name", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("name", value)}
               />
 
               <Input
@@ -255,12 +276,16 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                     : ""
                 }
                 isInvalid={isEmailInvalid}
-                label="Email *"
+                label={
+                  <>
+                    Email <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập email"
                 type="email"
                 value={formData.email}
-                onValueChange={(value) => handleInputChange("email", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("email", value)}
               />
 
               <Input
@@ -270,8 +295,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 placeholder="Nhập số điện thoại"
                 type="tel"
                 value={formData.phone}
-                onValueChange={(value) => handleInputChange("phone", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("phone", value)}
               />
 
               {canChangeRole ? (
@@ -279,14 +304,19 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                   fullWidth
                   errorMessage={isRoleInvalid ? "Vui lòng chọn vai trò" : ""}
                   isInvalid={isRoleInvalid}
-                  label="Vai trò *"
+                  label={
+                    <>
+                      Vai trò <span className="text-red-500">*</span>
+                    </>
+                  }
                   placeholder="Chọn vai trò"
                   selectedKeys={formData.role ? [formData.role] : []}
+                  variant="bordered"
                   onSelectionChange={(keys) => {
                     const selectedKey = Array.from(keys)[0] as string;
+
                     handleInputChange("role", selectedKey);
                   }}
-                  variant="bordered"
                 >
                   {roleOptions.map((option) => (
                     <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -295,23 +325,25 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
               ) : (
                 <Input
                   fullWidth
+                  isReadOnly
                   label="Vai trò"
                   value={formData.role}
                   variant="bordered"
-                  isReadOnly
                 />
               )}
 
               <Select
                 fullWidth
+                isDisabled={isEditingSelf && isCurrentUserAdmin}
                 label="Trạng thái"
                 placeholder="Chọn trạng thái"
                 selectedKeys={formData.status ? [formData.status] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("status", selectedKey);
                 }}
-                variant="bordered"
               >
                 {statusOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -321,14 +353,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
             <div className="flex justify-end space-x-4 pt-4">
               <Button
+                isDisabled={isSubmitting}
                 variant="bordered"
                 onPress={handleClose}
-                isDisabled={isSubmitting}
               >
                 Hủy
               </Button>
               <Button
-                className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5]"
+                className="bg-blue-600 text-white hover:bg-blue-700"
                 isDisabled={isSubmitting}
                 isLoading={isSubmitting}
                 type="submit"

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { adminApi } from "@/api";
 
 interface AddUserModalProps {
@@ -78,7 +79,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     showValidation && (!formData.password || getPasswordErrors().length > 0);
   const isConfirmPasswordInvalid =
     showValidation &&
-    (!formData.confirmPassword || formData.password !== formData.confirmPassword);
+    (!formData.confirmPassword ||
+      formData.password !== formData.confirmPassword);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -121,10 +123,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
 
       // Backend returns 'status' instead of 'success'
       const isSuccess = response.success || (response.data as any)?.status;
-      
+
       if (isSuccess) {
-        toast.success(response.message || 'Tạo tài khoản thành công!');
-        
+        toast.success(response.message || "Tạo tài khoản thành công!");
+
         // Reset form
         setFormData({
           name: "",
@@ -142,11 +144,13 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
           onSuccess();
         }
       } else {
-        toast.error(response.message || 'Có lỗi xảy ra khi tạo tài khoản');
+        toast.error(response.message || "Có lỗi xảy ra khi tạo tài khoản");
       }
     } catch (error: any) {
       console.error("Error creating user:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi tạo tài khoản. Vui lòng thử lại.");
+      toast.error(
+        error.message || "Có lỗi xảy ra khi tạo tài khoản. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -187,7 +191,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
       {/* Modal Content */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between p-6 border-b border-blue-200">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
@@ -208,19 +212,27 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
 
         {/* Body */}
         <div className="p-6">
-          <Form autoComplete="off" className="space-y-6" onSubmit={handleSubmit}>
+          <Form
+            autoComplete="off"
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
                 fullWidth
                 autoComplete="off"
                 errorMessage={isNameInvalid ? "Vui lòng nhập họ và tên" : ""}
                 isInvalid={isNameInvalid}
-                label="Họ và tên *"
+                label={
+                  <>
+                    Họ và tên <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập họ và tên"
                 type="text"
                 value={formData.name}
-                onValueChange={(value) => handleInputChange("name", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("name", value)}
               />
 
               <Input
@@ -234,39 +246,54 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                     : ""
                 }
                 isInvalid={isEmailInvalid}
-                label="Email *"
+                label={
+                  <>
+                    Email <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập email"
                 type="email"
                 value={formData.email}
-                onValueChange={(value) => handleInputChange("email", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("email", value)}
               />
 
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={isPhoneInvalid ? "Vui lòng nhập số điện thoại" : ""}
+                errorMessage={
+                  isPhoneInvalid ? "Vui lòng nhập số điện thoại" : ""
+                }
                 isInvalid={isPhoneInvalid}
-                label="Số điện thoại *"
+                label={
+                  <>
+                    Số điện thoại <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập số điện thoại"
                 type="tel"
                 value={formData.phone}
-                onValueChange={(value) => handleInputChange("phone", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("phone", value)}
               />
 
               <Select
                 fullWidth
                 errorMessage={isRoleInvalid ? "Vui lòng chọn vai trò" : ""}
                 isInvalid={isRoleInvalid}
-                label="Vai trò *"
+                label={
+                  <>
+                    Vai trò <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Chọn vai trò"
                 selectedKeys={formData.role ? [formData.role] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("role", selectedKey);
                 }}
-                variant="bordered"
               >
                 {roleOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -278,11 +305,12 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 label="Trạng thái"
                 placeholder="Chọn trạng thái"
                 selectedKeys={formData.status ? [formData.status] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("status", selectedKey);
                 }}
-                variant="bordered"
               >
                 {statusOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -290,7 +318,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
               </Select>
             </div>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
                 fullWidth
                 autoComplete="new-password"
@@ -321,13 +349,17 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   ) : undefined
                 }
                 isInvalid={isPasswordInvalid}
-                label="Mật khẩu *"
+                label={
+                  <>
+                    Mật khẩu <span className="text-red-500">*</span>
+                  </>
+                }
                 labelPlacement="outside"
                 placeholder="Nhập mật khẩu"
                 type={isPasswordVisible ? "text" : "password"}
                 value={formData.password}
-                onValueChange={(value) => handleInputChange("password", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("password", value)}
               />
 
               <Input
@@ -356,37 +388,42 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                     : undefined
                 }
                 isInvalid={isConfirmPasswordInvalid}
-                label="Xác nhận mật khẩu *"
+                label={
+                  <>
+                    Xác nhận mật khẩu <span className="text-red-500">*</span>
+                  </>
+                }
                 labelPlacement="outside"
                 placeholder="Nhập lại mật khẩu"
                 type={isConfirmPasswordVisible ? "text" : "password"}
                 value={formData.confirmPassword}
+                variant="bordered"
                 onValueChange={(value) =>
                   handleInputChange("confirmPassword", value)
                 }
-                variant="bordered"
               />
             </div>
-
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                variant="bordered"
-                onPress={handleClose}
-                isDisabled={isSubmitting}
-              >
-                Hủy
-              </Button>
-              <Button
-                className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5]"
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                type="submit"
-                variant="solid"
-              >
-                {isSubmitting ? "Đang tạo..." : "Tạo tài khoản"}
-              </Button>
-            </div>
           </Form>
+
+          {/* Buttons outside Form */}
+          <div className="flex justify-end items-center gap-4 pt-4">
+            <Button
+              isDisabled={isSubmitting}
+              variant="bordered"
+              onPress={handleClose}
+            >
+              Hủy
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              isDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              onPress={handleSubmit}
+              variant="solid"
+            >
+              {isSubmitting ? "Đang tạo..." : "Tạo tài khoản"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

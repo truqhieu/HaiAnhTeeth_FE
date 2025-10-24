@@ -129,7 +129,7 @@ const ForgotPasswordModal = () => {
                   {error}
                 </div>
               )}
-              
+
               <p className="text-sm text-gray-600 mb-4">
                 Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn hướng dẫn
                 đặt lại mật khẩu.
@@ -151,7 +151,11 @@ const ForgotPasswordModal = () => {
                   }
                   id={randomNames.email}
                   isInvalid={isInvalidEmail}
-                  label="Email *"
+                  label={
+                    <>
+                      Email <span className="text-red-500">*</span>
+                    </>
+                  }
                   name={randomNames.email}
                   placeholder="Nhập email của bạn"
                   type="email"
@@ -207,4 +211,3 @@ const ForgotPasswordModal = () => {
 };
 
 export default ForgotPasswordModal;
-

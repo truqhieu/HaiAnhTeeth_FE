@@ -1,11 +1,15 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { EyeIcon, EyeSlashIcon, UserIcon } from "@heroicons/react/24/solid";
 import {
-  EyeIcon,
-  EyeSlashIcon,
-  UserIcon,
-} from "@heroicons/react/24/solid";
-import { DatePicker, Input, Button, Form, Select, SelectItem } from "@heroui/react";
+  DatePicker,
+  Input,
+  Button,
+  Form,
+  Select,
+  SelectItem,
+} from "@heroui/react";
+
 import { authApi } from "@/api";
 
 const SignupForm = () => {
@@ -19,7 +23,8 @@ const SignupForm = () => {
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [birthdate, setBirthdate] = React.useState<any>(null);
   const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = React.useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
+    React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState("");
   const [submitted, setSubmitted] = React.useState<any>(null);
@@ -31,10 +36,12 @@ const SignupForm = () => {
 
   const getPasswordErrors = (): string[] => {
     const errors: string[] = [];
+
     if (password.length < 4) errors.push("Mật khẩu phải có ít nhất 4 ký tự.");
     if (!/[A-Z]/.test(password)) errors.push("Phải có ít nhất 1 chữ hoa.");
     if (!/[^a-zA-Z0-9]/.test(password))
       errors.push("Phải có ít nhất 1 ký tự đặc biệt.");
+
     return errors;
   };
 
@@ -69,7 +76,11 @@ const SignupForm = () => {
     setIsLoading(true);
     try {
       const formattedBirthdate = birthdate
-        ? new Date(birthdate.year, birthdate.month - 1, birthdate.day).toISOString()
+        ? new Date(
+            birthdate.year,
+            birthdate.month - 1,
+            birthdate.day,
+          ).toISOString()
         : "";
 
       const genderMap: Record<string, string> = { Nam: "Male", Nữ: "Female" };
@@ -122,24 +133,21 @@ const SignupForm = () => {
         <Form autoComplete="off" className="space-y-5" onSubmit={onSubmit}>
           <Input
             fullWidth
-            label="Họ và tên *"
+            errorMessage={isNameInvalid ? "Vui lòng nhập họ và tên" : ""}
+            isInvalid={isNameInvalid}
+            label={
+              <>
+                Họ và tên <span className="text-red-500">*</span>
+              </>
+            }
             placeholder="Nhập họ và tên của bạn"
             size="lg"
             value={name}
             onValueChange={setName}
-            isInvalid={isNameInvalid}
-            errorMessage={isNameInvalid ? "Vui lòng nhập họ và tên" : ""}
           />
 
           <Input
             fullWidth
-            type="email"
-            label="Email *"
-            placeholder="Nhập email của bạn"
-            size="lg"
-            value={email}
-            onValueChange={setEmail}
-            isInvalid={isEmailInvalid}
             errorMessage={
               isEmailInvalid
                 ? email === ""
@@ -147,43 +155,57 @@ const SignupForm = () => {
                   : "Vui lòng nhập email hợp lệ"
                 : ""
             }
+            isInvalid={isEmailInvalid}
+            label={
+              <>
+                Email <span className="text-red-500">*</span>
+              </>
+            }
+            placeholder="Nhập email của bạn"
+            size="lg"
+            type="email"
+            value={email}
+            onValueChange={setEmail}
           />
 
           {/* Gender */}
-            <Select
-            label="Giới tính *"
+          <Select
+            fullWidth
+            className="text-base"
+            errorMessage={isGenderInvalid ? "Vui lòng chọn giới tính" : ""}
+            isInvalid={isGenderInvalid}
+            label={
+              <>
+                Giới tính <span className="text-red-500">*</span>
+              </>
+            }
             placeholder="Chọn giới tính"
             selectedKeys={gender ? [gender] : []}
-            onSelectionChange={(keys) => setGender(Array.from(keys)[0] as string)}
-            isInvalid={isGenderInvalid}
-            errorMessage={isGenderInvalid ? "Vui lòng chọn giới tính" : ""}
-            fullWidth
             size="lg"
-            className="text-base"
-            >
+            onSelectionChange={(keys) =>
+              setGender(Array.from(keys)[0] as string)
+            }
+          >
             <SelectItem key="Nam">Nam</SelectItem>
             <SelectItem key="Nữ">Nữ</SelectItem>
-            </Select>
+          </Select>
 
           <DatePicker
-            label="Ngày sinh *"
-            value={birthdate}
-            onChange={setBirthdate}
-            isInvalid={isBirthdateInvalid}
             errorMessage={
               isBirthdateInvalid ? "Vui lòng chọn ngày sinh" : undefined
             }
+            isInvalid={isBirthdateInvalid}
+            label={
+              <>
+                Ngày sinh <span className="text-red-500">*</span>
+              </>
+            }
+            value={birthdate}
+            onChange={setBirthdate}
           />
 
           <Input
             fullWidth
-            label="Mật khẩu *"
-            placeholder="Nhập mật khẩu"
-            size="lg"
-            type={isPasswordVisible ? "text" : "password"}
-            value={password}
-            onValueChange={setPassword}
-            isInvalid={isPasswordInvalid}
             endContent={
               <button
                 type="button"
@@ -201,17 +223,21 @@ const SignupForm = () => {
                 ? getPasswordErrors().map((e, i) => <div key={i}>{e}</div>)
                 : ""
             }
+            isInvalid={isPasswordInvalid}
+            label={
+              <>
+                Mật khẩu <span className="text-red-500">*</span>
+              </>
+            }
+            placeholder="Nhập mật khẩu"
+            size="lg"
+            type={isPasswordVisible ? "text" : "password"}
+            value={password}
+            onValueChange={setPassword}
           />
 
           <Input
             fullWidth
-            label="Xác nhận mật khẩu *"
-            placeholder="Nhập lại mật khẩu"
-            size="lg"
-            type={isConfirmPasswordVisible ? "text" : "password"}
-            value={confirmPassword}
-            onValueChange={setConfirmPassword}
-            isInvalid={isConfirmPasswordInvalid}
             endContent={
               <button
                 type="button"
@@ -233,6 +259,17 @@ const SignupForm = () => {
                   : "Mật khẩu không khớp."
                 : ""
             }
+            isInvalid={isConfirmPasswordInvalid}
+            label={
+              <>
+                Xác nhận mật khẩu <span className="text-red-500">*</span>
+              </>
+            }
+            placeholder="Nhập lại mật khẩu"
+            size="lg"
+            type={isConfirmPasswordVisible ? "text" : "password"}
+            value={confirmPassword}
+            onValueChange={setConfirmPassword}
           />
 
           <Button
@@ -248,9 +285,10 @@ const SignupForm = () => {
 
         {submitted && (
           <div className="mt-4 p-4 bg-green-100 border border-green-300 rounded-lg text-sm text-green-700">
-            ✅ Đăng ký thành công!  
+            ✅ Đăng ký thành công!
             <br />
-            Kiểm tra email <strong>{submitted.email}</strong> để kích hoạt tài khoản.
+            Kiểm tra email <strong>{submitted.email}</strong> để kích hoạt tài
+            khoản.
           </div>
         )}
 

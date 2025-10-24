@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { CheckCircleIcon, XCircleIcon, ClockIcon } from "@heroicons/react/24/solid";
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  ClockIcon,
+} from "@heroicons/react/24/solid";
 import { Button, Spinner } from "@heroui/react";
+
 import { paymentApi } from "@/api";
 
 interface PaymentStatus {
@@ -9,7 +14,7 @@ interface PaymentStatus {
     _id: string;
     appointmentId: string;
     amount: number;
-    status: 'Pending' | 'Completed' | 'Failed' | 'Cancelled';
+    status: "Pending" | "Completed" | "Failed" | "Cancelled";
     QRurl?: string;
     expiresAt?: string;
   };
@@ -58,6 +63,7 @@ const PaymentPage = () => {
       try {
         setLoading(true);
         const res = await paymentApi.checkPaymentStatus(paymentId);
+
         setPaymentData(res.data);
         setError(null);
 
@@ -85,15 +91,19 @@ const PaymentPage = () => {
   // Polling để check status thanh toán mỗi 5 giây
   useEffect(() => {
     // Chỉ polling nếu thanh toán chưa thành công
-    if (!paymentData?.confirmed && paymentData?.payment?.status === 'Pending') {
+    if (!paymentData?.confirmed && paymentData?.payment?.status === "Pending") {
       const interval = setInterval(async () => {
         try {
           setCheckingStatus(true);
           const res = await paymentApi.checkPaymentStatus(paymentId);
+
           setPaymentData(res.data);
           setPollingCount((prev) => prev + 1);
 
-          console.log("🔄 Check #" + (pollingCount + 1) + " - Status:", res.data?.payment?.status);
+          console.log(
+            "🔄 Check #" + (pollingCount + 1) + " - Status:",
+            res.data?.payment?.status,
+          );
 
           // Nếu thanh toán thành công, stop polling và redirect
           if (res.data?.confirmed) {
@@ -151,7 +161,7 @@ const PaymentPage = () => {
   }
 
   // Success state - thanh toán đã hoàn tất
-  if (paymentData.confirmed && paymentData.payment.status === 'Completed') {
+  if (paymentData.confirmed && paymentData.payment.status === "Completed") {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 p-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
@@ -167,7 +177,8 @@ const PaymentPage = () => {
           </p>
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-green-800">
-              ✅ Đơn hàng của bạn đã được lưu và sẽ được xử lý ngay. Hãy chờ liên hệ từ phòng khám.
+              ✅ Đơn hàng của bạn đã được lưu và sẽ được xử lý ngay. Hãy chờ
+              liên hệ từ phòng khám.
             </p>
           </div>
           <Button
@@ -198,7 +209,9 @@ const PaymentPage = () => {
 
         {/* Amount */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-gray-600 text-center mb-1">Số tiền cần thanh toán</p>
+          <p className="text-sm text-gray-600 text-center mb-1">
+            Số tiền cần thanh toán
+          </p>
           <p className="text-3xl font-bold text-blue-600 text-center">
             {formatCurrency(paymentData.payment.amount)} VND
           </p>
@@ -208,9 +221,9 @@ const PaymentPage = () => {
         {paymentData.payment.QRurl ? (
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <img
-              src={paymentData.payment.QRurl}
               alt="Payment QR Code"
               className="w-full rounded-lg"
+              src={paymentData.payment.QRurl}
             />
             <p className="text-xs text-gray-500 text-center mt-2">
               Mã QR từ Sepay Banking
@@ -239,8 +252,10 @@ const PaymentPage = () => {
         <div className="flex items-center justify-center gap-2 mb-6">
           {checkingStatus ? (
             <>
-              <Spinner size="sm" color="primary" />
-              <span className="text-sm text-gray-600">Đang kiểm tra thanh toán...</span>
+              <Spinner color="primary" size="sm" />
+              <span className="text-sm text-gray-600">
+                Đang kiểm tra thanh toán...
+              </span>
             </>
           ) : (
             <span className="text-xs text-gray-500">
@@ -253,7 +268,8 @@ const PaymentPage = () => {
         {paymentData.payment.expiresAt && (
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-6 text-center">
             <p className="text-xs text-orange-800">
-              ⏰ Hạn thanh toán: {new Date(paymentData.payment.expiresAt).toLocaleString("vi-VN")}
+              ⏰ Hạn thanh toán:{" "}
+              {new Date(paymentData.payment.expiresAt).toLocaleString("vi-VN")}
             </p>
           </div>
         )}
@@ -261,10 +277,12 @@ const PaymentPage = () => {
         {/* Manual Check Button */}
         <Button
           className="w-full bg-blue-500 text-white hover:bg-blue-600"
+          isDisabled={checkingStatus}
           onPress={async () => {
             try {
               setCheckingStatus(true);
               const res = await paymentApi.checkPaymentStatus(paymentId);
+
               setPaymentData(res.data);
               if (res.data?.confirmed) {
                 navigate("/patient/appointments");
@@ -273,7 +291,6 @@ const PaymentPage = () => {
               setCheckingStatus(false);
             }
           }}
-          isDisabled={checkingStatus}
         >
           {checkingStatus ? "Đang kiểm tra..." : "Kiểm tra ngay"}
         </Button>

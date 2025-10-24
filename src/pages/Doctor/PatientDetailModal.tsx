@@ -9,6 +9,7 @@ import {
   Spinner,
   Chip,
 } from "@heroui/react";
+
 import { doctorApi, type PatientDetail } from "@/api";
 
 interface PatientDetailModalProps {
@@ -40,7 +41,8 @@ const PatientDetailModal = ({
       setError(null);
 
       // Bước 1: Lấy appointment detail để lấy patientId
-      const appointmentRes = await doctorApi.getAppointmentDetail(appointmentId);
+      const appointmentRes =
+        await doctorApi.getAppointmentDetail(appointmentId);
 
       if (!appointmentRes.success || !appointmentRes.data) {
         throw new Error("Không thể lấy thông tin lịch hẹn");
@@ -82,8 +84,10 @@ const PatientDetailModal = ({
   };
 
   const formatDate = (dateString: string): string => {
-    if (!dateString || dateString === "N/A" || dateString === "Trống") return "Trống";
+    if (!dateString || dateString === "N/A" || dateString === "Trống")
+      return "Trống";
     const date = new Date(dateString);
+
     return date.toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "long",
@@ -92,7 +96,7 @@ const PatientDetailModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} scrollBehavior="inside" size="2xl" onClose={onClose}>
       <ModalContent>
         {(onClose) => (
           <>
@@ -135,10 +139,14 @@ const PatientDetailModal = ({
                       <div className="flex">
                         <span className="text-gray-600 w-40">Trạng thái:</span>
                         <Chip
+                          color={
+                            patient.status === "Active" ? "success" : "default"
+                          }
                           size="sm"
-                          color={patient.status === "Active" ? "success" : "default"}
                         >
-                          {patient.status === "Active" ? "Đang hoạt động" : patient.status}
+                          {patient.status === "Active"
+                            ? "Đang hoạt động"
+                            : patient.status}
                         </Chip>
                       </div>
                     </div>
@@ -155,8 +163,12 @@ const PatientDetailModal = ({
                         <span className="font-medium">{patient.email}</span>
                       </div>
                       <div className="flex">
-                        <span className="text-gray-600 w-40">Số điện thoại:</span>
-                        <span className="font-medium">{patient.phoneNumber}</span>
+                        <span className="text-gray-600 w-40">
+                          Số điện thoại:
+                        </span>
+                        <span className="font-medium">
+                          {patient.phoneNumber}
+                        </span>
                       </div>
                       <div className="flex">
                         <span className="text-gray-600 w-40">Địa chỉ:</span>
@@ -166,40 +178,51 @@ const PatientDetailModal = ({
                   </div>
 
                   {/* Emergency Contact */}
-                  {patient.emergencyContact && patient.emergencyContact !== "N/A" && patient.emergencyContact !== "Trống" && (
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-700 mb-3">
-                        Liên hệ khẩn cấp
-                      </h4>
-                      {typeof patient.emergencyContact === "object" ? (
-                        <div className="space-y-2">
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Họ tên:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.name || "Trống"}
-                            </span>
+                  {patient.emergencyContact &&
+                    patient.emergencyContact !== "N/A" &&
+                    patient.emergencyContact !== "Trống" && (
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-gray-700 mb-3">
+                          Liên hệ khẩn cấp
+                        </h4>
+                        {typeof patient.emergencyContact === "object" ? (
+                          <div className="space-y-2">
+                            <div className="flex">
+                              <span className="text-gray-600 w-40">
+                                Họ tên:
+                              </span>
+                              <span className="font-medium">
+                                {patient.emergencyContact.name || "Trống"}
+                              </span>
+                            </div>
+                            <div className="flex">
+                              <span className="text-gray-600 w-40">
+                                Số điện thoại:
+                              </span>
+                              <span className="font-medium">
+                                {patient.emergencyContact.phone || "Trống"}
+                              </span>
+                            </div>
+                            <div className="flex">
+                              <span className="text-gray-600 w-40">
+                                Mối quan hệ:
+                              </span>
+                              <span className="font-medium">
+                                {patient.emergencyContact.relationship ||
+                                  "Trống"}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Số điện thoại:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.phone || "Trống"}
-                            </span>
-                          </div>
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Mối quan hệ:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.relationship || "Trống"}
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-gray-600">Chưa có thông tin</p>
-                      )}
-                    </div>
-                  )}
+                        ) : (
+                          <p className="text-gray-600">Chưa có thông tin</p>
+                        )}
+                      </div>
+                    )}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">Không có dữ liệu</p>
+                <p className="text-center text-gray-500 py-8">
+                  Không có dữ liệu
+                </p>
               )}
             </ModalBody>
             <ModalFooter>
@@ -215,4 +238,3 @@ const PatientDetailModal = ({
 };
 
 export default PatientDetailModal;
-

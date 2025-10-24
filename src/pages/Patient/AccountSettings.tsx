@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Input, Button, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { authApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -41,37 +42,45 @@ const AccountSettings = () => {
 
   // Load user data from context
   useEffect(() => {
-    console.log('🔍 [AccountSettings] User from context:', user);
+    console.log("🔍 [AccountSettings] User from context:", user);
     if (user) {
       setFullName(user.fullName || "");
       setEmail(user.email || "");
       setPhone(user.phone || user.phoneNumber || "");
       setAddress(user.address || "");
       setGender(user.gender || "");
-      
+
       // Format date for input type="date" (YYYY-MM-DD)
       if (user.dateOfBirth || user.dob) {
         const dob = new Date(user.dateOfBirth || user.dob || "");
+
         if (!isNaN(dob.getTime())) {
-          const formattedDate = dob.toISOString().split('T')[0];
+          const formattedDate = dob.toISOString().split("T")[0];
+
           setBirthDate(formattedDate);
         }
       }
 
       // Load emergency contact
       const emergencyContact = (user as any).emergencyContact;
-      console.log('🔍 [AccountSettings] EmergencyContact from user:', emergencyContact);
+
+      console.log(
+        "🔍 [AccountSettings] EmergencyContact from user:",
+        emergencyContact,
+      );
       if (emergencyContact) {
-        console.log('🔍 [AccountSettings] Loading emergency contact fields:', {
+        console.log("🔍 [AccountSettings] Loading emergency contact fields:", {
           name: emergencyContact.name,
           phone: emergencyContact.phone,
-          relationship: emergencyContact.relationship
+          relationship: emergencyContact.relationship,
         });
         setEmergencyName(emergencyContact.name || "");
         setEmergencyPhone(emergencyContact.phone || "");
         setEmergencyRelationship(emergencyContact.relationship || "");
       } else {
-        console.log('🔍 [AccountSettings] No emergencyContact found, clearing fields');
+        console.log(
+          "🔍 [AccountSettings] No emergencyContact found, clearing fields",
+        );
         setEmergencyName("");
         setEmergencyPhone("");
         setEmergencyRelationship("");
@@ -81,33 +90,45 @@ const AccountSettings = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!fullName.trim()) {
       toast.error("Vui lòng nhập họ tên");
+
       return;
     }
 
     // Validate phone number - chỉ cho phép số
     const phoneRegex = /^[0-9]*$/;
+
     if (phone.trim() && !phoneRegex.test(phone.trim())) {
       toast.error("Số điện thoại chỉ được nhập số");
+
       return;
     }
 
     if (emergencyPhone.trim() && !phoneRegex.test(emergencyPhone.trim())) {
       toast.error("Số điện thoại người liên hệ khẩn cấp chỉ được nhập số");
+
       return;
     }
 
     // Validate phone length (optional - thường là 10-11 số)
-    if (phone.trim() && (phone.trim().length < 10 || phone.trim().length > 11)) {
+    if (
+      phone.trim() &&
+      (phone.trim().length < 10 || phone.trim().length > 11)
+    ) {
       toast.error("Số điện thoại phải có 10-11 chữ số");
+
       return;
     }
 
-    if (emergencyPhone.trim() && (emergencyPhone.trim().length < 10 || emergencyPhone.trim().length > 11)) {
+    if (
+      emergencyPhone.trim() &&
+      (emergencyPhone.trim().length < 10 || emergencyPhone.trim().length > 11)
+    ) {
       toast.error("Số điện thoại người liên hệ khẩn cấp phải có 10-11 chữ số");
+
       return;
     }
 
@@ -122,11 +143,11 @@ const AccountSettings = () => {
       if (phone.trim()) {
         updateData.phoneNumber = phone.trim();
       }
-      
+
       if (address.trim()) {
         updateData.address = address.trim();
       }
-      
+
       if (gender) {
         updateData.gender = gender;
       }
@@ -136,16 +157,27 @@ const AccountSettings = () => {
       }
 
       // Add emergency contact chỉ khi CẢ 3 fields đều có giá trị (backend require all)
-      if (emergencyName.trim() && emergencyPhone.trim() && emergencyRelationship.trim()) {
+      if (
+        emergencyName.trim() &&
+        emergencyPhone.trim() &&
+        emergencyRelationship.trim()
+      ) {
         updateData.emergencyContact = {
           name: emergencyName.trim(),
           phone: emergencyPhone.trim(),
-          relationship: emergencyRelationship.trim()
+          relationship: emergencyRelationship.trim(),
         };
-      } else if (emergencyName.trim() || emergencyPhone.trim() || emergencyRelationship.trim()) {
+      } else if (
+        emergencyName.trim() ||
+        emergencyPhone.trim() ||
+        emergencyRelationship.trim()
+      ) {
         // Nếu chỉ điền 1-2 field → warning
-        toast.error("Vui lòng điền đầy đủ thông tin liên hệ khẩn cấp (Họ tên, SĐT, Mối quan hệ) hoặc bỏ trống tất cả");
+        toast.error(
+          "Vui lòng điền đầy đủ thông tin liên hệ khẩn cấp (Họ tên, SĐT, Mối quan hệ) hoặc bỏ trống tất cả",
+        );
         setIsLoading(false);
+
         return;
       }
 
@@ -154,11 +186,13 @@ const AccountSettings = () => {
       if (response.success && response.data) {
         // Ensure _id is present for AuthUser type
         const userData = response.data.user;
+
         if (userData && user) {
           const updatedUser = {
             ...userData,
-            _id: userData.id || userData._id || user._id
+            _id: userData.id || userData._id || user._id,
           };
+
           updateUser(updatedUser);
         }
         toast.success(response.message || "Cập nhật thông tin thành công!");
@@ -167,7 +201,9 @@ const AccountSettings = () => {
       }
     } catch (error: any) {
       console.error("Lỗi cập nhật profile:", error);
-      toast.error(error.message || "Không thể cập nhật thông tin. Vui lòng thử lại");
+      toast.error(
+        error.message || "Không thể cập nhật thông tin. Vui lòng thử lại",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -177,9 +213,7 @@ const AccountSettings = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
-          Hồ sơ cá nhân
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Hồ sơ cá nhân</h1>
         <p className="text-gray-600 mb-8">
           Quản lý thông tin, địa chỉ liên lạc của bạn
         </p>
@@ -254,16 +288,17 @@ const AccountSettings = () => {
               <Input
                 label="Số điện thoại"
                 labelPlacement="outside"
+                maxLength={11}
                 placeholder="Nhập số điện thoại (10-11 số)"
                 type="tel"
                 value={phone}
                 variant="bordered"
                 onValueChange={(value) => {
                   // Chỉ cho phép nhập số
-                  const numericValue = value.replace(/[^0-9]/g, '');
+                  const numericValue = value.replace(/[^0-9]/g, "");
+
                   setPhone(numericValue);
                 }}
-                maxLength={11}
               />
 
               <Input
@@ -304,28 +339,32 @@ const AccountSettings = () => {
               <Input
                 label="Số điện thoại"
                 labelPlacement="outside"
+                maxLength={11}
                 placeholder="Nhập số điện thoại (10-11 số)"
                 type="tel"
                 value={emergencyPhone}
                 variant="bordered"
                 onValueChange={(value) => {
                   // Chỉ cho phép nhập số
-                  const numericValue = value.replace(/[^0-9]/g, '');
+                  const numericValue = value.replace(/[^0-9]/g, "");
+
                   setEmergencyPhone(numericValue);
                 }}
-                maxLength={11}
               />
 
               <Select
                 label="Mối quan hệ"
                 labelPlacement="outside"
                 placeholder="Chọn mối quan hệ"
-                selectedKeys={emergencyRelationship ? [emergencyRelationship] : []}
+                selectedKeys={
+                  emergencyRelationship ? [emergencyRelationship] : []
+                }
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   setEmergencyRelationship(selectedKey);
                 }}
-                variant="bordered"
               >
                 {relationshipOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>

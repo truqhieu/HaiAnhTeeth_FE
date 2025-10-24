@@ -39,11 +39,13 @@ const VerifyEmail = () => {
           setStatus("error");
           setMessage("Link xác thực không hợp lệ hoặc đã hết hạn.");
         }
+
         return;
       }
 
       try {
         const result = await authApi.verifyEmail(token, email);
+
         console.log("Kết quả verify:", result);
 
         if (!isMounted.current) return;
@@ -57,14 +59,17 @@ const VerifyEmail = () => {
 
           if (result.data?.token && result.data?.user) {
             const { user, token } = result.data;
+
             login(user as any, token);
- 
+
             // ✅ Redirect ngay lập tức với window.location để reset URL
             redirectTimeout.current = setTimeout(() => {
               if (!isMounted.current) return;
               const role = user?.role;
+
               if (role === "Admin") window.location.href = "/admin/accounts";
-              else if (role === "Manager") window.location.href = "/manager/rooms";
+              else if (role === "Manager")
+                window.location.href = "/manager/rooms";
               else window.location.href = "/";
             }, 2000);
           } else {
@@ -72,10 +77,12 @@ const VerifyEmail = () => {
               if (isMounted.current) window.location.href = "/";
             }, 3000);
           }
+
           return;
         }
 
         const msg = result.message?.toLowerCase() || "";
+
         if (msg.includes("đã xác thực") || msg.includes("already verified")) {
           setStatus("success");
           setMessage("Email của bạn đã được xác thực trước đó!");
@@ -83,15 +90,19 @@ const VerifyEmail = () => {
 
           if (result.data?.token && result.data?.user) {
             const { user, token } = result.data;
+
             login(user as any, token);
             redirectTimeout.current = setTimeout(() => {
               if (!isMounted.current) return;
               const role = user?.role;
+
               if (role === "Admin") window.location.href = "/admin/accounts";
-              else if (role === "Manager") window.location.href = "/manager/rooms";
+              else if (role === "Manager")
+                window.location.href = "/manager/rooms";
               else window.location.href = "/";
             }, 2000);
           }
+
           return;
         }
 
@@ -103,6 +114,7 @@ const VerifyEmail = () => {
               setMessage(result.message || "Link xác thực đã hết hạn");
             }
           }, 3000);
+
           return;
         }
 
@@ -143,6 +155,7 @@ const VerifyEmail = () => {
     redirectTimeout.current = setTimeout(() => {
       if (isMounted.current) {
         const role = currentUser?.role;
+
         if (role === "Admin") window.location.href = "/admin/accounts";
         else if (role === "Manager") window.location.href = "/manager/rooms";
         else window.location.href = "/";
@@ -196,7 +209,7 @@ const VerifyEmail = () => {
 
             <Button
               className="w-full bg-green-500 text-white hover:bg-green-600"
-              onPress={() => window.location.href = "/"}
+              onPress={() => (window.location.href = "/")}
             >
               Về trang chủ
             </Button>
@@ -215,7 +228,7 @@ const VerifyEmail = () => {
             <div className="space-y-3">
               <Button
                 className="w-full bg-blue-500 text-white hover:bg-blue-600"
-                onPress={() => window.location.href = "/"}
+                onPress={() => (window.location.href = "/")}
               >
                 Về trang chủ
               </Button>
@@ -250,7 +263,7 @@ const VerifyEmail = () => {
 
             <Button
               className="w-full bg-blue-500 text-white hover:bg-blue-600"
-              onPress={() => window.location.href = "/"}
+              onPress={() => (window.location.href = "/")}
             >
               Về trang chủ & Đăng ký lại
             </Button>

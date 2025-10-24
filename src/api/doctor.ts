@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse } from './index';
+import { authenticatedApiCall, ApiResponse } from "./index";
 
 export interface DoctorAppointment {
   appointmentId: string;
@@ -41,24 +41,38 @@ export interface PatientDetail {
 
 export const doctorApi = {
   // Lấy lịch khám của bác sĩ (2 tuần)
-  getAppointmentsSchedule: async (): Promise<ApiResponse<DoctorAppointment[]>> => {
-    return authenticatedApiCall<DoctorAppointment[]>('/doctor/appointments-schedule', {
-      method: 'GET',
-    });
+  getAppointmentsSchedule: async (): Promise<
+    ApiResponse<DoctorAppointment[]>
+  > => {
+    return authenticatedApiCall<DoctorAppointment[]>(
+      "/doctor/appointments-schedule",
+      {
+        method: "GET",
+      },
+    );
   },
 
   // Lấy chi tiết một lịch hẹn
-  getAppointmentDetail: async (appointmentId: string): Promise<ApiResponse<AppointmentDetail>> => {
-    return authenticatedApiCall<AppointmentDetail>(`/doctor/appointments/${appointmentId}`, {
-      method: 'GET',
-    });
+  getAppointmentDetail: async (
+    appointmentId: string,
+  ): Promise<ApiResponse<AppointmentDetail>> => {
+    return authenticatedApiCall<AppointmentDetail>(
+      `/doctor/appointments/${appointmentId}`,
+      {
+        method: "GET",
+      },
+    );
   },
 
   // Lấy thông tin chi tiết bệnh nhân
-  getPatientDetail: async (patientId: string): Promise<ApiResponse<PatientDetail>> => {
-    return authenticatedApiCall<PatientDetail>(`/doctor/patients/${patientId}`, {
-      method: 'GET',
-    });
+  getPatientDetail: async (
+    patientId: string,
+  ): Promise<ApiResponse<PatientDetail>> => {
+    return authenticatedApiCall<PatientDetail>(
+      `/doctor/patients/${patientId}`,
+      {
+        method: "GET",
+      },
+    );
   },
 };
-

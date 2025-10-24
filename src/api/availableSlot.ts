@@ -1,8 +1,8 @@
 // src/api/availableSlot.ts
 export interface GetAvailableSlotsParams {
-  doctorUserId?: string;   // có thể bỏ trống nếu FE chỉ cần xem theo ngày
+  doctorUserId?: string; // có thể bỏ trống nếu FE chỉ cần xem theo ngày
   serviceId: string;
-  date: string;            // format: YYYY-MM-DD
+  date: string; // format: YYYY-MM-DD
 }
 
 export interface AvailableSlot {
@@ -35,12 +35,15 @@ export interface GetAvailableSlotsResponse {
  * Backend endpoint: GET /api/available-slots
  */
 export const availableSlotApi = {
-  get: async (params: GetAvailableSlotsParams): Promise<GetAvailableSlotsResponse> => {
+  get: async (
+    params: GetAvailableSlotsParams,
+  ): Promise<GetAvailableSlotsResponse> => {
     try {
       const queryParams = new URLSearchParams();
 
       // Thêm các tham số có giá trị
-      if (params.doctorUserId) queryParams.append("doctorUserId", params.doctorUserId);
+      if (params.doctorUserId)
+        queryParams.append("doctorUserId", params.doctorUserId);
       if (params.serviceId) queryParams.append("serviceId", params.serviceId);
       if (params.date) queryParams.append("date", params.date);
 
@@ -54,7 +57,7 @@ export const availableSlotApi = {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -62,9 +65,11 @@ export const availableSlotApi = {
       }
 
       const data: GetAvailableSlotsResponse = await response.json();
+
       return data;
     } catch (error: any) {
       console.error("❌ Error fetching available slots:", error);
+
       return {
         success: false,
         data: null,
