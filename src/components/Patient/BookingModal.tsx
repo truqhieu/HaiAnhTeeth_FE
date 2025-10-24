@@ -111,87 +111,105 @@ const BookingModal: React.FC<BookingModalProps> = ({
   }, [isOpen, user, formData.appointmentFor]);
 
   // === Fetch available slots for date ===
-  const fetchAvailableSlots = useCallback(async (serviceId: string, date: string) => {
-    // ⭐ Cancel previous request nếu có
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // ⭐ Create new abort controller
-    abortControllerRef.current = new AbortController();
-    
-    setIsLoadingSlots(true);
-    setErrorMessage(null);
-    try {
-      console.log(`📡 Fetching slots for ${serviceId} on ${date}, appointmentFor=${formData.appointmentFor}`);
-      
-      const slotsRes = await generateByDateApi.get({
-        serviceId,
-        date,
-        breakAfterMinutes: 10,
-        appointmentFor: formData.appointmentFor,
-        // ⭐ Nếu đặt cho người khác, gửi thêm fullName + email để backend validate conflict
-        ...(formData.appointmentFor === 'other' && {
-          customerFullName: formData.fullName,
-          customerEmail: formData.email,
-        }),
-      });
-
-      console.log("📡 Slots API Response:", slotsRes);
-      console.log("✅ Success:", slotsRes.success);
-      console.log("📊 Data:", slotsRes.data);
-
-      if (!slotsRes.success) {
-        throw new Error(slotsRes.message || "Không thể tải khung giờ trống");
+  const fetchAvailableSlots = useCallback(
+    async (serviceId: string, date: string, appointmentFor: "self" | "other") => {
+      // ⭐ Cancel previous request nếu có
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
 
-      const allSlots = (slotsRes.data?.slots || []).map((slot: any) => ({
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        displayTime: slot.displayTime || `${slot.startTime.slice(11, 16)} - ${slot.endTime.slice(11, 16)}`,
-      }));
+      // ⭐ Create new abort controller
+      abortControllerRef.current = new AbortController();
 
-      // Deduplicate slots - chỉ giữ các khung giờ unique
-      // (vì có thể nhiều bác sĩ có cùng khung giờ)
-      const uniqueSlotsMap = new Map<string, ExtendedSlot>();
-      allSlots.forEach((slot: ExtendedSlot) => {
-        const key = `${slot.startTime}-${slot.endTime}`;
-        if (!uniqueSlotsMap.has(key)) {
-          uniqueSlotsMap.set(key, slot);
+      setIsLoadingSlots(true);
+      setErrorMessage(null);
+      try {
+        console.log(
+          `📡 Fetching slots for ${serviceId} on ${date}, appointmentFor=${appointmentFor}`
+        );
+
+        const slotsRes = await generateByDateApi.get({
+          serviceId,
+          date,
+          breakAfterMinutes: 10,
+          appointmentFor: appointmentFor,
+          // ⭐ THÊM: Gửi customerFullName + customerEmail CHỈ khi appointmentFor === 'other'
+          // Khi appointmentFor === 'self', KHÔNG gửi để backend biết loại bỏ exclusive doctors
+          ...(appointmentFor === "other" &&
+            formData.fullName &&
+            formData.email && {
+              customerFullName: formData.fullName,
+              customerEmail: formData.email,
+            }),
+        });
+
+        console.log("📡 Slots API Response:", slotsRes);
+        console.log("✅ Success:", slotsRes.success);
+        console.log("📊 Data:", slotsRes.data);
+
+        if (!slotsRes.success) {
+          throw new Error(slotsRes.message || "Không thể tải khung giờ trống");
         }
-      });
 
-      const generatedSlots = Array.from(uniqueSlotsMap.values());
-      
-      console.log("🕐 Total Slots from API:", allSlots.length);
-      console.log("🕐 Unique Slots:", generatedSlots.length);
-      setSlots(generatedSlots);
+        const allSlots = (slotsRes.data?.slots || []).map((slot: any) => ({
+          startTime: slot.startTime,
+          endTime: slot.endTime,
+          displayTime:
+            slot.displayTime ||
+            `${slot.startTime.slice(11, 16)} - ${slot.endTime.slice(11, 16)}`,
+        }));
 
-      // Reset selections
-      setFormData((prev) => ({
-        ...prev,
-        selectedSlot: null,
-        doctorUserId: "",
-        doctorScheduleId: null,
-      }));
-      setAvailableDoctors([]);
+        // Deduplicate slots - chỉ giữ các khung giờ unique
+        // (vì có thể nhiều bác sĩ có cùng khung giờ)
+        const uniqueSlotsMap = new Map<string, ExtendedSlot>();
+        allSlots.forEach((slot: ExtendedSlot) => {
+          const key = `${slot.startTime}-${slot.endTime}`;
+          if (!uniqueSlotsMap.has(key)) {
+            uniqueSlotsMap.set(key, slot);
+          }
+        });
 
-    } catch (err: any) {
-      console.error("Error fetching available slots:", err);
-      setErrorMessage(err.message || "Lỗi tải khung giờ trống");
-      setSlots([]);
-      setAvailableDoctors([]);
-    } finally {
-      setIsLoadingSlots(false);
-    }
-  }, [formData.appointmentFor, formData.fullName, formData.email]);
+        const generatedSlots = Array.from(uniqueSlotsMap.values());
 
-  // Trigger slot fetching when service or date changes
+        console.log("🕐 Total Slots from API:", allSlots.length);
+        console.log("🕐 Unique Slots:", generatedSlots.length);
+        setSlots(generatedSlots);
+
+        // Reset selections
+        setFormData((prev) => ({
+          ...prev,
+          selectedSlot: null,
+          doctorUserId: "",
+          doctorScheduleId: null,
+        }));
+        setAvailableDoctors([]);
+      } catch (err: any) {
+        console.error("Error fetching available slots:", err);
+        setErrorMessage(err.message || "Lỗi tải khung giờ trống");
+        setSlots([]);
+        setAvailableDoctors([]);
+      } finally {
+        setIsLoadingSlots(false);
+      }
+    },
+    [formData.fullName, formData.email]
+  );
+
+  // Trigger slot fetching when service, date, or appointmentFor changes
   useEffect(() => {
     if (formData.serviceId && formData.date) {
-      fetchAvailableSlots(formData.serviceId, formData.date);
+      fetchAvailableSlots(
+        formData.serviceId,
+        formData.date,
+        formData.appointmentFor
+      );
     }
-  }, [formData.serviceId, formData.date, formData.appointmentFor, fetchAvailableSlots]);
+  }, [
+    formData.serviceId,
+    formData.date,
+    formData.appointmentFor,
+    fetchAvailableSlots,
+  ]);
 
   // === Fetch doctors for selected slot ===
   const fetchDoctorsForSlot = useCallback(
@@ -212,9 +230,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
           endTime: slot.endTime,
           appointmentFor: formData.appointmentFor,
           // ⭐ Nếu đặt cho người khác, gửi userId để backend check exclusive doctors
-          ...(formData.appointmentFor === 'other' && (user?._id || user?.id) && {
-            userId: user?._id || user?.id,
-          }),
+          ...(formData.appointmentFor === "other" &&
+            (user?._id || user?.id) && {
+              userId: user?._id || user?.id,
+            }),
         });
 
         if (!doctorRes.success) {
@@ -232,7 +251,6 @@ const BookingModal: React.FC<BookingModalProps> = ({
         if (doctors.length === 0) {
           setErrorMessage("Không có bác sĩ nào rảnh trong khung giờ này");
         }
-
       } catch (err: any) {
         console.error("Error fetching doctors for slot:", err);
         setErrorMessage(err.message || "Lỗi tải danh sách bác sĩ");
@@ -241,7 +259,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
         setLoadingDoctors(false);
       }
     },
-    []
+    [formData.appointmentFor, user]
   );
 
   // === Handle slot select ===
