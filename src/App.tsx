@@ -1,7 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { Navbar } from "@/components";
 
+import { Navbar } from "@/components";
 import DefaultLayout from "@/layouts/default";
 import IndexPage from "@/pages/Public/index";
 import AboutPage from "@/pages/Public/about";
@@ -9,7 +9,6 @@ import LoginPage from "@/pages/Public/LoginPage";
 import SignupPage from "@/pages/Public/SignupPage";
 import ResetPassword from "@/pages/Public/reset-password";
 import VerifyEmail from "@/pages/Public/verify-email";
-import Dashboard from "@/pages/Patient/Dashboard";
 import AccountSettings from "@/pages/Patient/AccountSettings";
 import Complaints from "@/pages/Patient/Complaints";
 import Appointments from "@/pages/Patient/Appointments";
@@ -50,12 +49,11 @@ function App() {
         {/* 👇 Routes configuration */}
         <Routes>
           {/* Auth Pages */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+          <Route element={<LoginPage />} path="/login" />
+          <Route element={<SignupPage />} path="/signup" />
 
           {/* Admin */}
           <Route
-            path="/admin/*"
             element={
               <AdminLayout>
                 <Routes>
@@ -63,11 +61,11 @@ function App() {
                 </Routes>
               </AdminLayout>
             }
+            path="/admin/*"
           />
 
           {/* Manager */}
           <Route
-            path="/manager/*"
             element={
               <ManagerLayout>
                 <Routes>
@@ -77,11 +75,11 @@ function App() {
                 </Routes>
               </ManagerLayout>
             }
+            path="/manager/*"
           />
 
           {/* Staff */}
           <Route
-            path="/staff/*"
             element={
               <StaffLayout>
                 <Routes>
@@ -89,11 +87,11 @@ function App() {
                 </Routes>
               </StaffLayout>
             }
+            path="/staff/*"
           />
 
           {/* Doctor */}
           <Route
-            path="/doctor/*"
             element={
               <DoctorLayout>
                 <Routes>
@@ -101,11 +99,11 @@ function App() {
                 </Routes>
               </DoctorLayout>
             }
+            path="/doctor/*"
           />
 
           {/* Public and Patient Routes with Navbar and Footer */}
           <Route
-            path="/*"
             element={
               <>
                 <Navbar />
@@ -114,10 +112,7 @@ function App() {
                     <Route element={<IndexPage />} path="/" />
                     <Route element={<AboutPage />} path="/about" />
                     <Route element={<VerifyEmail />} path="/verify-email" />
-                    <Route
-                      element={<ResetPassword />}
-                      path="/reset-password"
-                    />
+                    <Route element={<ResetPassword />} path="/reset-password" />
                     <Route
                       element={<Appointments />}
                       path="/patient/appointments"
@@ -142,6 +137,7 @@ function App() {
                 </DefaultLayout>
               </>
             }
+            path="/*"
           />
         </Routes>
       </BookingModalProvider>

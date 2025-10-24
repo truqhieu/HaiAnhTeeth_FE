@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { AddServiceModal, EditServiceModal } from "@/components";
 import { managerApi, ManagerService } from "@/api";
 import { Service } from "@/types";
@@ -27,14 +28,14 @@ const ServiceManagement = () => {
 
   // Category mapping từ backend enum sang tiếng Việt
   const categoryMap: { [key: string]: string } = {
-    'Examination': 'Khám',
-    'Consultation': 'Tư vấn'
+    Examination: "Khám",
+    Consultation: "Tư vấn",
   };
 
   // Reverse mapping để gửi lên backend
   const categoryReverseMap: { [key: string]: string } = {
-    'Khám': 'Examination',
-    'Tư vấn': 'Consultation'
+    Khám: "Examination",
+    "Tư vấn": "Consultation",
   };
 
   // Fetch services from API
@@ -44,30 +45,43 @@ const ServiceManagement = () => {
       const response = await managerApi.getAllServices({
         page: currentPage,
         limit: itemsPerPage,
-        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Inactive') : undefined,
-        category: categoryFilter !== 'all' ? categoryReverseMap[categoryFilter] : undefined,
+        status:
+          statusFilter !== "all"
+            ? statusFilter === "active"
+              ? "Active"
+              : "Inactive"
+            : undefined,
+        category:
+          categoryFilter !== "all"
+            ? categoryReverseMap[categoryFilter]
+            : undefined,
         search: searchTerm || undefined,
       });
 
       if (response.status && response.data) {
         // Map API data to local Service interface
-        const mappedServices: Service[] = response.data.map((service: ManagerService) => ({
-          id: service._id,
-          name: service.serviceName,
-          description: service.description,
-          price: service.price,
-          duration: service.durationMinutes,
-          category: categoryMap[service.category] || service.category,
-          status: service.status === 'Active' ? 'active' as const : 'inactive' as const,
-        }));
-        
+        const mappedServices: Service[] = response.data.map(
+          (service: ManagerService) => ({
+            id: service._id,
+            name: service.serviceName,
+            description: service.description,
+            price: service.price,
+            duration: service.durationMinutes,
+            category: categoryMap[service.category] || service.category,
+            status:
+              service.status === "Active"
+                ? ("active" as const)
+                : ("inactive" as const),
+          }),
+        );
+
         setServices(mappedServices);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 1);
       }
     } catch (error: any) {
-      console.error('❌ Error fetching services:', error);
-      toast.error(error.message || 'Không thể tải danh sách dịch vụ');
+      console.error("❌ Error fetching services:", error);
+      toast.error(error.message || "Không thể tải danh sách dịch vụ");
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +90,6 @@ const ServiceManagement = () => {
   // Fetch data when component mounts or filters change
   useEffect(() => {
     fetchServices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter, categoryFilter]);
 
   // Debounce search term
@@ -90,17 +103,16 @@ const ServiceManagement = () => {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   const statusOptions = [
-    { key: "all", label: "Tất cả" },
+    { key: "all", label: "Tất cả trạng thái" },
     { key: "active", label: "Hoạt động" },
     { key: "inactive", label: "Không hoạt động" },
   ];
 
   const categoryOptions = [
-    { key: "all", label: "Tất cả" },
+    { key: "all", label: "Tất cả danh mục" },
     { key: "Khám", label: "Khám" },
     { key: "Tư vấn", label: "Tư vấn" },
   ];
@@ -115,7 +127,8 @@ const ServiceManagement = () => {
   };
 
   const handleEdit = (serviceId: string) => {
-    const service = services.find(s => s.id === serviceId);
+    const service = services.find((s) => s.id === serviceId);
+
     if (service) {
       setSelectedService(service);
       setIsEditModalOpen(true);
@@ -146,7 +159,7 @@ const ServiceManagement = () => {
 
   const handleDelete = async (serviceId: string, serviceName: string) => {
     const confirmDelete = window.confirm(
-      `Bạn có chắc chắn muốn xóa dịch vụ "${serviceName}"?\n\nHành động này không thể hoàn tác.`
+      `Bạn có chắc chắn muốn xóa dịch vụ "${serviceName}"?\n\nHành động này không thể hoàn tác.`,
     );
 
     if (!confirmDelete) return;
@@ -159,11 +172,13 @@ const ServiceManagement = () => {
         // Refresh list
         fetchServices();
       } else {
-        throw new Error(response.message || 'Không thể xóa dịch vụ');
+        throw new Error(response.message || "Không thể xóa dịch vụ");
       }
     } catch (error: any) {
       console.error("Error deleting service:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi xóa dịch vụ. Vui lòng thử lại.");
+      toast.error(
+        error.message || "Có lỗi xảy ra khi xóa dịch vụ. Vui lòng thử lại.",
+      );
     }
   };
 
@@ -180,9 +195,11 @@ const ServiceManagement = () => {
     }
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
+
     if (remainingMinutes === 0) {
       return `${hours} giờ`;
     }
+
     return `${hours} giờ ${remainingMinutes} phút`;
   };
 
@@ -204,31 +221,32 @@ const ServiceManagement = () => {
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Input
+              className="w-full"
               placeholder="Tìm kiếm dịch vụ..."
-              value={searchTerm}
-              onValueChange={setSearchTerm}
               startContent={
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
               }
-              className="w-full"
+              value={searchTerm}
               variant="bordered"
+              onValueChange={setSearchTerm}
             />
           </div>
 
           {/* Category Filter */}
           <Select
+            className="w-48"
             placeholder="Chọn danh mục"
             selectedKeys={categoryFilter ? [categoryFilter] : []}
+            variant="bordered"
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
+
               setCategoryFilter(selectedKey);
               // Reset to page 1 when filter changes
               if (currentPage !== 1) {
                 setCurrentPage(1);
               }
             }}
-            className="w-48"
-            variant="bordered"
           >
             {categoryOptions.map((option) => (
               <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -237,18 +255,19 @@ const ServiceManagement = () => {
 
           {/* Status Filter */}
           <Select
+            className="w-48"
             placeholder="Chọn trạng thái"
             selectedKeys={statusFilter ? [statusFilter] : []}
+            variant="bordered"
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
+
               setStatusFilter(selectedKey);
               // Reset to page 1 when filter changes
               if (currentPage !== 1) {
                 setCurrentPage(1);
               }
             }}
-            className="w-48"
-            variant="bordered"
           >
             {statusOptions.map((option) => (
               <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -258,9 +277,9 @@ const ServiceManagement = () => {
 
         {/* Add New Button */}
         <Button
-          className="bg-green-600 text-white hover:bg-green-700 px-6 py-2"
-          onPress={handleAddNew}
+          className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2"
           startContent={<PlusIcon className="w-5 h-5" />}
+          onPress={handleAddNew}
         >
           Thêm dịch vụ mới
         </Button>
@@ -270,7 +289,7 @@ const ServiceManagement = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-blue-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   STT
@@ -329,22 +348,24 @@ const ServiceManagement = () => {
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {service.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                      {service.status === "active"
+                        ? "Hoạt động"
+                        : "Không hoạt động"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleEdit(service.id)}
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                        className="text-blue-600 hover:text-blue-700 p-1 rounded hover:bg-blue-50"
                         title="Chỉnh sửa dịch vụ"
+                        onClick={() => handleEdit(service.id)}
                       >
                         <PencilIcon className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(service.id, service.name)}
                         className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
                         title="Xóa dịch vụ"
+                        onClick={() => handleDelete(service.id, service.name)}
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -378,16 +399,15 @@ const ServiceManagement = () => {
       {!isLoading && total > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
           <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {endIndex} trong{" "}
-            {total} kết quả
+            Hiển thị {startIndex + 1} đến {endIndex} trong {total} kết quả
           </div>
 
           <div className="flex items-center space-x-2">
             {/* Previous button */}
             <Button
               isDisabled={currentPage === 1}
-              variant="bordered"
               size="sm"
+              variant="bordered"
               onPress={() => handlePageChange(currentPage - 1)}
             >
               ←
@@ -397,11 +417,11 @@ const ServiceManagement = () => {
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
-                variant={currentPage === page ? "solid" : "bordered"}
+                className="min-w-8"
                 color={currentPage === page ? "primary" : "default"}
                 size="sm"
+                variant={currentPage === page ? "solid" : "bordered"}
                 onPress={() => handlePageChange(page)}
-                className="min-w-8"
               >
                 {page}
               </Button>
@@ -410,8 +430,8 @@ const ServiceManagement = () => {
             {/* Next button */}
             <Button
               isDisabled={currentPage === totalPages}
-              variant="bordered"
               size="sm"
+              variant="bordered"
               onPress={() => handlePageChange(currentPage + 1)}
             >
               →
@@ -430,8 +450,8 @@ const ServiceManagement = () => {
       {/* Edit Service Modal */}
       <EditServiceModal
         isOpen={isEditModalOpen}
-        onClose={handleCloseEditModal}
         service={selectedService}
+        onClose={handleCloseEditModal}
         onSuccess={handleEditSuccess}
       />
     </div>

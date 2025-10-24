@@ -6,6 +6,7 @@ import {
   ArrowRightOnRectangleIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
+
 import { useAuth } from "@/contexts/AuthContext";
 
 const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
@@ -24,11 +25,11 @@ const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/doctor/schedule" className="flex items-center space-x-3">
+            <Link className="flex items-center space-x-3" to="/doctor/schedule">
               <img
-                src="/logo2.png"
                 alt="Logo"
                 className="h-10 w-auto object-contain"
+                src="/logo2.png"
               />
               <div>
                 <h1 className="text-xl font-bold text-gray-800">
@@ -47,10 +48,10 @@ const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
                 </span>
               </div>
               <Button
-                size="sm"
                 color="danger"
-                variant="flat"
+                size="sm"
                 startContent={<ArrowRightOnRectangleIcon className="w-4 h-4" />}
+                variant="flat"
                 onPress={handleLogout}
               >
                 Đăng xuất
@@ -68,8 +69,8 @@ const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
             <ul className="space-y-2">
               <li>
                 <Link
-                  to="/doctor/schedule"
                   className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition-colors text-gray-700 hover:text-blue-600"
+                  to="/doctor/schedule"
                 >
                   <CalendarIcon className="w-5 h-5" />
                   <span className="font-medium">Lịch khám</span>
@@ -87,4 +88,3 @@ const DoctorLayout = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default DoctorLayout;
-

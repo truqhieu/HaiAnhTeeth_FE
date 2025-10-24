@@ -14,6 +14,7 @@ import {
   DropdownItem,
 } from "@heroui/react";
 import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
+
 import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -121,7 +122,7 @@ const TodayAppointments = () => {
   // ===== Duyệt / Hủy ca khám =====
   const handleReview = async (
     appointmentId: string,
-    action: "approve" | "cancel"
+    action: "approve" | "cancel",
   ) => {
     try {
       setProcessingId(appointmentId);
@@ -133,10 +134,13 @@ const TodayAppointments = () => {
       console.log("Action:", action);
 
       let cancelReason: string | undefined;
+
       if (action === "cancel") {
         const reason = prompt("Vui lòng nhập lý do hủy:");
+
         if (!reason || reason.trim() === "") {
           setProcessingId(null);
+
           return;
         }
         cancelReason = reason.trim();
@@ -150,7 +154,7 @@ const TodayAppointments = () => {
       const res: ApiResponse<null> = await appointmentApi.reviewAppointment(
         appointmentId,
         action,
-        cancelReason
+        cancelReason,
       );
 
       console.log("Review response:", res);
@@ -159,7 +163,7 @@ const TodayAppointments = () => {
         alert(
           action === "approve"
             ? "✅ Đã duyệt ca khám thành công!"
-            : "✅ Đã hủy ca khám thành công!"
+            : "✅ Đã hủy ca khám thành công!",
         );
         await refetchAppointments();
       } else {
@@ -178,7 +182,7 @@ const TodayAppointments = () => {
         alert(
           `❌ Bạn không có quyền thực hiện thao tác này!\n\nRole hiện tại: ${
             user?.role || "Không xác định"
-          }\n\nVui lòng liên hệ quản trị viên.`
+          }\n\nVui lòng liên hệ quản trị viên.`,
         );
       } else {
         alert(`❌ ${error.message || "Thao tác thất bại, vui lòng thử lại."}`);
@@ -191,24 +195,31 @@ const TodayAppointments = () => {
   /**
    * Cập nhật trạng thái ca khám (Check-in, Hoàn thành)
    */
-  const handleUpdateStatus = async (appointmentId: string, newStatus: 'CheckedIn' | 'Completed' | 'Cancelled') => {
+  const handleUpdateStatus = async (
+    appointmentId: string,
+    newStatus: "CheckedIn" | "Completed" | "Cancelled",
+  ) => {
     try {
       setProcessingId(appointmentId);
-      
+
       console.log("=== UPDATING APPOINTMENT STATUS ===");
       console.log("Appointment ID:", appointmentId);
       console.log("New status:", newStatus);
-      
-      const res = await appointmentApi.updateAppointmentStatus(appointmentId, newStatus);
-      
+
+      const res = await appointmentApi.updateAppointmentStatus(
+        appointmentId,
+        newStatus,
+      );
+
       console.log("Update status response:", res);
-      
+
       if (res.success) {
         const statusMessages = {
-          'CheckedIn': 'Đã check-in bệnh nhân thành công!',
-          'Completed': 'Đã đánh dấu hoàn thành ca khám!',
-          'Cancelled': 'Đã hủy ca khám!'
+          CheckedIn: "Đã check-in bệnh nhân thành công!",
+          Completed: "Đã đánh dấu hoàn thành ca khám!",
+          Cancelled: "Đã hủy ca khám!",
         };
+
         alert(`✅ ${statusMessages[newStatus]}`);
         await refetchAppointments();
       } else {
@@ -263,6 +274,7 @@ const TodayAppointments = () => {
   const formatTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
+
     return date.toLocaleTimeString("vi-VN", {
       hour: "2-digit",
       minute: "2-digit",
@@ -291,9 +303,7 @@ const TodayAppointments = () => {
   return (
     <div className="bg-white rounded-lg shadow-sm border p-4">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-800">
-          Các ca khám hôm nay
-        </h2>
+        <h2 className="text-xl font-bold text-gray-800">Các ca khám hôm nay</h2>
         {user && (
           <div className="text-sm text-gray-600">
             Role: <span className="font-semibold">{user.role}</span>
@@ -309,11 +319,13 @@ const TodayAppointments = () => {
 
       <Table aria-label="Bảng các ca khám hôm nay">
         <TableHeader columns={columns}>
-          {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
+          {(column) => (
+            <TableColumn key={column.key}>{column.label}</TableColumn>
+          )}
         </TableHeader>
         <TableBody
-          items={appointments}
           emptyContent={"Không có ca khám nào hôm nay."}
+          items={appointments}
         >
           {(appointment: Appointment) => (
             <TableRow key={appointment.id}>
@@ -323,24 +335,26 @@ const TodayAppointments = () => {
               <TableCell>{appointment.doctorName}</TableCell>
               <TableCell>{appointment.serviceName}</TableCell>
               <TableCell>
-                {appointment.status === 'Approved' ? (
+                {appointment.status === "Approved" ? (
                   <Dropdown>
                     <DropdownTrigger>
                       <Button
-                        size="sm"
-                        variant="flat"
                         className={`px-3 py-1 rounded-full text-sm font-medium cursor-pointer ${getStatusClassName(appointment.status)}`}
                         isDisabled={processingId === appointment.id}
+                        size="sm"
+                        variant="flat"
                       >
                         {getStatusText(appointment.status)}
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Cập nhật trạng thái">
-                      <DropdownItem 
+                      <DropdownItem
                         key="checkin"
-                        onPress={() => handleUpdateStatus(appointment.id, 'CheckedIn')}
                         className="text-primary"
                         color="primary"
+                        onPress={() =>
+                          handleUpdateStatus(appointment.id, "CheckedIn")
+                        }
                       >
                         👤 Check-in
                       </DropdownItem>
@@ -348,39 +362,39 @@ const TodayAppointments = () => {
                   </Dropdown>
                 ) : (
                   <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      getStatusClassName(appointment.status)
-                    }`}
+                    className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusClassName(
+                      appointment.status,
+                    )}`}
                   >
                     {getStatusText(appointment.status)}
                   </span>
                 )}
               </TableCell>
               <TableCell>
-                {appointment.status === 'Pending' ? (
+                {appointment.status === "Pending" ? (
                   <Dropdown>
                     <DropdownTrigger>
-                      <Button 
-                        size="sm" 
-                        variant="light" 
+                      <Button
                         isIconOnly
                         isDisabled={processingId === appointment.id}
+                        size="sm"
+                        variant="light"
                       >
                         <EllipsisVerticalIcon className="w-5 h-5" />
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Hành động">
-                      <DropdownItem 
+                      <DropdownItem
                         key="approve"
-                        onPress={() => handleReview(appointment.id, 'approve')}
+                        onPress={() => handleReview(appointment.id, "approve")}
                       >
                         ✅ Duyệt
                       </DropdownItem>
-                      <DropdownItem 
+                      <DropdownItem
                         key="cancel"
-                        onPress={() => handleReview(appointment.id, 'cancel')} 
-                        className="text-danger" 
+                        className="text-danger"
                         color="danger"
+                        onPress={() => handleReview(appointment.id, "cancel")}
                       >
                         ❌ Hủy
                       </DropdownItem>

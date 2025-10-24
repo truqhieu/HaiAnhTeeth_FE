@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { AddRoomModal, EditRoomModal } from "@/components";
 import { managerApi, ManagerClinic, ManagerDoctor } from "@/api";
 import { Room } from "@/types";
@@ -29,11 +30,12 @@ const RoomManagement = () => {
   const fetchDoctors = async () => {
     try {
       const response = await managerApi.getAvailableDoctors();
+
       if (response.status && response.data) {
         setDoctors(response.data);
       }
     } catch (error: any) {
-      console.error('Error fetching doctors:', error);
+      console.error("Error fetching doctors:", error);
     }
   };
 
@@ -44,45 +46,55 @@ const RoomManagement = () => {
       const response = await managerApi.getAllClinics({
         page: currentPage,
         limit: itemsPerPage,
-        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Inactive') : undefined,
+        status:
+          statusFilter !== "all"
+            ? statusFilter === "active"
+              ? "Active"
+              : "Inactive"
+            : undefined,
         search: searchTerm || undefined,
       });
 
       if (response.status && response.data) {
         // Map API data to local Room interface
-        const mappedRooms: Room[] = response.data.map((clinic: ManagerClinic) => {
-          // Backend populate assignedDoctorId thành object {_id, fullName}
-          let doctorId = null;
-          let doctorName = undefined;
-          
-          if (clinic.assignedDoctorId) {
-            if (typeof clinic.assignedDoctorId === 'object') {
-              // Populated object
-              doctorId = (clinic.assignedDoctorId as any)._id;
-              doctorName = (clinic.assignedDoctorId as any).fullName;
-            } else {
-              // Chỉ có string ID (không populate)
-              doctorId = clinic.assignedDoctorId;
+        const mappedRooms: Room[] = response.data.map(
+          (clinic: ManagerClinic) => {
+            // Backend populate assignedDoctorId thành object {_id, fullName}
+            let doctorId = null;
+            let doctorName = undefined;
+
+            if (clinic.assignedDoctorId) {
+              if (typeof clinic.assignedDoctorId === "object") {
+                // Populated object
+                doctorId = (clinic.assignedDoctorId as any)._id;
+                doctorName = (clinic.assignedDoctorId as any).fullName;
+              } else {
+                // Chỉ có string ID (không populate)
+                doctorId = clinic.assignedDoctorId;
+              }
             }
-          }
-          
-          return {
-            id: clinic._id,
-            name: clinic.name,
-            description: clinic.description,
-            status: clinic.status === 'Active' ? 'active' as const : 'inactive' as const,
-            assignedDoctorId: doctorId,
-            assignedDoctorName: doctorName,
-          };
-        });
-        
+
+            return {
+              id: clinic._id,
+              name: clinic.name,
+              description: clinic.description,
+              status:
+                clinic.status === "Active"
+                  ? ("active" as const)
+                  : ("inactive" as const),
+              assignedDoctorId: doctorId,
+              assignedDoctorName: doctorName,
+            };
+          },
+        );
+
         setRooms(mappedRooms);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 1);
       }
     } catch (error: any) {
-      console.error('❌ Error fetching clinics:', error);
-      toast.error(error.message || 'Không thể tải danh sách phòng khám');
+      console.error("❌ Error fetching clinics:", error);
+      toast.error(error.message || "Không thể tải danh sách phòng khám");
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +104,6 @@ const RoomManagement = () => {
   useEffect(() => {
     fetchClinics();
     fetchDoctors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, statusFilter]);
 
   // Debounce search term
@@ -106,7 +117,6 @@ const RoomManagement = () => {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   const statusOptions = [
@@ -126,6 +136,7 @@ const RoomManagement = () => {
 
   const handleEdit = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
+
     if (room) {
       setSelectedRoom(room);
       setIsEditModalOpen(true);
@@ -134,7 +145,7 @@ const RoomManagement = () => {
 
   const handleDelete = async (roomId: string, roomName: string) => {
     const confirmDelete = window.confirm(
-      `Bạn có chắc chắn muốn xóa phòng khám "${roomName}"?\n\nHành động này không thể hoàn tác.`
+      `Bạn có chắc chắn muốn xóa phòng khám "${roomName}"?\n\nHành động này không thể hoàn tác.`,
     );
 
     if (!confirmDelete) return;
@@ -148,11 +159,13 @@ const RoomManagement = () => {
         fetchClinics();
         fetchDoctors(); // Refresh doctors list vì có thể doctor được unassign
       } else {
-        throw new Error(response.message || 'Không thể xóa phòng khám');
+        throw new Error(response.message || "Không thể xóa phòng khám");
       }
     } catch (error: any) {
       console.error("Error deleting clinic:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi xóa phòng khám. Vui lòng thử lại.");
+      toast.error(
+        error.message || "Có lỗi xảy ra khi xóa phòng khám. Vui lòng thử lại.",
+      );
     }
   };
 
@@ -209,9 +222,7 @@ const RoomManagement = () => {
     <div className="p-6 bg-gray-50 min-h-full">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Quản lý phòng khám
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý phòng khám</h1>
         <p className="text-gray-600 mt-2">
           Quản lý các phòng khám và phân công bác sĩ
         </p>
@@ -223,31 +234,32 @@ const RoomManagement = () => {
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Input
+              className="w-full"
               placeholder="Tìm kiếm phòng khám..."
-              value={searchTerm}
-              onValueChange={setSearchTerm}
               startContent={
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
               }
-              className="w-full"
+              value={searchTerm}
               variant="bordered"
+              onValueChange={setSearchTerm}
             />
           </div>
 
           {/* Status Filter */}
           <Select
+            className="w-48"
             placeholder="Chọn trạng thái"
             selectedKeys={statusFilter ? [statusFilter] : []}
+            variant="bordered"
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
+
               setStatusFilter(selectedKey);
               // Reset to page 1 when filter changes
               if (currentPage !== 1) {
                 setCurrentPage(1);
               }
             }}
-            className="w-48"
-            variant="bordered"
           >
             {statusOptions.map((option) => (
               <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -257,9 +269,9 @@ const RoomManagement = () => {
 
         {/* Add New Button */}
         <Button
-          className="bg-green-600 text-white hover:bg-green-700 px-6 py-2"
-          onPress={handleAddNew}
+          className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2"
           startContent={<PlusIcon className="w-5 h-5" />}
+          onPress={handleAddNew}
         >
           Thêm phòng mới
         </Button>
@@ -269,7 +281,7 @@ const RoomManagement = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-blue-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   STT
@@ -309,13 +321,15 @@ const RoomManagement = () => {
                         {room.assignedDoctorName || "BS. (Đang tải...)"}
                       </div>
                     ) : (
-                      <span className="text-gray-400 italic">Chưa phân công</span>
+                      <span className="text-gray-400 italic">
+                        Chưa phân công
+                      </span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(
-                        room.status
+                        room.status,
                       )}`}
                     >
                       {getStatusText(room.status)}
@@ -324,16 +338,16 @@ const RoomManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleEdit(room.id)}
                         className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                         title="Chỉnh sửa phòng khám"
+                        onClick={() => handleEdit(room.id)}
                       >
                         <PencilIcon className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(room.id, room.name)}
                         className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
                         title="Xóa phòng khám"
+                        onClick={() => handleDelete(room.id, room.name)}
                       >
                         <TrashIcon className="w-4 h-4" />
                       </button>
@@ -355,7 +369,9 @@ const RoomManagement = () => {
         {/* Empty state */}
         {!isLoading && currentRooms.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">Không tìm thấy phòng khám</div>
+            <div className="text-gray-500 text-lg">
+              Không tìm thấy phòng khám
+            </div>
             <div className="text-gray-400 text-sm mt-2">
               Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
             </div>
@@ -367,16 +383,15 @@ const RoomManagement = () => {
       {!isLoading && total > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
           <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {endIndex} trong{" "}
-            {total} kết quả
+            Hiển thị {startIndex + 1} đến {endIndex} trong {total} kết quả
           </div>
 
           <div className="flex items-center space-x-2">
             {/* Previous button */}
             <Button
               isDisabled={currentPage === 1}
-              variant="bordered"
               size="sm"
+              variant="bordered"
               onPress={() => handlePageChange(currentPage - 1)}
             >
               ←
@@ -386,11 +401,11 @@ const RoomManagement = () => {
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
-                variant={currentPage === page ? "solid" : "bordered"}
+                className="min-w-8"
                 color={currentPage === page ? "primary" : "default"}
                 size="sm"
+                variant={currentPage === page ? "solid" : "bordered"}
                 onPress={() => handlePageChange(page)}
-                className="min-w-8"
               >
                 {page}
               </Button>
@@ -399,8 +414,8 @@ const RoomManagement = () => {
             {/* Next button */}
             <Button
               isDisabled={currentPage === totalPages}
-              variant="bordered"
               size="sm"
+              variant="bordered"
               onPress={() => handlePageChange(currentPage + 1)}
             >
               →
@@ -418,15 +433,14 @@ const RoomManagement = () => {
 
       {/* Edit Room Modal */}
       <EditRoomModal
-        isOpen={isEditModalOpen}
-        onClose={handleCloseEditModal}
-        room={selectedRoom}
-        onSuccess={handleEditSuccess}
         doctors={doctors}
+        isOpen={isEditModalOpen}
+        room={selectedRoom}
+        onClose={handleCloseEditModal}
+        onSuccess={handleEditSuccess}
       />
     </div>
   );
 };
 
 export default RoomManagement;
-

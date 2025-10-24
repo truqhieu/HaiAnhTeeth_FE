@@ -1,8 +1,10 @@
 import type React from "react";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon, CalendarDaysIcon } from "@heroicons/react/24/solid";
 import toast from "react-hot-toast";
+
 import {
   appointmentApi,
   serviceApi,
@@ -86,6 +88,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
     const fetchServices = async () => {
       try {
         const res = await serviceApi.get({ status: "Active", limit: 1000 });
+
         if (res.status && Array.isArray(res.data)) setServices(res.data);
       } catch (err) {
         console.error("Error fetching services:", err);
@@ -112,7 +115,11 @@ const BookingModal: React.FC<BookingModalProps> = ({
 
   // === Fetch available slots for date ===
   const fetchAvailableSlots = useCallback(
-    async (serviceId: string, date: string, appointmentFor: "self" | "other") => {
+    async (
+      serviceId: string,
+      date: string,
+      appointmentFor: "self" | "other",
+    ) => {
       // ⭐ Cancel previous request nếu có
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -125,7 +132,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
       setErrorMessage(null);
       try {
         console.log(
-          `📡 Fetching slots for ${serviceId} on ${date}, appointmentFor=${appointmentFor}`
+          `📡 Fetching slots for ${serviceId} on ${date}, appointmentFor=${appointmentFor}`,
         );
 
         const slotsRes = await generateByDateApi.get({
@@ -162,8 +169,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
         // Deduplicate slots - chỉ giữ các khung giờ unique
         // (vì có thể nhiều bác sĩ có cùng khung giờ)
         const uniqueSlotsMap = new Map<string, ExtendedSlot>();
+
         allSlots.forEach((slot: ExtendedSlot) => {
           const key = `${slot.startTime}-${slot.endTime}`;
+
           if (!uniqueSlotsMap.has(key)) {
             uniqueSlotsMap.set(key, slot);
           }
@@ -192,7 +201,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
         setIsLoadingSlots(false);
       }
     },
-    [formData.fullName, formData.email]
+    [formData.fullName, formData.email],
   );
 
   // Trigger slot fetching when service, date, or appointmentFor changes
@@ -201,7 +210,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
       fetchAvailableSlots(
         formData.serviceId,
         formData.date,
-        formData.appointmentFor
+        formData.appointmentFor,
       );
     }
   }, [
@@ -216,6 +225,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
     async (serviceId: string, date: string, slot: ExtendedSlot) => {
       if (!serviceId || !date || !slot) {
         setAvailableDoctors([]);
+
         return;
       }
 
@@ -237,15 +247,18 @@ const BookingModal: React.FC<BookingModalProps> = ({
         });
 
         if (!doctorRes.success) {
-          throw new Error(doctorRes.message || "Không thể tải danh sách bác sĩ");
+          throw new Error(
+            doctorRes.message || "Không thể tải danh sách bác sĩ",
+          );
         }
 
         const doctors = doctorRes.data?.availableDoctors || [];
+
         setAvailableDoctors(
           doctors.map((d) => ({
             ...d,
             availableSlots: [],
-          }))
+          })),
         );
 
         if (doctors.length === 0) {
@@ -259,7 +272,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
         setLoadingDoctors(false);
       }
     },
-    [formData.appointmentFor, user]
+    [formData.appointmentFor, user],
   );
 
   // === Handle slot select ===
@@ -281,21 +294,24 @@ const BookingModal: React.FC<BookingModalProps> = ({
 
   // === Handlers ===
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     const { name, value } = e.target;
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleRadioChange = (value: "self" | "other") => {
     // ⭐ Khi thay đổi appointmentFor, reset fullName/email và clear slots
-    if (value === 'self') {
+    if (value === "self") {
       // Đặt cho bản thân - auto fill fullName + email từ user
       setFormData((prev) => ({
         ...prev,
         appointmentFor: value,
-        fullName: user?.fullName || '',
-        email: user?.email || '',
+        fullName: user?.fullName || "",
+        email: user?.email || "",
         selectedSlot: null,
         doctorUserId: "",
         doctorScheduleId: null,
@@ -305,8 +321,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
       setFormData((prev) => ({
         ...prev,
         appointmentFor: value,
-        fullName: '',
-        email: '',
+        fullName: "",
+        email: "",
         selectedSlot: null,
         doctorUserId: "",
         doctorScheduleId: null,
@@ -315,7 +331,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   const handleDoctorSelect = (doctorId: string) => {
-    const doc = availableDoctors.find((d) => String(d.doctorId) === String(doctorId));
+    const doc = availableDoctors.find(
+      (d) => String(d.doctorId) === String(doctorId),
+    );
+
     if (doc) {
       setFormData((prev) => ({
         ...prev,
@@ -330,7 +349,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
     console.log("🔍 validateForm - user:", user);
     console.log("🔍 validateForm - user?._id:", user?._id);
     console.log("🔍 validateForm - user?.id:", user?.id);
-    
+
     if (!user?._id && !user?.id) return "Bạn cần đăng nhập để đặt lịch.";
     if (!formData.fullName.trim()) return "Vui lòng nhập họ và tên.";
     if (!formData.email.trim()) return "Vui lòng nhập email.";
@@ -340,27 +359,29 @@ const BookingModal: React.FC<BookingModalProps> = ({
     if (!formData.selectedSlot) return "Vui lòng chọn khung giờ.";
     if (!formData.doctorUserId) return "Vui lòng chọn bác sĩ.";
     if (!formData.doctorScheduleId) return "Dữ liệu lịch trình không hợp lệ.";
-    
+
     // ⭐ THÊM: Validate customer conflict khi đặt cho người khác
-    if (formData.appointmentFor === 'other') {
+    if (formData.appointmentFor === "other") {
       // Normalize fullName và email
       const normalizeString = (str: string) => {
         return str
           .toLowerCase()
           .trim()
-          .replace(/\s+/g, ' ')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
+          .replace(/\s+/g, " ")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
       };
-      
+
       const normalizedName = normalizeString(formData.fullName);
       const normalizedEmail = normalizeString(formData.email);
-      
+
       // Lưu ý: Validation này chỉ là quick check ở FE
       // Backend sẽ validate lại với database
-      console.log(`🔍 Validating customer conflict for: ${normalizedName} <${normalizedEmail}>`);
+      console.log(
+        `🔍 Validating customer conflict for: ${normalizedName} <${normalizedEmail}>`,
+      );
     }
-    
+
     return null;
   };
 
@@ -369,8 +390,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
     e.preventDefault();
 
     const error = validateForm();
+
     if (error) {
       setErrorMessage(error);
+
       return;
     }
 
@@ -381,7 +404,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
       console.log("   - user:", user);
       console.log("   - user._id:", user?._id);
       console.log("   - user.id:", user?.id);
-      
+
       const payload = {
         fullName: formData.fullName,
         email: formData.email,
@@ -404,7 +427,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
       if (res.success) {
         if (res.data?.requirePayment && res.data?.payment?.paymentId) {
           // ✅ Navigate to payment page
-          console.log("💳 Redirecting to payment page:", res.data.payment.paymentId);
+          console.log(
+            "💳 Redirecting to payment page:",
+            res.data.payment.paymentId,
+          );
           setErrorMessage(null);
           onClose();
           navigate(`/patient/payment/${res.data.payment.paymentId}`);
@@ -412,13 +438,13 @@ const BookingModal: React.FC<BookingModalProps> = ({
           // ✅ Đặt lịch thành công (không cần thanh toán)
           setErrorMessage(null);
           onClose();
-          
+
           // Show success message
           toast.success(res.message || "Đặt lịch thành công!");
-          
+
           // Navigate to appointments page và reload để fetch lại
-          navigate('/patient/appointments');
-          
+          navigate("/patient/appointments");
+
           // Delay một chút rồi mới reload để đảm bảo navigation hoàn tất
           setTimeout(() => {
             window.location.reload();
@@ -440,7 +466,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
   // === Render ===
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#39BDCC] sticky top-0 bg-white">
@@ -451,8 +480,8 @@ const BookingModal: React.FC<BookingModalProps> = ({
             </h2>
           </div>
           <button
-            onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100"
+            onClick={onClose}
           >
             <XMarkIcon className="w-5 h-5 text-gray-600" />
           </button>
@@ -467,19 +496,21 @@ const BookingModal: React.FC<BookingModalProps> = ({
 
         {/* Form */}
         <div className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
             {/* Appointment For */}
             <div>
-              <label className="block mb-2 font-medium text-gray-700">Đặt lịch cho</label>
+              <label className="block mb-2 font-medium text-gray-700">
+                Đặt lịch cho
+              </label>
               <div className="flex gap-6">
                 {["self", "other"].map((v) => (
                   <label key={v} className="flex items-center gap-2">
                     <input
-                      type="radio"
-                      name="appointmentFor"
                       checked={formData.appointmentFor === v}
-                      onChange={() => handleRadioChange(v as "self" | "other")}
                       className="text-[#39BDCC]"
+                      name="appointmentFor"
+                      type="radio"
+                      onChange={() => handleRadioChange(v as "self" | "other")}
                     />
                     {v === "self" ? "Bản thân" : "Người thân khác"}
                   </label>
@@ -491,38 +522,50 @@ const BookingModal: React.FC<BookingModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1 font-medium text-gray-700">
-                  Họ và tên {formData.appointmentFor === 'other' && '*'}
-                  {formData.appointmentFor === 'self' && <span className="text-xs text-gray-500"> (Auto fill)</span>}
+                  Họ và tên {formData.appointmentFor === "other" && <span className="text-red-500">*</span>}
+                  {formData.appointmentFor === "self" && (
+                    <span className="text-xs text-gray-500"> (Auto fill)</span>
+                  )}
                 </label>
                 <input
+                  className={`w-full border px-3 py-2 rounded-lg ${
+                    formData.appointmentFor === "self"
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : ""
+                  }`}
+                  disabled={formData.appointmentFor === "self"}
                   name="fullName"
+                  placeholder={
+                    formData.appointmentFor === "self"
+                      ? user?.fullName || ""
+                      : "Nhập họ và tên"
+                  }
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  disabled={formData.appointmentFor === 'self'}
-                  className={`w-full border px-3 py-2 rounded-lg ${
-                    formData.appointmentFor === 'self' 
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-                      : ''
-                  }`}
-                  placeholder={formData.appointmentFor === 'self' ? user?.fullName || '' : 'Nhập họ và tên'}
                 />
               </div>
               <div>
                 <label className="block text-sm mb-1 font-medium text-gray-700">
-                  Email {formData.appointmentFor === 'other' && '*'}
-                  {formData.appointmentFor === 'self' && <span className="text-xs text-gray-500"> (Auto fill)</span>}
+                  Email {formData.appointmentFor === "other" && <span className="text-red-500">*</span>}
+                  {formData.appointmentFor === "self" && (
+                    <span className="text-xs text-gray-500"> (Auto fill)</span>
+                  )}
                 </label>
                 <input
+                  className={`w-full border px-3 py-2 rounded-lg ${
+                    formData.appointmentFor === "self"
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                      : ""
+                  }`}
+                  disabled={formData.appointmentFor === "self"}
                   name="email"
+                  placeholder={
+                    formData.appointmentFor === "self"
+                      ? user?.email || ""
+                      : "Nhập email"
+                  }
                   value={formData.email}
                   onChange={handleInputChange}
-                  disabled={formData.appointmentFor === 'self'}
-                  className={`w-full border px-3 py-2 rounded-lg ${
-                    formData.appointmentFor === 'self' 
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-                      : ''
-                  }`}
-                  placeholder={formData.appointmentFor === 'self' ? user?.email || '' : 'Nhập email'}
                 />
               </div>
             </div>
@@ -532,10 +575,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
                 Số điện thoại *
               </label>
               <input
+                className="w-full border px-3 py-2 rounded-lg"
                 name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleInputChange}
-                className="w-full border px-3 py-2 rounded-lg"
               />
             </div>
 
@@ -545,10 +588,10 @@ const BookingModal: React.FC<BookingModalProps> = ({
                 Chọn dịch vụ *
               </label>
               <select
+                className="w-full border px-3 py-2 rounded-lg"
                 name="serviceId"
                 value={formData.serviceId}
                 onChange={handleInputChange}
-                className="w-full border px-3 py-2 rounded-lg"
               >
                 <option value="">-- Chọn dịch vụ --</option>
                 {services.map((s) => (
@@ -565,12 +608,12 @@ const BookingModal: React.FC<BookingModalProps> = ({
                 Chọn ngày *
               </label>
               <input
-                type="date"
-                name="date"
+                className="w-full border px-3 py-2 rounded-lg"
                 min={today}
+                name="date"
+                type="date"
                 value={formData.date}
                 onChange={handleInputChange}
-                className="w-full border px-3 py-2 rounded-lg"
               />
             </div>
 
@@ -586,20 +629,20 @@ const BookingModal: React.FC<BookingModalProps> = ({
               ) : slots.length ? (
                 <div className="grid grid-cols-4 gap-3">
                   {slots.map((s) => {
-                    const isSelected = 
-                      formData.selectedSlot?.startTime === s.startTime && 
+                    const isSelected =
+                      formData.selectedSlot?.startTime === s.startTime &&
                       formData.selectedSlot?.endTime === s.endTime;
-                    
+
                     return (
                       <button
                         key={`${s.startTime}-${s.endTime}`}
-                        type="button"
-                        onClick={() => handleTimeSelect(s)}
                         className={`py-2 px-2 rounded-lg text-sm transition-colors ${
                           isSelected
                             ? "bg-[#39BDCC] text-white"
                             : "border border-blue-200 text-[#39BDCC] hover:bg-blue-50"
                         }`}
+                        type="button"
+                        onClick={() => handleTimeSelect(s)}
                       >
                         {s.displayTime}
                       </button>
@@ -625,9 +668,9 @@ const BookingModal: React.FC<BookingModalProps> = ({
                   </div>
                 ) : availableDoctors.length ? (
                   <select
+                    className="w-full border px-3 py-2 rounded-lg"
                     value={formData.doctorUserId}
                     onChange={(e) => handleDoctorSelect(e.target.value)}
-                    className="w-full border px-3 py-2 rounded-lg"
                   >
                     <option value="">-- Chọn bác sĩ --</option>
                     {availableDoctors.map((d) => (
@@ -654,22 +697,26 @@ const BookingModal: React.FC<BookingModalProps> = ({
                 Ghi chú
               </label>
               <textarea
+                className="w-full border px-3 py-2 rounded-lg"
                 name="notes"
+                rows={3}
                 value={formData.notes}
                 onChange={handleInputChange}
-                rows={3}
-                className="w-full border px-3 py-2 rounded-lg"
               />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <button type="button" onClick={onClose} className="px-6 py-2 border rounded-lg hover:bg-gray-50">
+              <button
+                className="px-6 py-2 border rounded-lg hover:bg-gray-50"
+                type="button"
+                onClick={onClose}
+              >
                 Hủy
               </button>
               <button
-                type="submit"
-                disabled={submitting}
                 className="px-6 py-2 bg-[#39BDCC] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#32a8b5]"
+                disabled={submitting}
+                type="submit"
               >
                 {submitting ? "Đang xử lý..." : "Xác nhận đặt lịch"}
               </button>

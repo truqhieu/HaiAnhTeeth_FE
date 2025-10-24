@@ -54,8 +54,8 @@ const PatientHeader = () => {
             <Button
               isIconOnly
               className="text-white hover:text-gray-200"
-              variant="light"
               size="sm"
+              variant="light"
             >
               <BellIcon className="w-5 h-5" />
             </Button>
@@ -68,15 +68,15 @@ const PatientHeader = () => {
             {/* User dropdown */}
             <Dropdown
               isOpen={isDropdownOpen}
-              onOpenChange={setIsDropdownOpen}
               placement="bottom-end"
+              onOpenChange={setIsDropdownOpen}
             >
               <DropdownTrigger>
                 <Button
                   isIconOnly
                   className="text-white hover:text-gray-200"
-                  variant="light"
                   size="sm"
+                  variant="light"
                 >
                   <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
                     <svg
@@ -85,9 +85,9 @@ const PatientHeader = () => {
                       viewBox="0 0 20 20"
                     >
                       <path
-                        fillRule="evenodd"
-                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
                         clipRule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        fillRule="evenodd"
                       />
                     </svg>
                   </div>
@@ -119,28 +119,28 @@ const PatientHeader = () => {
 
                 <DropdownItem
                   key="appointments"
-                  onPress={() => navigate("/patient/appointments")}
                   className={isDashboardExpanded ? "" : "hidden"}
+                  onPress={() => navigate("/patient/appointments")}
                 >
                   <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
                     <span>Ca khám của tôi</span>
                   </div>
                 </DropdownItem>
-                
+
                 <DropdownItem
                   key="medical-records"
-                  onPress={() => navigate("/patient/medical-records")}
                   className={isDashboardExpanded ? "" : "hidden"}
+                  onPress={() => navigate("/patient/medical-records")}
                 >
                   <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
                     <span>Hồ sơ khám bệnh</span>
                   </div>
                 </DropdownItem>
-                
+
                 <DropdownItem
                   key="complaints"
-                  onPress={() => navigate("/patient/complaints")}
                   className={isDashboardExpanded ? "" : "hidden"}
+                  onPress={() => navigate("/patient/complaints")}
                 >
                   <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
                     <span>Khiếu nại</span>
@@ -171,7 +171,7 @@ const PatientHeader = () => {
       </div>
 
       {/* Main Navbar */}
-      <Navbar maxWidth="full" className="h-24">
+      <Navbar className="h-24" maxWidth="full">
         {/* Logo bên trái */}
         <NavbarContent justify="start">
           <Link className="flex items-center" href="/">

@@ -9,6 +9,7 @@ import {
   Spinner,
   Chip,
 } from "@heroui/react";
+
 import { doctorApi, type AppointmentDetail } from "@/api";
 
 interface AppointmentDetailModalProps {
@@ -24,7 +25,9 @@ const AppointmentDetailModal = ({
 }: AppointmentDetailModalProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [appointment, setAppointment] = useState<AppointmentDetail | null>(null);
+  const [appointment, setAppointment] = useState<AppointmentDetail | null>(
+    null,
+  );
 
   useEffect(() => {
     if (isOpen && appointmentId) {
@@ -97,6 +100,7 @@ const AppointmentDetailModal = ({
   const formatDate = (dateString: string): string => {
     if (!dateString || dateString === "N/A") return "N/A";
     const date = new Date(dateString);
+
     return date.toLocaleDateString("vi-VN", {
       weekday: "long",
       year: "numeric",
@@ -106,7 +110,7 @@ const AppointmentDetailModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl">
+    <Modal isOpen={isOpen} size="2xl" onClose={onClose}>
       <ModalContent>
         {(onClose) => (
           <>
@@ -126,7 +130,7 @@ const AppointmentDetailModal = ({
                 <div className="space-y-4">
                   {/* Status */}
                   <div className="flex gap-2">
-                    <Chip size="lg" color={getStatusColor(appointment.status)}>
+                    <Chip color={getStatusColor(appointment.status)} size="lg">
                       {getStatusText(appointment.status)}
                     </Chip>
                     <Chip size="lg" variant="flat">
@@ -142,11 +146,15 @@ const AppointmentDetailModal = ({
                     <div className="space-y-2">
                       <div className="flex">
                         <span className="text-gray-600 w-32">Họ tên:</span>
-                        <span className="font-medium">{appointment.patientName}</span>
+                        <span className="font-medium">
+                          {appointment.patientName}
+                        </span>
                       </div>
                       <div className="flex">
                         <span className="text-gray-600 w-32">Email:</span>
-                        <span className="font-medium">{appointment.patientEmail}</span>
+                        <span className="font-medium">
+                          {appointment.patientEmail}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -159,7 +167,9 @@ const AppointmentDetailModal = ({
                     <div className="space-y-2">
                       <div className="flex">
                         <span className="text-gray-600 w-32">Dịch vụ:</span>
-                        <span className="font-medium">{appointment.serviceName}</span>
+                        <span className="font-medium">
+                          {appointment.serviceName}
+                        </span>
                       </div>
                       <div className="flex">
                         <span className="text-gray-600 w-32">Ngày:</span>
@@ -182,7 +192,9 @@ const AppointmentDetailModal = ({
                       <h4 className="font-semibold text-gray-700 mb-2">
                         Mô tả dịch vụ
                       </h4>
-                      <p className="text-gray-600">{appointment.serviceDescription}</p>
+                      <p className="text-gray-600">
+                        {appointment.serviceDescription}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -205,4 +217,3 @@ const AppointmentDetailModal = ({
 };
 
 export default AppointmentDetailModal;
-

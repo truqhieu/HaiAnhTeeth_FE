@@ -4,12 +4,17 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  CalendarIcon,
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { AddScheduleModal, EditScheduleModal } from "@/components";
-import { managerApi, ManagerSchedule, ManagerDoctor, ManagerClinic } from "@/api";
+import {
+  managerApi,
+  ManagerSchedule,
+  ManagerDoctor,
+  ManagerClinic,
+} from "@/api";
 
 interface Schedule {
   id: string;
@@ -34,7 +39,9 @@ const ScheduleManagement = () => {
   const itemsPerPage = 10;
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(
+    null,
+  );
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [doctors, setDoctors] = useState<ManagerDoctor[]>([]);
   const [rooms, setRooms] = useState<ManagerClinic[]>([]);
@@ -44,19 +51,20 @@ const ScheduleManagement = () => {
 
   // Shift mapping
   const shiftMap: { [key: string]: string } = {
-    'Morning': 'Sáng',
-    'Afternoon': 'Chiều'
+    Morning: "Sáng",
+    Afternoon: "Chiều",
   };
 
   // Fetch available doctors
   const fetchDoctors = async () => {
     try {
       const response = await managerApi.getAvailableDoctorsForSchedule();
+
       if (response.status && response.data) {
         setDoctors(response.data);
       }
     } catch (error: any) {
-      console.error('Error fetching doctors:', error);
+      console.error("Error fetching doctors:", error);
     }
   };
 
@@ -64,11 +72,12 @@ const ScheduleManagement = () => {
   const fetchRooms = async () => {
     try {
       const response = await managerApi.getAllClinics({ limit: 100 }); // Get all rooms
+
       if (response.status && response.data) {
         setRooms(response.data);
       }
     } catch (error: any) {
-      console.error('Error fetching rooms:', error);
+      console.error("Error fetching rooms:", error);
     }
   };
 
@@ -79,64 +88,79 @@ const ScheduleManagement = () => {
       const response = await managerApi.getAllSchedules({
         page: currentPage,
         limit: itemsPerPage,
-        shift: shiftFilter !== 'all' ? shiftFilter : undefined,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
+        shift: shiftFilter !== "all" ? shiftFilter : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
       });
 
       if (response.status && response.data) {
         // Map API data to local Schedule interface
-        const mappedSchedules: Schedule[] = response.data.map((schedule: ManagerSchedule) => {
-          // Extract doctor info
-          let doctorName = '';
-          let doctorId = '';
-          if (schedule.doctorUserId) {
-            if (typeof schedule.doctorUserId === 'object') {
-              doctorId = schedule.doctorUserId._id;
-              doctorName = schedule.doctorUserId.fullName;
-            } else {
-              doctorId = schedule.doctorUserId;
+        const mappedSchedules: Schedule[] = response.data.map(
+          (schedule: ManagerSchedule) => {
+            // Extract doctor info
+            let doctorName = "";
+            let doctorId = "";
+
+            if (schedule.doctorUserId) {
+              if (typeof schedule.doctorUserId === "object") {
+                doctorId = schedule.doctorUserId._id;
+                doctorName = schedule.doctorUserId.fullName;
+              } else {
+                doctorId = schedule.doctorUserId;
+              }
             }
-          }
 
-          // Extract room info
-          let roomName = '';
-          let roomId = '';
-          if (schedule.roomId) {
-            if (typeof schedule.roomId === 'object') {
-              roomId = schedule.roomId._id;
-              roomName = schedule.roomId.name || schedule.roomId.roomName || '';
-            } else {
-              roomId = schedule.roomId;
+            // Extract room info
+            let roomName = "";
+            let roomId = "";
+
+            if (schedule.roomId) {
+              if (typeof schedule.roomId === "object") {
+                roomId = schedule.roomId._id;
+                roomName =
+                  schedule.roomId.name || schedule.roomId.roomName || "";
+              } else {
+                roomId = schedule.roomId;
+              }
             }
-          }
 
-          // Format times
-          const startTime = new Date(schedule.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-          const endTime = new Date(schedule.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            // Format times
+            const startTime = new Date(schedule.startTime).toLocaleTimeString(
+              "vi-VN",
+              { hour: "2-digit", minute: "2-digit" },
+            );
+            const endTime = new Date(schedule.endTime).toLocaleTimeString(
+              "vi-VN",
+              { hour: "2-digit", minute: "2-digit" },
+            );
 
-          return {
-            id: schedule._id,
-            date: schedule.date,
-            shift: schedule.shift,
-            shiftName: shiftMap[schedule.shift] || schedule.shift,
-            startTime,
-            endTime,
-            doctorName,
-            doctorId,
-            roomName,
-            roomId,
-            maxSlots: schedule.maxSlots,
-            status: schedule.status.toLowerCase() as "available" | "unavailable" | "booked" | "cancelled",
-          };
-        });
-        
+            return {
+              id: schedule._id,
+              date: schedule.date,
+              shift: schedule.shift,
+              shiftName: shiftMap[schedule.shift] || schedule.shift,
+              startTime,
+              endTime,
+              doctorName,
+              doctorId,
+              roomName,
+              roomId,
+              maxSlots: schedule.maxSlots,
+              status: schedule.status.toLowerCase() as
+                | "available"
+                | "unavailable"
+                | "booked"
+                | "cancelled",
+            };
+          },
+        );
+
         setSchedules(mappedSchedules);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 1);
       }
     } catch (error: any) {
-      console.error('❌ Error fetching schedules:', error);
-      toast.error(error.message || 'Không thể tải danh sách lịch làm việc');
+      console.error("❌ Error fetching schedules:", error);
+      toast.error(error.message || "Không thể tải danh sách lịch làm việc");
     } finally {
       setIsLoading(false);
     }
@@ -147,7 +171,6 @@ const ScheduleManagement = () => {
     fetchSchedules();
     fetchDoctors();
     fetchRooms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, shiftFilter, statusFilter]);
 
   // OLD MOCK DATA - Removed
@@ -234,6 +257,7 @@ const ScheduleManagement = () => {
       schedule.doctorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       schedule.roomName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       schedule.shiftName.toLowerCase().includes(searchTerm.toLowerCase());
+
     return matchesSearch;
   });
 
@@ -248,6 +272,7 @@ const ScheduleManagement = () => {
 
   const handleEdit = (scheduleId: string) => {
     const schedule = schedules.find((s) => s.id === scheduleId);
+
     if (schedule) {
       setSelectedSchedule(schedule);
       setIsEditModalOpen(true);
@@ -256,20 +281,23 @@ const ScheduleManagement = () => {
 
   const handleDelete = async (scheduleId: string) => {
     const schedule = schedules.find((s) => s.id === scheduleId);
+
     if (schedule) {
       const confirmDelete = window.confirm(
-        `Bạn có chắc chắn muốn xóa ca khám ${schedule.shiftName} - ${schedule.doctorName}?`
+        `Bạn có chắc chắn muốn xóa ca khám ${schedule.shiftName} - ${schedule.doctorName}?`,
       );
+
       if (confirmDelete) {
         try {
           const response = await managerApi.deleteSchedule(scheduleId);
+
           if (response.status) {
-            toast.success(response.message || 'Xóa ca khám thành công');
+            toast.success(response.message || "Xóa ca khám thành công");
             fetchSchedules(); // Reload list
           }
         } catch (error: any) {
-          console.error('Error deleting schedule:', error);
-          toast.error(error.message || 'Không thể xóa ca khám');
+          console.error("Error deleting schedule:", error);
+          toast.error(error.message || "Không thể xóa ca khám");
         }
       }
     }
@@ -333,6 +361,7 @@ const ScheduleManagement = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+
     return new Intl.DateTimeFormat("vi-VN", {
       weekday: "long",
       year: "numeric",
@@ -359,28 +388,29 @@ const ScheduleManagement = () => {
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Input
+              className="w-full"
               placeholder="Tìm kiếm bác sĩ, phòng, ca..."
-              value={searchTerm}
-              onValueChange={setSearchTerm}
               startContent={
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
               }
-              className="w-full"
+              value={searchTerm}
               variant="bordered"
+              onValueChange={setSearchTerm}
             />
           </div>
 
           {/* Shift Filter */}
           <Select
+            className="w-48"
             placeholder="Chọn ca làm việc"
             selectedKeys={shiftFilter ? [shiftFilter] : []}
+            variant="bordered"
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
+
               setShiftFilter(selectedKey);
               setCurrentPage(1); // Reset to page 1 when filter changes
             }}
-            className="w-48"
-            variant="bordered"
           >
             {shiftOptions.map((option) => (
               <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -389,15 +419,16 @@ const ScheduleManagement = () => {
 
           {/* Status Filter */}
           <Select
+            className="w-48"
             placeholder="Chọn trạng thái"
             selectedKeys={statusFilter ? [statusFilter] : []}
+            variant="bordered"
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
+
               setStatusFilter(selectedKey);
               setCurrentPage(1); // Reset to page 1 when filter changes
             }}
-            className="w-48"
-            variant="bordered"
           >
             {statusOptions.map((option) => (
               <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -407,9 +438,9 @@ const ScheduleManagement = () => {
 
         {/* Add New Button */}
         <Button
-          className="bg-green-600 text-white hover:bg-green-700 px-6 py-2"
-          onPress={handleAddNew}
+          className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2"
           startContent={<PlusIcon className="w-5 h-5" />}
+          onPress={handleAddNew}
         >
           Thêm ca khám mới
         </Button>
@@ -419,7 +450,7 @@ const ScheduleManagement = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-blue-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Ngày
@@ -450,17 +481,22 @@ const ScheduleManagement = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                  <td
+                    className="px-6 py-12 text-center text-gray-500"
+                    colSpan={8}
+                  >
                     <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
                       <span className="ml-3">Đang tải...</span>
                     </div>
                   </td>
                 </tr>
               ) : currentSchedules.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
-                    <div className="text-gray-500 text-lg">Không tìm thấy ca khám</div>
+                  <td className="px-6 py-12 text-center" colSpan={8}>
+                    <div className="text-gray-500 text-lg">
+                      Không tìm thấy ca khám
+                    </div>
                     <div className="text-gray-400 text-sm mt-2">
                       Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
                     </div>
@@ -493,7 +529,9 @@ const ScheduleManagement = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                      {schedule.roomName ? `Phòng ${schedule.roomName}` : "Chưa có phòng"}
+                      {schedule.roomName
+                        ? `Phòng ${schedule.roomName}`
+                        : "Chưa có phòng"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="text-sm font-medium">
@@ -503,7 +541,7 @@ const ScheduleManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(
-                          schedule.status
+                          schedule.status,
                         )}`}
                       >
                         {getStatusText(schedule.status)}
@@ -512,16 +550,16 @@ const ScheduleManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => handleEdit(schedule.id)}
                           className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                           title="Chỉnh sửa ca khám"
+                          onClick={() => handleEdit(schedule.id)}
                         >
                           <PencilIcon className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(schedule.id)}
                           className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
                           title="Xóa ca khám"
+                          onClick={() => handleDelete(schedule.id)}
                         >
                           <TrashIcon className="w-4 h-4" />
                         </button>
@@ -539,17 +577,15 @@ const ScheduleManagement = () => {
       {!isLoading && total > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
           <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến{" "}
-            {endIndex} trong{" "}
-            {total} kết quả
+            Hiển thị {startIndex + 1} đến {endIndex} trong {total} kết quả
           </div>
 
           <div className="flex items-center space-x-2">
             {/* Previous button */}
             <Button
               isDisabled={currentPage === 1}
-              variant="bordered"
               size="sm"
+              variant="bordered"
               onPress={() => handlePageChange(currentPage - 1)}
             >
               ←
@@ -559,11 +595,11 @@ const ScheduleManagement = () => {
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
-                variant={currentPage === page ? "solid" : "bordered"}
+                className="min-w-8"
                 color={currentPage === page ? "primary" : "default"}
                 size="sm"
+                variant={currentPage === page ? "solid" : "bordered"}
                 onPress={() => handlePageChange(page)}
-                className="min-w-8"
               >
                 {page}
               </Button>
@@ -572,8 +608,8 @@ const ScheduleManagement = () => {
             {/* Next button */}
             <Button
               isDisabled={currentPage === totalPages}
-              variant="bordered"
               size="sm"
+              variant="bordered"
               onPress={() => handlePageChange(currentPage + 1)}
             >
               →
@@ -584,25 +620,24 @@ const ScheduleManagement = () => {
 
       {/* Add Schedule Modal */}
       <AddScheduleModal
+        doctors={doctors}
         isOpen={isAddModalOpen}
+        rooms={rooms}
         onClose={handleCloseAddModal}
         onSuccess={handleAddSuccess}
-        doctors={doctors}
-        rooms={rooms}
       />
 
       {/* Edit Schedule Modal */}
       <EditScheduleModal
-        isOpen={isEditModalOpen}
-        onClose={handleCloseEditModal}
-        schedule={selectedSchedule}
-        onSuccess={handleEditSuccess}
         doctors={doctors}
+        isOpen={isEditModalOpen}
         rooms={rooms}
+        schedule={selectedSchedule}
+        onClose={handleCloseEditModal}
+        onSuccess={handleEditSuccess}
       />
     </div>
   );
 };
 
 export default ScheduleManagement;
-
