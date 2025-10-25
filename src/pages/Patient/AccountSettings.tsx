@@ -42,7 +42,6 @@ const AccountSettings = () => {
 
   // Load user data from context
   useEffect(() => {
-    console.log("🔍 [AccountSettings] User from context:", user);
     if (user) {
       setFullName(user.fullName || "");
       setEmail(user.email || "");
@@ -64,23 +63,11 @@ const AccountSettings = () => {
       // Load emergency contact
       const emergencyContact = (user as any).emergencyContact;
 
-      console.log(
-        "🔍 [AccountSettings] EmergencyContact from user:",
-        emergencyContact,
-      );
       if (emergencyContact) {
-        console.log("🔍 [AccountSettings] Loading emergency contact fields:", {
-          name: emergencyContact.name,
-          phone: emergencyContact.phone,
-          relationship: emergencyContact.relationship,
-        });
         setEmergencyName(emergencyContact.name || "");
         setEmergencyPhone(emergencyContact.phone || "");
         setEmergencyRelationship(emergencyContact.relationship || "");
       } else {
-        console.log(
-          "🔍 [AccountSettings] No emergencyContact found, clearing fields",
-        );
         setEmergencyName("");
         setEmergencyPhone("");
         setEmergencyRelationship("");
@@ -200,7 +187,6 @@ const AccountSettings = () => {
         toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
     } catch (error: any) {
-      console.error("Lỗi cập nhật profile:", error);
       toast.error(
         error.message || "Không thể cập nhật thông tin. Vui lòng thử lại",
       );
@@ -210,47 +196,36 @@ const AccountSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+    <div className="min-h-screen bg-white">
       {/* Header Section */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">Hồ sơ cá nhân</h1>
-              <p className="text-gray-600 mt-1">
-                Quản lý thông tin cá nhân và địa chỉ liên lạc của bạn
-              </p>
-            </div>
-          </div>
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-6 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Hồ sơ cá nhân
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Quản lý thông tin, địa chỉ liên lạc của bạn
+          </p>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
-
-        <form className="space-y-8" onSubmit={handleSubmit}>
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {/* Thông tin tài khoản */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            <div className="flex items-center space-x-3 mb-8">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold text-gray-800">
-                Thông tin cá nhân
-              </h2>
-            </div>
+          <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              Thông tin tài khoản
+            </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <Input
                   isRequired
+                  classNames={{
+                    input: "bg-gray-100",
+                    inputWrapper: "bg-gray-100 border-gray-300",
+                  }}
                   label="Họ và tên"
                   labelPlacement="outside"
                   placeholder="Nhập họ và tên"
@@ -261,6 +236,10 @@ const AccountSettings = () => {
               </div>
 
               <Input
+                classNames={{
+                  input: "bg-gray-100",
+                  inputWrapper: "bg-gray-100 border-gray-300",
+                }}
                 label="Ngày sinh"
                 labelPlacement="outside"
                 placeholder="DD/MM/YYYY"
@@ -271,6 +250,10 @@ const AccountSettings = () => {
               />
 
               <Select
+                classNames={{
+                  trigger: "bg-gray-100 border-gray-300",
+                  value: "bg-gray-100",
+                }}
                 label="Giới tính"
                 labelPlacement="outside"
                 placeholder="Chọn giới tính"
@@ -289,6 +272,10 @@ const AccountSettings = () => {
 
               <div className="md:col-span-2">
                 <Input
+                  classNames={{
+                    input: "bg-gray-100",
+                    inputWrapper: "bg-gray-100 border-gray-300",
+                  }}
                   label="Địa chỉ"
                   labelPlacement="outside"
                   placeholder="Nhập địa chỉ"
@@ -301,20 +288,17 @@ const AccountSettings = () => {
           </div>
 
           {/* Địa chỉ liên lạc */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            <div className="flex items-center space-x-3 mb-8">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold text-gray-800">
-                Địa chỉ liên lạc
-              </h2>
-            </div>
+          <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              Địa chỉ liên lạc
+            </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
+                classNames={{
+                  input: "bg-gray-100",
+                  inputWrapper: "bg-gray-100 border-gray-300",
+                }}
                 label="Số điện thoại"
                 labelPlacement="outside"
                 maxLength={11}
@@ -332,6 +316,10 @@ const AccountSettings = () => {
 
               <Input
                 isDisabled
+                classNames={{
+                  input: "bg-gray-200",
+                  inputWrapper: "bg-gray-200 border-gray-300",
+                }}
                 label="Email"
                 labelPlacement="outside"
                 placeholder="Email"
@@ -346,25 +334,20 @@ const AccountSettings = () => {
           </div>
 
           {/* Thông tin liên hệ khẩn cấp */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  Thông tin liên hệ khẩn cấp
-                </h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Người thân hoặc bạn bè có thể liên hệ trong trường hợp khẩn cấp
-                </p>
-              </div>
-            </div>
+          <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Thông tin liên hệ khẩn cấp
+            </h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Người thân hoặc bạn bè có thể liên hệ trong trường hợp khẩn cấp
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Input
+                classNames={{
+                  input: "bg-gray-100",
+                  inputWrapper: "bg-gray-100 border-gray-300",
+                }}
                 label="Họ và tên"
                 labelPlacement="outside"
                 placeholder="Nhập họ và tên người liên hệ"
@@ -375,6 +358,10 @@ const AccountSettings = () => {
               />
 
               <Input
+                classNames={{
+                  input: "bg-gray-100",
+                  inputWrapper: "bg-gray-100 border-gray-300",
+                }}
                 label="Số điện thoại"
                 labelPlacement="outside"
                 maxLength={11}
@@ -391,6 +378,10 @@ const AccountSettings = () => {
               />
 
               <Select
+                classNames={{
+                  trigger: "bg-gray-100 border-gray-300",
+                  value: "bg-gray-100",
+                }}
                 label="Mối quan hệ"
                 labelPlacement="outside"
                 placeholder="Chọn mối quan hệ"
@@ -412,40 +403,9 @@ const AccountSettings = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end pt-4">
             <Button
-              className="px-8 py-3 text-gray-700 border border-gray-300 hover:bg-gray-50"
-              size="lg"
-              variant="bordered"
-              onPress={() => {
-                // Reset form to original values
-                if (user) {
-                  setFullName(user.fullName || "");
-                  setEmail(user.email || "");
-                  setPhone(user.phone || user.phoneNumber || "");
-                  setAddress(user.address || "");
-                  setGender(user.gender || "");
-                  
-                  if (user.dateOfBirth || user.dob) {
-                    const dob = new Date(user.dateOfBirth || user.dob || "");
-                    if (!isNaN(dob.getTime())) {
-                      setBirthDate(dob.toISOString().split("T")[0]);
-                    }
-                  }
-                  
-                  const emergencyContact = (user as any).emergencyContact;
-                  if (emergencyContact) {
-                    setEmergencyName(emergencyContact.name || "");
-                    setEmergencyPhone(emergencyContact.phone || "");
-                    setEmergencyRelationship(emergencyContact.relationship || "");
-                  }
-                }
-              }}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-blue-600 text-white px-8 py-3 hover:bg-blue-700 shadow-lg"
+              className="bg-blue-600 text-white px-10 py-3 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
               isLoading={isLoading}
               size="lg"
               type="submit"
