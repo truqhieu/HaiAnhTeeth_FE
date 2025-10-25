@@ -80,6 +80,7 @@ const PatientHeader = () => {
               className="text-white hover:text-gray-200 min-w-unit-0 p-3"
               variant="light"
               size="lg"
+
             >
               <BellIcon className="w-10 h-10" />
             </Button>
@@ -92,8 +93,8 @@ const PatientHeader = () => {
             {/* User dropdown */}
             <Dropdown
               isOpen={isDropdownOpen}
-              onOpenChange={setIsDropdownOpen}
               placement="bottom-end"
+              onOpenChange={setIsDropdownOpen}
             >
               <DropdownTrigger>
                 <Button
@@ -109,9 +110,9 @@ const PatientHeader = () => {
                       viewBox="0 0 20 20"
                     >
                       <path
-                        fillRule="evenodd"
-                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
                         clipRule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        fillRule="evenodd"
                       />
                     </svg>
                   </div>
@@ -143,28 +144,28 @@ const PatientHeader = () => {
 
                 <DropdownItem
                   key="appointments"
-                  onPress={() => navigate("/patient/appointments")}
                   className={isDashboardExpanded ? "" : "hidden"}
+                  onPress={() => navigate("/patient/appointments")}
                 >
                   <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
                     <span>Ca khám của tôi</span>
                   </div>
                 </DropdownItem>
-                
+
                 <DropdownItem
                   key="medical-records"
-                  onPress={() => navigate("/patient/medical-records")}
                   className={isDashboardExpanded ? "" : "hidden"}
+                  onPress={() => navigate("/patient/medical-records")}
                 >
                   <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
                     <span>Hồ sơ khám bệnh</span>
                   </div>
                 </DropdownItem>
-                
+
                 <DropdownItem
                   key="complaints"
-                  onPress={() => navigate("/patient/complaints")}
                   className={isDashboardExpanded ? "" : "hidden"}
+                  onPress={() => navigate("/patient/complaints")}
                 >
                   <div className="flex items-center space-x-3 pl-8 whitespace-nowrap">
                     <span>Khiếu nại</span>
@@ -193,7 +194,6 @@ const PatientHeader = () => {
           </div>
         </div>
       </div>
-
       {/* Main Navbar - Đồng bộ layout với AppNavbar */}
       <div className="flex items-center h-28 px-8">
         {/* Logo bên trái */}

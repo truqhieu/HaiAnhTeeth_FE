@@ -9,6 +9,7 @@ import {
   CalendarDaysIcon,
   ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
+
 import { useAuth } from "@/contexts/AuthContext";
 
 interface ManagerLayoutProps {
@@ -57,12 +58,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
+          aria-label="Close sidebar"
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          onKeyDown={(e) => e.key === 'Escape' && setSidebarOpen(false)}
           role="button"
           tabIndex={0}
-          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+          onKeyDown={(e) => e.key === "Escape" && setSidebarOpen(false)}
         />
       )}
 
@@ -75,15 +76,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-              <UserIcon className="w-5 h-5 text-green-600" />
+            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+              <UserIcon className="w-5 h-5 text-blue-600" />
             </div>
             <span className="text-lg font-semibold text-gray-800">Manager</span>
           </div>
-          <button
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          >
+          <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <XMarkIcon className="w-6 h-6 text-gray-500" />
           </button>
         </div>
@@ -93,15 +91,16 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
           <div className="space-y-2">
             {navigation.map((item) => {
               const Icon = item.icon;
+
               return (
                 <button
                   key={item.name}
-                  onClick={() => handleNavigation(item.href)}
                   className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
                     item.current
-                      ? "bg-green-50 text-green-700 border-r-2 border-green-600"
+                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
+                  onClick={() => handleNavigation(item.href)}
                 >
                   <Icon className="w-5 h-5 mr-3" />
                   {item.name}
@@ -120,8 +119,8 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
             </p>
           </div>
           <button
-            onClick={handleLogout}
             className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+            onClick={handleLogout}
           >
             <ArrowRightOnRectangleIcon className="w-5 h-5 mr-3" />
             Đăng xuất
@@ -134,14 +133,14 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
         {/* Mobile header */}
         <div className="lg:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
           <button
-            onClick={() => setSidebarOpen(true)}
             className="text-gray-500 hover:text-gray-700"
+            onClick={() => setSidebarOpen(true)}
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-              <UserIcon className="w-5 h-5 text-green-600" />
+            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
+              <UserIcon className="w-5 h-5 text-blue-600" />
             </div>
             <span className="text-lg font-semibold text-gray-800">Manager</span>
           </div>
@@ -149,9 +148,7 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );

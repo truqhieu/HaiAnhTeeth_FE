@@ -8,6 +8,7 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/solid";
 import { Input, Button, Form } from "@heroui/react";
+
 import { authApi } from "@/api";
 
 const ResetPassword = () => {
@@ -79,7 +80,11 @@ const ResetPassword = () => {
     setIsSubmitting(true);
 
     try {
-        const result = await authApi.resetPassword({ token, email, newPassword: password });
+      const result = await authApi.resetPassword({
+        token,
+        email,
+        newPassword: password,
+      });
 
       if (!result.success) {
         throw new Error(result.message || "Không thể đặt lại mật khẩu");
@@ -206,7 +211,11 @@ const ResetPassword = () => {
                 ) : undefined
               }
               isInvalid={isPasswordInvalid}
-              label="Mật khẩu mới *"
+              label={
+                <>
+                  Mật khẩu mới <span className="text-red-500">*</span>
+                </>
+              }
               labelPlacement="outside"
               name="password"
               placeholder="Nhập mật khẩu mới"
@@ -241,7 +250,11 @@ const ResetPassword = () => {
                   : undefined
               }
               isInvalid={isConfirmPasswordInvalid}
-              label="Xác nhận mật khẩu *"
+              label={
+                <>
+                  Xác nhận mật khẩu <span className="text-red-500">*</span>
+                </>
+              }
               labelPlacement="outside"
               name="confirm-password"
               placeholder="Nhập lại mật khẩu mới"
@@ -298,4 +311,3 @@ const ResetPassword = () => {
 };
 
 export default ResetPassword;
-

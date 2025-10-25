@@ -6,6 +6,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Button, Input, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { AddUserModal, EditUserModal } from "@/components";
 import { adminApi, AdminUser } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +24,7 @@ const AccountManagement = () => {
   const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -35,45 +37,44 @@ const AccountManagement = () => {
 
   // Debug user info
   useEffect(() => {
-    console.log('👤 Current User:', currentUser);
-    console.log('🔑 User Role:', currentUser?.role);
+    console.log("👤 Current User:", currentUser);
+    console.log("🔑 User Role:", currentUser?.role);
   }, [currentUser]);
 
   // Role mapping từ tiếng Anh sang tiếng Việt
   const roleMap: { [key: string]: string } = {
-    'Doctor': 'Bác sĩ',
-    'Nurse': 'Điều dưỡng',
-    'Staff': 'Lễ Tân',
-    'Patient': 'Bệnh nhân',
-    'Manager': 'Manager',
-    'Admin': 'Admin'
+    Doctor: "Bác sĩ",
+    Nurse: "Điều dưỡng",
+    Staff: "Lễ Tân",
+    Patient: "Bệnh nhân",
+    Manager: "Manager",
+    Admin: "Admin",
   };
 
   // Fetch accounts from API
   const fetchAccounts = async () => {
     setIsLoading(true);
     try {
-      console.log('🔍 Fetching accounts with params:', {
+      const params = {
         page: currentPage,
         limit: itemsPerPage,
-        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Inactive') : undefined,
+        status:
+          statusFilter !== "all"
+            ? statusFilter === "active"
+              ? "Active"
+              : "Lock"
+            : undefined,
+        role: roleFilter !== "all" ? roleFilter : undefined,
         search: searchTerm || undefined,
-      });
+      };
+      
 
-      const response = await adminApi.getAllAccounts({
-        page: currentPage,
-        limit: itemsPerPage,
-        status: statusFilter !== 'all' ? (statusFilter === 'active' ? 'Active' : 'Lock') : undefined,
-        search: searchTerm || undefined,
-      });
-
-      console.log('📥 Response received:', response);
-      console.log('📊 Response data:', response.data);
+      const response = await adminApi.getAllAccounts(params);
 
       // Backend returns 'status' directly in response (not wrapped in data)
       const isSuccess = response.status;
-      console.log('✅ Is success?', isSuccess);
-      
+
+
       if (isSuccess && response.data) {
         // Map API data to local User interface
         const mappedUsers: User[] = response.data.map((user: AdminUser) => ({
@@ -81,22 +82,23 @@ const AccountManagement = () => {
           role: roleMap[user.role] || user.role,
           name: user.fullName,
           email: user.email,
-          phone: user.phoneNumber || '',
-          status: user.status === 'Active' ? 'active' as const : 
-                  user.status === 'Lock' ? 'inactive' as const :
-                  'inactive' as const, // Banned cũng map thành inactive
+          phone: user.phoneNumber || "",
+          status:
+            user.status === "Active"
+              ? ("active" as const)
+              : user.status === "Lock"
+                ? ("inactive" as const)
+                : ("inactive" as const), // Banned cũng map thành inactive
         }));
-        
-        console.log('👥 Mapped users:', mappedUsers);
+
         setUsers(mappedUsers);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 1);
       } else {
-        console.warn('⚠️ Response not successful or no data');
+        console.warn("⚠️ Response not successful or no data");
       }
     } catch (error: any) {
-      console.error('❌ Error fetching accounts:', error);
-      toast.error(error.message || 'Không thể tải danh sách tài khoản');
+      toast.error(error.message || "Không thể tải danh sách tài khoản");
     } finally {
       setIsLoading(false);
     }
@@ -105,8 +107,7 @@ const AccountManagement = () => {
   // Fetch data when component mounts or filters change
   useEffect(() => {
     fetchAccounts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, statusFilter]);
+  }, [currentPage, statusFilter, roleFilter]);
 
   // Debounce search term
   useEffect(() => {
@@ -119,14 +120,21 @@ const AccountManagement = () => {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
-
   const statusOptions = [
-    { key: "all", label: "Tất cả" },
+    { key: "all", label: "Tất cả trạng thái" },
     { key: "active", label: "Hoạt động" },
     { key: "inactive", label: "Bị khóa" },
+  ];
+
+  const roleOptions = [
+    { key: "all", label: "Tất cả vai trò" },
+    { key: "Manager", label: "Manager" },
+    { key: "Doctor", label: "Bác sĩ" },
+    { key: "Nurse", label: "Điều dưỡng" },
+    { key: "Staff", label: "Lễ Tân" },
+    { key: "Patient", label: "Bệnh nhân" },
   ];
 
   // Pagination info
@@ -140,17 +148,18 @@ const AccountManagement = () => {
 
   const handleEdit = (userId: string) => {
     const user = users.find((u) => u.id === userId);
+
     if (user) {
       // Không cho phép chỉnh sửa tài khoản bệnh nhân
       if (user.role === "Bệnh nhân") {
         toast.error("Không thể chỉnh sửa tài khoản bệnh nhân");
+
         return;
       }
       setSelectedUser(user);
       setIsEditModalOpen(true);
     }
   };
-
 
   const handleAddNew = () => {
     setIsAddModalOpen(true);
@@ -184,33 +193,55 @@ const AccountManagement = () => {
           {/* Search */}
           <div className="relative flex-1 max-w-md">
             <Input
+              className="w-full"
               placeholder="Tìm kiếm..."
-              value={searchTerm}
-              onValueChange={setSearchTerm}
               startContent={
                 <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
               }
-              className="w-full"
+              value={searchTerm}
               variant="bordered"
+              onValueChange={setSearchTerm}
             />
           </div>
 
           {/* Status Filter */}
           <Select
+            className="w-48"
             placeholder="Chọn trạng thái"
             selectedKeys={statusFilter ? [statusFilter] : []}
+            variant="bordered"
             onSelectionChange={(keys) => {
               const selectedKey = Array.from(keys)[0] as string;
+
               setStatusFilter(selectedKey);
               // Reset to page 1 when filter changes
               if (currentPage !== 1) {
                 setCurrentPage(1);
               }
             }}
-            className="w-48"
-            variant="bordered"
           >
             {statusOptions.map((option) => (
+              <SelectItem key={option.key}>{option.label}</SelectItem>
+            ))}
+          </Select>
+
+          {/* Role Filter */}
+          <Select
+            className="w-48"
+            placeholder="Chọn vai trò"
+            selectedKeys={roleFilter ? [roleFilter] : []}
+            variant="bordered"
+            onSelectionChange={(keys) => {
+              const selectedKey = Array.from(keys)[0] as string;
+
+              setRoleFilter(selectedKey);
+              // Reset to page 1 when filter changes
+              if (currentPage !== 1) {
+                setCurrentPage(1);
+              }
+            }}
+          >
+            {roleOptions.map((option) => (
               <SelectItem key={option.key}>{option.label}</SelectItem>
             ))}
           </Select>
@@ -219,8 +250,8 @@ const AccountManagement = () => {
         {/* Add New Button */}
         <Button
           className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2"
-          onPress={handleAddNew}
           startContent={<PlusIcon className="w-5 h-5" />}
+          onPress={handleAddNew}
         >
           Thêm mới tài khoản
         </Button>
@@ -283,23 +314,25 @@ const AccountManagement = () => {
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {user.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                      {user.status === "active"
+                        ? "Hoạt động"
+                        : "Không hoạt động"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => handleEdit(user.id)}
                       className={`p-1 rounded ${
                         user.role === "Bệnh nhân"
                           ? "text-gray-400 cursor-not-allowed"
                           : "text-blue-600 hover:text-blue-900 hover:bg-blue-50"
                       }`}
+                      disabled={user.role === "Bệnh nhân"}
                       title={
                         user.role === "Bệnh nhân"
                           ? "Không thể chỉnh sửa tài khoản bệnh nhân"
                           : "Chỉnh sửa"
                       }
-                      disabled={user.role === "Bệnh nhân"}
+                      onClick={() => handleEdit(user.id)}
                     >
                       <PencilIcon className="w-4 h-4" />
                     </button>
@@ -332,16 +365,15 @@ const AccountManagement = () => {
       {!isLoading && total > 0 && (
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
           <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {endIndex} trong{" "}
-            {total} kết quả
+            Hiển thị {startIndex + 1} đến {endIndex} trong {total} kết quả
           </div>
 
           <div className="flex items-center space-x-2">
             {/* Previous button */}
             <Button
               isDisabled={currentPage === 1}
-              variant="bordered"
               size="sm"
+              variant="bordered"
               onPress={() => handlePageChange(currentPage - 1)}
             >
               ←
@@ -351,11 +383,11 @@ const AccountManagement = () => {
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <Button
                 key={page}
-                variant={currentPage === page ? "solid" : "bordered"}
+                className="min-w-8"
                 color={currentPage === page ? "primary" : "default"}
                 size="sm"
+                variant={currentPage === page ? "solid" : "bordered"}
                 onPress={() => handlePageChange(page)}
-                className="min-w-8"
               >
                 {page}
               </Button>
@@ -364,8 +396,8 @@ const AccountManagement = () => {
             {/* Next button */}
             <Button
               isDisabled={currentPage === totalPages}
-              variant="bordered"
               size="sm"
+              variant="bordered"
               onPress={() => handlePageChange(currentPage + 1)}
             >
               →
@@ -384,11 +416,11 @@ const AccountManagement = () => {
       {/* Edit User Modal */}
       <EditUserModal
         isOpen={isEditModalOpen}
+        user={selectedUser}
         onClose={() => {
           setIsEditModalOpen(false);
           setSelectedUser(null);
         }}
-        user={selectedUser}
         onSuccess={handleEditSuccess}
       />
     </div>

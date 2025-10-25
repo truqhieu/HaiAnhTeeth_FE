@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
-import { Input, Button, Form, Select, SelectItem, Textarea } from "@heroui/react";
+import {
+  Input,
+  Button,
+  Form,
+  Select,
+  SelectItem,
+  Textarea,
+} from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { managerApi } from "@/api";
 import { Service } from "@/types";
 
@@ -38,8 +46,8 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
   // Reverse mapping để gửi lên backend
   const categoryReverseMap: { [key: string]: string } = {
-    'Khám': 'Examination',
-    'Tư vấn': 'Consultation'
+    Khám: "Examination",
+    "Tư vấn": "Consultation",
   };
 
   const statusOptions = [
@@ -65,8 +73,16 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
   // Validation states
   const isNameInvalid = showValidation && !formData.name.trim();
   const isDescriptionInvalid = showValidation && !formData.description.trim();
-  const isPriceInvalid = showValidation && (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0);
-  const isDurationInvalid = showValidation && (!formData.duration || isNaN(Number(formData.duration)) || Number(formData.duration) <= 0);
+  const isPriceInvalid =
+    showValidation &&
+    (!formData.price ||
+      isNaN(Number(formData.price)) ||
+      Number(formData.price) <= 0);
+  const isDurationInvalid =
+    showValidation &&
+    (!formData.duration ||
+      isNaN(Number(formData.duration)) ||
+      Number(formData.duration) <= 0);
   const isCategoryInvalid = showValidation && !formData.category;
 
   const handleInputChange = (field: string, value: string) => {
@@ -100,7 +116,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
     try {
       if (!service?.id) {
-        throw new Error('Không tìm thấy ID dịch vụ');
+        throw new Error("Không tìm thấy ID dịch vụ");
       }
 
       // Prepare data for API call
@@ -109,7 +125,9 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         description: formData.description.trim(),
         price: Number(formData.price),
         durationMinutes: Number(formData.duration),
-        category: categoryReverseMap[formData.category] as 'Examination' | 'Consultation',
+        category: categoryReverseMap[formData.category] as
+          | "Examination"
+          | "Consultation",
       };
 
       // Gọi API cập nhật
@@ -123,11 +141,14 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
           onSuccess();
         }
       } else {
-        throw new Error(response.message || 'Không thể cập nhật dịch vụ');
+        throw new Error(response.message || "Không thể cập nhật dịch vụ");
       }
     } catch (error: any) {
       console.error("Error updating service:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật dịch vụ. Vui lòng thử lại.");
+      toast.error(
+        error.message ||
+          "Có lỗi xảy ra khi cập nhật dịch vụ. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -193,20 +214,30 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
         {/* Body */}
         <div className="p-6">
-          <Form autoComplete="off" className="space-y-6" onSubmit={handleSubmit}>
+          <Form
+            autoComplete="off"
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
                 <Input
                   fullWidth
                   autoComplete="off"
-                  errorMessage={isNameInvalid ? "Vui lòng nhập tên dịch vụ" : ""}
+                  errorMessage={
+                    isNameInvalid ? "Vui lòng nhập tên dịch vụ" : ""
+                  }
                   isInvalid={isNameInvalid}
-                  label="Tên dịch vụ *"
+                  label={
+                    <>
+                      Tên dịch vụ <span className="text-red-500">*</span>
+                    </>
+                  }
                   placeholder="Nhập tên dịch vụ"
                   type="text"
                   value={formData.name}
-                  onValueChange={(value) => handleInputChange("name", value)}
                   variant="bordered"
+                  onValueChange={(value) => handleInputChange("name", value)}
                 />
               </div>
 
@@ -214,61 +245,84 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                 <Textarea
                   fullWidth
                   autoComplete="off"
-                  errorMessage={isDescriptionInvalid ? "Vui lòng nhập mô tả dịch vụ" : ""}
+                  errorMessage={
+                    isDescriptionInvalid ? "Vui lòng nhập mô tả dịch vụ" : ""
+                  }
                   isInvalid={isDescriptionInvalid}
-                  label="Mô tả dịch vụ *"
+                  label={
+                    <>
+                      Mô tả dịch vụ <span className="text-red-500">*</span>
+                    </>
+                  }
+                  minRows={3}
                   placeholder="Nhập mô tả chi tiết về dịch vụ"
                   value={formData.description}
-                  onValueChange={(value) => handleInputChange("description", value)}
                   variant="bordered"
-                  minRows={3}
+                  onValueChange={(value) =>
+                    handleInputChange("description", value)
+                  }
                 />
               </div>
 
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={isPriceInvalid ? "Vui lòng nhập giá hợp lệ (lớn hơn 0)" : ""}
+                errorMessage={
+                  isPriceInvalid ? "Vui lòng nhập giá hợp lệ (lớn hơn 0)" : ""
+                }
                 isInvalid={isPriceInvalid}
-                label="Giá dịch vụ (VND) *"
+                label={
+                  <>
+                    Giá dịch vụ (VND) <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập giá dịch vụ"
+                startContent={<span className="text-gray-500 text-sm">₫</span>}
                 type="number"
                 value={formData.price}
-                onValueChange={(value) => handleInputChange("price", value)}
                 variant="bordered"
-                startContent={
-                  <span className="text-gray-500 text-sm">₫</span>
-                }
+                onValueChange={(value) => handleInputChange("price", value)}
               />
 
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={isDurationInvalid ? "Vui lòng nhập thời gian hợp lệ (lớn hơn 0)" : ""}
+                endContent={<span className="text-gray-500 text-sm">phút</span>}
+                errorMessage={
+                  isDurationInvalid
+                    ? "Vui lòng nhập thời gian hợp lệ (lớn hơn 0)"
+                    : ""
+                }
                 isInvalid={isDurationInvalid}
-                label="Thời gian (phút) *"
+                label={
+                  <>
+                    Thời gian (phút) <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Nhập thời gian thực hiện"
                 type="number"
                 value={formData.duration}
-                onValueChange={(value) => handleInputChange("duration", value)}
                 variant="bordered"
-                endContent={
-                  <span className="text-gray-500 text-sm">phút</span>
-                }
+                onValueChange={(value) => handleInputChange("duration", value)}
               />
 
               <Select
                 fullWidth
                 errorMessage={isCategoryInvalid ? "Vui lòng chọn danh mục" : ""}
                 isInvalid={isCategoryInvalid}
-                label="Danh mục *"
+                label={
+                  <>
+                    Danh mục <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Chọn danh mục"
                 selectedKeys={formData.category ? [formData.category] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("category", selectedKey);
                 }}
-                variant="bordered"
               >
                 {categoryOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -280,11 +334,12 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                 label="Trạng thái"
                 placeholder="Chọn trạng thái"
                 selectedKeys={formData.status ? [formData.status] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("status", selectedKey);
                 }}
-                variant="bordered"
               >
                 {statusOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -294,9 +349,9 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
             <div className="flex justify-end space-x-4 pt-4">
               <Button
+                isDisabled={isSubmitting}
                 variant="bordered"
                 onPress={handleClose}
-                isDisabled={isSubmitting}
               >
                 Hủy
               </Button>

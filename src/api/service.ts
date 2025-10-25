@@ -38,7 +38,7 @@ export const serviceApi = {
     try {
       // Convert params to string format for URLSearchParams
       const queryParams = new URLSearchParams();
-      
+
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           queryParams.append(key, String(value));
@@ -46,17 +46,19 @@ export const serviceApi = {
       });
 
       const query = queryParams.toString();
-      const endpoint = query ? `/manager/services?${query}` : '/manager/services';
-      
+      const endpoint = query
+        ? `/manager/services?${query}`
+        : "/manager/services";
+
       // Gọi apiCall và cast response về GetServicesResponse
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'https://haianhteethbe-production.up.railway.app/api'}${endpoint}`,
+        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
         {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -64,9 +66,10 @@ export const serviceApi = {
       }
 
       const data: GetServicesResponse = await response.json();
+
       return data;
     } catch (error: any) {
-      console.error('Error fetching services:', error);
+      console.error("Error fetching services:", error);
       throw error;
     }
   },

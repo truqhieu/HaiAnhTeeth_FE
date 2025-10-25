@@ -12,7 +12,7 @@ export interface GetAvailableDoctorsParams {
   date: string;
   startTime: string;
   endTime: string;
-  appointmentFor?: 'self' | 'other'; // ⭐ Để backend biết có exclude doctors hay không
+  appointmentFor?: "self" | "other"; // ⭐ Để backend biết có exclude doctors hay không
   userId?: string; // ⭐ ID của user (để exclude bác sĩ mà user đã đặt)
 }
 
@@ -39,11 +39,12 @@ export const availableDoctorApi = {
    * (GET /api/available-slots/doctors/time-slot)
    */
   getByTimeSlot: async (
-    params: GetAvailableDoctorsParams
+    params: GetAvailableDoctorsParams,
   ): Promise<GetAvailableDoctorsResponse> => {
     try {
       // Convert params to query string
       const queryParams = new URLSearchParams();
+
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           queryParams.append(key, String(value));
@@ -63,7 +64,7 @@ export const availableDoctorApi = {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -71,6 +72,7 @@ export const availableDoctorApi = {
       }
 
       const data: GetAvailableDoctorsResponse = await response.json();
+
       return data;
     } catch (error: any) {
       console.error("Error fetching available doctors:", error);

@@ -1,10 +1,10 @@
-import { authenticatedApiCall, ApiResponse } from './index';
+import { authenticatedApiCall, ApiResponse } from "./index";
 
 export interface AppointmentCreationData {
   fullName: string;
   email: string;
   phoneNumber: string;
-  appointmentFor: 'self' | 'other';
+  appointmentFor: "self" | "other";
   serviceId: string;
   doctorUserId: string;
   doctorScheduleId: string;
@@ -34,9 +34,11 @@ export interface AppointmentResponseData {
 }
 
 export const appointmentApi = {
-  create: async (data: AppointmentCreationData): Promise<ApiResponse<AppointmentResponseData>> => {
-    return authenticatedApiCall('/appointments/consultation/create', {
-      method: 'POST',
+  create: async (
+    data: AppointmentCreationData,
+  ): Promise<ApiResponse<AppointmentResponseData>> => {
+    return authenticatedApiCall("/appointments/consultation/create", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   },
@@ -48,43 +50,47 @@ export const appointmentApi = {
    *   - Bao gồm cả đặt lịch khám (không cần thanh toán) và tư vấn đã thanh toán xong
    *   - KHÔNG bao gồm: PendingPayment (các ca tư vấn đang chờ thanh toán)
    */
-  getMyAppointments: async (options?: { 
-    includePendingPayment?: boolean; 
+  getMyAppointments: async (options?: {
+    includePendingPayment?: boolean;
     status?: string;
   }): Promise<ApiResponse<any>> => {
     const queryParams = new URLSearchParams();
-    
+
     if (options?.includePendingPayment) {
-      queryParams.append('includePendingPayment', 'true');
+      queryParams.append("includePendingPayment", "true");
     }
-    
+
     if (options?.status) {
-      queryParams.append('status', options.status);
+      queryParams.append("status", options.status);
     }
-    
+
     const queryString = queryParams.toString();
-    const url = `/appointments/my-appointments${queryString ? `?${queryString}` : ''}`;
-    
+    const url = `/appointments/my-appointments${queryString ? `?${queryString}` : ""}`;
+
     return authenticatedApiCall(url, {
-      method: 'GET',
+      method: "GET",
     });
   },
 
   getAllAppointments: async (): Promise<ApiResponse<any>> => {
-    return authenticatedApiCall('/appointments/all', {
-      method: 'GET',
+    return authenticatedApiCall("/appointments/all", {
+      method: "GET",
     });
   },
 
   getPendingAppointments: async (): Promise<ApiResponse<any>> => {
-    return authenticatedApiCall('/appointments/pending', {
-      method: 'GET',
+    return authenticatedApiCall("/appointments/pending", {
+      method: "GET",
     });
   },
 
-  reviewAppointment: async (appointmentId: string, action: 'approve' | 'cancel', cancelReason?: string): Promise<ApiResponse<any>> => {
-    return authenticatedApiCall('/appointments/review', {
-      method: 'POST',
+  reviewAppointment: async (
+    appointmentId: string,
+    action: "approve" | "cancel",
+    cancelReason?: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall("/appointments/review", {
+      method: "POST",
       body: JSON.stringify({ appointmentId, action, cancelReason }),
     });
   },
@@ -94,9 +100,12 @@ export const appointmentApi = {
    * PUT /api/appointments/:appointmentId/status
    * Body: { status: 'CheckedIn' | 'Completed' | 'Cancelled' }
    */
-  updateAppointmentStatus: async (appointmentId: string, status: 'CheckedIn' | 'Completed' | 'Cancelled'): Promise<ApiResponse<any>> => {
+  updateAppointmentStatus: async (
+    appointmentId: string,
+    status: "CheckedIn" | "Completed" | "Cancelled",
+  ): Promise<ApiResponse<any>> => {
     return authenticatedApiCall(`/appointments/${appointmentId}/status`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ status }),
     });
   },

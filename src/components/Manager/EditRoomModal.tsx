@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
-import { Input, Button, Form, Select, SelectItem, Textarea } from "@heroui/react";
+import {
+  Input,
+  Button,
+  Form,
+  Select,
+  SelectItem,
+  Textarea,
+} from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { managerApi, ManagerDoctor } from "@/api";
 import { Room } from "@/types";
 
@@ -74,14 +82,17 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
 
     try {
       if (!room?.id) {
-        throw new Error('Không tìm thấy ID phòng khám');
+        throw new Error("Không tìm thấy ID phòng khám");
       }
 
       // Prepare data for API call
       const updateData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
-        status: formData.status === 'active' ? 'Active' as const : 'Inactive' as const,
+        status:
+          formData.status === "active"
+            ? ("Active" as const)
+            : ("Inactive" as const),
       };
 
       // Gọi API cập nhật
@@ -109,11 +120,14 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
           onSuccess();
         }
       } else {
-        throw new Error(response.message || 'Không thể cập nhật phòng khám');
+        throw new Error(response.message || "Không thể cập nhật phòng khám");
       }
     } catch (error: any) {
       console.error("Error updating clinic:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật phòng khám. Vui lòng thử lại.");
+      toast.error(
+        error.message ||
+          "Có lỗi xảy ra khi cập nhật phòng khám. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -160,9 +174,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
             />
             <div>
               <h2 className="text-2xl font-bold">Chỉnh sửa phòng khám</h2>
-              <p className="text-sm text-gray-600">
-                {room.name}
-              </p>
+              <p className="text-sm text-gray-600">{room.name}</p>
             </div>
           </div>
           <Button
@@ -177,19 +189,29 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
 
         {/* Body */}
         <div className="p-6">
-          <Form autoComplete="off" className="space-y-6" onSubmit={handleSubmit}>
+          <Form
+            autoComplete="off"
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
             <div className="space-y-6">
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={isNameInvalid ? "Vui lòng nhập tên phòng khám" : ""}
+                errorMessage={
+                  isNameInvalid ? "Vui lòng nhập tên phòng khám" : ""
+                }
                 isInvalid={isNameInvalid}
-                label="Tên phòng khám *"
+                label={
+                  <>
+                    Tên phòng khám <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Ví dụ: Phòng khám tổng quát 1"
                 type="text"
                 value={formData.name}
-                onValueChange={(value) => handleInputChange("name", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("name", value)}
               />
 
               <Textarea
@@ -197,27 +219,34 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                 autoComplete="off"
                 errorMessage={isDescriptionInvalid ? "Vui lòng nhập mô tả" : ""}
                 isInvalid={isDescriptionInvalid}
-                label="Mô tả phòng khám *"
+                label={
+                  <>
+                    Mô tả phòng khám <span className="text-red-500">*</span>
+                  </>
+                }
+                minRows={4}
                 placeholder="Nhập mô tả chi tiết về phòng khám"
                 value={formData.description}
-                onValueChange={(value) => handleInputChange("description", value)}
                 variant="bordered"
-                minRows={4}
+                onValueChange={(value) =>
+                  handleInputChange("description", value)
+                }
               />
 
               <Select
                 fullWidth
+                description="Chọn 'Không có bác sĩ' để gỡ bác sĩ hiện tại"
                 label="Phân công bác sĩ"
                 placeholder="Chọn bác sĩ"
                 selectedKeys={
                   formData.assignedDoctorId ? [formData.assignedDoctorId] : []
                 }
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("assignedDoctorId", selectedKey || "");
                 }}
-                variant="bordered"
-                description="Chọn 'Không có bác sĩ' để gỡ bác sĩ hiện tại"
               >
                 <SelectItem key="" value="">
                   <span className="text-gray-500 italic">Không có bác sĩ</span>
@@ -226,7 +255,9 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                   <SelectItem key={doctor._id} textValue={doctor.fullName}>
                     <div>
                       <div className="font-medium">{doctor.fullName}</div>
-                      <div className="text-xs text-gray-500">{doctor.email}</div>
+                      <div className="text-xs text-gray-500">
+                        {doctor.email}
+                      </div>
                     </div>
                   </SelectItem>
                 ))}
@@ -237,11 +268,12 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                 label="Trạng thái"
                 placeholder="Chọn trạng thái"
                 selectedKeys={formData.status ? [formData.status] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("status", selectedKey);
                 }}
-                variant="bordered"
               >
                 {statusOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -251,9 +283,9 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
 
             <div className="flex justify-end space-x-4 pt-4">
               <Button
+                isDisabled={isSubmitting}
                 variant="bordered"
                 onPress={handleClose}
-                isDisabled={isSubmitting}
               >
                 Hủy
               </Button>
@@ -275,4 +307,3 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
 };
 
 export default EditRoomModal;
-

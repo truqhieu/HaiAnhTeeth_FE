@@ -10,6 +10,7 @@ import {
   HeartIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
+
 import { useBookingModal } from "@/contexts/BookingModalContext";
 
 const Home = () => {
@@ -24,26 +25,34 @@ const Home = () => {
   const services = [
     {
       title: "Khám Sức Khỏe Tổng Quát",
-      description: "Chương trình khám sức khỏe toàn diện với đội ngũ bác sĩ chuyên môn cao, trang thiết bị hiện đại, giúp phát hiện sớm các nguy cơ về sức khỏe.",
-      image: "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/555076308_122190721040359809_5009409531579541387_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=127cfc&_nc_ohc=oqTWmsqj1EwQ7kNvwGZ8BlS&_nc_oc=AdkOALoyNRgI9RWeooD57j2tcHiUB2N08bu_N-YQll_klpiMkiblBrP-n-V5d0quUcs&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=zZmHitR5FR62-TdHjxKNGQ&oh=00_AfdqHtbujk0WfULM7GiPZI0pX9iN2JRD-IiKdrHy5OofxA&oe=68FF71AB",
+      description:
+        "Chương trình khám sức khỏe toàn diện với đội ngũ bác sĩ chuyên môn cao, trang thiết bị hiện đại, giúp phát hiện sớm các nguy cơ về sức khỏe.",
+      image:
+        "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/555076308_122190721040359809_5009409531579541387_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=127cfc&_nc_ohc=oqTWmsqj1EwQ7kNvwGZ8BlS&_nc_oc=AdkOALoyNRgI9RWeooD57j2tcHiUB2N08bu_N-YQll_klpiMkiblBrP-n-V5d0quUcs&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=zZmHitR5FR62-TdHjxKNGQ&oh=00_AfdqHtbujk0WfULM7GiPZI0pX9iN2JRD-IiKdrHy5OofxA&oe=68FF71AB",
       icon: <CheckCircleIcon className="w-6 h-6" />,
     },
     {
       title: "Chăm Sóc Răng Miệng",
-      description: "Dịch vụ nha khoa toàn diện từ khám tổng quát, điều trị, đến thẩm mỹ nha khoa với công nghệ tiên tiến và không đau.",
-      image: "https://scontent.fhan14-4.fna.fbcdn.net/v/t39.30808-6/553068952_122190134954359809_8353379584978656470_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_ohc=l278OBuf71kQ7kNvwF8WyY_&_nc_oc=AdnAULq5Y4Se2BOaH4p95zlUdBFDqW1daV41RnmcBOEOeVklyRzMQmfisPOYA--1eNc&_nc_zt=23&_nc_ht=scontent.fhan14-4.fna&_nc_gid=dFRVrKjeRYdaTjsGNXeT-g&oh=00_AfcAxqJdelMjrqyV5O3cVNLX38RW6SZTJ_Bjx3mv0NjRtg&oe=68FF771B",
+      description:
+        "Dịch vụ nha khoa toàn diện từ khám tổng quát, điều trị, đến thẩm mỹ nha khoa với công nghệ tiên tiến và không đau.",
+      image:
+        "https://scontent.fhan14-4.fna.fbcdn.net/v/t39.30808-6/553068952_122190134954359809_8353379584978656470_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=102&ccb=1-7&_nc_sid=833d8c&_nc_ohc=l278OBuf71kQ7kNvwF8WyY_&_nc_oc=AdnAULq5Y4Se2BOaH4p95zlUdBFDqW1daV41RnmcBOEOeVklyRzMQmfisPOYA--1eNc&_nc_zt=23&_nc_ht=scontent.fhan14-4.fna&_nc_gid=dFRVrKjeRYdaTjsGNXeT-g&oh=00_AfcAxqJdelMjrqyV5O3cVNLX38RW6SZTJ_Bjx3mv0NjRtg&oe=68FF771B",
       icon: <SparklesIcon className="w-6 h-6" />,
     },
     {
       title: "Tư Vấn Dinh Dưỡng",
-      description: "Chuyên gia dinh dưỡng tư vấn chế độ ăn uống khoa học, phù hợp với từng đối tượng, giúp cải thiện sức khỏe một cách toàn diện.",
-      image: "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/548260292_122189545454359809_8477717599939397988_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_ohc=UUADYr0OLswQ7kNvwHqyYHQ&_nc_oc=Adm0u22TUEjm26SI4ElPJOPQS9g0w_Vj12046yglurCd8ItwLyxRYRlMTaf7fikgsQU&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=KASGy301gaZErmzldIj2tQ&oh=00_AfcyCcAlLjWUdcajycmOYpblxj-7X6YHHIAMnXp1gAxhvg&oe=68FF82BA",
+      description:
+        "Chuyên gia dinh dưỡng tư vấn chế độ ăn uống khoa học, phù hợp với từng đối tượng, giúp cải thiện sức khỏe một cách toàn diện.",
+      image:
+        "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/548260292_122189545454359809_8477717599939397988_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=833d8c&_nc_ohc=UUADYr0OLswQ7kNvwHqyYHQ&_nc_oc=Adm0u22TUEjm26SI4ElPJOPQS9g0w_Vj12046yglurCd8ItwLyxRYRlMTaf7fikgsQU&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=KASGy301gaZErmzldIj2tQ&oh=00_AfcyCcAlLjWUdcajycmOYpblxj-7X6YHHIAMnXp1gAxhvg&oe=68FF82BA",
       icon: <HeartIcon className="w-6 h-6" />,
     },
     {
       title: "Khám Chuyên Khoa",
-      description: "Đội ngũ bác sĩ chuyên khoa giàu kinh nghiệm, tận tâm chăm sóc và điều trị các bệnh lý chuyên sâu với phương pháp hiện đại.",
-      image: "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/555076308_122190721040359809_5009409531579541387_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=127cfc&_nc_ohc=oqTWmsqj1EwQ7kNvwGZ8BlS&_nc_oc=AdkOALoyNRgI9RWeooD57j2tcHiUB2N08bu_N-YQll_klpiMkiblBrP-n-V5d0quUcs&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=zZmHitR5FR62-TdHjxKNGQ&oh=00_AfdqHtbujk0WfULM7GiPZI0pX9iN2JRD-IiKdrHy5OofxA&oe=68FF71AB",
+      description:
+        "Đội ngũ bác sĩ chuyên khoa giàu kinh nghiệm, tận tâm chăm sóc và điều trị các bệnh lý chuyên sâu với phương pháp hiện đại.",
+      image:
+        "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/555076308_122190721040359809_5009409531579541387_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=127cfc&_nc_ohc=oqTWmsqj1EwQ7kNvwGZ8BlS&_nc_oc=AdkOALoyNRgI9RWeooD57j2tcHiUB2N08bu_N-YQll_klpiMkiblBrP-n-V5d0quUcs&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=zZmHitR5FR62-TdHjxKNGQ&oh=00_AfdqHtbujk0WfULM7GiPZI0pX9iN2JRD-IiKdrHy5OofxA&oe=68FF71AB",
       icon: <ShieldCheckIcon className="w-6 h-6" />,
     },
   ];
@@ -59,12 +68,12 @@ const Home = () => {
 
   const handlePrev = () =>
     setCurrentImageIndex((prevIndex) =>
-      prevIndex === 0 ? images.length - 1 : prevIndex - 1
+      prevIndex === 0 ? images.length - 1 : prevIndex - 1,
     );
 
   const handleNext = () =>
     setCurrentImageIndex((prevIndex) =>
-      prevIndex === images.length - 1 ? 0 : prevIndex + 1
+      prevIndex === images.length - 1 ? 0 : prevIndex + 1,
     );
 
   return (
@@ -82,17 +91,17 @@ const Home = () => {
 
         {/* Navigation Buttons with Better Styling */}
         <button
+          aria-label="Previous image"
           className="absolute top-1/2 left-6 transform -translate-y-1/2 bg-white/90 backdrop-blur-sm text-[#39BDCC] p-3 rounded-full shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 z-10"
           onClick={handlePrev}
-          aria-label="Previous image"
         >
           <ChevronLeftIcon className="w-6 h-6" />
         </button>
 
         <button
+          aria-label="Next image"
           className="absolute top-1/2 right-6 transform -translate-y-1/2 bg-white/90 backdrop-blur-sm text-[#39BDCC] p-3 rounded-full shadow-lg hover:bg-white hover:scale-110 transition-all duration-300 z-10"
           onClick={handleNext}
-          aria-label="Next image"
         >
           <ChevronRightIcon className="w-6 h-6" />
         </button>
@@ -102,55 +111,55 @@ const Home = () => {
           {images.map((_, index) => (
             <button
               key={index}
+              aria-label={`Go to image ${index + 1}`}
               className={`w-2 h-2 rounded-full transition-all duration-300 ${
                 index === currentImageIndex
                   ? "bg-white w-8"
                   : "bg-white/50 hover:bg-white/75"
               }`}
               onClick={() => setCurrentImageIndex(index)}
-              aria-label={`Go to image ${index + 1}`}
             />
           ))}
         </div>
 
         {/* Enhanced Quick Action Box - Positioned at bottom */}
-      <div className="absolute -bottom-6 md:-bottom-12 lg:-bottom-16 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-xl px-3 py-3 flex items-center justify-between gap-4 max-w-[680px] w-fit z-30 border border-gray-100 transition-all duration-300">
-        <button
-          className="group flex flex-col items-center space-y-2 hover:scale-105 transition-transform duration-300 w-28 md:w-32 lg:w-36"
-          onClick={openBookingModal}
-        >
-          <div className="bg-[#39BDCC]/10 p-3 rounded-full group-hover:bg-[#39BDCC] transition-colors duration-300">
-            <CalendarIcon className="w-8 h-8 md:w-9 md:h-9 text-[#39BDCC] group-hover:text-white transition-colors" />
-          </div>
-          <span className="text-base md:text-lg font-semibold text-gray-700 group-hover:text-[#39BDCC] transition-colors whitespace-nowrap truncate">
-            Đặt lịch khám
-          </span>
-        </button>
+        <div className="absolute -bottom-6 md:-bottom-12 lg:-bottom-16 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-xl px-3 py-3 flex items-center justify-between gap-4 max-w-[680px] w-fit z-30 border border-gray-100 transition-all duration-300">
+          <button
+            className="group flex flex-col items-center space-y-2 hover:scale-105 transition-transform duration-300 w-28 md:w-32 lg:w-36"
+            onClick={openBookingModal}
+          >
+            <div className="bg-[#39BDCC]/10 p-3 rounded-full group-hover:bg-[#39BDCC] transition-colors duration-300">
+              <CalendarIcon className="w-8 h-8 md:w-9 md:h-9 text-[#39BDCC] group-hover:text-white transition-colors" />
+            </div>
+            <span className="text-base md:text-lg font-semibold text-gray-700 group-hover:text-[#39BDCC] transition-colors whitespace-nowrap truncate">
+              Đặt lịch khám
+            </span>
+          </button>
 
-        <a
-          className="group flex flex-col items-center space-y-2 hover:scale-105 transition-transform duration-300 w-28 md:w-32 lg:w-36"
-          href="#doctor"
-        >
-          <div className="bg-[#39BDCC]/10 p-3 rounded-full group-hover:bg-[#39BDCC] transition-colors duration-300">
-            <UserIcon className="w-8 h-8 md:w-9 md:h-9 text-[#39BDCC] group-hover:text-white transition-colors" />
-          </div>
-          <span className="text-base md:text-lg font-semibold text-gray-700 group-hover:text-[#39BDCC] transition-colors whitespace-nowrap truncate">
-            Tìm bác sĩ
-          </span>
-        </a>
+          <a
+            className="group flex flex-col items-center space-y-2 hover:scale-105 transition-transform duration-300 w-28 md:w-32 lg:w-36"
+            href="#doctor"
+          >
+            <div className="bg-[#39BDCC]/10 p-3 rounded-full group-hover:bg-[#39BDCC] transition-colors duration-300">
+              <UserIcon className="w-8 h-8 md:w-9 md:h-9 text-[#39BDCC] group-hover:text-white transition-colors" />
+            </div>
+            <span className="text-base md:text-lg font-semibold text-gray-700 group-hover:text-[#39BDCC] transition-colors whitespace-nowrap truncate">
+              Tìm bác sĩ
+            </span>
+          </a>
 
-        <a
-          className="group flex flex-col items-center space-y-2 hover:scale-105 transition-transform duration-300 w-28 md:w-32 lg:w-36"
-          href="#feedback"
-        >
-          <div className="bg-[#39BDCC]/10 p-3 rounded-full group-hover:bg-[#39BDCC] transition-colors duration-300">
-            <ChatBubbleLeftIcon className="w-8 h-8 md:w-9 md:h-9 text-[#39BDCC] group-hover:text-white transition-colors" />
-          </div>
-          <span className="text-base md:text-lg font-semibold text-gray-700 group-hover:text-[#39BDCC] transition-colors whitespace-nowrap truncate">
-            Góp ý
-          </span>
-        </a>
-      </div>
+          <a
+            className="group flex flex-col items-center space-y-2 hover:scale-105 transition-transform duration-300 w-28 md:w-32 lg:w-36"
+            href="#feedback"
+          >
+            <div className="bg-[#39BDCC]/10 p-3 rounded-full group-hover:bg-[#39BDCC] transition-colors duration-300">
+              <ChatBubbleLeftIcon className="w-8 h-8 md:w-9 md:h-9 text-[#39BDCC] group-hover:text-white transition-colors" />
+            </div>
+            <span className="text-base md:text-lg font-semibold text-gray-700 group-hover:text-[#39BDCC] transition-colors whitespace-nowrap truncate">
+              Góp ý
+            </span>
+          </a>
+        </div>
       </div>
 
       {/* Services Section with Enhanced Design */}
@@ -160,8 +169,8 @@ const Home = () => {
             Dịch Vụ Của Chúng Tôi
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Chúng tôi cung cấp các dịch vụ y tế chất lượng cao với đội ngũ chuyên môn
-            và trang thiết bị hiện đại
+            Chúng tôi cung cấp các dịch vụ y tế chất lượng cao với đội ngũ
+            chuyên môn và trang thiết bị hiện đại
           </p>
         </div>
 
@@ -211,7 +220,7 @@ const Home = () => {
       </div>
 
       {/* Enhanced Doctor Team Section */}
-      <div id="doctor" className="bg-gradient-to-b from-gray-50 to-white py-20">
+      <div className="bg-gradient-to-b from-gray-50 to-white py-20" id="doctor">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -255,7 +264,7 @@ const Home = () => {
       </div>
 
       {/* Enhanced Contact Form Section */}
-      <div id="feedback" className="py-20 bg-white">
+      <div className="py-20 bg-white" id="feedback">
         <div className="max-w-2xl mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 mb-4">
@@ -268,8 +277,8 @@ const Home = () => {
 
           <div className="bg-gradient-to-br from-gray-50 to-white p-8 rounded-3xl shadow-xl">
             <button
-              onClick={openBookingModal}
               className="w-full bg-gradient-to-r from-[#39BDCC] to-[#2da5b3] text-white py-4 rounded-xl font-bold text-lg hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center justify-center space-x-3"
+              onClick={openBookingModal}
             >
               <CalendarIcon className="w-6 h-6" />
               <span>Mở Form Đặt Lịch Khám</span>

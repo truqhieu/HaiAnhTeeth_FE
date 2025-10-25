@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { LockClosedIcon, ArrowLeftIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form } from "@heroui/react";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/api";
 
@@ -18,6 +19,7 @@ const LoginForm = () => {
 
   const isInvalidEmail = React.useMemo(() => {
     if (email === "") return false;
+
     return !validateEmail(email);
   }, [email]);
 
@@ -34,10 +36,12 @@ const LoginForm = () => {
           ...response.data.user,
           _id: response.data.user._id || response.data.user.id || "",
         };
+
         login(loginUser as any, response.data.token);
 
         try {
           const profileResponse = await authApi.getProfile();
+
           if (profileResponse.success && profileResponse.data?.user) {
             const normalizedUser = {
               ...profileResponse.data.user,
@@ -46,6 +50,7 @@ const LoginForm = () => {
                 profileResponse.data.user.id ||
                 "",
             };
+
             updateUser(normalizedUser as any);
           }
         } catch (profileError) {
@@ -53,6 +58,7 @@ const LoginForm = () => {
         }
 
         const role = response.data.user.role;
+
         if (role === "Admin") navigate("/admin/accounts");
         else if (role === "Manager") navigate("/manager/rooms");
         else if (role === "Staff") navigate("/staff/dashboard");
@@ -99,7 +105,11 @@ const LoginForm = () => {
             autoComplete="off"
             errorMessage={isInvalidEmail ? "Vui lòng nhập email hợp lệ" : ""}
             isInvalid={isInvalidEmail}
-            label="Email *"
+            label={
+              <>
+                Email <span className="text-red-500">*</span>
+              </>
+            }
             placeholder="Nhập email của bạn"
             size="lg"
             value={email}
@@ -109,10 +119,14 @@ const LoginForm = () => {
           <Input
             fullWidth
             autoComplete="new-password"
-            label="Mật khẩu *"
+            label={
+              <>
+                Mật khẩu <span className="text-red-500">*</span>
+              </>
+            }
             placeholder="Nhập mật khẩu của bạn"
-            type="password"
             size="lg"
+            type="password"
             value={password}
             onValueChange={setPassword}
           />

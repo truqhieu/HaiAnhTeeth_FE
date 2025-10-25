@@ -100,9 +100,7 @@ const Complaints = () => {
         {/* Page Title */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Khiếu nại</h1>
-          <p className="text-gray-600">
-            Gửi và theo dõi đơn khiếu nại của bạn
-          </p>
+          <p className="text-gray-600">Gửi và theo dõi đơn khiếu nại của bạn</p>
         </div>
 
         {/* Form Section */}
@@ -214,4 +212,3 @@ const Complaints = () => {
 };
 
 export default Complaints;
-

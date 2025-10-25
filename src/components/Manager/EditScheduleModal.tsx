@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { managerApi, ManagerDoctor, ManagerClinic } from "@/api";
 
 interface Schedule {
@@ -66,7 +67,12 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         shift: schedule.shift,
         startTime: schedule.startTime,
         endTime: schedule.endTime,
-        status: schedule.status.charAt(0).toUpperCase() + schedule.status.slice(1) as "Available" | "Unavailable" | "Booked" | "Cancelled",
+        status: (schedule.status.charAt(0).toUpperCase() +
+          schedule.status.slice(1)) as
+          | "Available"
+          | "Unavailable"
+          | "Booked"
+          | "Cancelled",
         roomId: schedule.roomId || "",
       });
       setShowValidation(false);
@@ -76,6 +82,7 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   // Auto-fill time when shift is selected
   const handleShiftChange = (shift: string) => {
     const selectedShift = shiftOptions.find((s) => s.key === shift);
+
     if (selectedShift) {
       setFormData((prev) => ({
         ...prev,
@@ -104,9 +111,7 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
     // Check validation
     const hasErrors =
-      !formData.shift ||
-      !formData.startTime ||
-      !formData.endTime;
+      !formData.shift || !formData.startTime || !formData.endTime;
 
     if (hasErrors) {
       return;
@@ -119,17 +124,19 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
       // Tạo ISO datetime strings cho startTime và endTime
       const dateObj = new Date(schedule.date);
-      const [startHour, startMinute] = formData.startTime.split(':');
-      const [endHour, endMinute] = formData.endTime.split(':');
-      
+      const [startHour, startMinute] = formData.startTime.split(":");
+      const [endHour, endMinute] = formData.endTime.split(":");
+
       const startDateTime = new Date(dateObj);
+
       startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
-      
+
       const endDateTime = new Date(dateObj);
+
       endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
 
       const updateData = {
-        shift: formData.shift as 'Morning' | 'Afternoon',
+        shift: formData.shift as "Morning" | "Afternoon",
         startTime: startDateTime.toISOString(),
         endTime: endDateTime.toISOString(),
         status: formData.status,
@@ -141,14 +148,17 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       const response = await managerApi.updateSchedule(schedule.id, updateData);
 
       if (response.status) {
-        toast.success(response.message || 'Cập nhật ca khám thành công');
+        toast.success(response.message || "Cập nhật ca khám thành công");
         if (onSuccess) {
           onSuccess();
         }
       }
     } catch (error: any) {
       console.error("Error updating schedule:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi cập nhật ca khám. Vui lòng thử lại.");
+      toast.error(
+        error.message ||
+          "Có lỗi xảy ra khi cập nhật ca khám. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -208,11 +218,15 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         <div className="p-6">
           {/* Read-only info */}
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">Thông tin ca khám</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">
+              Thông tin ca khám
+            </h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-600">Ngày:</span>
-                <span className="ml-2 font-medium">{new Date(schedule.date).toLocaleDateString('vi-VN')}</span>
+                <span className="ml-2 font-medium">
+                  {new Date(schedule.date).toLocaleDateString("vi-VN")}
+                </span>
               </div>
               <div>
                 <span className="text-gray-600">Bác sĩ:</span>
@@ -220,25 +234,36 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               </div>
               <div>
                 <span className="text-gray-600">Số slot:</span>
-                <span className="ml-2 font-medium">{schedule.maxSlots} slot</span>
+                <span className="ml-2 font-medium">
+                  {schedule.maxSlots} slot
+                </span>
               </div>
             </div>
           </div>
 
-          <Form autoComplete="off" className="space-y-6" onSubmit={handleSubmit}>
+          <Form
+            autoComplete="off"
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Select
                 fullWidth
                 errorMessage={isShiftInvalid ? "Vui lòng chọn ca làm việc" : ""}
                 isInvalid={isShiftInvalid}
-                label="Ca làm việc *"
+                label={
+                  <>
+                    Ca làm việc <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Chọn ca"
                 selectedKeys={formData.shift ? [formData.shift] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleShiftChange(selectedKey);
                 }}
-                variant="bordered"
               >
                 {shiftOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -250,11 +275,12 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 label="Trạng thái"
                 placeholder="Chọn trạng thái"
                 selectedKeys={formData.status ? [formData.status] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("status", selectedKey);
                 }}
-                variant="bordered"
               >
                 {statusOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -263,28 +289,40 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
               <Input
                 fullWidth
-                type="time"
                 autoComplete="off"
-                errorMessage={isStartTimeInvalid ? "Vui lòng nhập giờ bắt đầu" : ""}
+                errorMessage={
+                  isStartTimeInvalid ? "Vui lòng nhập giờ bắt đầu" : ""
+                }
                 isInvalid={isStartTimeInvalid}
-                label="Giờ bắt đầu *"
-                value={formData.startTime}
-                onValueChange={(value) => handleInputChange("startTime", value)}
-                variant="bordered"
                 isReadOnly={formData.shift !== ""}
+                label={
+                  <>
+                    Giờ bắt đầu <span className="text-red-500">*</span>
+                  </>
+                }
+                type="time"
+                value={formData.startTime}
+                variant="bordered"
+                onValueChange={(value) => handleInputChange("startTime", value)}
               />
 
               <Input
                 fullWidth
-                type="time"
                 autoComplete="off"
-                errorMessage={isEndTimeInvalid ? "Vui lòng nhập giờ kết thúc" : ""}
+                errorMessage={
+                  isEndTimeInvalid ? "Vui lòng nhập giờ kết thúc" : ""
+                }
                 isInvalid={isEndTimeInvalid}
-                label="Giờ kết thúc *"
-                value={formData.endTime}
-                onValueChange={(value) => handleInputChange("endTime", value)}
-                variant="bordered"
                 isReadOnly={formData.shift !== ""}
+                label={
+                  <>
+                    Giờ kết thúc <span className="text-red-500">*</span>
+                  </>
+                }
+                type="time"
+                value={formData.endTime}
+                variant="bordered"
+                onValueChange={(value) => handleInputChange("endTime", value)}
               />
 
               <Select
@@ -292,11 +330,12 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 label="Phòng khám (Tùy chọn)"
                 placeholder="Chọn phòng"
                 selectedKeys={formData.roomId ? [formData.roomId] : []}
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
+
                   handleInputChange("roomId", selectedKey);
                 }}
-                variant="bordered"
               >
                 {rooms.map((room) => (
                   <SelectItem key={room._id}>Phòng {room.name}</SelectItem>
@@ -306,9 +345,9 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
             <div className="flex justify-end space-x-4 pt-4">
               <Button
+                isDisabled={isSubmitting}
                 variant="bordered"
                 onPress={handleClose}
-                isDisabled={isSubmitting}
               >
                 Hủy
               </Button>
@@ -330,4 +369,3 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 };
 
 export default EditScheduleModal;
-

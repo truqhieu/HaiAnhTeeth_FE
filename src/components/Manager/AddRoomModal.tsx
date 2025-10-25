@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Textarea } from "@heroui/react";
 import toast from "react-hot-toast";
+
 import { managerApi } from "@/api";
 
 interface AddRoomModalProps {
@@ -77,11 +78,13 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
           onSuccess();
         }
       } else {
-        throw new Error(response.message || 'Không thể thêm phòng khám');
+        throw new Error(response.message || "Không thể thêm phòng khám");
       }
     } catch (error: any) {
       console.error("Error creating clinic:", error);
-      toast.error(error.message || "Có lỗi xảy ra khi tạo phòng khám. Vui lòng thử lại.");
+      toast.error(
+        error.message || "Có lỗi xảy ra khi tạo phòng khám. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -138,19 +141,29 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
 
         {/* Body */}
         <div className="p-6">
-          <Form autoComplete="off" className="space-y-6" onSubmit={handleSubmit}>
+          <Form
+            autoComplete="off"
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
             <div className="space-y-6">
               <Input
                 fullWidth
                 autoComplete="off"
-                errorMessage={isNameInvalid ? "Vui lòng nhập tên phòng khám" : ""}
+                errorMessage={
+                  isNameInvalid ? "Vui lòng nhập tên phòng khám" : ""
+                }
                 isInvalid={isNameInvalid}
-                label="Tên phòng khám *"
+                label={
+                  <>
+                    Tên phòng khám <span className="text-red-500">*</span>
+                  </>
+                }
                 placeholder="Ví dụ: Phòng khám tổng quát 1"
                 type="text"
                 value={formData.name}
-                onValueChange={(value) => handleInputChange("name", value)}
                 variant="bordered"
+                onValueChange={(value) => handleInputChange("name", value)}
               />
 
               <Textarea
@@ -158,20 +171,26 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
                 autoComplete="off"
                 errorMessage={isDescriptionInvalid ? "Vui lòng nhập mô tả" : ""}
                 isInvalid={isDescriptionInvalid}
-                label="Mô tả phòng khám *"
+                label={
+                  <>
+                    Mô tả phòng khám <span className="text-red-500">*</span>
+                  </>
+                }
+                minRows={4}
                 placeholder="Nhập mô tả chi tiết về phòng khám"
                 value={formData.description}
-                onValueChange={(value) => handleInputChange("description", value)}
                 variant="bordered"
-                minRows={4}
+                onValueChange={(value) =>
+                  handleInputChange("description", value)
+                }
               />
             </div>
 
             <div className="flex justify-end space-x-4 pt-4">
               <Button
+                isDisabled={isSubmitting}
                 variant="bordered"
                 onPress={handleClose}
-                isDisabled={isSubmitting}
               >
                 Hủy
               </Button>
@@ -193,4 +212,3 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
 };
 
 export default AddRoomModal;
-

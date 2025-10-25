@@ -1,8 +1,16 @@
-import React, { createContext, useContext, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import type { AuthUser } from "@/api";
 import type { RootState, AppDispatch } from "@/store/index";
-import { setAuth, clearAuth, updateUser, setLoading, restoreAuth } from "@/store/slices/authSlice";
+
+import React, { createContext, useContext, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+
+import {
+  setAuth,
+  clearAuth,
+  updateUser,
+  setLoading,
+  restoreAuth,
+} from "@/store/slices/authSlice";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -21,7 +29,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children: React.ReactNode;
 }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user, isAuthenticated, isLoading } = useSelector((state: RootState) => state.auth);
+  const { user, isAuthenticated, isLoading } = useSelector(
+    (state: RootState) => state.auth,
+  );
 
   // Initialize auth state from sessionStorage on mount
   useEffect(() => {
@@ -30,22 +40,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const initializeAuth = () => {
       try {
         dispatch(setLoading(true));
-        
-        // Try to restore from sessionStorage
-        const storedUser = sessionStorage.getItem('user');
-        const storedToken = sessionStorage.getItem('authToken');
 
-        console.log('🔍 [AuthContext] Restoring from sessionStorage:', storedUser);
+        // Try to restore from sessionStorage
+        const storedUser = sessionStorage.getItem("user");
+        const storedToken = sessionStorage.getItem("authToken");
+
+        console.log(
+          "🔍 [AuthContext] Restoring from sessionStorage:",
+          storedUser,
+        );
 
         if (storedUser && storedToken && isMounted) {
           const parsedUser = JSON.parse(storedUser) as AuthUser;
-          console.log('🔍 [AuthContext] Parsed user emergencyContact:', (parsedUser as any).emergencyContact);
+
+          console.log(
+            "🔍 [AuthContext] Parsed user emergencyContact:",
+            (parsedUser as any).emergencyContact,
+          );
           // Normalize user data: ensure _id is set
           const normalizedUser = {
             ...parsedUser,
-            _id: parsedUser._id || parsedUser.id || '',
-            id: parsedUser.id || parsedUser._id || '',
+            _id: parsedUser._id || parsedUser.id || "",
+            id: parsedUser.id || parsedUser._id || "",
           };
+
           dispatch(restoreAuth({ user: normalizedUser, token: storedToken }));
         } else if (isMounted) {
           dispatch(restoreAuth({ user: null, token: null }));
@@ -73,23 +91,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Normalize user data: ensure _id is set from either id or _id
     const normalizedUser = {
       ...userData,
-      _id: userData._id || userData.id || '',
-      id: userData.id || userData._id || '',
+      _id: userData._id || userData.id || "",
+      id: userData.id || userData._id || "",
     };
-    
+
     // Save to sessionStorage
-    sessionStorage.setItem('authToken', token);
-    sessionStorage.setItem('user', JSON.stringify(normalizedUser));
-    
+    sessionStorage.setItem("authToken", token);
+    sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+
     // Dispatch Redux action
     dispatch(setAuth({ user: normalizedUser, token }));
   };
 
   const logout = () => {
     // Clear sessionStorage
-    sessionStorage.removeItem('authToken');
-    sessionStorage.removeItem('user');
-    
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("user");
+
     // Dispatch Redux action
     dispatch(clearAuth());
   };
@@ -98,16 +116,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     // Normalize user data: ensure _id is set
     const normalizedUser = {
       ...userData,
-      _id: userData._id || userData.id || '',
-      id: userData.id || userData._id || '',
+      _id: userData._id || userData.id || "",
+      id: userData.id || userData._id || "",
     };
-    
-    console.log('🔍 [AuthContext] updateUserInfo called with emergencyContact:', (normalizedUser as any).emergencyContact);
-    
+
+    console.log(
+      "🔍 [AuthContext] updateUserInfo called with emergencyContact:",
+      (normalizedUser as any).emergencyContact,
+    );
+
     // Update sessionStorage
-    sessionStorage.setItem('user', JSON.stringify(normalizedUser));
-    console.log('🔍 [AuthContext] Saved to sessionStorage:', sessionStorage.getItem('user'));
-    
+    sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+    console.log(
+      "🔍 [AuthContext] Saved to sessionStorage:",
+      sessionStorage.getItem("user"),
+    );
+
     // Dispatch Redux action
     dispatch(updateUser(normalizedUser));
   };
@@ -126,8 +150,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
+
   return context;
 };
