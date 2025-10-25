@@ -185,26 +185,27 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
                 }
               />
             </div>
-
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                isDisabled={isSubmitting}
-                variant="bordered"
-                onPress={handleClose}
-              >
-                Hủy
-              </Button>
-              <Button
-                className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5]"
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                type="submit"
-                variant="solid"
-              >
-                {isSubmitting ? "Đang thêm..." : "Thêm phòng khám"}
-              </Button>
-            </div>
           </Form>
+
+          {/* Buttons outside Form */}
+          <div className="flex justify-end items-center gap-4 pt-4">
+            <Button
+              isDisabled={isSubmitting}
+              variant="bordered"
+              onPress={handleClose}
+            >
+              Hủy
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              isDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              onPress={handleSubmit}
+              variant="solid"
+            >
+              {isSubmitting ? "Đang thêm..." : "Thêm phòng khám"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
