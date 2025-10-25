@@ -244,7 +244,7 @@ const ScheduleManagement = () => {
   ];
 
   const statusOptions = [
-    { key: "all", label: "Tất cả" },
+    { key: "all", label: "Tất cả trạng thái" },
     { key: "Available", label: "Có sẵn" },
     { key: "Unavailable", label: "Không khả dụng" },
     { key: "Booked", label: "Đã đặt" },
