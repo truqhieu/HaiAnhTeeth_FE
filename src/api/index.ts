@@ -111,3 +111,5 @@ export type { AdminUser, CreateUserData, UpdateUserData, ChangePasswordData, Get
 export type { ManagerService, CreateServiceData, UpdateServiceData, GetServicesParams, GetServicesResponse, ManagerClinic, ManagerDoctor, CreateClinicData, UpdateClinicData, GetClinicsParams, GetClinicsResponse, ManagerSchedule, CreateScheduleData, UpdateScheduleData, GetSchedulesParams, GetSchedulesResponse } from './manager';
 export { doctorApi } from './doctor';
 export type { DoctorAppointment, AppointmentDetail, PatientDetail } from './doctor';
+export { nurseApi } from './nurse';
+export type { NurseAppointment, NurseAppointmentDetail, NursePatientDetail } from './nurse';

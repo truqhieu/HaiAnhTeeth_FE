@@ -25,6 +25,8 @@ import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
 import DoctorLayout from "@/layouts/DoctorLayout";
 import { DoctorSchedule } from "@/pages/Doctor";
+import NurseLayout from "@/layouts/NurseLayout";
+import NurseSchedule from "@/pages/Nurse/NurseSchedule";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
 
@@ -100,6 +102,18 @@ function App() {
                   <Route element={<DoctorSchedule />} path="schedule" />
                 </Routes>
               </DoctorLayout>
+            }
+          />
+
+          {/* Nurse */}
+          <Route
+            path="/nurse/*"
+            element={
+              <NurseLayout>
+                <Routes>
+                  <Route element={<NurseSchedule />} path="schedule" />
+                </Routes>
+              </NurseLayout>
             }
           />
 

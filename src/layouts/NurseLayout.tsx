@@ -1,19 +1,19 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  UserIcon,
-  HomeIcon,
+  CalendarIcon,
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface StaffLayoutProps {
+interface NurseLayoutProps {
   children: React.ReactNode;
 }
 
-const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
+const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -26,10 +26,10 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
 
   const navigation = [
     {
-      name: "Dashboard",
-      href: "/staff/dashboard",
-      icon: HomeIcon,
-      current: location.pathname === "/staff/dashboard",
+      name: "Lịch khám",
+      href: "/nurse/schedule",
+      icon: CalendarIcon,
+      current: location.pathname === "/nurse/schedule",
     },
   ];
 
@@ -40,12 +40,12 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile sidebar overlay */}
+      {/* Overlay for mobile sidebar */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
-          onKeyDown={(e) => e.key === 'Escape' && setSidebarOpen(false)}
+          onKeyDown={(e) => e.key === "Escape" && setSidebarOpen(false)}
           role="button"
           tabIndex={0}
           aria-label="Close sidebar"
@@ -61,15 +61,12 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-              <UserIcon className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center justify-center w-8 h-8 bg-pink-100 rounded-full">
+              <UserIcon className="w-5 h-5 text-pink-600" />
             </div>
-            <span className="text-lg font-semibold text-gray-800">Staff</span>
+            <span className="text-lg font-semibold text-gray-800">Điều dưỡng</span>
           </div>
-          <button
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          >
+          <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <XMarkIcon className="w-6 h-6 text-gray-500" />
           </button>
         </div>
@@ -85,7 +82,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
                   onClick={() => handleNavigation(item.href)}
                   className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
                     item.current
-                      ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
+                      ? "bg-pink-50 text-pink-700 border-r-2 border-pink-600"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >
@@ -97,12 +94,12 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
           </div>
         </nav>
 
-        {/* Logout Button - Fixed at bottom */}
+        {/* Logout Button - fixed bottom */}
         <div className="px-4 py-4 border-t border-gray-200">
           <div className="mb-3 px-4">
             <p className="text-xs text-gray-500 mb-1">Đang đăng nhập</p>
             <p className="text-sm font-medium text-gray-700 truncate">
-              {user?.fullName || user?.email || "Staff"}
+              {user?.fullName || user?.email || "Nurse"}
             </p>
           </div>
           <button
@@ -115,9 +112,9 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
         </div>
       </div>
 
-      {/* Main content area */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col lg:ml-0">
-        {/* Mobile header */}
+        {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
           <button
             onClick={() => setSidebarOpen(true)}
@@ -126,21 +123,19 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full">
-              <UserIcon className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center justify-center w-8 h-8 bg-pink-100 rounded-full">
+              <UserIcon className="w-5 h-5 text-pink-600" />
             </div>
-            <span className="text-lg font-semibold text-gray-800">Staff</span>
+            <span className="text-lg font-semibold text-gray-800">Điều dưỡng</span>
           </div>
           <div className="w-6" />
         </div>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );
 };
 
-export default StaffLayout;
+export default NurseLayout;

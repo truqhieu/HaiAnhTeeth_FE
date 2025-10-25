@@ -8,7 +8,19 @@ import {
   Button,
   Spinner,
   Chip,
+  Card,
+  CardBody,
+  Divider,
 } from "@heroui/react";
+import { 
+  UserIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  MapPinIcon,
+  CalendarDaysIcon,
+  ExclamationTriangleIcon,
+  CheckBadgeIcon,
+} from "@heroicons/react/24/outline";
 import { doctorApi, type PatientDetail } from "@/api";
 
 interface PatientDetailModalProps {
@@ -81,8 +93,19 @@ const PatientDetailModal = ({
     }
   };
 
+  const getGenderColor = (gender: string) => {
+    switch (gender) {
+      case "Male":
+        return "primary";
+      case "Female":
+        return "secondary";
+      default:
+        return "default";
+    }
+  };
+
   const formatDate = (dateString: string): string => {
-    if (!dateString || dateString === "N/A" || dateString === "Trống") return "Trống";
+    if (!dateString || dateString === "N/A" || dateString === "Trống") return "Chưa có thông tin";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN", {
       year: "numeric",
@@ -91,119 +114,177 @@ const PatientDetailModal = ({
     });
   };
 
+  const calculateAge = (dateString: string): number | null => {
+    if (!dateString || dateString === "N/A" || dateString === "Trống") return null;
+    const birthDate = new Date(dateString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} onClose={onClose} size="3xl" scrollBehavior="inside">
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">
-              <h3 className="text-xl font-bold">Thông tin bệnh nhân</h3>
+            <ModalHeader className="flex flex-col gap-1 bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+              <h3 className="text-2xl font-bold text-gray-900">Hồ sơ bệnh nhân</h3>
+              <p className="text-sm text-gray-600 font-normal">Thông tin chi tiết về bệnh nhân</p>
             </ModalHeader>
-            <ModalBody>
+            <ModalBody className="py-6">
               {loading ? (
-                <div className="flex justify-center py-8">
-                  <Spinner label="Đang tải..." />
+                <div className="flex justify-center py-12">
+                  <Spinner size="lg" label="Đang tải..." />
                 </div>
               ) : error ? (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
+                <Card className="bg-danger-50 border-danger-200">
+                  <CardBody className="text-center py-8">
+                    <ExclamationTriangleIcon className="w-16 h-16 mx-auto mb-4 text-danger-500" />
+                    <p className="text-danger-700 text-lg font-semibold">{error}</p>
+                  </CardBody>
+                </Card>
               ) : patient ? (
-                <div className="space-y-4">
-                  {/* Basic Info */}
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-gray-700 mb-3">
-                      Thông tin cơ bản
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Họ tên:</span>
-                        <span className="font-medium">{patient.fullName}</span>
+                <div className="space-y-6">
+                  {/* Patient Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                        <UserIcon className="w-8 h-8 text-white" />
                       </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Ngày sinh:</span>
-                        <span className="font-medium">
-                          {formatDate(patient.dateOfBirth)}
-                        </span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Giới tính:</span>
-                        <span className="font-medium">
-                          {getGenderText(patient.gender)}
-                        </span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Trạng thái:</span>
-                        <Chip
-                          size="sm"
-                          color={patient.status === "Active" ? "success" : "default"}
-                        >
-                          {patient.status === "Active" ? "Đang hoạt động" : patient.status}
-                        </Chip>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">{patient.fullName}</h2>
+                        <div className="flex gap-2 mt-2">
+                          <Chip 
+                            size="md" 
+                            color={getGenderColor(patient.gender)}
+                            variant="flat"
+                          >
+                            {getGenderText(patient.gender)}
+                          </Chip>
+                          <Chip
+                            size="md"
+                            color={patient.status === "Active" ? "success" : "default"}
+                            variant="flat"
+                            startContent={patient.status === "Active" ? <CheckBadgeIcon className="w-4 h-4" /> : null}
+                          >
+                            {patient.status === "Active" ? "Đang hoạt động" : patient.status}
+                          </Chip>
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  <Divider />
+
+                  {/* Basic Info */}
+                  <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-sm">
+                    <CardBody className="p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <CalendarDaysIcon className="w-6 h-6 text-blue-600" />
+                        <h4 className="font-bold text-lg text-gray-800">Thông tin cơ bản</h4>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600 font-medium">Ngày sinh</p>
+                          <p className="text-gray-900 font-semibold">{formatDate(patient.dateOfBirth)}</p>
+                        </div>
+                        {calculateAge(patient.dateOfBirth) && (
+                          <div className="space-y-1">
+                            <p className="text-sm text-gray-600 font-medium">Tuổi</p>
+                            <p className="text-gray-900 font-semibold">{calculateAge(patient.dateOfBirth)} tuổi</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardBody>
+                  </Card>
 
                   {/* Contact Info */}
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-gray-700 mb-3">
-                      Thông tin liên hệ
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Email:</span>
-                        <span className="font-medium">{patient.email}</span>
+                  <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm">
+                    <CardBody className="p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <PhoneIcon className="w-6 h-6 text-green-600" />
+                        <h4 className="font-bold text-lg text-gray-800">Thông tin liên hệ</h4>
                       </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Số điện thoại:</span>
-                        <span className="font-medium">{patient.phoneNumber}</span>
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                          <EnvelopeIcon className="w-5 h-5 text-gray-500 mt-1 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-600 font-medium">Email</p>
+                            <p className="text-gray-900 font-semibold break-all">{patient.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <PhoneIcon className="w-5 h-5 text-gray-500 mt-1 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-600 font-medium">Số điện thoại</p>
+                            <p className="text-gray-900 font-semibold">{patient.phoneNumber}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <MapPinIcon className="w-5 h-5 text-gray-500 mt-1 flex-shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-600 font-medium">Địa chỉ</p>
+                            <p className="text-gray-900 font-semibold">{patient.address}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Địa chỉ:</span>
-                        <span className="font-medium">{patient.address}</span>
-                      </div>
-                    </div>
-                  </div>
+                    </CardBody>
+                  </Card>
 
                   {/* Emergency Contact */}
-                  {patient.emergencyContact && patient.emergencyContact !== "N/A" && patient.emergencyContact !== "Trống" && (
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-700 mb-3">
-                        Liên hệ khẩn cấp
-                      </h4>
-                      {typeof patient.emergencyContact === "object" ? (
-                        <div className="space-y-2">
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Họ tên:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.name || "Trống"}
+                  {patient.emergencyContact && 
+                   patient.emergencyContact !== "N/A" && 
+                   patient.emergencyContact !== "Trống" && 
+                   typeof patient.emergencyContact === "object" && (
+                    <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 shadow-sm">
+                      <CardBody className="p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                          <h4 className="font-bold text-lg text-gray-800">Liên hệ khẩn cấp</h4>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-start">
+                            <span className="text-gray-600 w-32 font-medium">Họ tên:</span>
+                            <span className="text-gray-900 font-semibold flex-1">
+                              {patient.emergencyContact.name || "Chưa có thông tin"}
                             </span>
                           </div>
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Số điện thoại:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.phone || "Trống"}
+                          <div className="flex items-start">
+                            <span className="text-gray-600 w-32 font-medium">Số điện thoại:</span>
+                            <span className="text-gray-900 font-semibold flex-1">
+                              {patient.emergencyContact.phone || "Chưa có thông tin"}
                             </span>
                           </div>
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Mối quan hệ:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.relationship || "Trống"}
+                          <div className="flex items-start">
+                            <span className="text-gray-600 w-32 font-medium">Mối quan hệ:</span>
+                            <span className="text-gray-900 font-semibold flex-1">
+                              {patient.emergencyContact.relationship || "Chưa có thông tin"}
                             </span>
                           </div>
                         </div>
-                      ) : (
-                        <p className="text-gray-600">Chưa có thông tin</p>
-                      )}
-                    </div>
+                      </CardBody>
+                    </Card>
                   )}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">Không có dữ liệu</p>
+                <div className="text-center py-12">
+                  <UserIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500 text-lg">Không có dữ liệu</p>
+                </div>
               )}
             </ModalBody>
-            <ModalFooter>
-              <Button color="primary" variant="light" onPress={onClose}>
+            <ModalFooter className="border-t bg-gray-50">
+              <Button 
+                color="primary" 
+                variant="flat" 
+                onPress={onClose}
+                size="lg"
+                className="font-semibold"
+              >
                 Đóng
               </Button>
             </ModalFooter>
@@ -215,4 +296,3 @@ const PatientDetailModal = ({
 };
 
 export default PatientDetailModal;
-

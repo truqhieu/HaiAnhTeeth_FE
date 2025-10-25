@@ -1,5 +1,5 @@
 // Auth Components
-export { default as LoginModal } from './LoginModal';
-export { default as SignupModal } from './SignupModal';
+export { default as LoginModal } from './LoginForm';
+export { default as SignupModal } from './SignupForm';
 export { default as ForgotPasswordModal } from './ForgotPasswordModal';
 

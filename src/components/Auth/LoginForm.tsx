@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { LockClosedIcon } from "@heroicons/react/24/solid";
+import { LockClosedIcon, ArrowLeftIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi } from "@/api";
@@ -57,6 +57,7 @@ const LoginForm = () => {
         else if (role === "Manager") navigate("/manager/rooms");
         else if (role === "Staff") navigate("/staff/dashboard");
         else if (role === "Doctor") navigate("/doctor/schedule");
+        else if (role === "Nurse") navigate("/nurse/schedule");
         else navigate("/");
       } else {
         setError(response.message || "Đăng nhập thất bại");
@@ -138,6 +139,7 @@ const LoginForm = () => {
           </Button>
         </Form>
 
+        {/* Signup */}
         <p className="mt-6 text-center text-base text-gray-600">
           Bạn chưa có tài khoản?{" "}
           <button
@@ -147,6 +149,20 @@ const LoginForm = () => {
             Đăng ký ngay
           </button>
         </p>
+
+        {/* ✅ Nút trở về trang chủ */}
+        <div className="mt-8 flex justify-center">
+          <Button
+            color="default"
+            variant="flat"
+            size="lg"
+            onPress={() => navigate("/")}
+            className="flex items-center gap-2 font-semibold text-gray-700 hover:text-[#39BDCC] transition"
+          >
+            <ArrowLeftIcon className="w-5 h-5" />
+            Trở về trang chủ
+          </Button>
+        </div>
       </div>
     </div>
   );

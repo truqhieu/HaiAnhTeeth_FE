@@ -8,7 +8,18 @@ import {
   Button,
   Spinner,
   Chip,
+  Card,
+  CardBody,
+  Divider,
 } from "@heroui/react";
+import { 
+  CalendarIcon, 
+  ClockIcon, 
+  UserIcon,
+  DocumentTextIcon,
+  VideoCameraIcon,
+  BuildingOfficeIcon,
+} from "@heroicons/react/24/outline";
 import { doctorApi, type AppointmentDetail } from "@/api";
 
 interface AppointmentDetailModalProps {
@@ -53,16 +64,16 @@ const AppointmentDetailModal = ({
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): "success" | "warning" | "primary" | "danger" | "default" => {
     switch (status) {
       case "Approved":
         return "success";
       case "CheckedIn":
         return "primary";
       case "Completed":
-        return "default";
+        return "primary";
       case "Finalized":
-        return "secondary";
+        return "success";
       default:
         return "default";
     }
@@ -106,94 +117,139 @@ const AppointmentDetailModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl">
+    <Modal isOpen={isOpen} onClose={onClose} size="3xl" scrollBehavior="inside">
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">
-              <h3 className="text-xl font-bold">Chi tiết lịch hẹn</h3>
+            <ModalHeader className="flex flex-col gap-1 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+              <h3 className="text-2xl font-bold text-gray-900">Chi tiết lịch hẹn</h3>
+              <p className="text-sm text-gray-600 font-normal">Thông tin đầy đủ về ca khám</p>
             </ModalHeader>
-            <ModalBody>
+            <ModalBody className="py-6">
               {loading ? (
-                <div className="flex justify-center py-8">
-                  <Spinner label="Đang tải..." />
+                <div className="flex justify-center py-12">
+                  <Spinner size="lg" label="Đang tải..." />
                 </div>
               ) : error ? (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
+                <Card className="bg-danger-50 border-danger-200">
+                  <CardBody className="text-center py-8">
+                    <p className="text-danger-700 text-lg">{error}</p>
+                  </CardBody>
+                </Card>
               ) : appointment ? (
-                <div className="space-y-4">
-                  {/* Status */}
-                  <div className="flex gap-2">
-                    <Chip size="lg" color={getStatusColor(appointment.status)}>
+                <div className="space-y-6">
+                  {/* Status & Mode */}
+                  <div className="flex gap-3 flex-wrap">
+                    <Chip 
+                      size="lg" 
+                      color={getStatusColor(appointment.status)}
+                      variant="flat"
+                      classNames={{
+                        base: "px-4 py-2",
+                        content: "text-base font-semibold"
+                      }}
+                    >
                       {getStatusText(appointment.status)}
                     </Chip>
-                    <Chip size="lg" variant="flat">
+                    <Chip 
+                      size="lg" 
+                      variant="flat"
+                      color={appointment.mode === "Online" ? "secondary" : "default"}
+                      startContent={
+                        appointment.mode === "Online" ? 
+                          <VideoCameraIcon className="w-5 h-5" /> : 
+                          <BuildingOfficeIcon className="w-5 h-5" />
+                      }
+                      classNames={{
+                        base: "px-4 py-2",
+                        content: "text-base font-semibold"
+                      }}
+                    >
                       {getModeText(appointment.mode)}
                     </Chip>
                   </div>
 
+                  <Divider />
+
                   {/* Patient Info */}
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-gray-700 mb-3">
-                      Thông tin bệnh nhân
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex">
-                        <span className="text-gray-600 w-32">Họ tên:</span>
-                        <span className="font-medium">{appointment.patientName}</span>
+                  <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-sm">
+                    <CardBody className="p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <UserIcon className="w-6 h-6 text-blue-600" />
+                        <h4 className="font-bold text-lg text-gray-800">Thông tin bệnh nhân</h4>
                       </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-32">Email:</span>
-                        <span className="font-medium">{appointment.patientEmail}</span>
+                      <div className="space-y-3">
+                        <div className="flex items-start">
+                          <span className="text-gray-600 w-32 font-medium">Họ tên:</span>
+                          <span className="font-semibold text-gray-900 flex-1">{appointment.patientName}</span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-gray-600 w-32 font-medium">Email:</span>
+                          <span className="text-gray-700 flex-1">{appointment.patientEmail}</span>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </CardBody>
+                  </Card>
 
                   {/* Appointment Info */}
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-gray-700 mb-3">
-                      Thông tin lịch hẹn
-                    </h4>
-                    <div className="space-y-2">
-                      <div className="flex">
-                        <span className="text-gray-600 w-32">Dịch vụ:</span>
-                        <span className="font-medium">{appointment.serviceName}</span>
+                  <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-sm">
+                    <CardBody className="p-5">
+                      <div className="flex items-center gap-2 mb-4">
+                        <CalendarIcon className="w-6 h-6 text-green-600" />
+                        <h4 className="font-bold text-lg text-gray-800">Thông tin lịch hẹn</h4>
                       </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-32">Ngày:</span>
-                        <span className="font-medium">
-                          {formatDate(appointment.appointmentDate)}
-                        </span>
+                      <div className="space-y-3">
+                        <div className="flex items-start">
+                          <span className="text-gray-600 w-32 font-medium">Dịch vụ:</span>
+                          <span className="font-semibold text-gray-900 flex-1">{appointment.serviceName}</span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-gray-600 w-32 font-medium">Ngày:</span>
+                          <span className="text-gray-700 flex-1">
+                            {formatDate(appointment.appointmentDate)}
+                          </span>
+                        </div>
+                        <div className="flex items-start">
+                          <span className="text-gray-600 w-32 font-medium">Giờ:</span>
+                          <div className="flex items-center gap-2 flex-1">
+                            <ClockIcon className="w-5 h-5 text-gray-400" />
+                            <span className="text-gray-700 font-semibold">
+                              {appointment.startTime} - {appointment.endTime}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-32">Giờ:</span>
-                        <span className="font-medium">
-                          {appointment.startTime} - {appointment.endTime}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                    </CardBody>
+                  </Card>
 
                   {/* Service Description */}
                   {appointment.serviceDescription && (
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-700 mb-2">
-                        Mô tả dịch vụ
-                      </h4>
-                      <p className="text-gray-600">{appointment.serviceDescription}</p>
-                    </div>
+                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-sm">
+                      <CardBody className="p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                          <DocumentTextIcon className="w-6 h-6 text-purple-600" />
+                          <h4 className="font-bold text-lg text-gray-800">Mô tả dịch vụ</h4>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">{appointment.serviceDescription}</p>
+                      </CardBody>
+                    </Card>
                   )}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">
-                  Không có dữ liệu
-                </p>
+                <div className="text-center py-12">
+                  <DocumentTextIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500 text-lg">Không có dữ liệu</p>
+                </div>
               )}
             </ModalBody>
-            <ModalFooter>
-              <Button color="primary" variant="light" onPress={onClose}>
+            <ModalFooter className="border-t bg-gray-50">
+              <Button 
+                color="primary" 
+                variant="flat" 
+                onPress={onClose}
+                size="lg"
+                className="font-semibold"
+              >
                 Đóng
               </Button>
             </ModalFooter>
@@ -205,4 +261,3 @@ const AppointmentDetailModal = ({
 };
 
 export default AppointmentDetailModal;
-

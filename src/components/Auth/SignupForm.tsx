@@ -4,6 +4,7 @@ import {
   EyeIcon,
   EyeSlashIcon,
   UserIcon,
+  ArrowLeftIcon,
 } from "@heroicons/react/24/solid";
 import { DatePicker, Input, Button, Form, Select, SelectItem } from "@heroui/react";
 import { authApi } from "@/api";
@@ -97,9 +98,9 @@ const SignupForm = () => {
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b3f0f5] via-[#d9fafa] to-[#e0fdfd]">
-      <div className="bg-white shadow-2xl rounded-3xl px-10 py-10 w-full max-w-lg">
+      <div className="bg-white shadow-2xl rounded-3xl px-10 py-10 w-full max-w-lg relative">
         {/* Header */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-8 mt-8">
           <img
             alt="Logo"
             className="h-20 w-auto mb-4 object-contain"
@@ -149,8 +150,7 @@ const SignupForm = () => {
             }
           />
 
-          {/* Gender */}
-            <Select
+          <Select
             label="Giới tính *"
             placeholder="Chọn giới tính"
             selectedKeys={gender ? [gender] : []}
@@ -160,10 +160,10 @@ const SignupForm = () => {
             fullWidth
             size="lg"
             className="text-base"
-            >
+          >
             <SelectItem key="Nam">Nam</SelectItem>
             <SelectItem key="Nữ">Nữ</SelectItem>
-            </Select>
+          </Select>
 
           <DatePicker
             label="Ngày sinh *"
@@ -254,15 +254,31 @@ const SignupForm = () => {
           </div>
         )}
 
-        <p className="mt-6 text-center text-base text-gray-600">
-          Đã có tài khoản?{" "}
-          <button
-            className="text-[#39BDCC] hover:underline font-semibold"
-            onClick={() => navigate("/login")}
-          >
-            Đăng nhập ngay
-          </button>
-        </p>
+        {/* Back to Home */}
+        <div className="mt-6 flex flex-col items-center space-y-2">
+          <div className="mt-8 flex justify-center">
+                    <Button
+                      color="default"
+                      variant="flat"
+                      size="lg"
+                      onPress={() => navigate("/")}
+                      className="flex items-center gap-2 font-semibold text-gray-700 hover:text-[#39BDCC] transition"
+                    >
+                      <ArrowLeftIcon className="w-5 h-5" />
+                      Trở về trang chủ
+                    </Button>
+           </div>
+
+          <p className="text-base text-gray-600">
+            Đã có tài khoản?{" "}
+            <button
+              className="text-[#39BDCC] hover:underline font-semibold"
+              onClick={() => navigate("/login")}
+            >
+              Đăng nhập ngay
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
