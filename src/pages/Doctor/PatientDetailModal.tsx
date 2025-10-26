@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Modal,
@@ -12,6 +13,15 @@ import {
   CardBody,
   Divider,
 } from "@heroui/react";
+import { 
+  UserIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  MapPinIcon,
+  CalendarDaysIcon,
+  ExclamationTriangleIcon,
+  CheckBadgeIcon,
+} from "@heroicons/react/24/outline";
 import { doctorApi, type PatientDetail } from "@/api";
 
 interface PatientDetailModalProps {
@@ -43,8 +53,7 @@ const PatientDetailModal = ({
       setError(null);
 
       // Bước 1: Lấy appointment detail để lấy patientId
-      const appointmentRes =
-        await doctorApi.getAppointmentDetail(appointmentId);
+      const appointmentRes = await doctorApi.getAppointmentDetail(appointmentId);
 
       if (!appointmentRes.success || !appointmentRes.data) {
         throw new Error("Không thể lấy thông tin lịch hẹn");
@@ -97,9 +106,8 @@ const PatientDetailModal = ({
   };
 
   const formatDate = (dateString: string): string => {
-    if (!dateString || dateString === "N/A" || dateString === "Trống") return "Trống";
+    if (!dateString || dateString === "N/A" || dateString === "Trống") return "Chưa có thông tin";
     const date = new Date(dateString);
-
     return date.toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "long",
@@ -120,7 +128,7 @@ const PatientDetailModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} onClose={onClose} size="3xl" scrollBehavior="inside">
       <ModalContent>
         {(onClose) => (
           <>
@@ -148,26 +156,25 @@ const PatientDetailModal = ({
                       <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
                         <UserIcon className="w-8 h-8 text-white" />
                       </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Ngày sinh:</span>
-                        <span className="font-medium">
-                          {formatDate(patient.dateOfBirth)}
-                        </span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Giới tính:</span>
-                        <span className="font-medium">
-                          {getGenderText(patient.gender)}
-                        </span>
-                      </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Trạng thái:</span>
-                        <Chip
-                          size="sm"
-                          color={patient.status === "Active" ? "success" : "default"}
-                        >
-                          {patient.status === "Active" ? "Đang hoạt động" : patient.status}
-                        </Chip>
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">{patient.fullName}</h2>
+                        <div className="flex gap-2 mt-2">
+                          <Chip 
+                            size="md" 
+                            color={getGenderColor(patient.gender)}
+                            variant="flat"
+                          >
+                            {getGenderText(patient.gender)}
+                          </Chip>
+                          <Chip
+                            size="md"
+                            color={patient.status === "Active" ? "success" : "default"}
+                            variant="flat"
+                            startContent={patient.status === "Active" ? <CheckBadgeIcon className="w-4 h-4" /> : null}
+                          >
+                            {patient.status === "Active" ? "Đang hoạt động" : patient.status}
+                          </Chip>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -181,9 +188,17 @@ const PatientDetailModal = ({
                         <CalendarDaysIcon className="w-6 h-6 text-blue-600" />
                         <h4 className="font-bold text-lg text-gray-800">Thông tin cơ bản</h4>
                       </div>
-                      <div className="flex">
-                        <span className="text-gray-600 w-40">Số điện thoại:</span>
-                        <span className="font-medium">{patient.phoneNumber}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600 font-medium">Ngày sinh</p>
+                          <p className="text-gray-900 font-semibold">{formatDate(patient.dateOfBirth)}</p>
+                        </div>
+                        {calculateAge(patient.dateOfBirth) && (
+                          <div className="space-y-1">
+                            <p className="text-sm text-gray-600 font-medium">Tuổi</p>
+                            <p className="text-gray-900 font-semibold">{calculateAge(patient.dateOfBirth)} tuổi</p>
+                          </div>
+                        )}
                       </div>
                     </CardBody>
                   </Card>
@@ -222,40 +237,45 @@ const PatientDetailModal = ({
                   </Card>
 
                   {/* Emergency Contact */}
-                  {patient.emergencyContact && patient.emergencyContact !== "N/A" && patient.emergencyContact !== "Trống" && (
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-gray-700 mb-3">
-                        Liên hệ khẩn cấp
-                      </h4>
-                      {typeof patient.emergencyContact === "object" ? (
-                        <div className="space-y-2">
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Họ tên:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.name || "Trống"}
+                  {patient.emergencyContact && 
+                   patient.emergencyContact !== "N/A" && 
+                   patient.emergencyContact !== "Trống" && 
+                   typeof patient.emergencyContact === "object" && (
+                    <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 shadow-sm">
+                      <CardBody className="p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                          <h4 className="font-bold text-lg text-gray-800">Liên hệ khẩn cấp</h4>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-start">
+                            <span className="text-gray-600 w-32 font-medium">Họ tên:</span>
+                            <span className="text-gray-900 font-semibold flex-1">
+                              {patient.emergencyContact.name || "Chưa có thông tin"}
                             </span>
                           </div>
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Số điện thoại:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.phone || "Trống"}
+                          <div className="flex items-start">
+                            <span className="text-gray-600 w-32 font-medium">Số điện thoại:</span>
+                            <span className="text-gray-900 font-semibold flex-1">
+                              {patient.emergencyContact.phone || "Chưa có thông tin"}
                             </span>
                           </div>
-                          <div className="flex">
-                            <span className="text-gray-600 w-40">Mối quan hệ:</span>
-                            <span className="font-medium">
-                              {patient.emergencyContact.relationship || "Trống"}
+                          <div className="flex items-start">
+                            <span className="text-gray-600 w-32 font-medium">Mối quan hệ:</span>
+                            <span className="text-gray-900 font-semibold flex-1">
+                              {patient.emergencyContact.relationship || "Chưa có thông tin"}
                             </span>
                           </div>
                         </div>
-                      ) : (
-                        <p className="text-gray-600">Chưa có thông tin</p>
-                      )}
-                    </div>
+                      </CardBody>
+                    </Card>
                   )}
                 </div>
               ) : (
-                <p className="text-center text-gray-500 py-8">Không có dữ liệu</p>
+                <div className="text-center py-12">
+                  <UserIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500 text-lg">Không có dữ liệu</p>
+                </div>
               )}
             </ModalBody>
             <ModalFooter className="border-t bg-gray-50">
@@ -277,4 +297,3 @@ const PatientDetailModal = ({
 };
 
 export default PatientDetailModal;
-
