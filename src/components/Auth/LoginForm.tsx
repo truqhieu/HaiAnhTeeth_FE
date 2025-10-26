@@ -163,7 +163,15 @@ const LoginForm = () => {
             Đăng ký ngay
           </button>
         </p>
-
+        <p className="mt-6 text-center text-base text-gray-600">
+          Bạn quên mật khẩu?{" "}
+          <button
+            className="text-[#39BDCC] hover:underline font-semibold"
+            onClick={() => navigate("/forgot-password")}
+          >
+            Đặt lại mật khẩu
+          </button>
+        </p>
         {/* ✅ Nút trở về trang chủ */}
         <div className="mt-8 flex justify-center">
           <Button

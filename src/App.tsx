@@ -7,6 +7,7 @@ import IndexPage from "@/pages/Public/index";
 import AboutPage from "@/pages/Public/about";
 import LoginPage from "@/pages/Public/LoginPage";
 import SignupPage from "@/pages/Public/SignupPage";
+import ForgotPassWord from "@/pages/Public/ForgorPasswordPage";
 import ResetPassword from "@/pages/Public/reset-password";
 import VerifyEmail from "@/pages/Public/verify-email";
 import AccountSettings from "@/pages/Patient/AccountSettings";
@@ -54,7 +55,8 @@ function App() {
           {/* Auth Pages */}
           <Route element={<LoginPage />} path="/login" />
           <Route element={<SignupPage />} path="/signup" />
-
+          <Route element={<ForgotPassWord />} path="/forgot-password" />
+          <Route element={<ResetPassword />} path="/reset-password" />
           {/* Admin */}
           <Route
             element={
@@ -127,7 +129,6 @@ function App() {
                     <Route element={<IndexPage />} path="/" />
                     <Route element={<AboutPage />} path="/about" />
                     <Route element={<VerifyEmail />} path="/verify-email" />
-                    <Route element={<ResetPassword />} path="/reset-password" />
                     <Route element={<Dashboard />} path="/patient/dashboard" />
                     <Route element={<Appointments />} path="/patient/appointments" />
                     <Route element={<MedicalRecords />} path="/patient/medical-records" />

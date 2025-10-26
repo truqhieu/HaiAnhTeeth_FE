@@ -28,57 +28,58 @@ const AppNavbar = () => {
 
   return (
     <header className="w-full shadow bg-white text-base md:text-lg">
-      {/* Top bar */}
-      <div className="bg-[#39BDCC] text-white text-base md:text-lg font-semibold tracking-wide">
-        <div className="max-w-7xl mx-auto px-6 flex justify-between items-center py-3">
-          {/* Left side */}
-          <div className="flex items-center space-x-6">
-            <a
-              className="flex items-center space-x-2 hover:text-gray-100"
-              href="tel:02473008866"
-            >
-              <PhoneIcon className="w-5 h-5" />
-              <span>Hỗ trợ tư vấn: 024 7300 8866</span>
-            </a>
-          </div>
-
-          {/* Right side */}
-          <div className="flex items-center space-x-5">
-            <a
-              className="bg-[#39BDCC] hover:bg-green-500 px-4 py-1.5 rounded text-white font-semibold text-base md:text-lg"
-              href="/offers"
-            >
-              Ưu đãi nổi bật
-            </a>
-            <select
-              className="bg-transparent text-white uppercase font-semibold text-base md:text-lg focus:outline-none cursor-pointer"
-              name="language"
-            >
-              <option value="vi">VI</option>
-              <option value="en">EN</option>
-              <option value="kr">KR</option>
-              <option value="cn">CN</option>
-            </select>
-
-            {/* 🔹 Thay vì mở modal → chuyển trang */}
-            <Button
-              className="text-white hover:text-gray-200 font-semibold text-base md:text-lg min-w-unit-0 p-3"
-              size="md"
-              variant="light"
-              onPress={() => navigate("/signup")}
-            >
-              Đăng ký
-            </Button>
-            <Button
-              className="text-white hover:text-gray-200 font-semibold text-base md:text-lg min-w-unit-0 p-3"
-              size="md"
-              variant="light"
-              onPress={() => navigate("/login")}
-            >
-              Đăng nhập
-            </Button>
-          </div>
+      {/* Top bar - Left side flush to left edge, Right side flush to right edge */}
+      <div className="bg-[#39BDCC] text-white text-base md:text-lg font-semibold tracking-wide relative py-10">
+        {/* Left-most: flush to left edge */}
+        <div className="absolute left-0 inset-y-0 flex items-center pl-6">
+          <a
+            className="flex items-center space-x-2 hover:text-gray-100"
+            href="tel:02473008866"
+          >
+            <PhoneIcon className="w-5 h-5" />
+            <span>Hỗ trợ tư vấn: 024 7300 8866</span>
+          </a>
         </div>
+
+        {/* Right-most: flush to right edge */}
+        <div className="absolute right-0 inset-y-0 flex items-center space-x-5 pr-6">
+          <a
+            className="bg-[#39BDCC] hover:bg-green-500 px-4 py-1.5 rounded text-white font-semibold text-base md:text-lg"
+            href="/offers"
+          >
+            Ưu đãi nổi bật
+          </a>
+          <select
+            className="bg-transparent text-white uppercase font-semibold text-base md:text-lg focus:outline-none cursor-pointer"
+            name="language"
+          >
+            <option value="vi">VI</option>
+            <option value="en">EN</option>
+            <option value="kr">KR</option>
+            <option value="cn">CN</option>
+          </select>
+
+          {/* 🔹 Thay vì mở modal → chuyển trang */}
+          <Button
+            className="text-white hover:text-gray-200 font-semibold text-base md:text-lg min-w-unit-0 p-3"
+            size="md"
+            variant="light"
+            onPress={() => navigate("/signup")}
+          >
+            Đăng ký
+          </Button>
+          <Button
+            className="text-white hover:text-gray-200 font-semibold text-base md:text-lg min-w-unit-0 p-3"
+            size="md"
+            variant="light"
+            onPress={() => navigate("/login")}
+          >
+            Đăng nhập
+          </Button>
+        </div>
+
+        {/* Center placeholder to preserve height/alignment (keeps top bar look unchanged) */}
+        <div className="max-w-7xl mx-auto px-6 pointer-events-none" style={{ height: 0 }} />
       </div>
 
       {/* Main Navbar */}
@@ -126,7 +127,11 @@ const AppNavbar = () => {
           </NavbarContent>
 
           {/* Search */}
-          <NavbarContent className="flex items-center gap-3" justify="end">
+          <NavbarContent
+  
+          className="flex items-center gap-3 ml-auto pr-2 md:pr-6"
+            justify="end"
+          >
             <NavbarItem className="flex items-center gap-3">
               <button
                 className="w-10 h-10 flex items-center justify-center hover:scale-110 transition-transform"

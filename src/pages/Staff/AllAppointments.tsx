@@ -17,6 +17,12 @@ import {
   Tabs,
   Tab,
   Pagination,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Textarea,
 } from "@heroui/react";
 import { 
   MagnifyingGlassIcon,
@@ -26,10 +32,11 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationCircleIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
-
+import toast from "react-hot-toast";
 // ===== Interface định nghĩa =====
 interface Appointment {
   id: string;
@@ -57,6 +64,11 @@ const AllAppointments = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  // Cancel Modal states
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
 
   // Filter states
   const [searchText, setSearchText] = useState("");
@@ -156,47 +168,75 @@ const AllAppointments = () => {
     }
 
     setFilteredAppointments(filtered);
-    // Reset về trang 1 khi filter thay đổi
     setCurrentPage(1);
   }, [searchText, selectedDoctor, selectedDate, activeTab, appointments]);
 
-  // ===== Duyệt / Hủy ca khám =====
-  const handleReview = async (
-    appointmentId: string,
-    action: "approve" | "cancel"
-  ) => {
-    try {
-      setProcessingId(appointmentId);
+  // ===== Open Cancel Modal =====
+  const openCancelModal = (appointmentId: string) => {
+    setSelectedAppointmentId(appointmentId);
+    setCancelReason("");
+    setIsCancelModalOpen(true);
+  };
 
-      let cancelReason: string | undefined;
-      if (action === "cancel") {
-        const reason = prompt("Vui lòng nhập lý do hủy:");
-        if (!reason || reason.trim() === "") {
-          setProcessingId(null);
-          return;
-        }
-        cancelReason = reason.trim();
-      }
+  // ===== Close Cancel Modal =====
+  const closeCancelModal = () => {
+    setIsCancelModalOpen(false);
+    setSelectedAppointmentId(null);
+    setCancelReason("");
+  };
+
+  // ===== Confirm Cancel =====
+  const handleConfirmCancel = async () => {
+    if (!selectedAppointmentId) return;
+    
+    if (!cancelReason.trim()) {
+      toast.error("Vui lòng nhập lý do hủy!");
+      return;
+    }
+
+    try {
+      setProcessingId(selectedAppointmentId);
 
       const res: ApiResponse<null> = await appointmentApi.reviewAppointment(
-        appointmentId,
-        action,
-        cancelReason
+        selectedAppointmentId,
+        "cancel",
+        cancelReason.trim()
       );
 
       if (res.success) {
-        alert(
-          action === "approve"
-            ? "✅ Đã duyệt ca khám thành công!"
-            : "✅ Đã hủy ca khám thành công!"
-        );
+        toast.success("Đã hủy ca khám thành công!");
+        closeCancelModal();
         await refetchAllAppointments();
       } else {
-        alert(`❌ ${res.message || "Thao tác thất bại"}`);
+        toast.error(res.message || "Thao tác thất bại");
       }
     } catch (error: any) {
       console.error("=== REVIEW API ERROR ===", error);
-      alert(`❌ ${error.message || "Thao tác thất bại, vui lòng thử lại."}`);
+      toast.error(error.message || "Thao tác thất bại, vui lòng thử lại.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // ===== Duyệt ca khám =====
+  const handleApprove = async (appointmentId: string) => {
+    try {
+      setProcessingId(appointmentId);
+
+      const res: ApiResponse<null> = await appointmentApi.reviewAppointment(
+        appointmentId,
+        "approve"
+      );
+
+      if (res.success) {
+        toast.success("Đã duyệt ca khám thành công!");
+        await refetchAllAppointments();
+      } else {
+        toast.error(res.message || "Thao tác thất bại");
+      }
+    } catch (error: any) {
+      console.error("=== REVIEW API ERROR ===", error);
+      toast.error(error.message || "Thao tác thất bại, vui lòng thử lại.");
     } finally {
       setProcessingId(null);
     }
@@ -221,14 +261,14 @@ const AllAppointments = () => {
           Completed: "Đã hoàn thành ca khám!",
           Cancelled: "Đã hủy ca khám thành công!",
         };
-        alert(`✅ ${statusMessages[newStatus]}`);
+        toast.success(statusMessages[newStatus]);
         await refetchAllAppointments();
       } else {
-        alert(`❌ ${res.message || "Thao tác thất bại"}`);
+        toast.error(res.message || "Thao tác thất bại");
       }
     } catch (error: any) {
       console.error("=== UPDATE STATUS ERROR ===", error);
-      alert(`❌ ${error.message || "Thao tác thất bại, vui lòng thử lại."}`);
+      toast.error(error.message || "Thao tác thất bại, vui lòng thử lại.");
     } finally {
       setProcessingId(null);
     }
@@ -352,6 +392,88 @@ const AllAppointments = () => {
 
   return (
     <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
+      {/* Cancel Appointment Modal */}
+      <Modal 
+        isOpen={isCancelModalOpen} 
+        onClose={closeCancelModal}
+        size="2xl"
+        classNames={{
+          base: "rounded-2xl",
+          header: "border-b border-gray-200",
+          footer: "border-t border-gray-200",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-100 rounded-full p-2">
+                <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Xác nhận hủy ca khám</h3>
+                <p className="text-sm text-gray-500 font-normal mt-1">
+                  Vui lòng nhập lý do hủy ca khám
+                </p>
+              </div>
+            </div>
+          </ModalHeader>
+          <ModalBody className="py-6">
+            <Textarea
+              label="Lý do hủy"
+              placeholder="Vui lòng nhập lý do hủy ca khám (bắt buộc)..."
+              value={cancelReason}
+              onValueChange={setCancelReason}
+              minRows={4}
+              maxRows={8}
+              size="lg"
+              variant="bordered"
+              isRequired
+              description="Lý do sẽ được gửi đến bệnh nhân"
+              classNames={{
+                input: "text-base",
+                label: "text-base font-semibold",
+              }}
+            />
+            
+            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex gap-3">
+                <ExclamationCircleIcon className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  <p className="font-semibold mb-1">Lưu ý:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Hành động này không thể hoàn tác</li>
+                    <li>Bệnh nhân sẽ nhận được thông báo về việc hủy</li>
+                    <li>Lý do hủy sẽ được lưu vào hệ thống</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter className="gap-3">
+            <Button
+              color="default"
+              variant="flat"
+              onPress={closeCancelModal}
+              size="lg"
+              className="font-semibold"
+              isDisabled={processingId === selectedAppointmentId}
+            >
+              Đóng
+            </Button>
+            <Button
+              color="danger"
+              onPress={handleConfirmCancel}
+              size="lg"
+              className="font-semibold"
+              isDisabled={!cancelReason.trim() || processingId === selectedAppointmentId}
+              isLoading={processingId === selectedAppointmentId}
+            >
+              {processingId === selectedAppointmentId ? "Đang hủy..." : "Xác nhận hủy"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -568,7 +690,7 @@ const AllAppointments = () => {
                             size="sm"
                             color="success"
                             variant="flat"
-                            onPress={() => handleReview(appointment.id, "approve")}
+                            onPress={() => handleApprove(appointment.id)}
                             isDisabled={processingId === appointment.id}
                             isLoading={processingId === appointment.id}
                           >
@@ -578,9 +700,8 @@ const AllAppointments = () => {
                             size="sm"
                             color="danger"
                             variant="flat"
-                            onPress={() => handleReview(appointment.id, "cancel")}
+                            onPress={() => openCancelModal(appointment.id)}
                             isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
                           >
                             Hủy
                           </Button>

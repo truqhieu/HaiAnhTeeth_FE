@@ -6,6 +6,7 @@ import {
   EyeSlashIcon,
   CheckCircleIcon,
   XCircleIcon,
+  ArrowLeftIcon,
 } from "@heroicons/react/24/solid";
 import { Input, Button, Form } from "@heroui/react";
 
@@ -82,7 +83,7 @@ const ResetPassword = () => {
     try {
       const result = await authApi.resetPassword({
         token,
-        email,
+        email: email ?? "",
         newPassword: password,
       });
 
@@ -104,7 +105,7 @@ const ResetPassword = () => {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Có lỗi xảy ra. Vui lòng thử lại sau.",
+          : "Có lỗi xảy ra. Vui lòng thử lại sau."
       );
     } finally {
       setIsSubmitting(false);
@@ -114,22 +115,43 @@ const ResetPassword = () => {
   // Kiểm tra token có tồn tại không
   if (!token || !email) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 text-center">
-          <XCircleIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            Link không hợp lệ
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Token không tồn tại hoặc đã hết hạn. Vui lòng yêu cầu link đặt lại
-            mật khẩu mới.
+      <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b3f0f5] via-[#d9fafa] to-[#e0fdfd]">
+        <div className="bg-white shadow-2xl rounded-3xl px-10 py-10 w-full max-w-md">
+          <div className="flex flex-col items-center mb-8">
+            <div className="bg-red-100 rounded-full p-4 mb-4">
+              <XCircleIcon className="w-16 h-16 text-red-500" />
+            </div>
+            <h2 className="text-4xl font-extrabold text-gray-800">
+              Link không hợp lệ
+            </h2>
+            <p className="text-gray-500 text-lg mt-2 text-center">
+              Token không tồn tại hoặc đã hết hạn
+            </p>
+          </div>
+
+          <p className="text-gray-600 text-base mb-6 text-center">
+            Vui lòng yêu cầu link đặt lại mật khẩu mới.
           </p>
+
           <Button
-            className="w-full bg-[#39BDCC] text-white hover:bg-[#2ca6b5]"
+            className="w-full py-4 text-lg font-semibold text-white bg-[#39BDCC] hover:bg-[#2ca6b5] transition-all duration-300 rounded-xl"
             onPress={() => navigate("/")}
           >
             Về trang chủ
           </Button>
+
+          <div className="mt-8 flex justify-center">
+            <Button
+              color="default"
+              variant="flat"
+              size="lg"
+              onPress={() => navigate("/forgot-password")}
+              className="flex items-center gap-2 font-semibold text-gray-700 hover:text-[#39BDCC] transition"
+            >
+              <ArrowLeftIcon className="w-5 h-5" />
+              Yêu cầu link mới
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -138,16 +160,27 @@ const ResetPassword = () => {
   // Hiển thị thành công
   if (submitStatus === "success") {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8 text-center">
-          <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            Đặt lại mật khẩu thành công!
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Mật khẩu của bạn đã được cập nhật. Bạn sẽ được chuyển về trang chủ
-            sau vài giây...
-          </p>
+      <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b3f0f5] via-[#d9fafa] to-[#e0fdfd]">
+        <div className="bg-white shadow-2xl rounded-3xl px-10 py-10 w-full max-w-md">
+          <div className="flex flex-col items-center mb-8">
+            <div className="bg-green-100 rounded-full p-4 mb-4">
+              <CheckCircleIcon className="w-16 h-16 text-green-500" />
+            </div>
+            <h2 className="text-4xl font-extrabold text-gray-800">
+              Thành công!
+            </h2>
+            <p className="text-gray-500 text-lg mt-2 text-center">
+              Mật khẩu đã được cập nhật
+            </p>
+          </div>
+
+          <div className="p-6 bg-green-100 border border-green-300 rounded-lg text-center mb-6">
+            <p className="text-gray-700 text-base">
+              Mật khẩu của bạn đã được cập nhật thành công. Bạn sẽ được chuyển
+              về trang chủ sau vài giây...
+            </p>
+          </div>
+
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#39BDCC]" />
           </div>
@@ -157,154 +190,164 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4 py-12">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+    <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b3f0f5] via-[#d9fafa] to-[#e0fdfd]">
+      <div className="bg-white shadow-2xl rounded-3xl px-10 py-10 w-full max-w-md">
         {/* Header */}
-        <div className="flex items-center justify-center p-6 border-b border-[#39BDCC]">
-          <div className="flex items-center space-x-3">
-            <img
-              alt="Logo"
-              className="h-8 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
-            />
-            <h2 className="text-2xl font-bold text-gray-800">
-              Đặt lại mật khẩu
-            </h2>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div className="p-6">
-          <p className="text-sm text-gray-600 mb-6">
-            Vui lòng nhập mật khẩu mới của bạn. Mật khẩu phải đáp ứng các yêu
-            cầu bảo mật.
+        <div className="flex flex-col items-center mb-8">
+          <img
+            alt="Logo"
+            className="h-20 w-auto mb-4 object-contain"
+            src="/logo1.png"
+          />
+          <h2 className="text-4xl font-extrabold text-gray-800">
+            Đặt lại mật khẩu
+          </h2>
+          <p className="text-gray-500 text-lg mt-2 text-center">
+            Vui lòng nhập mật khẩu mới của bạn
           </p>
-
-          <Form autoComplete="off" className="space-y-4" onSubmit={onSubmit}>
-            <Input
-              fullWidth
-              autoComplete="new-password"
-              endContent={
-                <button
-                  className="focus:outline-none"
-                  type="button"
-                  onClick={() => setIsPasswordVisible(!isPasswordVisible)}
-                >
-                  {isPasswordVisible ? (
-                    <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              }
-              errorMessage={
-                isPasswordInvalid ? (
-                  !password ? (
-                    "Vui lòng nhập mật khẩu"
-                  ) : (
-                    <ul className="list-disc list-inside">
-                      {getPasswordErrors().map((error, i) => (
-                        <li key={i}>{error}</li>
-                      ))}
-                    </ul>
-                  )
-                ) : undefined
-              }
-              isInvalid={isPasswordInvalid}
-              label={
-                <>
-                  Mật khẩu mới <span className="text-red-500">*</span>
-                </>
-              }
-              labelPlacement="outside"
-              name="password"
-              placeholder="Nhập mật khẩu mới"
-              type={isPasswordVisible ? "text" : "password"}
-              value={password}
-              onValueChange={setPassword}
-            />
-
-            <Input
-              fullWidth
-              autoComplete="new-password"
-              endContent={
-                <button
-                  className="focus:outline-none"
-                  type="button"
-                  onClick={() =>
-                    setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
-                  }
-                >
-                  {isConfirmPasswordVisible ? (
-                    <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                  ) : (
-                    <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                  )}
-                </button>
-              }
-              errorMessage={
-                isConfirmPasswordInvalid
-                  ? !confirmPassword
-                    ? "Vui lòng xác nhận mật khẩu"
-                    : "Mật khẩu không khớp."
-                  : undefined
-              }
-              isInvalid={isConfirmPasswordInvalid}
-              label={
-                <>
-                  Xác nhận mật khẩu <span className="text-red-500">*</span>
-                </>
-              }
-              labelPlacement="outside"
-              name="confirm-password"
-              placeholder="Nhập lại mật khẩu mới"
-              type={isConfirmPasswordVisible ? "text" : "password"}
-              value={confirmPassword}
-              onValueChange={setConfirmPassword}
-            />
-
-            {submitStatus === "error" && (
-              <div className="p-3 bg-red-100 border border-red-300 rounded text-sm text-red-700">
-                <div className="flex items-center">
-                  <XCircleIcon className="w-5 h-5 mr-2" />
-                  {errorMessage}
-                </div>
-              </div>
-            )}
-
-            <Button
-              className="w-full flex items-center justify-center text-white bg-[#39BDCC] hover:bg-[#2ca6b5]"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
-              type="submit"
-              variant="solid"
-            >
-              {!isSubmitting && <LockClosedIcon className="w-5 h-5 mr-2" />}
-              {isSubmitting ? "Đang xử lý..." : "Đặt lại mật khẩu"}
-            </Button>
-          </Form>
-
-          <div className="mt-6 text-center">
-            <button
-              className="text-sm text-blue-500 hover:underline"
-              onClick={() => navigate("/")}
-            >
-              ← Quay về trang chủ
-            </button>
-          </div>
         </div>
-      </div>
 
-      {/* Thông tin bổ sung */}
-      <div className="mt-6 max-w-md w-full bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-blue-800 mb-2">
-          Yêu cầu mật khẩu:
-        </h3>
-        <ul className="text-xs text-blue-700 space-y-1">
-          <li>• Ít nhất 4 ký tự</li>
-          <li>• Ít nhất 1 chữ cái viết hoa</li>
-          <li>• Ít nhất 1 ký tự đặc biệt</li>
-        </ul>
+        {/* Info Box */}
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-blue-800 mb-2">
+            Yêu cầu mật khẩu:
+          </h3>
+          <ul className="text-xs text-blue-700 space-y-1">
+            <li>• Ít nhất 4 ký tự</li>
+            <li>• Ít nhất 1 chữ cái viết hoa</li>
+            <li>• Ít nhất 1 ký tự đặc biệt</li>
+          </ul>
+        </div>
+
+        {/* Error */}
+        {submitStatus === "error" && (
+          <div className="mb-5 p-4 bg-red-100 border border-red-300 rounded-lg text-sm text-red-700">
+            <div className="flex items-center">
+              <XCircleIcon className="w-5 h-5 mr-2" />
+              {errorMessage}
+            </div>
+          </div>
+        )}
+
+        {/* Form */}
+        <Form autoComplete="off" className="space-y-6" onSubmit={onSubmit}>
+          <Input
+            fullWidth
+            autoComplete="new-password"
+            endContent={
+              <button
+                className="focus:outline-none"
+                type="button"
+                onClick={() => setIsPasswordVisible(!isPasswordVisible)}
+              >
+                {isPasswordVisible ? (
+                  <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            }
+            errorMessage={
+              isPasswordInvalid ? (
+                !password ? (
+                  "Vui lòng nhập mật khẩu"
+                ) : (
+                  <ul className="list-disc list-inside">
+                    {getPasswordErrors().map((error, i) => (
+                      <li key={i}>{error}</li>
+                    ))}
+                  </ul>
+                )
+              ) : undefined
+            }
+            isInvalid={isPasswordInvalid}
+            label={
+              <>
+                Mật khẩu mới <span className="text-red-500">*</span>
+              </>
+            }
+            name="password"
+            placeholder="Nhập mật khẩu mới"
+            size="lg"
+            type={isPasswordVisible ? "text" : "password"}
+            value={password}
+            onValueChange={setPassword}
+          />
+
+          <Input
+            fullWidth
+            autoComplete="new-password"
+            endContent={
+              <button
+                className="focus:outline-none"
+                type="button"
+                onClick={() =>
+                  setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
+                }
+              >
+                {isConfirmPasswordVisible ? (
+                  <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                ) : (
+                  <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                )}
+              </button>
+            }
+            errorMessage={
+              isConfirmPasswordInvalid
+                ? !confirmPassword
+                  ? "Vui lòng xác nhận mật khẩu"
+                  : "Mật khẩu không khớp"
+                : undefined
+            }
+            isInvalid={isConfirmPasswordInvalid}
+            label={
+              <>
+                Xác nhận mật khẩu <span className="text-red-500">*</span>
+              </>
+            }
+            name="confirm-password"
+            placeholder="Nhập lại mật khẩu mới"
+            size="lg"
+            type={isConfirmPasswordVisible ? "text" : "password"}
+            value={confirmPassword}
+            onValueChange={setConfirmPassword}
+          />
+
+          <Button
+            className="w-full py-4 text-lg font-semibold text-white bg-[#39BDCC] hover:bg-[#2ca6b5] transition-all duration-300 rounded-xl"
+            isDisabled={isSubmitting}
+            isLoading={isSubmitting}
+            type="submit"
+            variant="solid"
+          >
+            {!isSubmitting && <LockClosedIcon className="w-6 h-6 mr-2" />}
+            {isSubmitting ? "Đang xử lý..." : "Đặt lại mật khẩu"}
+          </Button>
+        </Form>
+
+        {/* Back to Login */}
+        <p className="mt-6 text-center text-base text-gray-600">
+          <button
+            className="text-[#39BDCC] hover:underline font-semibold"
+            onClick={() => navigate("/login")}
+          >
+            ← Quay lại đăng nhập
+          </button>
+        </p>
+
+        {/* Back to Home */}
+        <div className="mt-8 flex justify-center">
+          <Button
+            color="default"
+            variant="flat"
+            size="lg"
+            onPress={() => navigate("/")}
+            className="flex items-center gap-2 font-semibold text-gray-700 hover:text-[#39BDCC] transition"
+          >
+            <ArrowLeftIcon className="w-5 h-5" />
+            Trở về trang chủ
+          </Button>
+        </div>
       </div>
     </div>
   );
