@@ -120,7 +120,7 @@ const RoomManagement = () => {
   }, [searchTerm]);
 
   const statusOptions = [
-    { key: "all", label: "Tất cả" },
+    { key: "all", label: "Tất cả trạng thái" },
     { key: "active", label: "Hoạt động" },
     { key: "inactive", label: "Không hoạt động" },
   ];

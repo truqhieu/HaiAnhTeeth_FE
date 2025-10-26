@@ -42,7 +42,6 @@ const AccountSettings = () => {
 
   // Load user data from context
   useEffect(() => {
-    console.log("🔍 [AccountSettings] User from context:", user);
     if (user) {
       setFullName(user.fullName || "");
       setEmail(user.email || "");
@@ -64,23 +63,11 @@ const AccountSettings = () => {
       // Load emergency contact
       const emergencyContact = (user as any).emergencyContact;
 
-      console.log(
-        "🔍 [AccountSettings] EmergencyContact from user:",
-        emergencyContact,
-      );
       if (emergencyContact) {
-        console.log("🔍 [AccountSettings] Loading emergency contact fields:", {
-          name: emergencyContact.name,
-          phone: emergencyContact.phone,
-          relationship: emergencyContact.relationship,
-        });
         setEmergencyName(emergencyContact.name || "");
         setEmergencyPhone(emergencyContact.phone || "");
         setEmergencyRelationship(emergencyContact.relationship || "");
       } else {
-        console.log(
-          "🔍 [AccountSettings] No emergencyContact found, clearing fields",
-        );
         setEmergencyName("");
         setEmergencyPhone("");
         setEmergencyRelationship("");
@@ -200,7 +187,6 @@ const AccountSettings = () => {
         toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
     } catch (error: any) {
-      console.error("Lỗi cập nhật profile:", error);
       toast.error(
         error.message || "Không thể cập nhật thông tin. Vui lòng thử lại",
       );
@@ -210,18 +196,25 @@ const AccountSettings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Hồ sơ cá nhân</h1>
-        <p className="text-gray-600 mb-8">
-          Quản lý thông tin, địa chỉ liên lạc của bạn
-        </p>
+    <div className="min-h-screen bg-white">
+      {/* Header Section */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-6 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Hồ sơ cá nhân
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Quản lý thông tin, địa chỉ liên lạc của bạn
+          </p>
+        </div>
+      </div>
 
-        <form className="space-y-8" onSubmit={handleSubmit}>
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {/* Thông tin tài khoản */}
-          <div className="bg-white shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-6">
+          <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
               Thông tin tài khoản
             </h2>
 
@@ -229,6 +222,10 @@ const AccountSettings = () => {
               <div className="md:col-span-2">
                 <Input
                   isRequired
+                  classNames={{
+                    input: "bg-gray-100",
+                    inputWrapper: "bg-gray-100 border-gray-300",
+                  }}
                   label="Họ và tên"
                   labelPlacement="outside"
                   placeholder="Nhập họ và tên"
@@ -239,6 +236,10 @@ const AccountSettings = () => {
               </div>
 
               <Input
+                classNames={{
+                  input: "bg-gray-100",
+                  inputWrapper: "bg-gray-100 border-gray-300",
+                }}
                 label="Ngày sinh"
                 labelPlacement="outside"
                 placeholder="DD/MM/YYYY"
@@ -249,6 +250,10 @@ const AccountSettings = () => {
               />
 
               <Select
+                classNames={{
+                  trigger: "bg-gray-100 border-gray-300",
+                  value: "bg-gray-100",
+                }}
                 label="Giới tính"
                 labelPlacement="outside"
                 placeholder="Chọn giới tính"
@@ -267,6 +272,10 @@ const AccountSettings = () => {
 
               <div className="md:col-span-2">
                 <Input
+                  classNames={{
+                    input: "bg-gray-100",
+                    inputWrapper: "bg-gray-100 border-gray-300",
+                  }}
                   label="Địa chỉ"
                   labelPlacement="outside"
                   placeholder="Nhập địa chỉ"
@@ -279,13 +288,17 @@ const AccountSettings = () => {
           </div>
 
           {/* Địa chỉ liên lạc */}
-          <div className="bg-white shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-6">
+          <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
               Địa chỉ liên lạc
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
+                classNames={{
+                  input: "bg-gray-100",
+                  inputWrapper: "bg-gray-100 border-gray-300",
+                }}
                 label="Số điện thoại"
                 labelPlacement="outside"
                 maxLength={11}
@@ -303,6 +316,10 @@ const AccountSettings = () => {
 
               <Input
                 isDisabled
+                classNames={{
+                  input: "bg-gray-200",
+                  inputWrapper: "bg-gray-200 border-gray-300",
+                }}
                 label="Email"
                 labelPlacement="outside"
                 placeholder="Email"
@@ -317,16 +334,20 @@ const AccountSettings = () => {
           </div>
 
           {/* Thông tin liên hệ khẩn cấp */}
-          <div className="bg-white shadow-sm border p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-6">
+          <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
               Thông tin liên hệ khẩn cấp
             </h2>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-gray-600 mb-6">
               Người thân hoặc bạn bè có thể liên hệ trong trường hợp khẩn cấp
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Input
+                classNames={{
+                  input: "bg-gray-100",
+                  inputWrapper: "bg-gray-100 border-gray-300",
+                }}
                 label="Họ và tên"
                 labelPlacement="outside"
                 placeholder="Nhập họ và tên người liên hệ"
@@ -337,6 +358,10 @@ const AccountSettings = () => {
               />
 
               <Input
+                classNames={{
+                  input: "bg-gray-100",
+                  inputWrapper: "bg-gray-100 border-gray-300",
+                }}
                 label="Số điện thoại"
                 labelPlacement="outside"
                 maxLength={11}
@@ -353,6 +378,10 @@ const AccountSettings = () => {
               />
 
               <Select
+                classNames={{
+                  trigger: "bg-gray-100 border-gray-300",
+                  value: "bg-gray-100",
+                }}
                 label="Mối quan hệ"
                 labelPlacement="outside"
                 placeholder="Chọn mối quan hệ"
@@ -374,14 +403,14 @@ const AccountSettings = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-start">
+          <div className="flex justify-end pt-4">
             <Button
-              className="bg-[#39BDCC] text-white px-8 py-2 hover:bg-[#2ca6b5]"
+              className="bg-blue-600 text-white px-10 py-3 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
               isLoading={isLoading}
               size="lg"
               type="submit"
             >
-              Cập nhật tài khoản
+              {isLoading ? "Đang cập nhật..." : "Cập nhật tài khoản"}
             </Button>
           </div>
         </form>

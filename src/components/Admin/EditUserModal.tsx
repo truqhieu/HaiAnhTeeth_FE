@@ -350,26 +350,27 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 ))}
               </Select>
             </div>
-
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                isDisabled={isSubmitting}
-                variant="bordered"
-                onPress={handleClose}
-              >
-                Hủy
-              </Button>
-              <Button
-                className="bg-blue-600 text-white hover:bg-blue-700"
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                type="submit"
-                variant="solid"
-              >
-                {isSubmitting ? "Đang cập nhật..." : "Cập nhật tài khoản"}
-              </Button>
-            </div>
           </Form>
+
+          {/* Buttons outside Form */}
+          <div className="flex justify-end items-center gap-4 pt-4">
+            <Button
+              isDisabled={isSubmitting}
+              variant="bordered"
+              onPress={handleClose}
+            >
+              Hủy
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              isDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              onPress={handleSubmit}
+              variant="solid"
+            >
+              {isSubmitting ? "Đang cập nhật..." : "Cập nhật tài khoản"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

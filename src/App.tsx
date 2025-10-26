@@ -14,6 +14,7 @@ import Complaints from "@/pages/Patient/Complaints";
 import Appointments from "@/pages/Patient/Appointments";
 import MedicalRecords from "@/pages/Patient/MedicalRecords";
 import PaymentPage from "@/pages/Patient/PaymentPage";
+import Dashboard from "@/pages/Patient/Dashboard";
 import AccountManagement from "@/pages/Admin/AccountManagement";
 import AdminLayout from "@/layouts/AdminLayout";
 import ServiceManagement from "@/pages/Manager/ServiceManagement";
@@ -127,26 +128,12 @@ function App() {
                     <Route element={<AboutPage />} path="/about" />
                     <Route element={<VerifyEmail />} path="/verify-email" />
                     <Route element={<ResetPassword />} path="/reset-password" />
-                    <Route
-                      element={<Appointments />}
-                      path="/patient/appointments"
-                    />
-                    <Route
-                      element={<MedicalRecords />}
-                      path="/patient/medical-records"
-                    />
-                    <Route
-                      element={<Complaints />}
-                      path="/patient/complaints"
-                    />
-                    <Route
-                      element={<PaymentPage />}
-                      path="/patient/payment/:paymentId"
-                    />
-                    <Route
-                      element={<AccountSettings />}
-                      path="/patient/account-settings"
-                    />
+                    <Route element={<Dashboard />} path="/patient/dashboard" />
+                    <Route element={<Appointments />} path="/patient/appointments" />
+                    <Route element={<MedicalRecords />} path="/patient/medical-records" />
+                    <Route element={<Complaints />} path="/patient/complaints" />
+                    <Route element={<AccountSettings />} path="/patient/account-settings" />
+                    <Route element={<PaymentPage />} path="/patient/payment/:paymentId" />
                   </Routes>
                 </DefaultLayout>
               </>

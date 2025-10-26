@@ -228,11 +228,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                     isNameInvalid ? "Vui lòng nhập tên dịch vụ" : ""
                   }
                   isInvalid={isNameInvalid}
-                  label={
-                    <>
-                      Tên dịch vụ <span className="text-red-500">*</span>
-                    </>
-                  }
+                  label="Tên dịch vụ *"
                   placeholder="Nhập tên dịch vụ"
                   type="text"
                   value={formData.name}
@@ -249,11 +245,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                     isDescriptionInvalid ? "Vui lòng nhập mô tả dịch vụ" : ""
                   }
                   isInvalid={isDescriptionInvalid}
-                  label={
-                    <>
-                      Mô tả dịch vụ <span className="text-red-500">*</span>
-                    </>
-                  }
+                  label="Mô tả dịch vụ *"
                   minRows={3}
                   placeholder="Nhập mô tả chi tiết về dịch vụ"
                   value={formData.description}
@@ -271,11 +263,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                   isPriceInvalid ? "Vui lòng nhập giá hợp lệ (lớn hơn 0)" : ""
                 }
                 isInvalid={isPriceInvalid}
-                label={
-                  <>
-                    Giá dịch vụ (VND) <span className="text-red-500">*</span>
-                  </>
-                }
+                label="Giá dịch vụ (VND) *"
                 placeholder="Nhập giá dịch vụ"
                 startContent={<span className="text-gray-500 text-sm">₫</span>}
                 type="number"
@@ -294,11 +282,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                     : ""
                 }
                 isInvalid={isDurationInvalid}
-                label={
-                  <>
-                    Thời gian (phút) <span className="text-red-500">*</span>
-                  </>
-                }
+                label="Thời gian (phút) *"
                 placeholder="Nhập thời gian thực hiện"
                 type="number"
                 value={formData.duration}
@@ -310,11 +294,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                 fullWidth
                 errorMessage={isCategoryInvalid ? "Vui lòng chọn danh mục" : ""}
                 isInvalid={isCategoryInvalid}
-                label={
-                  <>
-                    Danh mục <span className="text-red-500">*</span>
-                  </>
-                }
+                label="Danh mục *"
                 placeholder="Chọn danh mục"
                 selectedKeys={formData.category ? [formData.category] : []}
                 variant="bordered"
@@ -346,26 +326,27 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
                 ))}
               </Select>
             </div>
-
-            <div className="flex justify-end space-x-4 pt-4">
-              <Button
-                isDisabled={isSubmitting}
-                variant="bordered"
-                onPress={handleClose}
-              >
-                Hủy
-              </Button>
-              <Button
-                className="bg-[#39BDCC] text-white hover:bg-[#2ca6b5]"
-                isDisabled={isSubmitting}
-                isLoading={isSubmitting}
-                type="submit"
-                variant="solid"
-              >
-                {isSubmitting ? "Đang cập nhật..." : "Cập nhật dịch vụ"}
-              </Button>
-            </div>
           </Form>
+
+          {/* Buttons outside Form */}
+          <div className="flex justify-end items-center gap-4 pt-4">
+            <Button
+              isDisabled={isSubmitting}
+              variant="bordered"
+              onPress={handleClose}
+            >
+              Hủy
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              isDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              onPress={handleSubmit}
+              variant="solid"
+            >
+              {isSubmitting ? "Đang cập nhật..." : "Cập nhật dịch vụ"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
