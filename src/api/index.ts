@@ -89,7 +89,7 @@ export { appointmentApi } from "./appointment";
 // Export payment API
 export { paymentApi } from "./payment";
 // Export availableSlot API
-export { availableSlotApi } from "./availableSlot";
+export { availableSlotApi, getDoctorScheduleRange, validateAppointmentTime } from "./availableSlot";
 
 // Export admin API
 export { adminApi } from "./admin";
@@ -119,6 +119,8 @@ export type {
 export type {
   GetAvailableSlotsParams,
   AvailableSlotsData,
+  GetAvailableStartTimesResponse,
+  CheckStartTimeResponse,
 } from "./availableSlot";
 export { serviceApi } from "./service";
 export type { Service } from "./service";

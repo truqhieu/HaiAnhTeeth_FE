@@ -30,6 +30,77 @@ export interface GetAvailableSlotsResponse {
   message?: string;
 }
 
+// ⭐ NEW: Interface cho khoảng thời gian khả dụng
+export interface ScheduleRange {
+  shift: string; // 'Morning' | 'Afternoon'
+  shiftDisplay: string; // 'Buổi sáng' | 'Buổi chiều'
+  startTime: string;
+  endTime: string;
+  displayRange: string; // '08:00 - 12:00'
+}
+
+export interface AvailableTimeRangeData {
+  date: string;
+  doctorId?: string;
+  doctorName?: string;
+  serviceName?: string;
+  serviceDuration?: number;
+  doctorScheduleId?: string | null;
+  scheduleRanges: ScheduleRange[];
+  totalSchedules?: number;
+  message?: string;
+}
+
+export interface GetAvailableTimeRangeResponse {
+  success: boolean;
+  data: AvailableTimeRangeData | null;
+  message?: string;
+}
+
+// ⭐ NEW: Interface cho danh sách start times
+export interface StartTimeData {
+  startTime: string;
+  displayTime: string;
+}
+
+export interface AvailableStartTimesData {
+  date: string;
+  serviceName?: string;
+  serviceDuration?: number;
+  startTimes: StartTimeData[];
+  totalStartTimes: number;
+}
+
+export interface GetAvailableStartTimesResponse {
+  success: boolean;
+  data: AvailableStartTimesData | null;
+  message?: string;
+}
+
+// ⭐ NEW: Interface cho check start time availability
+export interface AvailableDoctor {
+  doctorId: string;
+  doctorName: string;
+  specialization?: string;
+  doctorScheduleId?: string;
+}
+
+export interface CheckStartTimeData {
+  date: string;
+  startTime: string;
+  endTime: string;
+  serviceName?: string;
+  serviceDuration?: number;
+  availableDoctors: AvailableDoctor[];
+  totalDoctors: number;
+}
+
+export interface CheckStartTimeResponse {
+  success: boolean;
+  data: CheckStartTimeData | null;
+  message?: string;
+}
+
 /**
  * API lấy danh sách khung giờ trống của bác sĩ theo ngày + dịch vụ
  * Backend endpoint: GET /api/available-slots
@@ -61,7 +132,8 @@ export const availableSlotApi = {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
       const data: GetAvailableSlotsResponse = await response.json();
@@ -77,4 +149,288 @@ export const availableSlotApi = {
       };
     }
   },
+};
+
+/**
+ * API lấy danh sách start times có sẵn cho một dịch vụ + ngày
+ * Backend endpoint: GET /api/available-slots/start-times
+ */
+export const getAvailableStartTimes = async (
+  serviceId: string,
+  date: string,
+  appointmentFor: "self" | "other" = "self",
+): Promise<GetAvailableStartTimesResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append("serviceId", serviceId);
+    queryParams.append("date", date);
+    queryParams.append("appointmentFor", appointmentFor);
+
+    const query = queryParams.toString();
+    const endpoint = `/available-slots/start-times?${query}`;
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: GetAvailableStartTimesResponse = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error("❌ Error fetching available start times:", error);
+    return {
+      success: false,
+      data: null,
+      message: error.message || "Không thể tải danh sách thời gian.",
+    };
+  }
+};
+
+/**
+ * API kiểm tra một start time cụ thể có khả dụng không
+ * Backend endpoint: GET /api/available-slots/check-start-time
+ */
+export const checkStartTimeAvailability = async (
+  serviceId: string,
+  date: string,
+  startTime: string,
+  appointmentFor: "self" | "other" = "self",
+): Promise<CheckStartTimeResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append("serviceId", serviceId);
+    queryParams.append("date", date);
+    queryParams.append("startTime", startTime);
+    queryParams.append("appointmentFor", appointmentFor);
+
+    const query = queryParams.toString();
+    const endpoint = `/available-slots/check-start-time?${query}`;
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: CheckStartTimeResponse = await response.json();
+
+    return data;
+  } catch (error: any) {
+    console.error("❌ Error checking start time availability:", error);
+    return {
+      success: false,
+      data: null,
+      message: error.message || "Không thể kiểm tra thời gian.",
+    };
+  }
+};
+
+/**
+ * API lấy khoảng thời gian khả dụng cho một dịch vụ + ngày
+ * Backend endpoint: GET /api/available-slots/time-range
+ */
+export const getAvailableTimeRange = async (
+  serviceId: string,
+  date: string,
+  appointmentFor: "self" | "other" = "self",
+): Promise<GetAvailableTimeRangeResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append("serviceId", serviceId);
+    queryParams.append("date", date);
+    queryParams.append("appointmentFor", appointmentFor);
+
+    const query = queryParams.toString();
+    const endpoint = `/available-slots/time-range?${query}`;
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: GetAvailableTimeRangeResponse = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error("❌ Error fetching available time range:", error);
+    return {
+      success: false,
+      data: null,
+      message: error.message || "Không thể tải khoảng thời gian.",
+    };
+  }
+};
+
+/**
+ * API validate thời gian nhập có hợp lệ không
+ * Backend endpoint: GET /api/available-slots/validate-time
+ */
+export const validateAndCheckStartTime = async (
+  serviceId: string,
+  date: string,
+  startTime: string,
+  appointmentFor: "self" | "other" = "self",
+): Promise<CheckStartTimeResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append("serviceId", serviceId);
+    queryParams.append("date", date);
+    queryParams.append("startTime", startTime);
+    queryParams.append("appointmentFor", appointmentFor);
+
+    const query = queryParams.toString();
+    const endpoint = `/available-slots/validate-time?${query}`;
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: CheckStartTimeResponse = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error("❌ Error validating start time:", error);
+    return {
+      success: false,
+      data: null,
+      message: error.message || "Không thể validate thời gian.",
+    };
+  }
+};
+
+/**
+ * API lấy khoảng thời gian khả dụng của một bác sĩ cụ thể
+ * Backend endpoint: GET /api/available-slots/doctor-schedule
+ */
+export const getDoctorScheduleRange = async (
+  doctorUserId: string,
+  serviceId: string,
+  date: string,
+): Promise<GetAvailableStartTimesResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append("doctorUserId", doctorUserId);
+    queryParams.append("serviceId", serviceId);
+    queryParams.append("date", date);
+
+    const query = queryParams.toString();
+    const endpoint = `/available-slots/doctor-schedule?${query}`;
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: GetAvailableStartTimesResponse = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error("❌ Error fetching doctor schedule range:", error);
+    return {
+      success: false,
+      data: null,
+      message: error.message || "Không thể tải lịch bác sĩ.",
+    };
+  }
+};
+
+/**
+ * API validate appointment time
+ * Backend endpoint: GET /api/available-slots/validate-appointment-time
+ */
+export const validateAppointmentTime = async (
+  doctorUserId: string,
+  serviceId: string,
+  date: string,
+  startTime: string,
+): Promise<CheckStartTimeResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append("doctorUserId", doctorUserId);
+    queryParams.append("serviceId", serviceId);
+    queryParams.append("date", date);
+    queryParams.append("startTime", startTime);
+
+    const query = queryParams.toString();
+    const endpoint = `/available-slots/validate-appointment-time?${query}`;
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: CheckStartTimeResponse = await response.json();
+
+    return data;
+  } catch (error: any) {
+    console.error("❌ Error validating appointment time:", error);
+
+    return {
+      success: false,
+      data: null,
+      message: error.message || "Không thể validate thời gian hẹn.",
+    };
+  }
 };

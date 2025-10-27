@@ -1,6 +1,5 @@
 import type React from "react";
-
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon, CalendarDaysIcon } from "@heroicons/react/24/solid";
 import toast from "react-hot-toast";
@@ -9,16 +8,11 @@ import {
   appointmentApi,
   serviceApi,
   availableDoctorApi,
-  generateByDateApi,
+  getDoctorScheduleRange,
+  validateAppointmentTime,
   Service,
 } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
-
-interface ExtendedSlot {
-  startTime: string;
-  endTime: string;
-  displayTime?: string;
-}
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -30,17 +24,16 @@ interface FormData {
   fullName: string;
   email: string;
   phoneNumber: string;
+  date: string;
   serviceId: string;
   doctorUserId: string;
-  date: string;
+  userStartTimeInput: string;
   startTime: Date;
   endTime: Date;
   doctorScheduleId: string | null;
-  selectedSlot: { startTime: string; endTime: string } | null;
   notes: string;
 }
 
-// 🕓 Initial UTC-safe defaults
 const now = new Date();
 const utcNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
 
@@ -49,37 +42,34 @@ const initialFormData: FormData = {
   fullName: "",
   email: "",
   phoneNumber: "",
+  date: utcNow.toISOString().split("T")[0],
   serviceId: "",
   doctorUserId: "",
-  date: utcNow.toISOString().split("T")[0],
+  userStartTimeInput: "",
   startTime: utcNow,
   endTime: new Date(utcNow.getTime() + 30 * 60000),
   doctorScheduleId: null,
-  selectedSlot: null,
   notes: "",
 };
 
-const BookingModal: React.FC<BookingModalProps> = ({
-  isOpen,
-  onClose,
-}: BookingModalProps) => {
+const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [services, setServices] = useState<Service[]>([]);
-
-  const [slots, setSlots] = useState<ExtendedSlot[]>([]);
-  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
+  const [doctorScheduleRange, setDoctorScheduleRange] = useState<any>(null);
+
   const [loadingDoctors, setLoadingDoctors] = useState(false);
+  const [loadingSchedule, setLoadingSchedule] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [timeInputError, setTimeInputError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // ⭐ THÊM: Track abort controller để cancel requests cũ
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   const today = new Date().toISOString().split("T")[0];
+  const selectedService = services.find((s) => s._id === formData.serviceId);
+  const serviceDuration = selectedService?.durationMinutes || 30;
 
   // === Fetch services ===
   useEffect(() => {
@@ -88,12 +78,9 @@ const BookingModal: React.FC<BookingModalProps> = ({
     const fetchServices = async () => {
       try {
         const res = await serviceApi.get({ status: "Active", limit: 1000 });
-
         if (res.status && Array.isArray(res.data)) setServices(res.data);
       } catch (err) {
         console.error("Error fetching services:", err);
-        setErrorMessage("Không thể tải danh sách dịch vụ");
-      } finally {
       }
     };
 
@@ -113,298 +100,190 @@ const BookingModal: React.FC<BookingModalProps> = ({
     }
   }, [isOpen, user, formData.appointmentFor]);
 
-  // === Fetch available slots for date ===
-  const fetchAvailableSlots = useCallback(
-    async (
-      serviceId: string,
-      date: string,
-      appointmentFor: "self" | "other",
-    ) => {
-      // ⭐ Cancel previous request nếu có
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-
-      // ⭐ Create new abort controller
-      abortControllerRef.current = new AbortController();
-
-      setIsLoadingSlots(true);
-      setErrorMessage(null);
-      try {
-        console.log(
-          `📡 Fetching slots for ${serviceId} on ${date}, appointmentFor=${appointmentFor}`,
-        );
-
-        const slotsRes = await generateByDateApi.get({
-          serviceId,
-          date,
-          breakAfterMinutes: 10,
-          appointmentFor: appointmentFor,
-          // ⭐ THÊM: Gửi customerFullName + customerEmail CHỈ khi appointmentFor === 'other'
-          // Khi appointmentFor === 'self', KHÔNG gửi để backend biết loại bỏ exclusive doctors
-          ...(appointmentFor === "other" &&
-            formData.fullName &&
-            formData.email && {
-              customerFullName: formData.fullName,
-              customerEmail: formData.email,
-            }),
-        });
-
-        console.log("📡 Slots API Response:", slotsRes);
-        console.log("✅ Success:", slotsRes.success);
-        console.log("📊 Data:", slotsRes.data);
-
-        if (!slotsRes.success) {
-          throw new Error(slotsRes.message || "Không thể tải khung giờ trống");
-        }
-
-        const allSlots = (slotsRes.data?.slots || []).map((slot: any) => ({
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          displayTime:
-            slot.displayTime ||
-            `${slot.startTime.slice(11, 16)} - ${slot.endTime.slice(11, 16)}`,
-        }));
-
-        // Deduplicate slots - chỉ giữ các khung giờ unique
-        // (vì có thể nhiều bác sĩ có cùng khung giờ)
-        const uniqueSlotsMap = new Map<string, ExtendedSlot>();
-
-        allSlots.forEach((slot: ExtendedSlot) => {
-          const key = `${slot.startTime}-${slot.endTime}`;
-
-          if (!uniqueSlotsMap.has(key)) {
-            uniqueSlotsMap.set(key, slot);
-          }
-        });
-
-        const generatedSlots = Array.from(uniqueSlotsMap.values());
-
-        console.log("🕐 Total Slots from API:", allSlots.length);
-        console.log("🕐 Unique Slots:", generatedSlots.length);
-        setSlots(generatedSlots);
-
-        // Reset selections
-        setFormData((prev) => ({
-          ...prev,
-          selectedSlot: null,
-          doctorUserId: "",
-          doctorScheduleId: null,
-        }));
-        setAvailableDoctors([]);
-      } catch (err: any) {
-        console.error("Error fetching available slots:", err);
-        setErrorMessage(err.message || "Lỗi tải khung giờ trống");
-        setSlots([]);
-        setAvailableDoctors([]);
-      } finally {
-        setIsLoadingSlots(false);
-      }
-    },
-    [formData.fullName, formData.email],
-  );
-
-  // Trigger slot fetching when service, date, or appointmentFor changes
+  // === Fetch available doctors for selected date + service ===
   useEffect(() => {
-    if (formData.serviceId && formData.date) {
-      fetchAvailableSlots(
-        formData.serviceId,
-        formData.date,
-        formData.appointmentFor,
-      );
+    if (!formData.date || !formData.serviceId) {
+      setAvailableDoctors([]);
+      setDoctorScheduleRange(null); // ⭐ Clear schedule range
+      setErrorMessage(null); // ⭐ Clear error message
+      return;
     }
-  }, [
-    formData.serviceId,
-    formData.date,
-    formData.appointmentFor,
-    fetchAvailableSlots,
-  ]);
 
-  // === Fetch doctors for selected slot ===
-  const fetchDoctorsForSlot = useCallback(
-    async (serviceId: string, date: string, slot: ExtendedSlot) => {
-      if (!serviceId || !date || !slot) {
-        setAvailableDoctors([]);
-
-        return;
-      }
-
+    const fetchDoctors = async () => {
       setLoadingDoctors(true);
-      setErrorMessage(null);
+      setErrorMessage(null); // ⭐ Clear error khi fetch doctors mới
+      setDoctorScheduleRange(null); // ⭐ Clear schedule range cũ
+      setTimeInputError(null); // ⭐ Clear time input error
+      
+      // ⭐ Clear input fields khi đổi ngày/service
+      setFormData((prev) => ({
+        ...prev,
+        userStartTimeInput: "",
+        doctorUserId: "",
+      }));
+      
       try {
-        // ⭐ THÊM: Gửi appointmentFor + userId (để backend loại bỏ bác sĩ mà user đã đặt)
-        const doctorRes = await availableDoctorApi.getByTimeSlot({
-          serviceId,
-          date,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          appointmentFor: formData.appointmentFor,
-          // ⭐ Nếu đặt cho người khác, gửi userId để backend check exclusive doctors
-          ...(formData.appointmentFor === "other" &&
-            (user?._id || user?.id) && {
-              userId: user?._id || user?.id,
-            }),
-        });
-
-        if (!doctorRes.success) {
-          throw new Error(
-            doctorRes.message || "Không thể tải danh sách bác sĩ",
-          );
-        }
-
-        const doctors = doctorRes.data?.availableDoctors || [];
-
-        setAvailableDoctors(
-          doctors.map((d) => ({
-            ...d,
-            availableSlots: [],
-          })),
+        const doctorRes = await availableDoctorApi.getByDate(
+          formData.serviceId,
+          formData.date
         );
 
-        if (doctors.length === 0) {
-          setErrorMessage("Không có bác sĩ nào rảnh trong khung giờ này");
+        if (doctorRes.success) {
+          setAvailableDoctors(doctorRes.data?.availableDoctors || []);
         }
-      } catch (err: any) {
-        console.error("Error fetching doctors for slot:", err);
-        setErrorMessage(err.message || "Lỗi tải danh sách bác sĩ");
-        setAvailableDoctors([]);
+      } catch (err) {
+        console.error("Error fetching doctors:", err);
       } finally {
         setLoadingDoctors(false);
       }
-    },
-    [formData.appointmentFor, user],
-  );
+    };
 
-  // === Handle slot select ===
-  const handleTimeSelect = (slot: ExtendedSlot) => {
+    fetchDoctors();
+  }, [formData.date, formData.serviceId, formData.appointmentFor]);
+
+  // === Fetch doctor schedule when doctor is selected ===
+  const handleDoctorSelect = async (doctorId: string) => {
     setFormData((prev) => ({
       ...prev,
-      selectedSlot: { startTime: slot.startTime, endTime: slot.endTime },
-      startTime: new Date(slot.startTime),
-      endTime: new Date(slot.endTime),
-      doctorUserId: "",
-      doctorScheduleId: null,
+      doctorUserId: doctorId,
+      userStartTimeInput: "",
+      startTime: utcNow,
+      endTime: new Date(utcNow.getTime() + serviceDuration * 60000),
     }));
 
-    // Fetch doctors for this slot
-    if (formData.serviceId && formData.date) {
-      fetchDoctorsForSlot(formData.serviceId, formData.date, slot);
+    setLoadingSchedule(true);
+    setErrorMessage(null);
+    try {
+      const scheduleRes = await getDoctorScheduleRange(
+        doctorId,
+        formData.serviceId,
+        formData.date
+      );
+
+      if (scheduleRes.success && scheduleRes.data?.scheduleRanges) {
+        setDoctorScheduleRange(scheduleRes.data.scheduleRanges);
+        // ⭐ Lưu doctorScheduleId từ response
+        setFormData((prev) => ({
+          ...prev,
+          doctorScheduleId: scheduleRes.data.doctorScheduleId || null,
+        }));
+        
+        // ⭐ Hiển thị message nếu không có gaps khả dụng (không đủ thời gian)
+        if (scheduleRes.data.message) {
+          setErrorMessage(scheduleRes.data.message);
+        }
+      } else {
+        setErrorMessage(scheduleRes.message || "Không thể tải lịch bác sĩ");
+        setDoctorScheduleRange(null);
+      }
+    } catch (err) {
+      console.error("Error fetching doctor schedule:", err);
+      setErrorMessage("Lỗi tải lịch bác sĩ");
+      setDoctorScheduleRange(null);
+      } finally {
+      setLoadingSchedule(false);
+    }
+  };
+
+  // === Handle time input blur ===
+  const handleTimeInputBlur = async (timeInput: string) => {
+    if (!timeInput || !formData.doctorUserId) return;
+
+    const [hours, minutes] = timeInput.split(":");
+    if (!hours || !minutes || isNaN(parseInt(hours)) || isNaN(parseInt(minutes))) {
+      setTimeInputError("Định dạng thời gian không hợp lệ. Vui lòng nhập HH:mm");
+      return;
+    }
+
+    // ⭐ Convert giờ VN sang UTC: VN - 7
+    // User nhập 08:00 (VN) → lưu 01:00 (UTC)
+    const dateObj = new Date(formData.date + 'T00:00:00.000Z');
+    const vnHours = parseInt(hours);
+    const vnMinutes = parseInt(minutes);
+    const utcHours = vnHours - 7; // Convert VN to UTC
+    dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+    const startTimeISO = dateObj.toISOString();
+
+    setTimeInputError(null);
+    try {
+      const validateRes = await validateAppointmentTime(
+        formData.doctorUserId,
+        formData.serviceId,
+        formData.date,
+        startTimeISO
+      );
+
+      if (!validateRes.success) {
+        setTimeInputError(validateRes.message || "Thời gian không hợp lệ");
+        return;
+      }
+
+      // Parse endTime từ BE (UTC) và tạo Date object
+      const endTimeDate = new Date(validateRes.data!.endTime);
+      
+    setFormData((prev) => ({
+      ...prev,
+        userStartTimeInput: timeInput,
+        startTime: dateObj,
+        endTime: endTimeDate,
+      }));
+    } catch (err: any) {
+      console.error("Error validating time:", err);
+      setTimeInputError(err.message || "Lỗi validate thời gian");
     }
   };
 
   // === Handlers ===
   const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleRadioChange = (value: "self" | "other") => {
-    // ⭐ Khi thay đổi appointmentFor, reset fullName/email và clear slots
     if (value === "self") {
-      // Đặt cho bản thân - auto fill fullName + email từ user
       setFormData((prev) => ({
         ...prev,
         appointmentFor: value,
         fullName: user?.fullName || "",
         email: user?.email || "",
-        selectedSlot: null,
-        doctorUserId: "",
-        doctorScheduleId: null,
       }));
     } else {
-      // Đặt cho người khác - clear fullName + email
       setFormData((prev) => ({
         ...prev,
         appointmentFor: value,
         fullName: "",
         email: "",
-        selectedSlot: null,
-        doctorUserId: "",
-        doctorScheduleId: null,
       }));
-    }
-  };
-
-  const handleDoctorSelect = (doctorId: string) => {
-    const doc = availableDoctors.find(
-      (d) => String(d.doctorId) === String(doctorId),
-    );
-
-    if (doc) {
-      setFormData((prev) => ({
-        ...prev,
-        doctorUserId: doctorId,
-        doctorScheduleId: doc?.doctorScheduleId || null,
-      }));
-      setErrorMessage(null);
     }
   };
 
   const validateForm = (): string | null => {
-    console.log("🔍 validateForm - user:", user);
-    console.log("🔍 validateForm - user?._id:", user?._id);
-    console.log("🔍 validateForm - user?.id:", user?.id);
-
     if (!user?._id && !user?.id) return "Bạn cần đăng nhập để đặt lịch.";
     if (!formData.fullName.trim()) return "Vui lòng nhập họ và tên.";
     if (!formData.email.trim()) return "Vui lòng nhập email.";
     if (!formData.phoneNumber.trim()) return "Vui lòng nhập số điện thoại.";
     if (!formData.serviceId) return "Vui lòng chọn dịch vụ.";
     if (!formData.date) return "Vui lòng chọn ngày.";
-    if (!formData.selectedSlot) return "Vui lòng chọn khung giờ.";
     if (!formData.doctorUserId) return "Vui lòng chọn bác sĩ.";
-    if (!formData.doctorScheduleId) return "Dữ liệu lịch trình không hợp lệ.";
-
-    // ⭐ THÊM: Validate customer conflict khi đặt cho người khác
-    if (formData.appointmentFor === "other") {
-      // Normalize fullName và email
-      const normalizeString = (str: string) => {
-        return str
-          .toLowerCase()
-          .trim()
-          .replace(/\s+/g, " ")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-      };
-
-      const normalizedName = normalizeString(formData.fullName);
-      const normalizedEmail = normalizeString(formData.email);
-
-      // Lưu ý: Validation này chỉ là quick check ở FE
-      // Backend sẽ validate lại với database
-      console.log(
-        `🔍 Validating customer conflict for: ${normalizedName} <${normalizedEmail}>`,
-      );
-    }
+    if (!formData.userStartTimeInput) return "Vui lòng nhập thời gian bắt đầu.";
 
     return null;
   };
 
-  // === Submit ===
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const error = validateForm();
-
     if (error) {
       setErrorMessage(error);
-
       return;
     }
 
     setSubmitting(true);
     setErrorMessage(null);
     try {
-      console.log("📤 About to submit booking:");
-      console.log("   - user:", user);
-      console.log("   - user._id:", user?._id);
-      console.log("   - user.id:", user?.id);
-
       const payload = {
         fullName: formData.fullName,
         email: formData.email,
@@ -412,40 +291,26 @@ const BookingModal: React.FC<BookingModalProps> = ({
         appointmentFor: formData.appointmentFor,
         serviceId: formData.serviceId,
         doctorUserId: formData.doctorUserId,
-        doctorScheduleId: formData.doctorScheduleId!,
+        doctorScheduleId: formData.doctorScheduleId || "",
         selectedSlot: {
-          startTime: formData.selectedSlot!.startTime,
-          endTime: formData.selectedSlot!.endTime,
+          startTime: formData.startTime.toISOString(),
+          endTime: formData.endTime.toISOString(),
         },
         notes: formData.notes,
       };
-
-      console.log("📤 Booking payload:", payload);
 
       const res = await appointmentApi.create(payload);
 
       if (res.success) {
         if (res.data?.requirePayment && res.data?.payment?.paymentId) {
-          // ✅ Navigate to payment page
-          console.log(
-            "💳 Redirecting to payment page:",
-            res.data.payment.paymentId,
-          );
           setErrorMessage(null);
           onClose();
           navigate(`/patient/payment/${res.data.payment.paymentId}`);
         } else {
-          // ✅ Đặt lịch thành công (không cần thanh toán)
           setErrorMessage(null);
           onClose();
-
-          // Show success message
           toast.success(res.message || "Đặt lịch thành công!");
-
-          // Navigate to appointments page và reload để fetch lại
           navigate("/patient/appointments");
-
-          // Delay một chút rồi mới reload để đảm bảo navigation hoàn tất
           setTimeout(() => {
             window.location.reload();
           }, 100);
@@ -463,7 +328,6 @@ const BookingModal: React.FC<BookingModalProps> = ({
 
   if (!isOpen) return null;
 
-  // === Render ===
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
@@ -522,48 +386,24 @@ const BookingModal: React.FC<BookingModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1 font-medium text-gray-700">
-                  Họ và tên {formData.appointmentFor === "other" && <span className="text-red-500">*</span>}
-                  {formData.appointmentFor === "self" && (
-                    <span className="text-xs text-gray-500"> (Auto fill)</span>
-                  )}
+                  Họ và tên
                 </label>
                 <input
-                  className={`w-full border px-3 py-2 rounded-lg ${
-                    formData.appointmentFor === "self"
-                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                      : ""
-                  }`}
+                  className="w-full border px-3 py-2 rounded-lg"
                   disabled={formData.appointmentFor === "self"}
                   name="fullName"
-                  placeholder={
-                    formData.appointmentFor === "self"
-                      ? user?.fullName || ""
-                      : "Nhập họ và tên"
-                  }
                   value={formData.fullName}
                   onChange={handleInputChange}
                 />
               </div>
               <div>
                 <label className="block text-sm mb-1 font-medium text-gray-700">
-                  Email {formData.appointmentFor === "other" && <span className="text-red-500">*</span>}
-                  {formData.appointmentFor === "self" && (
-                    <span className="text-xs text-gray-500"> (Auto fill)</span>
-                  )}
+                  Email
                 </label>
                 <input
-                  className={`w-full border px-3 py-2 rounded-lg ${
-                    formData.appointmentFor === "self"
-                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                      : ""
-                  }`}
+                  className="w-full border px-3 py-2 rounded-lg"
                   disabled={formData.appointmentFor === "self"}
                   name="email"
-                  placeholder={
-                    formData.appointmentFor === "self"
-                      ? user?.email || ""
-                      : "Nhập email"
-                  }
                   value={formData.email}
                   onChange={handleInputChange}
                 />
@@ -582,26 +422,6 @@ const BookingModal: React.FC<BookingModalProps> = ({
               />
             </div>
 
-            {/* Service */}
-            <div>
-              <label className="block text-sm mb-1 font-medium text-gray-700">
-                Chọn dịch vụ *
-              </label>
-              <select
-                className="w-full border px-3 py-2 rounded-lg"
-                name="serviceId"
-                value={formData.serviceId}
-                onChange={handleInputChange}
-              >
-                <option value="">-- Chọn dịch vụ --</option>
-                {services.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.serviceName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             {/* Date */}
             <div>
               <label className="block text-sm mb-1 font-medium text-gray-700">
@@ -617,43 +437,24 @@ const BookingModal: React.FC<BookingModalProps> = ({
               />
             </div>
 
-            {/* Slots */}
+            {/* Service */}
             <div>
               <label className="block text-sm mb-1 font-medium text-gray-700">
-                Chọn giờ *
+                Chọn dịch vụ *
               </label>
-              {isLoadingSlots ? (
-                <div className="text-gray-500 text-center py-4">
-                  Đang tải khung giờ...
-                </div>
-              ) : slots.length ? (
-                <div className="grid grid-cols-4 gap-3">
-                  {slots.map((s) => {
-                    const isSelected =
-                      formData.selectedSlot?.startTime === s.startTime &&
-                      formData.selectedSlot?.endTime === s.endTime;
-
-                    return (
-                      <button
-                        key={`${s.startTime}-${s.endTime}`}
-                        className={`py-2 px-2 rounded-lg text-sm transition-colors ${
-                          isSelected
-                            ? "bg-[#39BDCC] text-white"
-                            : "border border-blue-200 text-[#39BDCC] hover:bg-blue-50"
-                        }`}
-                        type="button"
-                        onClick={() => handleTimeSelect(s)}
-                      >
-                        {s.displayTime}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
-                  Vui lòng chọn dịch vụ và ngày để xem giờ trống
-                </div>
-              )}
+              <select
+                className="w-full border px-3 py-2 rounded-lg"
+                name="serviceId"
+                value={formData.serviceId}
+                onChange={handleInputChange}
+              >
+                <option value="">-- Chọn dịch vụ --</option>
+                {services.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.serviceName} ({s.durationMinutes} phút)
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Doctor */}
@@ -661,8 +462,7 @@ const BookingModal: React.FC<BookingModalProps> = ({
               <label className="block text-sm mb-1 font-medium text-gray-700">
                 Chọn bác sĩ *
               </label>
-              {formData.selectedSlot ? (
-                loadingDoctors ? (
+              {loadingDoctors ? (
                   <div className="text-gray-500 py-3 text-center">
                     Đang tải danh sách bác sĩ...
                   </div>
@@ -681,15 +481,133 @@ const BookingModal: React.FC<BookingModalProps> = ({
                   </select>
                 ) : (
                   <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">
-                    Không có bác sĩ rảnh cho khung giờ này.
-                  </div>
-                )
-              ) : (
-                <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">
-                  Vui lòng chọn khung giờ trước
+                  {formData.serviceId && formData.date
+                    ? "Không có bác sĩ khả dụng"
+                    : "Vui lòng chọn ngày và dịch vụ"}
                 </div>
               )}
             </div>
+
+            {/* Time Input - shows only if doctor is selected */}
+            {formData.doctorUserId && (
+              <div>
+                <label className="block text-sm mb-1 font-medium text-gray-700">
+                  Thời gian bắt đầu khám *
+                </label>
+                {loadingSchedule ? (
+                  <div className="text-gray-500 py-3 text-center">
+                    Đang tải lịch bác sĩ...
+                  </div>
+                ) : doctorScheduleRange && Array.isArray(doctorScheduleRange) ? (
+                  <div className="space-y-3">
+                    {/* Hiển thị các khoảng thời gian khả dụng chi tiết */}
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-xs text-gray-600 font-medium mb-2">
+                        Khoảng thời gian khả dụng:
+                      </p>
+                      <div className="space-y-2">
+                        {doctorScheduleRange.map((range: any, index: number) => (
+                          <div key={index}>
+                            <p className="text-sm font-semibold text-[#39BDCC] mb-1">
+                              {range.shiftDisplay}:
+                            </p>
+                            <p className="text-sm text-gray-700 ml-2">
+                              {range.displayRange === 'Đã hết chỗ' ? (
+                                <span className="text-red-600 font-medium">Đã hết chỗ</span>
+                              ) : (
+                                range.displayRange.split(', ').map((gap: string, gapIdx: number) => (
+                                  <span key={gapIdx}>
+                                    {gapIdx > 0 && <span className="mx-2">|</span>}
+                                    <span className="text-[#39BDCC] font-medium">{gap}</span>
+                                  </span>
+                                ))
+                              )}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Input thời gian và hiển thị kết quả nằm ngang */}
+                    {!errorMessage && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">
+                            Nhập giờ bắt đầu
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="vd: 09:30"
+                            className={`w-full border px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent ${
+                              timeInputError 
+                                ? 'border-red-500 focus:ring-red-500' 
+                                : 'focus:ring-[#39BDCC] focus:border-transparent'
+                            }`}
+                            value={formData.userStartTimeInput}
+                            onChange={(e) => {
+                              const timeInput = e.target.value;
+                              setTimeInputError(null);
+                              
+                              // ⭐ Tính endTime real-time khi đang nhập
+                              const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                              if (timeRegex.test(timeInput)) {
+                                const [hours, minutes] = timeInput.split(":");
+                                const vnHours = parseInt(hours);
+                                const vnMinutes = parseInt(minutes);
+                                const utcHours = vnHours - 7;
+                                
+                                const dateObj = new Date(formData.date + 'T00:00:00.000Z');
+                                dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+                                
+                                const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
+                                
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  userStartTimeInput: timeInput,
+                                  startTime: dateObj,
+                                  endTime: endTimeDate,
+                                }));
+                              } else {
+                                // Nếu chưa đúng format, chỉ update input
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  userStartTimeInput: timeInput,
+                                }));
+                              }
+                            }}
+                            onBlur={() =>
+                              handleTimeInputBlur(formData.userStartTimeInput)
+                            }
+                          />
+                          {timeInputError && (
+                            <p className="mt-1 text-xs text-red-600 font-medium">
+                              {timeInputError}
+                            </p>
+                          )}
+                        </div>
+
+                        {formData.userStartTimeInput && !timeInputError && /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/.test(formData.userStartTimeInput) && (
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Thời gian kết thúc dự kiến
+                            </label>
+                            <div className="border px-3 py-2 rounded-lg bg-blue-50 border-blue-200">
+                              <span className="font-semibold text-[#39BDCC]">
+                                {String((formData.endTime.getUTCHours() + 7) % 24).padStart(2, '0')}:{String(formData.endTime.getUTCMinutes()).padStart(2, '0')}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+              ) : (
+                <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">
+                    Vui lòng chọn bác sĩ để xem lịch khả dụng
+                </div>
+              )}
+            </div>
+            )}
 
             {/* Notes */}
             <div>

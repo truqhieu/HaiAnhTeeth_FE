@@ -35,6 +35,46 @@ export interface GetAvailableDoctorsResponse {
 
 export const availableDoctorApi = {
   /**
+   * ⭐ NEW: Lấy danh sách bác sĩ có khung giờ rảnh vào một ngày cụ thể
+   * (GET /api/available-slots/doctors/list)
+   */
+  getByDate: async (
+    serviceId: string,
+    date: string,
+  ): Promise<GetAvailableDoctorsResponse> => {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append("serviceId", serviceId);
+      queryParams.append("date", date);
+
+      const query = queryParams.toString();
+      const endpoint = query
+        ? `/available-slots/doctors/list?${query}`
+        : "/available-slots/doctors/list";
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: GetAvailableDoctorsResponse = await response.json();
+      return data;
+    } catch (error: any) {
+      console.error("Error fetching available doctors by date:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Lấy danh sách bác sĩ có khung giờ rảnh tại một time-slot cụ thể
    * (GET /api/available-slots/doctors/time-slot)
    */

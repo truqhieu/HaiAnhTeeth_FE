@@ -102,8 +102,15 @@ export const AppointmentsList = () => {
   const formatDateTime = (isoString: string) => {
     try {
       const date = new Date(isoString);
-
-      return date.toLocaleString("vi-VN");
+      
+      // Format: DD/MM/YYYY HH:mm (UTC time)
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const year = date.getUTCFullYear();
+      const hours = String(date.getUTCHours()).padStart(2, '0');
+      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+      
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
     } catch {
       return isoString;
     }
@@ -192,8 +199,20 @@ export const AppointmentsList = () => {
                 <div>
                   <p className="text-xs text-gray-500">Thời gian</p>
                   <p className="font-medium text-gray-800">
-                    {appointment.timeslotId?.startTime &&
-                      formatDateTime(appointment.timeslotId.startTime)}
+                    {appointment.timeslotId?.startTime && appointment.timeslotId?.endTime ? (
+                      <>
+                        {formatDateTime(appointment.timeslotId.startTime)}
+                        {" - "}
+                        {(() => {
+                          const endDate = new Date(appointment.timeslotId.endTime);
+                          const hours = String(endDate.getUTCHours()).padStart(2, '0');
+                          const minutes = String(endDate.getUTCMinutes()).padStart(2, '0');
+                          return `${hours}:${minutes}`;
+                        })()}
+                      </>
+                    ) : (
+                      formatDateTime(appointment.timeslotId?.startTime || "")
+                    )}
                   </p>
                 </div>
               </div>

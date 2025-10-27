@@ -46,7 +46,7 @@ interface Appointment {
   serviceName: string;
   startTime: string;
   endTime: string;
-  checkInTime: string;
+  checkedInAt: string;
   createdAt: string;
 }
 
@@ -110,7 +110,7 @@ const AllAppointments = () => {
             serviceName: apt.serviceId?.serviceName || "N/A",
             startTime: apt.timeslotId?.startTime || "",
             endTime: apt.timeslotId?.endTime || "",
-            checkInTime: apt.checkInTime || "",
+            checkedInAt: apt.checkedInAt || "",
             createdAt: apt.createdAt || "",
           };
         });
@@ -291,6 +291,8 @@ const AllAppointments = () => {
         return "Không đến";
       case "PendingPayment":
         return "Chờ thanh toán";
+      case "Expired":
+        return "Đã hết hạn";
       default:
         return status;
     }
@@ -309,6 +311,7 @@ const AllAppointments = () => {
         return "primary";
       case "Cancelled":
       case "NoShow":
+      case "Expired":
         return "danger";
       default:
         return "default";
@@ -318,28 +321,45 @@ const AllAppointments = () => {
   const formatTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleTimeString("vi-VN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    // Convert UTC sang giờ VN (UTC+7)
+    const vnHours = (date.getUTCHours() + 7) % 24;
+    const hours = String(vnHours).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   };
 
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN");
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const formatDateTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    // Convert UTC sang giờ VN (UTC+7)
+    const vnHours = (date.getUTCHours() + 7) % 24;
+    const hours = String(vnHours).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year}, ${hours}:${minutes}`;
+  };
+
+  // Format local time cho check-in (hiển thị giờ địa phương)
+  const formatLocalDateTime = (dateString: string): string => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year}, ${hours}:${minutes}`;
   };
 
   // Stats calculation
@@ -350,6 +370,7 @@ const AllAppointments = () => {
     checkedIn: appointments.filter(a => a.status === "CheckedIn").length,
     completed: appointments.filter(a => a.status === "Completed").length,
     cancelled: appointments.filter(a => a.status === "Cancelled").length,
+    expired: appointments.filter(a => a.status === "Expired").length,
   };
 
   const columns = [
@@ -359,6 +380,7 @@ const AllAppointments = () => {
     { key: "doctor", label: "Bác sĩ" },
     { key: "service", label: "Dịch vụ" },
     { key: "status", label: "Trạng thái" },
+    { key: "checkin", label: "Giờ check-in" },
     { key: "actions", label: "Hành động" },
   ];
 
@@ -609,6 +631,7 @@ const AllAppointments = () => {
             <Tab key="CheckedIn" title={`Đã check-in (${stats.checkedIn})`} />
             <Tab key="Completed" title={`Hoàn thành (${stats.completed})`} />
             <Tab key="Cancelled" title={`Đã hủy (${stats.cancelled})`} />
+            <Tab key="Expired" title={`Hết hạn (${stats.expired})`} />
           </Tabs>
         </CardBody>
       </Card>
@@ -653,7 +676,7 @@ const AllAppointments = () => {
                   <TableCell>
                     <div>
                       <p className="font-semibold text-gray-900">{appointment.patientName}</p>
-                      <p className="text-xs text-gray-500">Đặt lúc: {formatDateTime(appointment.createdAt)}</p>
+                      <p className="text-xs text-gray-500">Đặt lúc: {formatLocalDateTime(appointment.createdAt)}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -676,10 +699,14 @@ const AllAppointments = () => {
                     >
                       {getStatusText(appointment.status)}
                     </Chip>
-                    {appointment.checkInTime && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Check-in: {formatDateTime(appointment.checkInTime)}
-                      </p>
+                  </TableCell>
+                  <TableCell>
+                    {appointment.checkedInAt ? (
+                      <div className="text-sm">
+                        <p className="font-semibold text-primary-600">{formatLocalDateTime(appointment.checkedInAt)}</p>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 text-sm">-</span>
                     )}
                   </TableCell>
                   <TableCell>

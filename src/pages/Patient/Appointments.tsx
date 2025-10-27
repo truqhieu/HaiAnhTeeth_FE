@@ -182,11 +182,13 @@ const Appointments = () => {
   const formatTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-
-    return date.toLocaleTimeString("vi-VN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    
+    // Convert UTC sang giờ VN (UTC+7)
+    const vnHours = (date.getUTCHours() + 7) % 24;
+    const hours = String(vnHours).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    
+    return `${hours}:${minutes}`;
   };
 
 
