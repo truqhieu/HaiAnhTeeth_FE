@@ -105,8 +105,7 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setShowValidation(true);
 
     // Check validation
@@ -143,8 +142,6 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         roomId: formData.roomId || undefined,
       };
 
-      console.log("Updating schedule:", updateData);
-
       const response = await managerApi.updateSchedule(schedule.id, updateData);
 
       if (response.status) {
@@ -154,7 +151,6 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         }
       }
     } catch (error: any) {
-      console.error("Error updating schedule:", error);
       toast.error(
         error.message ||
           "Có lỗi xảy ra khi cập nhật ca khám. Vui lòng thử lại.",
@@ -188,14 +184,14 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#39BDCC]">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
               className="h-8 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+              src="/logo1.png"
             />
             <div>
               <h2 className="text-2xl font-bold">Chỉnh sửa ca khám</h2>
@@ -215,9 +211,9 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="px-4 py-4 pb-0">
           {/* Read-only info */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="mb-7 p-4 bg-gray-50 rounded-lg">
             <h3 className="text-sm font-semibold text-gray-700 mb-2">
               Thông tin ca khám
             </h3>
@@ -243,12 +239,16 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
           <Form
             autoComplete="off"
-            className="space-y-6"
+            className="space-y-7"
             onSubmit={handleSubmit}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 errorMessage={isShiftInvalid ? "Vui lòng chọn ca làm việc" : ""}
                 isInvalid={isShiftInvalid}
                 label={
@@ -272,6 +272,10 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 label="Trạng thái"
                 placeholder="Chọn trạng thái"
                 selectedKeys={formData.status ? [formData.status] : []}
@@ -289,6 +293,10 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={
                   isStartTimeInvalid ? "Vui lòng nhập giờ bắt đầu" : ""
@@ -308,6 +316,10 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={
                   isEndTimeInvalid ? "Vui lòng nhập giờ kết thúc" : ""
@@ -327,6 +339,10 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 label="Phòng khám (Tùy chọn)"
                 placeholder="Chọn phòng"
                 selectedKeys={formData.roomId ? [formData.roomId] : []}
@@ -343,26 +359,26 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               </Select>
             </div>
           </Form>
+        </div>
 
-          {/* Buttons outside Form */}
-          <div className="flex justify-end items-center gap-4 pt-4">
-            <Button
-              isDisabled={isSubmitting}
-              variant="bordered"
-              onPress={handleClose}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
-              onPress={handleSubmit}
-              variant="solid"
-            >
-              {isSubmitting ? "Đang cập nhật..." : "Cập nhật ca khám"}
-            </Button>
-          </div>
+        {/* Buttons outside Form */}
+        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
+          <Button
+            isDisabled={isSubmitting}
+            variant="bordered"
+            onPress={handleClose}
+          >
+            Hủy
+          </Button>
+          <Button
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            isDisabled={isSubmitting}
+            isLoading={isSubmitting}
+            variant="solid"
+            onPress={handleSubmit}
+          >
+            {isSubmitting ? "Đang cập nhật..." : "Cập nhật ca khám"}
+          </Button>
         </div>
       </div>
     </div>

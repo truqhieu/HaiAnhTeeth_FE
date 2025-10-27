@@ -5,7 +5,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { Button, Input, Select, SelectItem } from "@heroui/react";
+import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { AddServiceModal, EditServiceModal } from "@/components";
@@ -21,6 +21,8 @@ const ServiceManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<{ id: string; name: string } | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -157,25 +159,27 @@ const ServiceManagement = () => {
     setIsAddModalOpen(false);
   };
 
-  const handleDelete = async (serviceId: string, serviceName: string) => {
-    const confirmDelete = window.confirm(
-      `Bạn có chắc chắn muốn xóa dịch vụ "${serviceName}"?\n\nHành động này không thể hoàn tác.`,
-    );
+  const handleDelete = (serviceId: string, serviceName: string) => {
+    setServiceToDelete({ id: serviceId, name: serviceName });
+    setIsDeleteModalOpen(true);
+  };
 
-    if (!confirmDelete) return;
+  const confirmDelete = async () => {
+    if (!serviceToDelete) return;
 
     try {
-      const response = await managerApi.deleteService(serviceId);
+      const response = await managerApi.deleteService(serviceToDelete.id);
 
       if ((response as any).status || response.success) {
         toast.success(response.message || "Xóa dịch vụ thành công!");
         // Refresh list
         fetchServices();
+        setIsDeleteModalOpen(false);
+        setServiceToDelete(null);
       } else {
         throw new Error(response.message || "Không thể xóa dịch vụ");
       }
     } catch (error: any) {
-      console.error("Error deleting service:", error);
       toast.error(
         error.message || "Có lỗi xảy ra khi xóa dịch vụ. Vui lòng thử lại.",
       );
@@ -454,6 +458,31 @@ const ServiceManagement = () => {
         onClose={handleCloseEditModal}
         onSuccess={handleEditSuccess}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Xác nhận xóa</ModalHeader>
+              <ModalBody>
+                <p>
+                  Bạn có chắc chắn muốn xóa dịch vụ <strong>"{serviceToDelete?.name}"</strong>?
+                </p>
+                <p className="text-sm text-gray-500 mt-2">Hành động này không thể hoàn tác.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="default" variant="light" onPress={onClose}>
+                  Hủy
+                </Button>
+                <Button color="danger" onPress={confirmDelete}>
+                  Xóa
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
