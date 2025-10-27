@@ -24,11 +24,20 @@ interface Appointment {
   mode: string;
   patientUserId?: { fullName: string };
   doctorUserId?: { fullName: string };
-  serviceId?: { serviceName: string };
+  serviceId?: {
+    serviceName: string;
+    price?: number;
+    category?: string;
+  };
   timeslotId?: { startTime: string; endTime: string };
   customerId?: { fullName: string };
   appointmentFor: string;
   notes?: string;
+  paymentId?: {
+    status: string;
+    amount: number;
+    method: string;
+  };
 }
 
 export const AppointmentsList = () => {
@@ -60,7 +69,7 @@ export const AppointmentsList = () => {
         }
       } catch (err: any) {
         setError(err.message || "Lỗi khi tải ca khám");
-        console.error("Error fetching appointments:", err);
+        // console.error("Error fetching appointments:", err);
       } finally {
         setLoading(false);
       }
@@ -99,17 +108,61 @@ export const AppointmentsList = () => {
     return statusMap[status] || status;
   };
 
+  const formatPaymentInfo = (
+    appointment: Appointment,
+  ): { text: string; color: string } => {
+    // Nếu là Examination (khám) - Thanh toán tại phòng khám
+    if (appointment.type === "Examination") {
+      return {
+        text: "Thanh toán tại phòng khám",
+        color: "text-gray-500",
+      };
+    }
+
+    // Nếu là Consultation (tư vấn) - cần thanh toán
+    if (appointment.type === "Consultation") {
+      // Nếu có paymentId và đã thanh toán
+      if (
+        appointment.paymentId &&
+        appointment.paymentId.status === "Completed"
+      ) {
+        return {
+          text: `${appointment.paymentId.amount.toLocaleString("vi-VN")} VNĐ`,
+          color: "text-green-600 font-semibold",
+        };
+      }
+      // Nếu có paymentId nhưng chưa thanh toán
+      if (appointment.paymentId && appointment.paymentId.status === "Pending") {
+        return {
+          text: `Chưa thanh toán (${appointment.paymentId.amount.toLocaleString("vi-VN")} VNĐ)`,
+          color: "text-orange-600 font-semibold",
+        };
+      }
+
+      // Nếu không có paymentId (trường hợp cũ hoặc lỗi)
+      return {
+        text: "Chưa thanh toán",
+        color: "text-red-600 font-semibold",
+      };
+    }
+
+    // Mặc định
+    return {
+      text: "N/A",
+      color: "text-gray-400",
+    };
+  };
+
   const formatDateTime = (isoString: string) => {
     try {
       const date = new Date(isoString);
-      
       // Format: DD/MM/YYYY HH:mm (UTC time)
-      const day = String(date.getUTCDate()).padStart(2, '0');
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, "0");
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
       const year = date.getUTCFullYear();
-      const hours = String(date.getUTCHours()).padStart(2, '0');
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-      
+      const hours = String(date.getUTCHours()).padStart(2, "0");
+      const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+
       return `${day}/${month}/${year} ${hours}:${minutes}`;
     } catch {
       return isoString;
@@ -199,14 +252,23 @@ export const AppointmentsList = () => {
                 <div>
                   <p className="text-xs text-gray-500">Thời gian</p>
                   <p className="font-medium text-gray-800">
-                    {appointment.timeslotId?.startTime && appointment.timeslotId?.endTime ? (
+                    {appointment.timeslotId?.startTime &&
+                    appointment.timeslotId?.endTime ? (
                       <>
                         {formatDateTime(appointment.timeslotId.startTime)}
                         {" - "}
                         {(() => {
-                          const endDate = new Date(appointment.timeslotId.endTime);
-                          const hours = String(endDate.getUTCHours()).padStart(2, '0');
-                          const minutes = String(endDate.getUTCMinutes()).padStart(2, '0');
+                          const endDate = new Date(
+                            appointment.timeslotId.endTime,
+                          );
+                          const hours = String(endDate.getUTCHours()).padStart(
+                            2,
+                            "0",
+                          );
+                          const minutes = String(
+                            endDate.getUTCMinutes(),
+                          ).padStart(2, "0");
+
                           return `${hours}:${minutes}`;
                         })()}
                       </>
@@ -226,6 +288,21 @@ export const AppointmentsList = () => {
                     {appointment.mode === "Online"
                       ? "Trực tuyến"
                       : "Tại phòng khám"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <span className="text-lg">💰</span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Thanh toán</p>
+                  <p
+                    className={`font-medium ${formatPaymentInfo(appointment).color}`}
+                  >
+                    {formatPaymentInfo(appointment).text}
                   </p>
                 </div>
               </div>

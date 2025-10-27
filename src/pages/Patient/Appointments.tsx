@@ -34,6 +34,11 @@ interface Appointment {
   appointmentFor: string;
   customerName?: string;
   customerEmail?: string; // ⭐ THÊM: Email của customer
+  paymentId?: {
+    status: string;
+    amount: number;
+    method: string;
+  };
 }
 
 const Appointments = () => {
@@ -53,13 +58,13 @@ const Appointments = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log("🔄 [refetchAppointments] Fetching appointments...");
+      // console.log("🔄 [refetchAppointments] Fetching appointments...");
 
       const res = await appointmentApi.getMyAppointments();
 
-      console.log("📡 Appointments API Response:", res);
-      console.log("📡 Response type:", typeof res);
-      console.log("📡 Response keys:", res ? Object.keys(res) : "null");
+      // console.log("📡 Appointments API Response:", res);
+      // console.log("📡 Response type:", typeof res);
+      // console.log("📡 Response keys:", res ? Object.keys(res) : "null");
 
       if (!res) {
         console.error("❌ Response is null or undefined");
@@ -93,11 +98,11 @@ const Appointments = () => {
         return;
       }
 
-      console.log("✅ Response success, data is array");
-      console.log("📊 Response data count:", res.data.length);
+      // console.log("✅ Response success, data is array");
+      // console.log("📊 Response data count:", res.data.length);
 
       if (res.data.length === 0) {
-        console.log("ℹ️ No appointments found");
+        // console.log("ℹ️ No appointments found");
         setAppointments([]);
 
         return;
@@ -105,14 +110,14 @@ const Appointments = () => {
 
       // Map backend response to frontend interface
       const mappedAppointments: Appointment[] = res.data.map(
-        (apt: any, index: number) => {
-          console.log(`🔄 Mapping appointment ${index}:`, {
-            backend_id: apt._id,
-            backend_status: apt.status,
-            backend_startTime: apt.timeslotId?.startTime,
-            backend_doctorName: apt.doctorUserId?.fullName,
-            backend_serviceName: apt.serviceId?.serviceName,
-          });
+        (apt: any, _index: number) => {
+          // console.log(`🔄 Mapping appointment ${index}:`, {
+          //   backend_id: apt._id,
+          //   backend_status: apt.status,
+          //   backend_startTime: apt.timeslotId?.startTime,
+          //   backend_doctorName: apt.doctorUserId?.fullName,
+          //   backend_serviceName: apt.serviceId?.serviceName,
+          // });
 
           return {
             id: apt._id,
@@ -129,12 +134,17 @@ const Appointments = () => {
             appointmentFor: apt.appointmentFor || "self",
             customerName: apt.customerId?.fullName || "",
             customerEmail: apt.customerId?.email || "",
+            paymentId: apt.paymentId ? {
+              status: apt.paymentId.status,
+              amount: apt.paymentId.amount,
+              method: apt.paymentId.method,
+            } : undefined,
           };
         },
       );
 
-      console.log("✅ Mapped Appointments:", mappedAppointments);
-      console.log("✅ Total appointments mapped:", mappedAppointments.length);
+      // console.log("✅ Mapped Appointments:", mappedAppointments);
+      // console.log("✅ Total appointments mapped:", mappedAppointments.length);
       setAppointments(mappedAppointments);
       setError(null);
     } catch (err: any) {
@@ -180,6 +190,55 @@ const Appointments = () => {
     }
   };
 
+  const formatPaymentInfo = (
+    appointment: Appointment,
+  ): { text: string; color: string } => {
+    // Nếu là Examination (khám) - Thanh toán tại phòng khám
+    if (appointment.type === "Examination") {
+      return {
+        text: "Thanh toán tại phòng khám",
+        color: "text-gray-500",
+      };
+    }
+
+    // Nếu là Consultation (tư vấn) - cần thanh toán
+    if (appointment.type === "Consultation") {
+      // Nếu có paymentId và đã thanh toán
+      if (
+        appointment.paymentId &&
+        appointment.paymentId.status === "Completed"
+      ) {
+        return {
+          text: `${appointment.paymentId.amount.toLocaleString("vi-VN")} VNĐ`,
+          color: "text-green-600 font-semibold",
+        };
+      }
+
+      // Nếu có paymentId nhưng chưa thanh toán
+      if (
+        appointment.paymentId &&
+        appointment.paymentId.status === "Pending"
+      ) {
+        return {
+          text: `Chưa thanh toán (${appointment.paymentId.amount.toLocaleString("vi-VN")} VNĐ)`,
+          color: "text-orange-600 font-semibold",
+        };
+      }
+
+      // Nếu không có paymentId (trường hợp cũ hoặc lỗi)
+      return {
+        text: "Chưa thanh toán",
+        color: "text-red-600 font-semibold",
+      };
+    }
+
+    // Mặc định
+    return {
+      text: "N/A",
+      color: "text-gray-400",
+    };
+  };
+
   const formatDate = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -208,7 +267,7 @@ const Appointments = () => {
       refetchAppointments();
       setIsCancelModalOpen(false);
       setAppointmentToCancel(null);
-    } catch (error) {
+    } catch (_error) {
       toast.error("Không thể hủy cuộc hẹn");
     }
   };
@@ -279,13 +338,13 @@ const Appointments = () => {
         const searchLower = searchTerm.toLowerCase().trim();
         
         // Tạo function tìm kiếm một phần với nhiều cách
-        const partialSearch = (text, searchTerm) => {
+        const partialSearch = (text: string, searchTerm: string) => {
           if (!text || typeof text !== 'string') {
         return false;
       }
 
           // Normalize text để xử lý ký tự đặc biệt
-          const normalizeText = (str) => {
+          const normalizeText = (str: string) => {
             return str.toLowerCase()
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '') // Loại bỏ dấu
@@ -302,12 +361,12 @@ const Appointments = () => {
           }
           
           // Tìm kiếm từng từ riêng lẻ với text đã normalize
-          const searchWords = searchNormalized.split(/\s+/).filter(word => word.length > 0);
+          const searchWords = searchNormalized.split(/\s+/).filter((word: string) => word.length > 0);
           const textWords = textNormalized.split(/\s+/);
           
           // Kiểm tra xem tất cả từ tìm kiếm có xuất hiện trong text không
-          return searchWords.every(searchWord => 
-            textWords.some(textWord => textWord.includes(searchWord))
+          return searchWords.every((searchWord: string) => 
+            textWords.some((textWord: string) => textWord.includes(searchWord))
           );
         };
         
@@ -322,7 +381,7 @@ const Appointments = () => {
       }
 
       return true;
-    } catch (err) {
+    } catch (_err) {
       return false;
     }
   });
@@ -334,6 +393,7 @@ const Appointments = () => {
     { key: "doctor", label: "Bác sĩ" },
     { key: "service", label: "Dịch vụ" },
     { key: "bookedFor", label: "Đặt lịch cho ai" }, // ⭐ THÊM: Cột "Đặt lịch cho ai"
+    { key: "payment", label: "Thanh toán" }, // ⭐ THÊM: Cột "Thanh toán"
     { key: "status", label: "Trạng thái" },
     { key: "actions", label: "Hoạt động" },
   ];
@@ -375,7 +435,7 @@ const Appointments = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-[1400px] mx-auto px-4 py-8">
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center space-x-3">
@@ -567,10 +627,10 @@ const Appointments = () => {
 
           {/* Table */}
           <div className="overflow-x-auto">
-            <Table className="w-full" aria-label="Appointments table">
+            <Table className="w-full min-w-[1200px]" aria-label="Appointments table">
             <TableHeader columns={columns}>
               {(column) => (
-                  <TableColumn key={column.key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableColumn key={column.key} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     {column.label}
                   </TableColumn>
               )}
@@ -589,32 +649,32 @@ const Appointments = () => {
             >
               {(appointment) => (
                   <TableRow key={appointment.id} className="hover:bg-gray-50 transition-colors">
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {formatDate(appointment.startTime)}
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         {formatTime(appointment.startTime)}
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         {formatTime(appointment.endTime)}
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {appointment.doctorName}
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
                         {appointment.serviceName}
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap">
                     {appointment.customerName && appointment.customerEmail ? (
                       <div className="text-sm">
                           <p className="font-medium text-gray-900">
@@ -628,7 +688,14 @@ const Appointments = () => {
                         <p className="text-sm text-gray-900">Bản thân</p>
                     )}
                   </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                      <div className="text-sm">
+                        <p className={`font-medium ${formatPaymentInfo(appointment).color}`}>
+                          {formatPaymentInfo(appointment).text}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-4 whitespace-nowrap">
                     <span
                         className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
                         appointment.status === "Approved"
@@ -721,7 +788,7 @@ const Appointments = () => {
 
           {/* Results info */}
           {currentAppointments.length > 0 && (
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+            <div className="px-4 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600">
                   Hiển thị <span className="font-medium">1</span> đến{" "}
