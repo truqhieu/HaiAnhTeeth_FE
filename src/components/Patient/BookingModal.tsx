@@ -389,7 +389,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   Họ và tên
                 </label>
                 <input
-                  className="w-full border px-3 py-2 rounded-lg"
+                  className={`w-full border px-3 py-2 rounded-lg ${
+                    formData.appointmentFor === "self" 
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed" 
+                      : "bg-white text-gray-900"
+                  }`}
                   disabled={formData.appointmentFor === "self"}
                   name="fullName"
                   value={formData.fullName}
@@ -401,7 +405,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   Email
                 </label>
                 <input
-                  className="w-full border px-3 py-2 rounded-lg"
+                  className={`w-full border px-3 py-2 rounded-lg ${
+                    formData.appointmentFor === "self" 
+                      ? "bg-gray-100 text-gray-500 cursor-not-allowed" 
+                      : "bg-white text-gray-900"
+                  }`}
                   disabled={formData.appointmentFor === "self"}
                   name="email"
                   value={formData.email}
