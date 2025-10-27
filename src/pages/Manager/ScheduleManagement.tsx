@@ -5,7 +5,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { Button, Input, Select, SelectItem } from "@heroui/react";
+import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { AddScheduleModal, EditScheduleModal } from "@/components";
@@ -42,6 +42,8 @@ const ScheduleManagement = () => {
   const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(
     null,
   );
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState<{ id: string; description: string } | null>(null);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [doctors, setDoctors] = useState<ManagerDoctor[]>([]);
   const [rooms, setRooms] = useState<ManagerClinic[]>([]);
@@ -279,27 +281,29 @@ const ScheduleManagement = () => {
     }
   };
 
-  const handleDelete = async (scheduleId: string) => {
+  const handleDelete = (scheduleId: string) => {
     const schedule = schedules.find((s) => s.id === scheduleId);
 
     if (schedule) {
-      const confirmDelete = window.confirm(
-        `Bạn có chắc chắn muốn xóa ca khám ${schedule.shiftName} - ${schedule.doctorName}?`,
-      );
+      setScheduleToDelete({ id: scheduleId, description: `${schedule.shiftName} - ${schedule.doctorName}` });
+      setIsDeleteModalOpen(true);
+    }
+  };
 
-      if (confirmDelete) {
-        try {
-          const response = await managerApi.deleteSchedule(scheduleId);
+  const confirmDelete = async () => {
+    if (!scheduleToDelete) return;
 
-          if (response.status) {
-            toast.success(response.message || "Xóa ca khám thành công");
-            fetchSchedules(); // Reload list
-          }
-        } catch (error: any) {
-          console.error("Error deleting schedule:", error);
-          toast.error(error.message || "Không thể xóa ca khám");
-        }
+    try {
+      const response = await managerApi.deleteSchedule(scheduleToDelete.id);
+
+      if (response.status) {
+        toast.success(response.message || "Xóa ca khám thành công");
+        fetchSchedules(); // Reload list
+        setIsDeleteModalOpen(false);
+        setScheduleToDelete(null);
       }
+    } catch (error: any) {
+      toast.error(error.message || "Không thể xóa ca khám");
     }
   };
 
@@ -636,6 +640,31 @@ const ScheduleManagement = () => {
         onClose={handleCloseEditModal}
         onSuccess={handleEditSuccess}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Xác nhận xóa</ModalHeader>
+              <ModalBody>
+                <p>
+                  Bạn có chắc chắn muốn xóa ca khám <strong>"{scheduleToDelete?.description}"</strong>?
+                </p>
+                <p className="text-sm text-gray-500 mt-2">Hành động này không thể hoàn tác.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="default" variant="light" onPress={onClose}>
+                  Hủy
+                </Button>
+                <Button color="danger" onPress={confirmDelete}>
+                  Xóa
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

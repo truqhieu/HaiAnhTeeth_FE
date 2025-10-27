@@ -100,8 +100,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setShowValidation(true);
 
     // Check validation
@@ -145,8 +144,6 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
         maxSlots: Number(formData.maxSlots),
       };
 
-      console.log("Creating schedule:", scheduleData);
-
       const response = await managerApi.createSchedule(scheduleData);
 
       if (response.status) {
@@ -156,7 +153,6 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
         }
       }
     } catch (error: any) {
-      console.error("Error creating schedule:", error);
       toast.error(
         error.message || "Có lỗi xảy ra khi tạo ca khám. Vui lòng thử lại.",
       );
@@ -189,14 +185,14 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#39BDCC]">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
               className="h-8 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+              src="/logo1.png"
             />
             <h2 className="text-2xl font-bold">Thêm ca khám mới</h2>
           </div>
@@ -211,15 +207,19 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="px-4 py-4 pb-0">
           <Form
             autoComplete="off"
-            className="space-y-6"
+            className="space-y-5"
             onSubmit={handleSubmit}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={isDateInvalid ? "Vui lòng chọn ngày" : ""}
                 isInvalid={isDateInvalid}
@@ -236,6 +236,10 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 errorMessage={isShiftInvalid ? "Vui lòng chọn ca làm việc" : ""}
                 isInvalid={isShiftInvalid}
                 label={
@@ -259,6 +263,10 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={
                   isStartTimeInvalid ? "Vui lòng nhập giờ bắt đầu" : ""
@@ -278,6 +286,10 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={
                   isEndTimeInvalid ? "Vui lòng nhập giờ kết thúc" : ""
@@ -297,6 +309,10 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 errorMessage={isDoctorInvalid ? "Vui lòng chọn bác sĩ" : ""}
                 isInvalid={isDoctorInvalid}
                 label={
@@ -322,6 +338,10 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 label="Phòng khám (Tùy chọn)"
                 placeholder="Chọn phòng"
                 selectedKeys={formData.roomId ? [formData.roomId] : []}
@@ -339,6 +359,10 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 endContent={<span className="text-gray-500 text-sm">slot</span>}
                 errorMessage={
@@ -360,26 +384,26 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
               />
             </div>
           </Form>
+        </div>
 
-          {/* Buttons outside Form */}
-          <div className="flex justify-end items-center gap-4 pt-4">
-            <Button
-              isDisabled={isSubmitting}
-              variant="bordered"
-              onPress={handleClose}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
-              onPress={handleSubmit}
-              variant="solid"
-            >
-              {isSubmitting ? "Đang thêm..." : "Thêm ca khám"}
-            </Button>
-          </div>
+        {/* Buttons outside Form */}
+        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
+          <Button
+            isDisabled={isSubmitting}
+            variant="bordered"
+            onPress={handleClose}
+          >
+            Hủy
+          </Button>
+          <Button
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            isDisabled={isSubmitting}
+            isLoading={isSubmitting}
+            variant="solid"
+            onPress={handleSubmit}
+          >
+            {isSubmitting ? "Đang thêm..." : "Thêm ca khám"}
+          </Button>
         </div>
       </div>
     </div>

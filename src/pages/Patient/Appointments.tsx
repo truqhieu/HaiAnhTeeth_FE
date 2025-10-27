@@ -7,6 +7,12 @@ import {
   TableRow,
   TableCell,
   Spinner,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Button,
 } from "@heroui/react";
 import toast from "react-hot-toast";
 
@@ -39,6 +45,8 @@ const Appointments = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<{ id: string } | null>(null);
 
   // Fetch user appointments
   const refetchAppointments = async () => {
@@ -182,7 +190,7 @@ const Appointments = () => {
   const formatTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    
+
     // Convert UTC sang giờ VN (UTC+7)
     const vnHours = (date.getUTCHours() + 7) % 24;
     const hours = String(vnHours).padStart(2, '0');
@@ -191,6 +199,19 @@ const Appointments = () => {
     return `${hours}:${minutes}`;
   };
 
+  const confirmCancel = async () => {
+    if (!appointmentToCancel) return;
+
+    try {
+      await appointmentApi.reviewAppointment(appointmentToCancel.id, "cancel", "Hủy bởi bệnh nhân");
+      toast.success("Đã hủy cuộc hẹn thành công");
+      refetchAppointments();
+      setIsCancelModalOpen(false);
+      setAppointmentToCancel(null);
+    } catch (error) {
+      toast.error("Không thể hủy cuộc hẹn");
+    }
+  };
 
   const currentAppointments = appointments.filter((apt) => {
     // Kiểm tra xem startTime có hợp lệ không
@@ -260,9 +281,9 @@ const Appointments = () => {
         // Tạo function tìm kiếm một phần với nhiều cách
         const partialSearch = (text, searchTerm) => {
           if (!text || typeof text !== 'string') {
-            return false;
-          }
-          
+        return false;
+      }
+
           // Normalize text để xử lý ký tự đặc biệt
           const normalizeText = (str) => {
             return str.toLowerCase()
@@ -648,16 +669,9 @@ const Appointments = () => {
                           <button
                             className="p-2.5 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                             title="Hủy cuộc hẹn"
-                            onClick={async () => {
-                              if (window.confirm("Bạn có chắc chắn muốn hủy cuộc hẹn này?")) {
-                                try {
-                                  await appointmentApi.reviewAppointment(appointment.id, "cancel", "Hủy bởi bệnh nhân");
-                                  toast.success("Đã hủy cuộc hẹn thành công");
-                                  refetchAppointments();
-                                } catch (error) {
-                                  toast.error("Không thể hủy cuộc hẹn");
-                                }
-                              }
+                            onClick={() => {
+                              setAppointmentToCancel({ id: appointment.id });
+                              setIsCancelModalOpen(true);
                             }}
                           >
                             <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -695,10 +709,10 @@ const Appointments = () => {
                             <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                             </svg>
-                          </button>
+                        </button>
                         )}
                       </div>
-                    </TableCell>
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -725,6 +739,29 @@ const Appointments = () => {
           )}
         </div>
       </div>
+
+      {/* Cancel Confirmation Modal */}
+      <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Xác nhận hủy lịch hẹn</ModalHeader>
+              <ModalBody>
+                <p>Bạn có chắc chắn muốn hủy cuộc hẹn này?</p>
+                <p className="text-sm text-gray-500 mt-2">Hành động này không thể hoàn tác.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="default" variant="light" onPress={onClose}>
+                  Không, giữ lại
+                </Button>
+                <Button color="danger" onPress={confirmCancel}>
+                  Có, hủy lịch hẹn
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

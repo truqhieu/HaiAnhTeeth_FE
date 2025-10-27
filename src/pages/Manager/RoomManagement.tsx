@@ -5,7 +5,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { Button, Input, Select, SelectItem } from "@heroui/react";
+import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { AddRoomModal, EditRoomModal } from "@/components";
@@ -20,6 +20,8 @@ const RoomManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<{ id: string; name: string } | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [doctors, setDoctors] = useState<ManagerDoctor[]>([]);
   const [total, setTotal] = useState(0);
@@ -143,26 +145,28 @@ const RoomManagement = () => {
     }
   };
 
-  const handleDelete = async (roomId: string, roomName: string) => {
-    const confirmDelete = window.confirm(
-      `Bạn có chắc chắn muốn xóa phòng khám "${roomName}"?\n\nHành động này không thể hoàn tác.`,
-    );
+  const handleDelete = (roomId: string, roomName: string) => {
+    setRoomToDelete({ id: roomId, name: roomName });
+    setIsDeleteModalOpen(true);
+  };
 
-    if (!confirmDelete) return;
+  const confirmDelete = async () => {
+    if (!roomToDelete) return;
 
     try {
-      const response = await managerApi.deleteClinic(roomId);
+      const response = await managerApi.deleteClinic(roomToDelete.id);
 
       if ((response as any).status || response.success) {
         toast.success(response.message || "Xóa phòng khám thành công!");
         // Refresh list
         fetchClinics();
         fetchDoctors(); // Refresh doctors list vì có thể doctor được unassign
+        setIsDeleteModalOpen(false);
+        setRoomToDelete(null);
       } else {
         throw new Error(response.message || "Không thể xóa phòng khám");
       }
     } catch (error: any) {
-      console.error("Error deleting clinic:", error);
       toast.error(
         error.message || "Có lỗi xảy ra khi xóa phòng khám. Vui lòng thử lại.",
       );
@@ -439,6 +443,31 @@ const RoomManagement = () => {
         onClose={handleCloseEditModal}
         onSuccess={handleEditSuccess}
       />
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">Xác nhận xóa</ModalHeader>
+              <ModalBody>
+                <p>
+                  Bạn có chắc chắn muốn xóa phòng khám <strong>"{roomToDelete?.name}"</strong>?
+                </p>
+                <p className="text-sm text-gray-500 mt-2">Hành động này không thể hoàn tác.</p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="default" variant="light" onPress={onClose}>
+                  Hủy
+                </Button>
+                <Button color="danger" onPress={confirmDelete}>
+                  Xóa
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

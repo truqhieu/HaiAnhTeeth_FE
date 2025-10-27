@@ -67,8 +67,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setShowValidation(true);
 
     // Check validation
@@ -123,7 +122,6 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
         throw new Error(response.message || "Không thể cập nhật phòng khám");
       }
     } catch (error: any) {
-      console.error("Error updating clinic:", error);
       toast.error(
         error.message ||
           "Có lỗi xảy ra khi cập nhật phòng khám. Vui lòng thử lại.",
@@ -163,14 +161,14 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#39BDCC]">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
               className="h-8 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+              src="/logo1.png"
             />
             <div>
               <h2 className="text-2xl font-bold">Chỉnh sửa phòng khám</h2>
@@ -188,15 +186,19 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="px-4 py-4 pb-0">
           <Form
             autoComplete="off"
-            className="space-y-6"
+            className="space-y-5"
             onSubmit={handleSubmit}
           >
-            <div className="space-y-6">
+            <div className="space-y-4 w-full">
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={
                   isNameInvalid ? "Vui lòng nhập tên phòng khám" : ""
@@ -216,6 +218,10 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
 
               <Textarea
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={isDescriptionInvalid ? "Vui lòng nhập mô tả" : ""}
                 isInvalid={isDescriptionInvalid}
@@ -224,7 +230,6 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                     Mô tả phòng khám <span className="text-red-500">*</span>
                   </>
                 }
-                minRows={4}
                 placeholder="Nhập mô tả chi tiết về phòng khám"
                 value={formData.description}
                 variant="bordered"
@@ -235,6 +240,10 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
 
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 description="Chọn 'Không có bác sĩ' để gỡ bác sĩ hiện tại"
                 label="Phân công bác sĩ"
                 placeholder="Chọn bác sĩ"
@@ -281,26 +290,26 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
               </Select>
             </div>
           </Form>
+        </div>
 
-          {/* Buttons outside Form */}
-          <div className="flex justify-end items-center gap-4 pt-4">
-            <Button
-              isDisabled={isSubmitting}
-              variant="bordered"
-              onPress={handleClose}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
-              onPress={handleSubmit}
-              variant="solid"
-            >
-              {isSubmitting ? "Đang cập nhật..." : "Cập nhật phòng khám"}
-            </Button>
-          </div>
+        {/* Buttons outside Form */}
+        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
+          <Button
+            isDisabled={isSubmitting}
+            variant="bordered"
+            onPress={handleClose}
+          >
+            Hủy
+          </Button>
+          <Button
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            isDisabled={isSubmitting}
+            isLoading={isSubmitting}
+            variant="solid"
+            onPress={handleSubmit}
+          >
+            {isSubmitting ? "Đang cập nhật..." : "Cập nhật phòng khám"}
+          </Button>
         </div>
       </div>
     </div>

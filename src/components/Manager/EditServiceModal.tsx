@@ -92,8 +92,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setShowValidation(true);
 
     // Check validation
@@ -144,7 +143,6 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         throw new Error(response.message || "Không thể cập nhật dịch vụ");
       }
     } catch (error: any) {
-      console.error("Error updating service:", error);
       toast.error(
         error.message ||
           "Có lỗi xảy ra khi cập nhật dịch vụ. Vui lòng thử lại.",
@@ -186,14 +184,14 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#39BDCC]">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
               className="h-8 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+              src="/logo1.png"
             />
             <div>
               <h2 className="text-2xl font-bold">Chỉnh sửa dịch vụ</h2>
@@ -213,16 +211,20 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="px-4 py-4 pb-0">
           <Form
             autoComplete="off"
-            className="space-y-6"
+            className="space-y-5"
             onSubmit={handleSubmit}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
               <div className="md:col-span-2">
                 <Input
                   fullWidth
+                  classNames={{
+                    base: "w-full",
+                    inputWrapper: "w-full"
+                  }}
                   autoComplete="off"
                   errorMessage={
                     isNameInvalid ? "Vui lòng nhập tên dịch vụ" : ""
@@ -240,6 +242,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
               <div className="md:col-span-2">
                 <Textarea
                   fullWidth
+                  classNames={{
+                    base: "w-full",
+                    inputWrapper: "w-full"
+                  }}
                   autoComplete="off"
                   errorMessage={
                     isDescriptionInvalid ? "Vui lòng nhập mô tả dịch vụ" : ""
@@ -258,6 +264,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={
                   isPriceInvalid ? "Vui lòng nhập giá hợp lệ (lớn hơn 0)" : ""
@@ -274,6 +284,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 endContent={<span className="text-gray-500 text-sm">phút</span>}
                 errorMessage={
@@ -292,6 +306,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 errorMessage={isCategoryInvalid ? "Vui lòng chọn danh mục" : ""}
                 isInvalid={isCategoryInvalid}
                 label="Danh mục *"
@@ -311,6 +329,10 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
 
               <Select
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  trigger: "w-full"
+                }}
                 label="Trạng thái"
                 placeholder="Chọn trạng thái"
                 selectedKeys={formData.status ? [formData.status] : []}
@@ -327,26 +349,26 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
               </Select>
             </div>
           </Form>
+        </div>
 
-          {/* Buttons outside Form */}
-          <div className="flex justify-end items-center gap-4 pt-4">
-            <Button
-              isDisabled={isSubmitting}
-              variant="bordered"
-              onPress={handleClose}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
-              onPress={handleSubmit}
-              variant="solid"
-            >
-              {isSubmitting ? "Đang cập nhật..." : "Cập nhật dịch vụ"}
-            </Button>
-          </div>
+        {/* Buttons outside Form */}
+        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
+          <Button
+            isDisabled={isSubmitting}
+            variant="bordered"
+            onPress={handleClose}
+          >
+            Hủy
+          </Button>
+          <Button
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            isDisabled={isSubmitting}
+            isLoading={isSubmitting}
+            variant="solid"
+            onPress={handleSubmit}
+          >
+            {isSubmitting ? "Đang cập nhật..." : "Cập nhật dịch vụ"}
+          </Button>
         </div>
       </div>
     </div>

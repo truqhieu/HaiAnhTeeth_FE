@@ -46,8 +46,7 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setShowValidation(true);
 
     // Check validation
@@ -81,7 +80,6 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
         throw new Error(response.message || "Không thể thêm phòng khám");
       }
     } catch (error: any) {
-      console.error("Error creating clinic:", error);
       toast.error(
         error.message || "Có lỗi xảy ra khi tạo phòng khám. Vui lòng thử lại.",
       );
@@ -118,14 +116,14 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#39BDCC]">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
               className="h-8 w-auto object-contain"
-              src="/Screenshot_2025-09-19_141436-removebg-preview.png"
+              src="/logo1.png"
             />
             <h2 className="text-2xl font-bold">Thêm phòng mới</h2>
           </div>
@@ -140,15 +138,19 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="px-4 py-4 pb-0">
           <Form
             autoComplete="off"
-            className="space-y-6"
+            className="space-y-5"
             onSubmit={handleSubmit}
           >
-            <div className="space-y-6">
+            <div className="space-y-4 w-full">
               <Input
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={
                   isNameInvalid ? "Vui lòng nhập tên phòng khám" : ""
@@ -168,6 +170,10 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
 
               <Textarea
                 fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
                 autoComplete="off"
                 errorMessage={isDescriptionInvalid ? "Vui lòng nhập mô tả" : ""}
                 isInvalid={isDescriptionInvalid}
@@ -176,7 +182,6 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
                     Mô tả phòng khám <span className="text-red-500">*</span>
                   </>
                 }
-                minRows={4}
                 placeholder="Nhập mô tả chi tiết về phòng khám"
                 value={formData.description}
                 variant="bordered"
@@ -186,26 +191,26 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
               />
             </div>
           </Form>
+        </div>
 
-          {/* Buttons outside Form */}
-          <div className="flex justify-end items-center gap-4 pt-4">
-            <Button
-              isDisabled={isSubmitting}
-              variant="bordered"
-              onPress={handleClose}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              isDisabled={isSubmitting}
-              isLoading={isSubmitting}
-              onPress={handleSubmit}
-              variant="solid"
-            >
-              {isSubmitting ? "Đang thêm..." : "Thêm phòng khám"}
-            </Button>
-          </div>
+        {/* Buttons outside Form */}
+        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
+          <Button
+            isDisabled={isSubmitting}
+            variant="bordered"
+            onPress={handleClose}
+          >
+            Hủy
+          </Button>
+          <Button
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            isDisabled={isSubmitting}
+            isLoading={isSubmitting}
+            variant="solid"
+            onPress={handleSubmit}
+          >
+            {isSubmitting ? "Đang thêm..." : "Thêm phòng khám"}
+          </Button>
         </div>
       </div>
     </div>
