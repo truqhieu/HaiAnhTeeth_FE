@@ -90,6 +90,8 @@ export { appointmentApi } from "./appointment";
 export { paymentApi } from "./payment";
 // Export availableSlot API
 export { availableSlotApi, getDoctorScheduleRange, validateAppointmentTime } from "./availableSlot";
+// Export policy API
+export { policyApi } from "./policy";
 
 // Export admin API
 export { adminApi } from "./admin";

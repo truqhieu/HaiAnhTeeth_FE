@@ -109,4 +109,60 @@ export const appointmentApi = {
       body: JSON.stringify({ status }),
     });
   },
+
+  /**
+   * Hủy ca khám với logic khác nhau cho Examination/Consultation
+   * DELETE /api/appointments/:appointmentId/cancel
+   * Body: { cancelReason?: string }
+   */
+  cancelAppointment: async (
+    appointmentId: string,
+    cancelReason?: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/cancel`, {
+      method: "DELETE",
+      body: JSON.stringify({ cancelReason }),
+    });
+  },
+
+  /**
+   * Xác nhận hủy lịch tư vấn (sau khi hiển thị popup policies)
+   * POST /api/appointments/:appointmentId/confirm-cancel
+  * Body: { confirmed: boolean, cancelReason?: string, bankInfo?: { accountHolderName: string, accountNumber: string, bankName: string } }
+   */
+  confirmCancelAppointment: async (
+    appointmentId: string,
+    confirmed: boolean,
+    cancelReason?: string,
+    bankInfo?: {
+      accountHolderName: string;
+      accountNumber: string;
+      bankName: string;
+    }
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/confirm-cancel`, {
+      method: "POST",
+      body: JSON.stringify({ confirmed, cancelReason, bankInfo }),
+    });
+  },
+
+  /**
+   * Lấy chi tiết lịch hẹn với bank info
+   * GET /api/appointments/:appointmentId/details
+   */
+  getAppointmentDetails: async (appointmentId: string): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/details`, {
+      method: "GET",
+    });
+  },
+
+  /**
+   * Đánh dấu đã hoàn tiền
+   * PUT /api/appointments/:appointmentId/mark-refunded
+   */
+  markAsRefunded: async (appointmentId: string): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/mark-refunded`, {
+      method: "PUT",
+    });
+  },
 };

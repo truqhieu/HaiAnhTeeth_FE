@@ -7,17 +7,12 @@ import {
   TableRow,
   TableCell,
   Spinner,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  Button,
 } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import CancelAppointmentModal from "@/components/Patient/CancelAppointmentModal";
 
 interface Appointment {
   id: string;
@@ -51,20 +46,16 @@ const Appointments = () => {
   const [dateFilter, setDateFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
-  const [appointmentToCancel, setAppointmentToCancel] = useState<{ id: string } | null>(null);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
+  const [policies, setPolicies] = useState<any[]>([]);
 
   // Fetch user appointments
   const refetchAppointments = async () => {
     try {
       setLoading(true);
       setError(null);
-      // console.log("🔄 [refetchAppointments] Fetching appointments...");
 
       const res = await appointmentApi.getMyAppointments();
-
-      // console.log("📡 Appointments API Response:", res);
-      // console.log("📡 Response type:", typeof res);
-      // console.log("📡 Response keys:", res ? Object.keys(res) : "null");
 
       if (!res) {
         console.error("❌ Response is null or undefined");
@@ -98,11 +89,7 @@ const Appointments = () => {
         return;
       }
 
-      // console.log("✅ Response success, data is array");
-      // console.log("📊 Response data count:", res.data.length);
-
       if (res.data.length === 0) {
-        // console.log("ℹ️ No appointments found");
         setAppointments([]);
 
         return;
@@ -111,13 +98,6 @@ const Appointments = () => {
       // Map backend response to frontend interface
       const mappedAppointments: Appointment[] = res.data.map(
         (apt: any, _index: number) => {
-          // console.log(`🔄 Mapping appointment ${index}:`, {
-          //   backend_id: apt._id,
-          //   backend_status: apt.status,
-          //   backend_startTime: apt.timeslotId?.startTime,
-          //   backend_doctorName: apt.doctorUserId?.fullName,
-          //   backend_serviceName: apt.serviceId?.serviceName,
-          // });
 
           return {
             id: apt._id,
@@ -143,8 +123,6 @@ const Appointments = () => {
         },
       );
 
-      // console.log("✅ Mapped Appointments:", mappedAppointments);
-      // console.log("✅ Total appointments mapped:", mappedAppointments.length);
       setAppointments(mappedAppointments);
       setError(null);
     } catch (err: any) {
@@ -193,7 +171,6 @@ const Appointments = () => {
   const formatPaymentInfo = (
     appointment: Appointment,
   ): { text: string; color: string } => {
-    // Nếu là Examination (khám) - Thanh toán tại phòng khám
     if (appointment.type === "Examination") {
       return {
         text: "Thanh toán tại phòng khám",
@@ -201,9 +178,7 @@ const Appointments = () => {
       };
     }
 
-    // Nếu là Consultation (tư vấn) - cần thanh toán
     if (appointment.type === "Consultation") {
-      // Nếu có paymentId và đã thanh toán
       if (
         appointment.paymentId &&
         appointment.paymentId.status === "Completed"
@@ -214,7 +189,6 @@ const Appointments = () => {
         };
       }
 
-      // Nếu có paymentId nhưng chưa thanh toán
       if (
         appointment.paymentId &&
         appointment.paymentId.status === "Pending"
@@ -225,14 +199,12 @@ const Appointments = () => {
         };
       }
 
-      // Nếu không có paymentId (trường hợp cũ hoặc lỗi)
       return {
         text: "Chưa thanh toán",
         color: "text-red-600 font-semibold",
       };
     }
 
-    // Mặc định
     return {
       text: "N/A",
       color: "text-gray-400",
@@ -250,7 +222,6 @@ const Appointments = () => {
     if (!dateString) return "";
     const date = new Date(dateString);
 
-    // Convert UTC sang giờ VN (UTC+7)
     const vnHours = (date.getUTCHours() + 7) % 24;
     const hours = String(vnHours).padStart(2, '0');
     const minutes = String(date.getUTCMinutes()).padStart(2, '0');
@@ -258,17 +229,59 @@ const Appointments = () => {
     return `${hours}:${minutes}`;
   };
 
-  const confirmCancel = async () => {
+  // Hàm xử lý hủy ca khám với logic khác nhau cho Examination/Consultation
+  const handleCancelAppointment = async (appointment: Appointment) => {
+    try {
+      // Không bật loading toàn trang khi mở popup
+      // Gọi API hủy ca khám
+      const response = await appointmentApi.cancelAppointment(appointment.id);
+      
+      if (response.data?.requiresConfirmation) {
+        // Nếu là Consultation, hiển thị modal xác nhận với policies
+        setAppointmentToCancel(appointment);
+        setPolicies(response.data.policies || []);
+        setIsCancelModalOpen(true);
+      } else {
+        // Nếu là Examination, hủy trực tiếp
+        toast.success("Đã hủy lịch khám thành công");
+        refetchAppointments();
+      }
+    } catch (error: any) {
+      console.error('Error canceling appointment:', error);
+      toast.error(error.message || "Không thể hủy lịch hẹn");
+    }
+  };
+
+  // Hàm xác nhận hủy lịch tư vấn (sau khi hiển thị popup)
+  const handleConfirmCancel = async (
+    confirmed: boolean, 
+    cancelReason?: string,
+    bankInfo?: {
+      accountHolderName: string;
+      accountNumber: string;
+      bankName: string;
+    }
+  ) => {
     if (!appointmentToCancel) return;
 
     try {
-      await appointmentApi.reviewAppointment(appointmentToCancel.id, "cancel", "Hủy bởi bệnh nhân");
-      toast.success("Đã hủy cuộc hẹn thành công");
+      if (confirmed) {
+        await appointmentApi.confirmCancelAppointment(
+          appointmentToCancel.id, 
+          true, 
+          cancelReason,
+          bankInfo
+        );
+        toast.success("Đã hủy lịch tư vấn thành công");
       refetchAppointments();
+      }
+      
       setIsCancelModalOpen(false);
       setAppointmentToCancel(null);
-    } catch (_error) {
-      toast.error("Không thể hủy cuộc hẹn");
+      setPolicies([]);
+    } catch (error: any) {
+      console.error('Error confirming cancellation:', error);
+      toast.error(error.message || "Không thể xác nhận hủy lịch hẹn");
     }
   };
 
@@ -435,7 +448,7 @@ const Appointments = () => {
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-4 py-8">
+      <div className="max-w-[1600px] mx-auto px-6 py-8">
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center space-x-3">
@@ -587,10 +600,10 @@ const Appointments = () => {
 
 
         {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-6">
-          <div className="flex border-b border-gray-200">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-6 w-full">
+          <div className="flex border-b border-gray-200 w-full">
             <button
-              className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 ${
+              className={`flex-1 px-8 py-5 text-center text-lg font-semibold transition-all duration-200 ${
                 activeTab === "upcoming"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
                   : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
@@ -600,14 +613,14 @@ const Appointments = () => {
               }}
             >
               <div className="flex items-center justify-center space-x-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>Sắp tới</span>
+                <span className="text-lg">Sắp tới</span>
               </div>
             </button>
             <button
-              className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 ${
+              className={`flex-1 px-8 py-5 text-center text-lg font-semibold transition-all duration-200 ${
                 activeTab === "completed"
                   ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
                   : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
@@ -617,20 +630,30 @@ const Appointments = () => {
               }}
             >
               <div className="flex items-center justify-center space-x-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>Đã khám</span>
+                <span className="text-lg">Đã khám</span>
               </div>
             </button>
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto">
-            <Table className="w-full min-w-[1200px]" aria-label="Appointments table">
+          <div className="w-full overflow-x-auto">
+            <Table className="w-full table-fixed min-w-[1200px]" aria-label="Appointments table">
             <TableHeader columns={columns}>
               {(column) => (
-                  <TableColumn key={column.key} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <TableColumn key={column.key} className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                    column.key === 'date' ? 'w-32' :
+                    column.key === 'startTime' ? 'w-24' :
+                    column.key === 'endTime' ? 'w-24' :
+                    column.key === 'doctor' ? 'w-40' :
+                    column.key === 'service' ? 'w-48' :
+                    column.key === 'patient' ? 'w-48' :
+                    column.key === 'payment' ? 'w-40' :
+                    column.key === 'status' ? 'w-32' :
+                    column.key === 'actions' ? 'w-64' : 'w-auto'
+                  }`}>
                     {column.label}
                   </TableColumn>
               )}
@@ -649,32 +672,32 @@ const Appointments = () => {
             >
               {(appointment) => (
                   <TableRow key={appointment.id} className="hover:bg-gray-50 transition-colors">
-                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap w-32">
                       <div className="text-sm font-medium text-gray-900">
                         {formatDate(appointment.startTime)}
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap w-24">
                       <div className="text-sm text-gray-900">
                         {formatTime(appointment.startTime)}
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap w-24">
                       <div className="text-sm text-gray-900">
                         {formatTime(appointment.endTime)}
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap w-40">
                       <div className="text-sm font-medium text-gray-900">
                         {appointment.doctorName}
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap w-48">
                       <div className="text-sm text-gray-900">
                         {appointment.serviceName}
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap w-48">
                     {appointment.customerName && appointment.customerEmail ? (
                       <div className="text-sm">
                           <p className="font-medium text-gray-900">
@@ -688,14 +711,14 @@ const Appointments = () => {
                         <p className="text-sm text-gray-900">Bản thân</p>
                     )}
                   </TableCell>
-                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap w-40">
                       <div className="text-sm">
                         <p className={`font-medium ${formatPaymentInfo(appointment).color}`}>
                           {formatPaymentInfo(appointment).text}
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell className="px-4 py-4 whitespace-nowrap">
+                    <TableCell className="px-4 py-4 whitespace-nowrap w-32">
                     <span
                         className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
                         appointment.status === "Approved"
@@ -714,36 +737,45 @@ const Appointments = () => {
                       {getStatusText(appointment.status)}
                     </span>
                   </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-1">
-                        {/* Xem chi tiết - luôn hiển thị */}
+                    <TableCell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium w-64">
+                      <div className="flex items-center justify-end space-x-2">
+                        {/* Đổi lịch hẹn - chỉ hiển thị khi có thể thay đổi */}
+                        {(appointment.status === "Pending" || appointment.status === "Approved") && (
                         <button
-                          className="p-2.5 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          title="Xem chi tiết"
+                            className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-xs font-medium hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            title="Đổi lịch hẹn"
                           onClick={() => {
-                            // TODO: Implement view details
-                            console.log("View details for appointment:", appointment.id);
+                              // TODO: Implement reschedule
+                              console.log("Reschedule appointment:", appointment.id);
                           }}
                         >
-                          <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
+                            Đổi lịch
                         </button>
+                        )}
 
-                        {/* Hủy cuộc hẹn - chỉ hiển thị khi có thể hủy */}
+                        {/* Đổi bác sĩ - chỉ hiển thị khi có thể thay đổi */}
                         {(appointment.status === "Pending" || appointment.status === "Approved") && (
                           <button
-                            className="p-2.5 hover:bg-red-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
-                            title="Hủy cuộc hẹn"
+                            className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-xs font-medium hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+                            title="Đổi bác sĩ"
                             onClick={() => {
-                              setAppointmentToCancel({ id: appointment.id });
-                              setIsCancelModalOpen(true);
+                              // TODO: Implement change doctor
+                              console.log("Change doctor for appointment:", appointment.id);
                             }}
                           >
-                            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            Đổi bác sĩ
+                          </button>
+                        )}
+
+                        {/* Hủy cuộc hẹn - chỉ hiển thị khi có thể hủy */}
+                        {(appointment.status === "Pending" || appointment.status === "Approved" || appointment.status === "PendingPayment") && (
+                          <button
+                            className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-medium hover:bg-red-200 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+                            title="Hủy cuộc hẹn"
+                            onClick={() => handleCancelAppointment(appointment)}
+                            disabled={loading}
+                          >
+                            Hủy lịch hẹn
                           </button>
                         )}
 
@@ -788,15 +820,15 @@ const Appointments = () => {
 
           {/* Results info */}
           {currentAppointments.length > 0 && (
-            <div className="px-4 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+            <div className="px-6 py-6 border-t border-gray-200 bg-gray-50 rounded-b-xl w-full">
               <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">
+              <p className="text-base text-gray-600">
                   Hiển thị <span className="font-medium">1</span> đến{" "}
                   <span className="font-medium">{currentAppointments.length}</span> trong{" "}
                   <span className="font-medium">{currentAppointments.length}</span> kết quả
                 </p>
-                <div className="flex items-center space-x-2 text-sm text-gray-500">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center space-x-2 text-base text-gray-500">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span>Tổng cộng {appointments.length} cuộc hẹn</span>
@@ -807,28 +839,18 @@ const Appointments = () => {
         </div>
       </div>
 
-      {/* Cancel Confirmation Modal */}
-      <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">Xác nhận hủy lịch hẹn</ModalHeader>
-              <ModalBody>
-                <p>Bạn có chắc chắn muốn hủy cuộc hẹn này?</p>
-                <p className="text-sm text-gray-500 mt-2">Hành động này không thể hoàn tác.</p>
-              </ModalBody>
-              <ModalFooter>
-                <Button color="default" variant="light" onPress={onClose}>
-                  Không, giữ lại
-                </Button>
-                <Button color="danger" onPress={confirmCancel}>
-                  Có, hủy lịch hẹn
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      {/* Cancel Appointment Modal */}
+      <CancelAppointmentModal
+        isOpen={isCancelModalOpen}
+        onClose={() => {
+          setIsCancelModalOpen(false);
+          setAppointmentToCancel(null);
+          setPolicies([]);
+        }}
+        appointment={appointmentToCancel}
+        policies={policies}
+        onConfirmCancel={handleConfirmCancel}
+      />
     </div>
   );
 };

@@ -33,6 +33,7 @@ import {
   XCircleIcon,
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,6 +55,24 @@ interface ApiResponse<T> {
   success: boolean;
   message?: string;
   data?: T;
+}
+
+// Chi tiết appointment cho modal
+interface AppointmentDetailData {
+  _id: string;
+  status: string;
+  type: string;
+  mode: string;
+  service?: { serviceName?: string; price?: number } | null;
+  doctor?: { fullName?: string } | null;
+  patient?: { fullName?: string } | null;
+  timeslot?: { startTime?: string; endTime?: string } | null;
+  bankInfo?: {
+    accountHolderName?: string | null;
+    accountNumber?: string | null;
+    bankName?: string | null;
+  } | null;
+  cancelReason?: string | null;
 }
 
 // ===== Component chính =====
@@ -83,6 +102,11 @@ const AllAppointments = () => {
   // Danh sách unique doctors và dates
   const [doctors, setDoctors] = useState<string[]>([]);
   const [dates, setDates] = useState<string[]>([]);
+
+  // Detail modal
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailData, setDetailData] = useState<AppointmentDetailData | null>(null);
 
   // ===== Hàm lấy tất cả ca khám =====
   const refetchAllAppointments = async () => {
@@ -287,6 +311,8 @@ const AllAppointments = () => {
         return "Đã hoàn thành";
       case "Cancelled":
         return "Đã hủy";
+      case "Refunded":
+        return "Đã hoàn tiền";
       case "NoShow":
         return "Không đến";
       case "PendingPayment":
@@ -313,6 +339,8 @@ const AllAppointments = () => {
       case "NoShow":
       case "Expired":
         return "danger";
+      case "Refunded":
+        return "success";
       default:
         return "default";
     }
@@ -360,6 +388,52 @@ const AllAppointments = () => {
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${day}/${month}/${year}, ${hours}:${minutes}`;
+  };
+
+  // ===== Detail modal handlers =====
+  const openDetailModal = async (appointmentId: string) => {
+    try {
+      setDetailLoading(true);
+      setIsDetailOpen(true);
+      const res: ApiResponse<AppointmentDetailData> = await appointmentApi.getAppointmentDetails(appointmentId);
+      if (res.success && res.data) {
+        console.log("Detail data:", res.data);
+        setDetailData(res.data);
+      } else {
+        setDetailData(null);
+        toast.error(res.message || "Không tải được chi tiết ca khám");
+      }
+    } catch (err: any) {
+      setDetailData(null);
+      toast.error(err.message || "Không tải được chi tiết ca khám");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetailModal = () => {
+    setIsDetailOpen(false);
+    setDetailData(null);
+  };
+
+  const handleMarkRefunded = async () => {
+    if (!detailData?._id) return;
+    try {
+      setProcessingId(detailData._id);
+      const res = await appointmentApi.markAsRefunded(detailData._id);
+      if (res.success) {
+        toast.success("Đã đánh dấu hoàn tiền");
+        await refetchAllAppointments();
+        // cập nhật trong modal
+        setDetailData(prev => prev ? { ...prev, status: "Refunded" } : prev);
+      } else {
+        toast.error(res.message || "Cập nhật thất bại");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Cập nhật thất bại");
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   // Stats calculation
@@ -492,6 +566,99 @@ const AllAppointments = () => {
             >
               {processingId === selectedAppointmentId ? "Đang hủy..." : "Xác nhận hủy"}
             </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Detail Modal */}
+      <Modal
+        isOpen={isDetailOpen}
+        onClose={closeDetailModal}
+        size="2xl"
+        classNames={{
+          base: "rounded-2xl",
+          header: "border-b border-gray-200",
+          footer: "border-t border-gray-200",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-3">
+            <InformationCircleIcon className="w-6 h-6 text-primary-600" />
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">Chi tiết ca khám</h3>
+              <p className="text-sm text-gray-500">Thông tin và chi tiết hoàn tiền</p>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            {detailLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <Spinner label="Đang tải chi tiết..." />
+              </div>
+            ) : detailData ? (
+              <div className="space-y-4">
+                <Card>
+                  <CardBody className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-sm text-gray-500">Bệnh nhân</p>
+                        <p className="font-semibold text-lg">{detailData.patient?.fullName || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Bác sĩ</p>
+                        <p className="font-semibold text-lg">{detailData.doctor?.fullName || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Dịch vụ</p>
+                        <p className="font-semibold text-lg">{detailData.service?.serviceName || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Trạng thái</p>
+                        <Chip color={getStatusColor(detailData.status)} variant="flat" className="mt-1">
+                          {getStatusText(detailData.status)}
+                        </Chip>
+                      </div>
+                    </div>
+                    
+                    <div className="border-t pt-4">
+                      <p className="text-sm text-gray-500 mb-2">Thời gian khám</p>
+                      <p className="font-semibold text-lg">
+                        {formatDate(detailData.timeslot?.startTime || "")} từ {formatTime(detailData.timeslot?.startTime || "")} - {formatTime(detailData.timeslot?.endTime || "")}
+                      </p>
+                    </div>
+
+                    {detailData.type === 'Consultation' && detailData.bankInfo && (
+                      <div className="border-t pt-4">
+                        <p className="text-sm text-gray-500 mb-3">Thông tin hoàn tiền</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500">Chủ tài khoản</p>
+                            <p className="font-semibold">{detailData.bankInfo?.accountHolderName || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Số tài khoản</p>
+                            <p className="font-semibold">{detailData.bankInfo?.accountNumber || "-"}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Ngân hàng</p>
+                            <p className="font-semibold">{detailData.bankInfo?.bankName || "-"}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardBody>
+                </Card>
+              </div>
+            ) : (
+              <p className="text-center text-gray-500">Không có dữ liệu</p>
+            )}
+          </ModalBody>
+          <ModalFooter className="gap-3">
+            <Button variant="flat" onPress={closeDetailModal}>Đóng</Button>
+            {detailData?.status === "Cancelled" && detailData?.type === "Consultation" && (
+              <Button color="success" onPress={handleMarkRefunded} isLoading={processingId === detailData?._id}>
+                Đã hoàn tiền
+              </Button>
+            )}
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -759,7 +926,18 @@ const AllAppointments = () => {
                         </>
                       )}
                       {!["Pending", "Approved"].includes(appointment.status) && (
-                        <span className="text-gray-400 text-sm">-</span>
+                        <div className="flex gap-2">
+                          {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
+                            <Button
+                              size="sm"
+                              color="primary"
+                              variant="flat"
+                              onPress={() => openDetailModal(appointment.id)}
+                            >
+                              Xem chi tiết
+                            </Button>
+                          ) : null}
+                        </div>
                       )}
                     </div>
                   </TableCell>

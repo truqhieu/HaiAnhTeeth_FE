@@ -71,6 +71,26 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const selectedService = services.find((s) => s._id === formData.serviceId);
   const serviceDuration = selectedService?.durationMinutes || 30;
 
+  // Function to reset form data completely
+  const resetForm = () => {
+    setFormData(initialFormData);
+    setAvailableDoctors([]);
+    setDoctorScheduleRange(null);
+    setErrorMessage(null);
+    setTimeInputError(null);
+    setLoadingDoctors(false);
+    setLoadingSchedule(false);
+    setSubmitting(false);
+  };
+
+  // === Reset form data when modal opens ===
+  useEffect(() => {
+    if (isOpen) {
+      // Reset form data to initial state when modal opens
+      resetForm();
+    }
+  }, [isOpen]);
+
   // === Fetch services ===
   useEffect(() => {
     if (!isOpen) return;
@@ -85,6 +105,22 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     };
 
     fetchServices();
+  }, [isOpen]);
+
+  // === Reset form when user changes (logout/login) ===
+  useEffect(() => {
+    if (isOpen) {
+      // Reset form data when user changes
+      resetForm();
+    }
+  }, [user?.id]); // Reset when user ID changes (logout/login)
+
+  // === Reset form when modal closes ===
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset form data when modal closes
+      resetForm();
+    }
   }, [isOpen]);
 
   // === Auto-fill user info ===
@@ -302,6 +338,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       const res = await appointmentApi.create(payload);
 
       if (res.success) {
+        // Reset form after successful booking
+        resetForm();
+        
         if (res.data?.requirePayment && res.data?.payment?.paymentId) {
           setErrorMessage(null);
           onClose();
