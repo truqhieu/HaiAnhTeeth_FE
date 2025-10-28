@@ -18,7 +18,6 @@ import {
   Tabs,
   Tab,
   Pagination,
-  DatePicker,
 } from "@heroui/react";
 import { 
   EyeIcon, 
@@ -29,19 +28,22 @@ import {
   VideoCameraIcon,
   BuildingOfficeIcon,
   CheckCircleIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { doctorApi, type DoctorAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import AppointmentDetailModal from "./AppointmentDetailModal";
 import PatientDetailModal from "./PatientDetailModal";
 
 const DoctorSchedule = () => {
+  const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
   const [filteredAppointments, setFilteredAppointments] = useState<DoctorAppointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
   // Filter states
   const [searchText, setSearchText] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("all");
@@ -181,7 +183,6 @@ const DoctorSchedule = () => {
         return mode;
     }
   };
-
   const formatDate = (dateString: string): string => {
     if (!dateString || dateString === "N/A") return "N/A";
     const date = new Date(dateString);
@@ -245,7 +246,22 @@ const DoctorSchedule = () => {
       </div>
     );
   }
+const handleViewMedicalRecord = async (appointmentId: string) => {
+    const toastId = toast.loading("Đang lấy thông tin bệnh nhân...");
 
+    try {
+      const res = await doctorApi.getAppointmentDetail(appointmentId);
+
+      if (res.success && res.data?.patientId) {
+        toast.success("Lấy thông tin thành công, đang chuyển hướng...", { id: toastId });
+        navigate(`/doctor/medical/record/${res.data.patientId}`);
+      } else {
+        throw new Error(res.message || "Không tìm thấy mã bệnh nhân.");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Lỗi khi lấy thông tin bệnh nhân.", { id: toastId });
+    }
+  };
   return (
     <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
       {/* Header */}
@@ -474,7 +490,8 @@ const DoctorSchedule = () => {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="flat"
@@ -494,7 +511,18 @@ const DoctorSchedule = () => {
                         Bệnh nhân
                       </Button>
                     </div>
-                  </TableCell>
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color="success"
+                      startContent={<DocumentTextIcon className="w-4 h-4" />}
+                      onPress={() => handleViewMedicalRecord(appointment.appointmentId)}
+                      className="w-full sm:w-auto" // Full width trên mobile
+                    >
+                      Hồ sơ khám bệnh
+                    </Button>
+                  </div>
+                </TableCell>
                 </TableRow>
               )}
             </TableBody>

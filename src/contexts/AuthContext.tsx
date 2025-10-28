@@ -62,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             ...parsedUser,
             _id: parsedUser._id || parsedUser.id || "",
             id: parsedUser.id || parsedUser._id || "",
+            role: parsedUser.role?.toLowerCase(),
           };
 
           dispatch(restoreAuth({ user: normalizedUser, token: storedToken }));
@@ -93,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       ...userData,
       _id: userData._id || userData.id || "",
       id: userData.id || userData._id || "",
+      role: userData.role?.toLowerCase(),
     };
 
     // Save to sessionStorage
@@ -118,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       ...userData,
       _id: userData._id || userData.id || "",
       id: userData.id || userData._id || "",
+      role: userData.role?.toLowerCase(),
     };
 
     console.log(

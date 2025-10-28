@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Table,
   TableHeader,
@@ -27,6 +28,7 @@ import {
   VideoCameraIcon,
   BuildingOfficeIcon,
   HeartIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { nurseApi, type NurseAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,6 +37,7 @@ import PatientDetailModalNurse from "./PatientDetailModalNurse";
 
 const NurseSchedule = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<NurseAppointment[]>([]);
   const [filteredAppointments, setFilteredAppointments] = useState<NurseAppointment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -513,28 +516,40 @@ const NurseSchedule = () => {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2 flex-wrap">
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        color="primary"
-                        startContent={<EyeIcon className="w-4 h-4" />}
-                        onPress={() => handleViewAppointment(appointment.appointmentId)}
-                      >
-                        Chi tiết
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        color="secondary"
-                        startContent={<UserIcon className="w-4 h-4" />}
-                        // ⭐ SỬA: Truyền patientId trực tiếp
-                        onPress={() => handleViewPatient(appointment.patientId)}
-                      >
-                        Bệnh nhân
-                      </Button>
-                    </div>
-                  </TableCell>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color="primary"
+                      startContent={<EyeIcon className="w-4 h-4" />}
+                      onPress={() => handleViewAppointment(appointment.appointmentId)}
+                    >
+                      Chi tiết
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color="secondary"
+                      startContent={<UserIcon className="w-4 h-4" />}
+                      onPress={() => handleViewPatient(appointment.patientId)}
+                    >
+                      Bệnh nhân
+                    </Button>
+
+                    {/* ⭐ Nút mới mở hồ sơ bệnh án */}
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color="success"
+                      startContent={<ClipboardDocumentListIcon className="w-4 h-4" />}
+                      onPress={() => navigate(`/nurse/medical/record/${appointment.patientId}`)}
+                      isDisabled={!appointment.patientId || appointment.patientId === "N/A" || appointment.patientId === "Trống"}
+                    >
+                      Hồ sơ bệnh án
+                    </Button>
+                  </div>
+                </TableCell>
                 </TableRow>
               )}
             </TableBody>
