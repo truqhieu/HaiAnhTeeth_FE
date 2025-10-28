@@ -58,15 +58,13 @@ export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<ApiResponse<T>> => {
-  // Import store dynamically to avoid circular dependencies
-  const { store } = await import("../store/index");
-  const state = store.getState();
-  const token = state.auth.token;
+  // Get token from sessionStorage
+  const token = sessionStorage.getItem("authToken");
 
   console.log("🔐 Auth check - Token exists?", !!token);
 
   if (!token) {
-    console.error("❌ No token found in localStorage");
+    console.error("❌ No token found in sessionStorage");
     throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
   }
 

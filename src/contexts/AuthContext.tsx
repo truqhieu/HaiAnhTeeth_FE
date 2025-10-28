@@ -33,6 +33,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     (state: RootState) => state.auth,
   );
 
+  // Debug Redux state
+  console.log("🔍 [AuthContext] Redux state:", {
+    user: user ? { id: user._id, role: user.role, email: user.email, fullName: user.fullName } : null,
+    isAuthenticated,
+    isLoading,
+  });
+
   // Initialize auth state from sessionStorage on mount
   useEffect(() => {
     let isMounted = true;
@@ -65,14 +72,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             role: parsedUser.role?.toLowerCase(),
           };
 
-          dispatch(restoreAuth({ user: normalizedUser, token: storedToken }));
+          console.log("🔍 [AuthContext] Restoring auth with user:", normalizedUser);
+          console.log("🔍 [AuthContext] Restoring auth with token:", storedToken);
+          
+          // Use setAuth instead of restoreAuth to ensure proper state update
+          dispatch(setAuth({ user: normalizedUser, token: storedToken }));
+          
+          console.log("🔍 [AuthContext] Dispatched setAuth for restore");
         } else if (isMounted) {
-          dispatch(restoreAuth({ user: null, token: null }));
+          console.log("🔍 [AuthContext] No stored auth found, clearing state");
+          dispatch(clearAuth());
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
         if (isMounted) {
-          dispatch(restoreAuth({ user: null, token: null }));
+          dispatch(clearAuth());
         }
       } finally {
         if (isMounted) {
@@ -81,12 +95,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     };
 
-    initializeAuth();
+    // Only initialize if we don't have user data yet
+    if (!user) {
+      initializeAuth();
+    } else {
+      dispatch(setLoading(false));
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [dispatch]);
+  }, [dispatch, user]);
 
   const login = (userData: AuthUser, token: string) => {
     // Normalize user data: ensure _id is set from either id or _id
@@ -97,21 +116,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       role: userData.role?.toLowerCase(),
     };
 
+    console.log("🔍 [AuthContext] Login called with user:", normalizedUser);
+
     // Save to sessionStorage
     sessionStorage.setItem("authToken", token);
     sessionStorage.setItem("user", JSON.stringify(normalizedUser));
 
+    console.log("🔍 [AuthContext] Saved to sessionStorage:", {
+      token: !!sessionStorage.getItem("authToken"),
+      user: !!sessionStorage.getItem("user"),
+    });
+
     // Dispatch Redux action
     dispatch(setAuth({ user: normalizedUser, token }));
+    
+    console.log("🔍 [AuthContext] Dispatched setAuth action");
   };
 
   const logout = () => {
+    console.log("🔍 [AuthContext] Logout called");
+    
     // Clear sessionStorage
     sessionStorage.removeItem("authToken");
     sessionStorage.removeItem("user");
 
+    console.log("🔍 [AuthContext] Cleared sessionStorage");
+
     // Dispatch Redux action
     dispatch(clearAuth());
+    
+    console.log("🔍 [AuthContext] Dispatched clearAuth");
   };
 
   const updateUserInfo = (userData: AuthUser) => {
@@ -137,6 +171,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Dispatch Redux action
     dispatch(updateUser(normalizedUser));
+    
+    console.log("🔍 [AuthContext] Dispatched updateUser");
   };
 
   const value = {
@@ -147,6 +183,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     logout,
     updateUser: updateUserInfo,
   };
+
+  // Debug logs
+  console.log("🔍 [AuthContext] Current state:", {
+    user: user ? { id: user._id, role: user.role, email: user.email, fullName: user.fullName } : null,
+    isAuthenticated,
+    isLoading,
+    hasToken: !!sessionStorage.getItem("authToken"),
+    hasUser: !!sessionStorage.getItem("user"),
+  });
+
+  // Debug sessionStorage content
+  const sessionUser = sessionStorage.getItem("user");
+  const sessionToken = sessionStorage.getItem("authToken");
+  console.log("🔍 [AuthContext] SessionStorage content:", {
+    hasToken: !!sessionToken,
+    hasUser: !!sessionUser,
+    userData: sessionUser ? JSON.parse(sessionUser) : null,
+  });
+
+  // Force re-render when sessionStorage changes
+  React.useEffect(() => {
+    const handleStorageChange = () => {
+      const storedUser = sessionStorage.getItem("user");
+      const storedToken = sessionStorage.getItem("authToken");
+      
+      if (storedUser && storedToken && !user) {
+        console.log("🔍 [AuthContext] Storage changed, restoring auth");
+        const parsedUser = JSON.parse(storedUser) as AuthUser;
+        const normalizedUser = {
+          ...parsedUser,
+          _id: parsedUser._id || parsedUser.id || "",
+          id: parsedUser.id || parsedUser._id || "",
+          role: parsedUser.role?.toLowerCase(),
+        };
+        dispatch(setAuth({ user: normalizedUser, token: storedToken }));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [dispatch, user]);
+
+  // Additional effect to check and restore auth immediately
+  React.useEffect(() => {
+    const storedUser = sessionStorage.getItem("user");
+    const storedToken = sessionStorage.getItem("authToken");
+    
+    if (storedUser && storedToken && !user) {
+      console.log("🔍 [AuthContext] Found stored auth but no user in state, restoring immediately");
+      const parsedUser = JSON.parse(storedUser) as AuthUser;
+      const normalizedUser = {
+        ...parsedUser,
+        _id: parsedUser._id || parsedUser.id || "",
+        id: parsedUser.id || parsedUser._id || "",
+        role: parsedUser.role?.toLowerCase(),
+      };
+      dispatch(setAuth({ user: normalizedUser, token: storedToken }));
+    }
+  }, [dispatch, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

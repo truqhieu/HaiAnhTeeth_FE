@@ -22,7 +22,9 @@ const AppNavbar = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
-  if (isAuthenticated && user?.role === "Patient") {
+  // Ensure role check is case-insensitive because BE returns lowercase (e.g., "patient")
+  const normalizedRole = user?.role?.toLowerCase();
+  if (isAuthenticated && normalizedRole === "patient") {
     return <PatientHeader />;
   }
 
