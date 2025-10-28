@@ -57,13 +57,13 @@ const LoginForm = () => {
           console.warn("Could not load full profile:", profileError);
         }
 
-        const role = response.data.user.role;
+        const role = response.data.user.role?.toLowerCase();
 
-        if (role === "Admin") navigate("/admin/accounts");
-        else if (role === "Manager") navigate("/manager/rooms");
-        else if (role === "Staff") navigate("/staff/dashboard");
-        else if (role === "Doctor") navigate("/doctor/schedule");
-        else if (role === "Nurse") navigate("/nurse/schedule");
+        if (role === "admin") navigate("/admin/accounts");
+        else if (role === "manager") navigate("/manager/rooms");
+        else if (role === "staff") navigate("/staff/dashboard");
+        else if (role === "doctor") navigate("/doctor/schedule");
+        else if (role === "nurse") navigate("/nurse/schedule");
         else navigate("/");
       } else {
         setError(response.message || "Đăng nhập thất bại");
@@ -129,6 +129,9 @@ const LoginForm = () => {
             type="password"
             value={password}
             onValueChange={setPassword}
+            classNames={{
+              inputWrapper: "group-data-[focus=true]:ring-2 group-data-[focus=true]:ring-[#39BDCC]"
+            }}
           />
 
           <div className="text-right">

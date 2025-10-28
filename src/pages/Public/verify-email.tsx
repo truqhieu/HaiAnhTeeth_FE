@@ -67,8 +67,8 @@ const VerifyEmail = () => {
               if (!isMounted.current) return;
               const role = user?.role;
 
-              if (role === "Admin") window.location.href = "/admin/accounts";
-              else if (role === "Manager")
+              if (role?.toLowerCase() === "admin") window.location.href = "/admin/accounts";
+              else if (role?.toLowerCase() === "manager")
                 window.location.href = "/manager/rooms";
               else window.location.href = "/";
             }, 2000);
@@ -96,8 +96,8 @@ const VerifyEmail = () => {
               if (!isMounted.current) return;
               const role = user?.role;
 
-              if (role === "Admin") window.location.href = "/admin/accounts";
-              else if (role === "Manager")
+              if (role?.toLowerCase() === "admin") window.location.href = "/admin/accounts";
+              else if (role?.toLowerCase() === "manager")
                 window.location.href = "/manager/rooms";
               else window.location.href = "/";
             }, 2000);
@@ -156,8 +156,8 @@ const VerifyEmail = () => {
       if (isMounted.current) {
         const role = currentUser?.role;
 
-        if (role === "Admin") window.location.href = "/admin/accounts";
-        else if (role === "Manager") window.location.href = "/manager/rooms";
+        if (role?.toLowerCase() === "admin") window.location.href = "/admin/accounts";
+        else if (role?.toLowerCase() === "manager") window.location.href = "/manager/rooms";
         else window.location.href = "/";
       }
     }, 500);
