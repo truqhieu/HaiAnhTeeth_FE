@@ -30,7 +30,7 @@ import NurseLayout from "@/layouts/NurseLayout";
 import NurseSchedule from "@/pages/Nurse/NurseSchedule";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
-
+import MedicalRecordPage from "@/pages/MedicalRecord/MedicalRecordPage";
 function App() {
   return (
     <AuthProvider>
@@ -101,6 +101,7 @@ function App() {
               <DoctorLayout>
                 <Routes>
                   <Route element={<DoctorSchedule />} path="schedule" />
+                  <Route path="medical/record/:patientId" element={<MedicalRecordPage />} />
                 </Routes>
               </DoctorLayout>
             }
@@ -114,6 +115,7 @@ function App() {
               <NurseLayout>
                 <Routes>
                   <Route element={<NurseSchedule />} path="schedule" />
+                  <Route path="medical/record/:patientId" element={<MedicalRecordPage />} />
                 </Routes>
               </NurseLayout>
             }

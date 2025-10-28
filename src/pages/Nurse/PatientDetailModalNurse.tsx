@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // Thêm import
 import {
   Modal,
   ModalContent,
@@ -20,10 +21,10 @@ import {
   CalendarDaysIcon,
   ExclamationTriangleIcon,
   CheckBadgeIcon,
+  DocumentTextIcon, // Thêm icon
 } from "@heroicons/react/24/outline";
 import { nurseApi, type PatientDetail } from "@/api";
 
-// ⭐ SỬA: Interface nhận patientId
 interface PatientDetailModalNurseProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,31 +34,27 @@ interface PatientDetailModalNurseProps {
 const PatientDetailModalNurse = ({
   isOpen,
   onClose,
-  patientId, // ⭐ SỬA: Dùng prop patientId
+  patientId,
 }: PatientDetailModalNurseProps) => {
+  const navigate = useNavigate(); // Thêm hook
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [patient, setPatient] = useState<PatientDetail | null>(null);
 
   useEffect(() => {
-    // ⭐ SỬA: Chạy khi patientId thay đổi
     if (isOpen && patientId) {
       fetchPatientDetail();
     }
-  }, [isOpen, patientId]); // ⭐ SỬA: Dependency
+  }, [isOpen, patientId]);
 
-  // ⭐ SỬA: Hàm fetch được tối ưu
   const fetchPatientDetail = async () => {
-    if (!patientId) return; // Nếu không có patientId thì không làm gì
+    if (!patientId) return;
 
     try {
       setLoading(true);
       setError(null);
-      setPatient(null); // Xóa dữ liệu bệnh nhân cũ
+      setPatient(null);
 
-      // ⭐ BƯỚC 1: BỎ GỌI getAppointmentDetail
-
-      // ⭐ BƯỚC 2: Gọi thẳng API lấy chi tiết bệnh nhân
       const patientRes = await nurseApi.getPatientDetail(patientId);
 
       if (patientRes.success && patientRes.data) {
@@ -72,6 +69,14 @@ const PatientDetailModalNurse = ({
       setLoading(false);
     }
   };
+
+  // Thêm hàm xử lý mở hồ sơ
+  const handleOpenMedicalRecord = () => {
+  if (patientId && patientId !== "N/A" && patientId !== "Trống") {
+    onClose();
+    navigate(`/nurse/medical/record/${patientId}`); // Đổi từ /medical/record thành /nurse/medical/record
+  }
+};
 
   const getGenderText = (gender: string) => {
     switch (gender) {
@@ -125,8 +130,24 @@ const PatientDetailModalNurse = ({
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
-              <h3 className="text-2xl font-bold text-gray-900">Hồ sơ bệnh nhân</h3>
-              <p className="text-sm text-gray-600 font-normal">Thông tin chi tiết về bệnh nhân</p>
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">Hồ sơ bệnh nhân</h3>
+                  <p className="text-sm text-gray-600 font-normal">Thông tin chi tiết về bệnh nhân</p>
+                </div>
+                {/* Nút mở hồ sơ khám bệnh */}
+                {patient && patientId && (
+                  <Button
+                    color="secondary"
+                    variant="shadow"
+                    startContent={<DocumentTextIcon className="w-5 h-5" />}
+                    onPress={handleOpenMedicalRecord}
+                    className="font-semibold"
+                  >
+                    Mở hồ sơ khám bệnh
+                  </Button>
+                )}
+              </div>
             </ModalHeader>
             <ModalBody className="py-6">
               {loading ? (
@@ -289,4 +310,3 @@ const PatientDetailModalNurse = ({
 };
 
 export default PatientDetailModalNurse;
-
