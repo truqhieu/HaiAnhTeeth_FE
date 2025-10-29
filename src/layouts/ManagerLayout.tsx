@@ -8,6 +8,9 @@ import {
   BuildingOfficeIcon,
   CalendarDaysIcon,
   ArrowRightOnRectangleIcon,
+  ExclamationTriangleIcon,
+  DocumentTextIcon,
+  TagIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +48,24 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       href: "/manager/schedules",
       icon: CalendarDaysIcon,
       current: location.pathname === "/manager/schedules",
+    },
+    {
+      name: "Quản lý khiếu nại",
+      href: "/manager/complaints",
+      icon: ExclamationTriangleIcon,
+      current: location.pathname === "/manager/complaints",
+    },
+    {
+      name: "Quản lý đơn nghỉ phép",
+      href: "/manager/leave-requests",
+      icon: DocumentTextIcon,
+      current: location.pathname === "/manager/leave-requests",
+    },
+    {
+      name: "Quản lý ưu đãi",
+      href: "/manager/promotions",
+      icon: TagIcon,
+      current: location.pathname === "/manager/promotions",
     },
   ];
 

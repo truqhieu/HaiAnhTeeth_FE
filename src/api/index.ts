@@ -97,6 +97,12 @@ export { adminApi } from "./admin";
 // Export manager API
 export { managerApi } from "./manager";
 
+// Export complaint API
+export { complaintApi } from "./complaint";
+
+// Export leaveRequest API
+export { leaveRequestApi } from "./leaveRequest";
+
 // Export types
 
 // Lấy kiểu User từ auth.ts và thêm thuộc tính _id
@@ -158,4 +164,15 @@ export type {
   GetSchedulesParams,
   GetSchedulesResponse,
 } from "./manager";
+export type {
+  Complaint,
+  ComplaintListResponse,
+  ComplaintDetailResponse,
+  HandleComplaintRequest,
+} from "./complaint";
+export type {
+  LeaveRequest,
+  LeaveRequestListResponse,
+  CreateLeaveRequestData,
+} from "./leaveRequest";
 

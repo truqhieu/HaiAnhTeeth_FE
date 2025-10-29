@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Input,
   Textarea,
@@ -10,81 +10,192 @@ import {
   TableRow,
   TableCell,
   Chip,
+  Select,
+  SelectItem,
+  Spinner,
 } from "@heroui/react";
+import {
+  PaperAirplaneIcon,
+  ExclamationCircleIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
 
-interface Complaint {
-  id: number;
-  title: string;
-  date: string;
-  status: "pending" | "processing" | "resolved";
-  response: string;
+import { complaintApi, appointmentApi } from "@/api";
+import type { Complaint } from "@/api/complaint";
+
+interface AppointmentOption {
+  _id: string;
+  serviceId: {
+    serviceName: string;
+  };
+  doctorUserId: {
+    fullName: string;
+  };
+  timeslotId: {
+    date: string;
+    startTime: string;
+  };
 }
 
 const Complaints = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [selectedAppointment, setSelectedAppointment] = useState("");
+  const [appointments, setAppointments] = useState<AppointmentOption[]>([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  // Mock data cho lịch sử khiếu nại
-  const complaints: Complaint[] = [
-    {
-      id: 1,
-      title: "Trễ lịch hẹn",
-      date: "09/05/2025",
-      status: "pending",
-      response: "Chưa có phản hồi",
-    },
-    {
-      id: 2,
-      title: "Nhân viên không nhiệt tình",
-      date: "08/12/2026",
-      status: "processing",
-      response: "Đang trong quá trình xử lý của quản lý",
-    },
-    {
-      id: 3,
-      title: "Hồ sơ khám bệnh lỗi",
-      date: "08/28/2026",
-      status: "resolved",
-      response: "Đã được quản lý xử lý",
-    },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchData = async () => {
+    await Promise.all([fetchAppointments(), fetchComplaints()]);
+  };
+
+  const fetchAppointments = async () => {
+    try {
+      const response = await appointmentApi.getMyAppointments();
+
+      if (response.success && response.data) {
+        // Chỉ lấy các appointment đã hoàn thành
+        const completedAppointments = response.data.filter(
+          (apt: any) => apt.status === "Completed",
+        );
+
+        setAppointments(completedAppointments);
+      }
+    } catch {
+      // Không hiện lỗi nếu không có appointments
+    }
+  };
+
+  const fetchComplaints = async () => {
+    try {
+      setLoading(true);
+
+      const response = await complaintApi.getMyComplaints();
+
+      if (response.success && response.data) {
+        setComplaints(response.data.data || []);
+      }
+    } catch {
+      toast.error("Không thể tải danh sách khiếu nại");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Handle submit complaint
-    // eslint-disable-next-line no-console
-    console.log("Complaint submitted:", { title, content });
-    // Reset form
-    setTitle("");
-    setContent("");
+
+    if (!title.trim()) {
+      toast.error("Vui lòng nhập tiêu đề");
+
+      return;
+    }
+
+    if (!content.trim()) {
+      toast.error("Vui lòng nhập nội dung");
+
+      return;
+    }
+
+    if (!selectedAppointment) {
+      toast.error("Vui lòng chọn cuộc hẹn liên quan");
+
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const response = await complaintApi.createComplaint({
+        title: title.trim(),
+        description: content.trim(),
+        appointmentId: selectedAppointment,
+      });
+
+      if (response.success || (response as any).status) {
+        toast.success("Gửi khiếu nại thành công!");
+        setTitle("");
+        setContent("");
+        setSelectedAppointment("");
+        // Refresh danh sách
+        fetchComplaints();
+      } else {
+        toast.error(response.message || "Không thể gửi khiếu nại");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Đã xảy ra lỗi khi gửi khiếu nại");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getStatusColor = (
     status: string,
-  ): "primary" | "warning" | "success" => {
+  ): "warning" | "success" | "danger" => {
     switch (status) {
-      case "pending":
-        return "primary";
-      case "processing":
+      case "Pending":
         return "warning";
-      case "resolved":
+      case "Approved":
         return "success";
+      case "Rejected":
+        return "danger";
       default:
-        return "primary";
+        return "warning";
     }
   };
 
   const getStatusText = (status: string): string => {
     switch (status) {
-      case "pending":
-        return "Đang xử lý";
-      case "processing":
-        return "Đang chờ";
-      case "resolved":
-        return "Đã xử lý";
+      case "Pending":
+        return "Đang chờ xử lý";
+      case "Approved":
+        return "Đã được duyệt";
+      case "Rejected":
+        return "Đã bị từ chối";
       default:
         return status;
     }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "Pending":
+        return <ClockIcon className="w-4 h-4" />;
+      case "Approved":
+        return <CheckCircleIcon className="w-4 h-4" />;
+      case "Rejected":
+        return <XCircleIcon className="w-4 h-4" />;
+      default:
+        return <ExclamationCircleIcon className="w-4 h-4" />;
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatAppointmentLabel = (apt: AppointmentOption) => {
+    const date = new Date(apt.timeslotId?.date).toLocaleDateString("vi-VN");
+    const service = apt.serviceId?.serviceName || "N/A";
+    const doctor = apt.doctorUserId?.fullName || "N/A";
+
+    return `${date} - ${service} - BS. ${doctor}`;
   };
 
   const columns = [
@@ -104,23 +215,78 @@ const Complaints = () => {
         </div>
 
         {/* Form Section */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">
-            Gửi đơn khiếu nại mới
-          </h2>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 mb-8 hover:shadow-xl transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-gradient-to-br from-[#39BDCC] to-[#2ca6b5] rounded-lg">
+              <PaperAirplaneIcon className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-800">
+              Gửi đơn khiếu nại mới
+            </h2>
+          </div>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+                htmlFor="appointment"
+              >
+                Cuộc hẹn liên quan <span className="text-red-500">*</span>
+              </label>
+              <Select
+                id="appointment"
+                classNames={{
+                  trigger:
+                    "border-2 hover:border-[#39BDCC] transition-colors h-12",
+                  value: "text-base",
+                }}
+                placeholder="Chọn cuộc hẹn đã hoàn thành"
+                selectedKeys={selectedAppointment ? [selectedAppointment] : []}
+                size="lg"
+                variant="bordered"
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+
+                  setSelectedAppointment(selected);
+                }}
+              >
+                {appointments.length === 0 ? (
+                  <SelectItem key="no-appointments" isDisabled>
+                    Không có cuộc hẹn nào đã hoàn thành
+                  </SelectItem>
+                ) : (
+                  appointments.map((apt) => (
+                    <SelectItem key={apt._id}>
+                      {formatAppointmentLabel(apt)}
+                    </SelectItem>
+                  ))
+                )}
+              </Select>
+              {appointments.length === 0 && (
+                <p className="text-sm text-amber-600 mt-2 flex items-center gap-2">
+                  <ExclamationCircleIcon className="w-4 h-4" />
+                  Bạn chỉ có thể gửi khiếu nại cho các cuộc hẹn đã hoàn thành
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-semibold text-gray-700 mb-2"
                 htmlFor="title"
               >
-                Tiêu đề
+                Tiêu đề <span className="text-red-500">*</span>
               </label>
               <Input
                 fullWidth
                 id="title"
-                placeholder="Nhập tiêu đề khiếu nại"
+                classNames={{
+                  input: "text-base",
+                  inputWrapper:
+                    "border-2 hover:border-[#39BDCC] transition-colors h-12",
+                }}
+                placeholder="Nhập tiêu đề khiếu nại (VD: Dịch vụ không đúng như cam kết)"
+                size="lg"
                 value={title}
                 variant="bordered"
                 onValueChange={setTitle}
@@ -129,82 +295,160 @@ const Complaints = () => {
 
             <div>
               <label
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-semibold text-gray-700 mb-2"
                 htmlFor="content"
               >
-                Nội dung
+                Nội dung <span className="text-red-500">*</span>
               </label>
               <Textarea
                 fullWidth
                 id="content"
+                classNames={{
+                  input: "text-base",
+                  inputWrapper: "border-2 hover:border-[#39BDCC] transition-colors",
+                }}
                 minRows={6}
-                placeholder="Nhập nội dung khiếu nại chi tiết..."
+                placeholder="Mô tả chi tiết vấn đề bạn gặp phải..."
                 value={content}
                 variant="bordered"
                 onValueChange={setContent}
               />
+              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                <ExclamationCircleIcon className="w-3 h-3" />
+                Mô tả càng chi tiết sẽ giúp chúng tôi xử lý nhanh hơn
+              </p>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2">
               <Button
-                className="bg-[#39BDCC] text-white px-8 hover:bg-[#2ca6b5]"
+                className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white font-semibold px-10 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all"
+                isDisabled={submitting || appointments.length === 0}
+                isLoading={submitting}
                 size="lg"
+                startContent={!submitting && <PaperAirplaneIcon className="w-5 h-5" />}
                 type="submit"
               >
-                Gửi đơn khiếu nại
+                {submitting ? "Đang gửi..." : "Gửi đơn khiếu nại"}
               </Button>
             </div>
           </form>
         </div>
 
         {/* Complaints History */}
-        <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-          <div className="p-6 border-b">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="p-6 border-b bg-gradient-to-r from-gray-50 to-blue-50">
             <h2 className="text-xl font-semibold text-gray-800">
               Lịch sử khiếu nại
             </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Theo dõi trạng thái và phản hồi từ quản lý
+            </p>
           </div>
 
-          <Table aria-label="Complaints history table">
-            <TableHeader columns={columns}>
-              {(column) => (
-                <TableColumn
-                  key={column.key}
-                  className="bg-gray-50 text-gray-700 font-semibold"
-                >
-                  {column.label}
-                </TableColumn>
-              )}
-            </TableHeader>
-            <TableBody
-              emptyContent={
-                <div className="text-center py-8 text-gray-500">
-                  Chưa có khiếu nại nào
-                </div>
-              }
+          {loading ? (
+            <div className="flex flex-col justify-center items-center py-20">
+              <Spinner color="primary" size="lg" />
+              <p className="text-gray-500 mt-4">Đang tải dữ liệu...</p>
+            </div>
+          ) : (
+            <Table
+              aria-label="Complaints history table"
+              classNames={{
+                wrapper: "shadow-none rounded-none",
+              }}
             >
-              {complaints.map((complaint) => (
-                <TableRow key={complaint.id}>
-                  <TableCell className="font-medium">
-                    {complaint.title}
-                  </TableCell>
-                  <TableCell>{complaint.date}</TableCell>
-                  <TableCell>
-                    <Chip
-                      color={getStatusColor(complaint.status)}
-                      size="sm"
-                      variant="flat"
-                    >
-                      {getStatusText(complaint.status)}
-                    </Chip>
-                  </TableCell>
-                  <TableCell className="text-gray-600">
-                    {complaint.response}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              <TableHeader columns={columns}>
+                {(column) => (
+                  <TableColumn
+                    key={column.key}
+                    className="bg-gray-50 text-gray-700 font-semibold text-sm"
+                  >
+                    {column.label}
+                  </TableColumn>
+                )}
+              </TableHeader>
+              <TableBody
+                emptyContent={
+                  <div className="text-center py-16">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                      <ExclamationCircleIcon className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p className="text-gray-500 text-lg font-medium">
+                      Chưa có khiếu nại nào
+                    </p>
+                    <p className="text-gray-400 text-sm mt-1">
+                      Khiếu nại của bạn sẽ xuất hiện ở đây
+                    </p>
+                  </div>
+                }
+                items={complaints}
+              >
+                {(complaint) => (
+                  <TableRow
+                    key={complaint._id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <TableCell>
+                      <div className="py-1">
+                        <p className="font-semibold text-gray-900">
+                          {complaint.title}
+                        </p>
+                        <p className="text-sm text-gray-500 line-clamp-1 mt-1">
+                          {complaint.description}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <ClockIcon className="w-4 h-4" />
+                        <span className="text-sm">
+                          {formatDate(complaint.createdAt)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        className="font-medium"
+                        color={getStatusColor(complaint.status)}
+                        size="sm"
+                        startContent={getStatusIcon(complaint.status)}
+                        variant="flat"
+                      >
+                        {getStatusText(complaint.status)}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      {complaint.managerResponses &&
+                      complaint.managerResponses.length > 0 ? (
+                        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r">
+                          <p className="text-sm text-gray-800 font-medium">
+                            {
+                              complaint.managerResponses[
+                                complaint.managerResponses.length - 1
+                              ].responseText
+                            }
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Phản hồi lúc{" "}
+                            {formatDate(
+                              complaint.managerResponses[
+                                complaint.managerResponses.length - 1
+                              ].respondedAt,
+                            )}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic flex items-center gap-2">
+                          <ClockIcon className="w-4 h-4" />
+                          Đang chờ phản hồi
+                        </p>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </div>
     </div>
