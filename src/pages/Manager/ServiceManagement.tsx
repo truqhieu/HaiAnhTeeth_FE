@@ -9,6 +9,7 @@ import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader
 import toast from "react-hot-toast";
 
 import { AddServiceModal, EditServiceModal } from "@/components";
+import { DateRangePicker } from "@/components/Common";
 import { managerApi, ManagerService } from "@/api";
 import { Service } from "@/types";
 
@@ -16,6 +17,10 @@ const ServiceManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [dateRange, setDateRange] = useState<{startDate: string | null, endDate: string | null}>({
+    startDate: null,
+    endDate: null
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

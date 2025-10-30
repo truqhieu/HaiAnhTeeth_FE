@@ -193,7 +193,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       const scheduleRes = await getDoctorScheduleRange(
         doctorId,
         formData.serviceId,
-        formData.date
+        formData.date,
+        formData.appointmentFor
       );
 
       if (scheduleRes.success && scheduleRes.data?.scheduleRanges) {
@@ -419,6 +420,21 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   </label>
                 ))}
               </div>
+              
+              {/* Hiển thị thông tin người được đặt lịch */}
+              {formData.appointmentFor === "self" ? (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Bản thân:</strong> {user?.fullName} ({user?.email})
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    <strong>Người thân:</strong> {formData.fullName} ({formData.email})
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* User Info */}

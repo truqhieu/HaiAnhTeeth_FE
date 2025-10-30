@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import CancelAppointmentModal from "@/components/Patient/CancelAppointmentModal";
+import { DateRangePicker, RescheduleAppointmentModal, ChangeDoctorModal } from "@/components/Common";
 
 interface Appointment {
   id: string;
@@ -45,9 +46,15 @@ const Appointments = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateRange, setDateRange] = useState<{startDate: string | null, endDate: string | null}>({
+    startDate: null,
+    endDate: null
+  });
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
   const [policies, setPolicies] = useState<any[]>([]);
+  const [rescheduleFor, setRescheduleFor] = useState<Appointment | null>(null);
+  const [changeDoctorFor, setChangeDoctorFor] = useState<Appointment | null>(null);
 
   // Fetch user appointments
   const refetchAppointments = async () => {
@@ -122,6 +129,14 @@ const Appointments = () => {
           };
         },
       );
+
+      // Debug log để kiểm tra dữ liệu
+      console.log('🔍 [Appointments] Mapped appointments:', mappedAppointments.map(apt => ({
+        id: apt.id,
+        appointmentFor: apt.appointmentFor,
+        customerName: apt.customerName,
+        customerEmail: apt.customerEmail
+      })));
 
       setAppointments(mappedAppointments);
       setError(null);
@@ -222,11 +237,12 @@ const Appointments = () => {
     if (!dateString) return "";
     const date = new Date(dateString);
 
-    const vnHours = (date.getUTCHours() + 7) % 24;
-    const hours = String(vnHours).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    
-    return `${hours}:${minutes}`;
+    return date.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Ho_Chi_Minh'
+    });
   };
 
   // Hàm xử lý hủy ca khám với logic khác nhau cho Examination/Consultation
@@ -323,7 +339,19 @@ const Appointments = () => {
         if (statusFilter === "pendingPayment" && apt.status !== "PendingPayment") return false;
       }
 
-      // Filter theo ngày
+      // Filter theo date range
+      if (dateRange.startDate || dateRange.endDate) {
+        const aptDateStr = aptDate.toISOString().split('T')[0];
+        
+        if (dateRange.startDate && aptDateStr < dateRange.startDate) {
+          return false;
+        }
+        if (dateRange.endDate && aptDateStr > dateRange.endDate) {
+          return false;
+        }
+      }
+
+      // Filter theo ngày (fallback cho dateFilter cũ)
       if (dateFilter !== "all") {
         const now = new Date();
         const aptDateOnly = new Date(aptDate.getFullYear(), aptDate.getMonth(), aptDate.getDate());
@@ -449,6 +477,32 @@ const Appointments = () => {
       </div>
 
       <div className="max-w-[1600px] mx-auto px-6 py-8">
+        {rescheduleFor && (
+          <RescheduleAppointmentModal
+            appointmentId={rescheduleFor.id}
+            currentStartTime={rescheduleFor.startTime}
+            currentEndTime={rescheduleFor.endTime}
+            onClose={() => setRescheduleFor(null)}
+            onSuccess={() => {
+              setRescheduleFor(null);
+              toast.success("Yêu cầu đổi lịch hẹn đã được gửi thành công!");
+            }}
+          />
+        )}
+        {changeDoctorFor && (
+          <ChangeDoctorModal
+            appointmentId={changeDoctorFor.id}
+            currentStartTime={changeDoctorFor.startTime}
+            currentEndTime={changeDoctorFor.endTime}
+            serviceName={changeDoctorFor.serviceName}
+            currentDoctorName={changeDoctorFor.doctorName}
+            onClose={() => setChangeDoctorFor(null)}
+            onSuccess={() => {
+              setChangeDoctorFor(null);
+              toast.success("Yêu cầu đổi bác sĩ đã được gửi thành công!");
+            }}
+          />
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center space-x-3">
@@ -569,19 +623,14 @@ const Appointments = () => {
               </select>
             </div>
 
-            {/* Date Filter */}
-            <div className="lg:w-48">
-              <select
-                className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-              >
-                <option value="all">Tất cả ngày</option>
-                <option value="today">Hôm nay</option>
-                <option value="tomorrow">Ngày mai</option>
-                <option value="thisWeek">Tuần này</option>
-                <option value="thisMonth">Tháng này</option>
-              </select>
+            {/* Date Range Filter */}
+            <div className="lg:w-64">
+              <DateRangePicker
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                onDateChange={(startDate, endDate) => setDateRange({startDate, endDate})}
+                placeholder="Chọn khoảng thời gian"
+              />
             </div>
 
             {/* Clear Filters */}
@@ -591,6 +640,7 @@ const Appointments = () => {
                 setSearchTerm("");
                 setStatusFilter("all");
                 setDateFilter("all");
+                setDateRange({startDate: null, endDate: null});
               }}
             >
               Xóa bộ lọc
@@ -698,7 +748,7 @@ const Appointments = () => {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-48">
-                    {appointment.customerName && appointment.customerEmail ? (
+                    {appointment.appointmentFor === 'other' && appointment.customerName && appointment.customerEmail ? (
                       <div className="text-sm">
                           <p className="font-medium text-gray-900">
                           {appointment.customerName}
@@ -745,8 +795,7 @@ const Appointments = () => {
                             className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-xs font-medium hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                             title="Đổi lịch hẹn"
                           onClick={() => {
-                              // TODO: Implement reschedule
-                              console.log("Reschedule appointment:", appointment.id);
+                              setRescheduleFor(appointment);
                           }}
                         >
                             Đổi lịch
@@ -759,8 +808,7 @@ const Appointments = () => {
                             className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-xs font-medium hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
                             title="Đổi bác sĩ"
                             onClick={() => {
-                              // TODO: Implement change doctor
-                              console.log("Change doctor for appointment:", appointment.id);
+                              setChangeDoctorFor(appointment);
                             }}
                           >
                             Đổi bác sĩ

@@ -10,14 +10,18 @@ interface Schedule {
   date: string;
   shift: string;
   shiftName: string;
-  startTime: string;
-  endTime: string;
   doctorName: string;
   doctorId: string;
   roomName: string;
   roomId?: string;
   maxSlots: number;
   status: "available" | "unavailable" | "booked" | "cancelled";
+  workingHours: {
+    morningStart: string;
+    morningEnd: string;
+    afternoonStart: string;
+    afternoonEnd: string;
+  };
 }
 
 interface EditScheduleModalProps {
@@ -39,18 +43,22 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     shift: "",
-    startTime: "",
-    endTime: "",
     status: "Available" as "Available" | "Unavailable" | "Booked" | "Cancelled",
     roomId: "",
+    workingHours: {
+      morningStart: "08:00",
+      morningEnd: "12:00",
+      afternoonStart: "14:00",
+      afternoonEnd: "18:00",
+    },
   });
 
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const shiftOptions = [
-    { key: "Morning", label: "Ca Sáng", start: "08:00", end: "12:00" },
-    { key: "Afternoon", label: "Ca Chiều", start: "13:00", end: "17:00" },
+    { key: "Morning", label: "Ca Sáng" },
+    { key: "Afternoon", label: "Ca Chiều" },
   ];
 
   const statusOptions = [
@@ -65,8 +73,6 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     if (isOpen && schedule) {
       setFormData({
         shift: schedule.shift,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
         status: (schedule.status.charAt(0).toUpperCase() +
           schedule.status.slice(1)) as
           | "Available"
@@ -74,6 +80,12 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
           | "Booked"
           | "Cancelled",
         roomId: schedule.roomId || "",
+        workingHours: schedule.workingHours || {
+          morningStart: "08:00",
+          morningEnd: "12:00",
+          afternoonStart: "14:00",
+          afternoonEnd: "18:00",
+        },
       });
       setShowValidation(false);
     }
@@ -81,22 +93,14 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   // Auto-fill time when shift is selected
   const handleShiftChange = (shift: string) => {
-    const selectedShift = shiftOptions.find((s) => s.key === shift);
-
-    if (selectedShift) {
-      setFormData((prev) => ({
-        ...prev,
-        shift: shift,
-        startTime: selectedShift.start,
-        endTime: selectedShift.end,
-      }));
-    }
+    setFormData((prev) => ({
+      ...prev,
+      shift: shift,
+    }));
   };
 
   // Validation states
   const isShiftInvalid = showValidation && !formData.shift;
-  const isStartTimeInvalid = showValidation && !formData.startTime;
-  const isEndTimeInvalid = showValidation && !formData.endTime;
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -109,8 +113,7 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     setShowValidation(true);
 
     // Check validation
-    const hasErrors =
-      !formData.shift || !formData.startTime || !formData.endTime;
+    const hasErrors = !formData.shift;
 
     if (hasErrors) {
       return;
@@ -121,31 +124,17 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     try {
       if (!schedule) return;
 
-      // Tạo ISO datetime strings cho startTime và endTime
-      const dateObj = new Date(schedule.date);
-      const [startHour, startMinute] = formData.startTime.split(":");
-      const [endHour, endMinute] = formData.endTime.split(":");
-
-      const startDateTime = new Date(dateObj);
-
-      startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
-
-      const endDateTime = new Date(dateObj);
-
-      endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
-
       const updateData = {
         shift: formData.shift as "Morning" | "Afternoon",
-        startTime: startDateTime.toISOString(),
-        endTime: endDateTime.toISOString(),
         status: formData.status,
         roomId: formData.roomId || undefined,
+        workingHours: formData.workingHours,
       };
 
       const response = await managerApi.updateSchedule(schedule.id, updateData);
 
-      if (response.status) {
-        toast.success(response.message || "Cập nhật ca khám thành công");
+      if (response.data?.status) {
+        toast.success(response.data.message || "Cập nhật ca khám thành công");
         if (onSuccess) {
           onSuccess();
         }
@@ -298,20 +287,19 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   inputWrapper: "w-full"
                 }}
                 autoComplete="off"
-                errorMessage={
-                  isStartTimeInvalid ? "Vui lòng nhập giờ bắt đầu" : ""
-                }
-                isInvalid={isStartTimeInvalid}
-                isReadOnly={formData.shift !== ""}
-                label={
-                  <>
-                    Giờ bắt đầu <span className="text-red-500">*</span>
-                  </>
-                }
+                label="Giờ bắt đầu ca sáng"
                 type="time"
-                value={formData.startTime}
+                value={formData.workingHours.morningStart}
                 variant="bordered"
-                onValueChange={(value) => handleInputChange("startTime", value)}
+                onValueChange={(value) => 
+                  setFormData(prev => ({
+                    ...prev,
+                    workingHours: {
+                      ...prev.workingHours,
+                      morningStart: value
+                    }
+                  }))
+                }
               />
 
               <Input
@@ -321,20 +309,63 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   inputWrapper: "w-full"
                 }}
                 autoComplete="off"
-                errorMessage={
-                  isEndTimeInvalid ? "Vui lòng nhập giờ kết thúc" : ""
-                }
-                isInvalid={isEndTimeInvalid}
-                isReadOnly={formData.shift !== ""}
-                label={
-                  <>
-                    Giờ kết thúc <span className="text-red-500">*</span>
-                  </>
-                }
+                label="Giờ kết thúc ca sáng"
                 type="time"
-                value={formData.endTime}
+                value={formData.workingHours.morningEnd}
                 variant="bordered"
-                onValueChange={(value) => handleInputChange("endTime", value)}
+                onValueChange={(value) => 
+                  setFormData(prev => ({
+                    ...prev,
+                    workingHours: {
+                      ...prev.workingHours,
+                      morningEnd: value
+                    }
+                  }))
+                }
+              />
+
+              <Input
+                fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
+                autoComplete="off"
+                label="Giờ bắt đầu ca chiều"
+                type="time"
+                value={formData.workingHours.afternoonStart}
+                variant="bordered"
+                onValueChange={(value) => 
+                  setFormData(prev => ({
+                    ...prev,
+                    workingHours: {
+                      ...prev.workingHours,
+                      afternoonStart: value
+                    }
+                  }))
+                }
+              />
+
+              <Input
+                fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
+                autoComplete="off"
+                label="Giờ kết thúc ca chiều"
+                type="time"
+                value={formData.workingHours.afternoonEnd}
+                variant="bordered"
+                onValueChange={(value) => 
+                  setFormData(prev => ({
+                    ...prev,
+                    workingHours: {
+                      ...prev.workingHours,
+                      afternoonEnd: value
+                    }
+                  }))
+                }
               />
 
               <Select

@@ -348,23 +348,37 @@ export const getDoctorScheduleRange = async (
   doctorUserId: string,
   serviceId: string,
   date: string,
+  appointmentFor: 'self' | 'other' = 'self'
 ): Promise<GetAvailableStartTimesResponse> => {
   try {
     const queryParams = new URLSearchParams();
     queryParams.append("doctorUserId", doctorUserId);
     queryParams.append("serviceId", serviceId);
     queryParams.append("date", date);
+    queryParams.append("appointmentFor", appointmentFor);
 
     const query = queryParams.toString();
     const endpoint = `/available-slots/doctor-schedule?${query}`;
+
+    // ⭐ Lấy token từ store để gửi Authorization header
+    const { store } = await import("../store/index");
+    const state = store.getState();
+    const token = state.auth.token;
+
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    // ⭐ Nếu có token, thêm vào header
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
 
     const response = await fetch(
       `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         credentials: "include",
       },
     );

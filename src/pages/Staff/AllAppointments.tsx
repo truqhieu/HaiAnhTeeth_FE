@@ -37,6 +37,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { DateRangePicker } from "@/components/Common";
 import toast from "react-hot-toast";
 // ===== Interface định nghĩa =====
 interface Appointment {
@@ -92,16 +93,21 @@ const AllAppointments = () => {
   // Filter states
   const [searchText, setSearchText] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
-  const [selectedDate, setSelectedDate] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<{
+    startDate: string | null;
+    endDate: string | null;
+  }>({
+    startDate: null,
+    endDate: null,
+  });
   const [activeTab, setActiveTab] = useState<string>("all");
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  // Danh sách unique doctors và dates
+  // Danh sách unique doctors
   const [doctors, setDoctors] = useState<string[]>([]);
-  const [dates, setDates] = useState<string[]>([]);
 
   // Detail modal
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -116,7 +122,14 @@ const AllAppointments = () => {
 
       const res: ApiResponse<any[]> = await appointmentApi.getAllAppointments();
 
-      if (res.success && res.data) {
+      console.log('🔍 getAllAppointments API response:', {
+        success: res.success,
+        dataType: Array.isArray(res.data) ? 'array' : typeof res.data,
+        dataLength: res.data?.length || 0,
+        data: res.data
+      });
+
+      if (res.success && res.data && Array.isArray(res.data)) {
         const allMapped: Appointment[] = res.data.map((apt) => {
           let patientName = "N/A";
 
@@ -142,13 +155,18 @@ const AllAppointments = () => {
         setAppointments(allMapped);
         setFilteredAppointments(allMapped);
 
-        const uniqueDoctors = [...new Set(allMapped.map(apt => apt.doctorName))].filter(d => d !== "N/A");
-        const uniqueDates = [...new Set(allMapped.map(apt => formatDate(apt.startTime)))].filter(d => d !== "");
+        const uniqueDoctors = [...new Set(allMapped.map((apt) => apt.doctorName))].filter(
+          (d) => d !== "N/A"
+        );
         
         setDoctors(uniqueDoctors);
-        setDates(uniqueDates);
       } else {
-        setError(res.message || "Lỗi lấy danh sách ca khám");
+        console.error("API Response:", res);
+        if (res.data && !Array.isArray(res.data)) {
+          setError(`Lỗi: API trả về dữ liệu không đúng định dạng. Expected array, got ${typeof res.data}`);
+        } else {
+          setError(res.message || "Lỗi lấy danh sách ca khám");
+        }
       }
     } catch (err: any) {
       console.error("Error:", err);
@@ -186,14 +204,40 @@ const AllAppointments = () => {
       filtered = filtered.filter(apt => apt.doctorName === selectedDoctor);
     }
 
-    // Filter by date
-    if (selectedDate !== "all") {
-      filtered = filtered.filter(apt => formatDate(apt.startTime) === selectedDate);
+    // Filter by date range
+    if (dateRange.startDate && dateRange.endDate) {
+      filtered = filtered.filter(apt => {
+        const aptDate = new Date(apt.startTime);
+        const startDate = new Date(dateRange.startDate!);
+        const endDate = new Date(dateRange.endDate!);
+        
+        // Set time to start of day for comparison
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        
+        return aptDate >= startDate && aptDate <= endDate;
+      });
+    } else if (dateRange.startDate) {
+      // Only start date selected
+      filtered = filtered.filter(apt => {
+        const aptDate = new Date(apt.startTime);
+        const startDate = new Date(dateRange.startDate!);
+        startDate.setHours(0, 0, 0, 0);
+        return aptDate >= startDate;
+      });
+    } else if (dateRange.endDate) {
+      // Only end date selected
+      filtered = filtered.filter(apt => {
+        const aptDate = new Date(apt.startTime);
+        const endDate = new Date(dateRange.endDate!);
+        endDate.setHours(23, 59, 59, 999);
+        return aptDate <= endDate;
+      });
     }
 
     setFilteredAppointments(filtered);
     setCurrentPage(1);
-  }, [searchText, selectedDoctor, selectedDate, activeTab, appointments]);
+  }, [searchText, selectedDoctor, dateRange, activeTab, appointments]);
 
   // ===== Open Cancel Modal =====
   const openCancelModal = (appointmentId: string) => {
@@ -246,6 +290,8 @@ const AllAppointments = () => {
   const handleApprove = async (appointmentId: string) => {
     try {
       setProcessingId(appointmentId);
+      
+      console.log("🔍 [AllAppointments] Approving appointment:", appointmentId);
 
       const res: ApiResponse<null> = await appointmentApi.reviewAppointment(
         appointmentId,
@@ -273,6 +319,8 @@ const AllAppointments = () => {
   ) => {
     try {
       setProcessingId(appointmentId);
+      
+      console.log("🔍 [AllAppointments] Updating status:", { appointmentId, newStatus });
 
       const res = await appointmentApi.updateAppointmentStatus(
         appointmentId,
@@ -349,11 +397,13 @@ const AllAppointments = () => {
   const formatTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    // Convert UTC sang giờ VN (UTC+7)
-    const vnHours = (date.getUTCHours() + 7) % 24;
-    const hours = String(vnHours).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
+    
+    return date.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Ho_Chi_Minh'
+    });
   };
 
   const formatDate = (dateString: string): string => {
@@ -368,14 +418,16 @@ const AllAppointments = () => {
   const formatDateTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const year = date.getUTCFullYear();
-    // Convert UTC sang giờ VN (UTC+7)
-    const vnHours = (date.getUTCHours() + 7) % 24;
-    const hours = String(vnHours).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    return `${day}/${month}/${year}, ${hours}:${minutes}`;
+    
+    const dateStr = date.toLocaleDateString('vi-VN');
+    const timeStr = date.toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Ho_Chi_Minh'
+    });
+    
+    return `${dateStr}, ${timeStr}`;
   };
 
   // Format local time cho check-in (hiển thị giờ địa phương)
@@ -390,11 +442,37 @@ const AllAppointments = () => {
     return `${day}/${month}/${year}, ${hours}:${minutes}`;
   };
 
+  // ===== Helper functions =====
+  const shouldShowRefundButton = (appointment: any) => {
+    // Chỉ hiển thị nút hoàn tiền khi:
+    // 1. Trạng thái là Cancelled
+    // 2. Loại là Consultation (có thanh toán)
+    // 3. Có cancelReason
+    // 4. KHÔNG phải No-Show (staff hủy)
+    if (!appointment || 
+        appointment.status !== "Cancelled" || 
+        appointment.type !== "Consultation" || 
+        !appointment.cancelReason) {
+      return false;
+    }
+
+    const cancelReason = appointment.cancelReason.toLowerCase();
+    const isNoShow = cancelReason.includes('no-show') || 
+                    cancelReason.includes('không đến') ||
+                    cancelReason.includes('không xuất hiện') ||
+                    cancelReason.includes('absent');
+    
+    return !isNoShow;
+  };
+
   // ===== Detail modal handlers =====
   const openDetailModal = async (appointmentId: string) => {
     try {
       setDetailLoading(true);
       setIsDetailOpen(true);
+      
+      console.log("🔍 [AllAppointments] Getting appointment details:", appointmentId);
+      
       const res: ApiResponse<AppointmentDetailData> = await appointmentApi.getAppointmentDetails(appointmentId);
       if (res.success && res.data) {
         console.log("Detail data:", res.data);
@@ -645,6 +723,21 @@ const AllAppointments = () => {
                         </div>
                       </div>
                     )}
+
+                    {detailData.status === 'Cancelled' && detailData.type === 'Consultation' && !shouldShowRefundButton(detailData) && (
+                      <div className="border-t pt-4">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                          <div className="flex items-center">
+                            <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                            <p className="text-sm text-yellow-800">
+                              <strong>Lưu ý:</strong> Ca khám này bị hủy do không đến khám nên sẽ không được hoàn tiền .
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardBody>
                 </Card>
               </div>
@@ -654,7 +747,7 @@ const AllAppointments = () => {
           </ModalBody>
           <ModalFooter className="gap-3">
             <Button variant="flat" onPress={closeDetailModal}>Đóng</Button>
-            {detailData?.status === "Cancelled" && detailData?.type === "Consultation" && (
+            {shouldShowRefundButton(detailData) && (
               <Button color="success" onPress={handleMarkRefunded} isLoading={processingId === detailData?._id}>
                 Đã hoàn tiền
               </Button>
@@ -760,24 +853,13 @@ const AllAppointments = () => {
               ))}
             </Select>
 
-            <Select
-              label="Ngày khám"
-              placeholder="Chọn ngày"
-              selectedKeys={selectedDate !== "all" ? new Set([selectedDate]) : new Set([])}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setSelectedDate(selected ? String(selected) : "all");
-              }}
-              size="lg"
-              variant="bordered"
-              startContent={<CalendarIcon className="w-5 h-5 text-gray-400" />}
-            >
-              {[{ key: "all", label: "Tất cả ngày" }, ...dates.map(d => ({ key: d, label: d }))].map((item) => (
-                <SelectItem key={item.key}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </Select>
+            <DateRangePicker
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
+              placeholder="Chọn khoảng thời gian"
+              className="w-full"
+            />
           </div>
         </CardBody>
       </Card>

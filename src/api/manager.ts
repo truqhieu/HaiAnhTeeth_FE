@@ -100,11 +100,15 @@ export interface ManagerSchedule {
   doctorUserId: any; // Có thể là string hoặc object {_id, fullName} khi populated
   date: string;
   shift: "Morning" | "Afternoon";
-  startTime: string;
-  endTime: string;
   status: "Available" | "Unavailable" | "Booked" | "Cancelled";
   roomId?: any; // Có thể là string hoặc object {_id, name} khi populated
   maxSlots: number;
+  workingHours: {
+    morningStart: string;
+    morningEnd: string;
+    afternoonStart: string;
+    afternoonEnd: string;
+  };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -113,18 +117,38 @@ export interface CreateScheduleData {
   doctorId: string;
   date: string;
   shift: "Morning" | "Afternoon";
-  startTime: string;
-  endTime: string;
   roomId?: string;
   maxSlots: number;
+  workingHours: {
+    morningStart: string;
+    morningEnd: string;
+    afternoonStart: string;
+    afternoonEnd: string;
+  };
+}
+
+export interface DoctorWithWorkingHours {
+  _id: string;
+  fullName: string;
+  email: string;
+  workingHours: {
+    morningStart: string;
+    morningEnd: string;
+    afternoonStart: string;
+    afternoonEnd: string;
+  };
 }
 
 export interface UpdateScheduleData {
   shift?: "Morning" | "Afternoon";
-  startTime?: string;
-  endTime?: string;
   status?: "Available" | "Unavailable" | "Booked" | "Cancelled";
   roomId?: string;
+  workingHours?: {
+    morningStart?: string;
+    morningEnd?: string;
+    afternoonStart?: string;
+    afternoonEnd?: string;
+  };
 }
 
 export interface GetSchedulesParams {
@@ -486,5 +510,137 @@ export const managerApi = {
         method: "DELETE",
       },
     );
+  },
+
+  // Working Hours Management
+  getWorkingHours: async (
+    scheduleId: string,
+  ): Promise<
+    ApiResponse<{
+      scheduleId: string;
+      doctorUserId: string;
+      doctorName: string;
+      date: string;
+      shift: string;
+      workingHours: {
+        morningStart: string;
+        morningEnd: string;
+        afternoonStart: string;
+        afternoonEnd: string;
+      };
+    }>
+  > => {
+    return authenticatedApiCall(`/schedules/${scheduleId}/working-hours`, {
+      method: "GET",
+    });
+  },
+
+  updateWorkingHours: async (
+    scheduleId: string,
+    workingHours: {
+      morningStart: string;
+      morningEnd: string;
+      afternoonStart: string;
+      afternoonEnd: string;
+    },
+  ): Promise<
+    ApiResponse<{
+      scheduleId: string;
+      doctorUserId: string;
+      date: string;
+      shift: string;
+      workingHours: {
+        morningStart: string;
+        morningEnd: string;
+        afternoonStart: string;
+        afternoonEnd: string;
+      };
+    }>
+  > => {
+    return authenticatedApiCall(`/schedules/${scheduleId}/working-hours`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ workingHours }),
+    });
+  },
+
+  updateDoctorWorkingHoursForDate: async (
+    doctorId: string,
+    date: string,
+    workingHours: {
+      morningStart: string;
+      morningEnd: string;
+      afternoonStart: string;
+      afternoonEnd: string;
+    },
+  ): Promise<
+    ApiResponse<{
+      doctorId: string;
+      date: string;
+      updatedSchedules: number;
+      workingHours: {
+        morningStart: string;
+        morningEnd: string;
+        afternoonStart: string;
+        afternoonEnd: string;
+      };
+    }>
+  > => {
+    return authenticatedApiCall(`/schedules/doctor/${doctorId}/date/${date}/working-hours`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ workingHours }),
+    });
+  },
+
+  // Get all doctors with working hours
+  getDoctorsWithWorkingHours: async (): Promise<
+    ApiResponse<{ status: boolean; message: string; data: DoctorWithWorkingHours[] }>
+  > => {
+    return authenticatedApiCall<{
+      status: boolean;
+      message: string;
+      data: DoctorWithWorkingHours[];
+    }>(`/manager/schedules/doctors-with-working-hours?t=${Date.now()}`, {
+      method: "GET",
+    });
+  },
+
+  // Update doctor working hours for all schedules
+  updateDoctorWorkingHours: async (
+    doctorId: string,
+    workingHours: {
+      morningStart: string;
+      morningEnd: string;
+      afternoonStart: string;
+      afternoonEnd: string;
+    },
+  ): Promise<
+    ApiResponse<{
+      status: boolean;
+      message: string;
+      data: {
+        doctorId: string;
+        updatedSchedules: number;
+        workingHours: {
+          morningStart: string;
+          morningEnd: string;
+          afternoonStart: string;
+          afternoonEnd: string;
+        };
+      };
+    }>
+  > => {
+    return authenticatedApiCall(`/manager/schedules/doctor/${doctorId}/working-hours`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ workingHours }),
+    });
   },
 };

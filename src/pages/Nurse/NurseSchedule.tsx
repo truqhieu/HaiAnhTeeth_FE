@@ -32,6 +32,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { nurseApi, type NurseAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { DateRangePicker } from "@/components/Common";
 import AppointmentDetailModalNurse from "./AppointmentDetailModalNurse";
 import PatientDetailModalNurse from "./PatientDetailModalNurse";
 
@@ -46,6 +47,10 @@ const NurseSchedule = () => {
   // Filter states
   const [searchText, setSearchText] = useState("");
   const [selectedDate, setSelectedDate] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<{startDate: string | null, endDate: string | null}>({
+    startDate: null,
+    endDate: null
+  });
   const [selectedMode, setSelectedMode] = useState<string>("all");
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("upcoming");
@@ -123,9 +128,35 @@ const NurseSchedule = () => {
       );
     }
 
-    // Filter by date
-    if (selectedDate !== "all") {
-      filtered = filtered.filter(apt => formatDate(apt.appointmentDate) === selectedDate);
+    // Filter by date range
+    if (dateRange.startDate && dateRange.endDate) {
+      filtered = filtered.filter(apt => {
+        const aptDate = new Date(apt.appointmentDate);
+        const startDate = new Date(dateRange.startDate!);
+        const endDate = new Date(dateRange.endDate!);
+        
+        // Set time to start of day for comparison
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        
+        return aptDate >= startDate && aptDate <= endDate;
+      });
+    } else if (dateRange.startDate) {
+      // Only start date selected
+      filtered = filtered.filter(apt => {
+        const aptDate = new Date(apt.appointmentDate);
+        const startDate = new Date(dateRange.startDate!);
+        startDate.setHours(0, 0, 0, 0);
+        return aptDate >= startDate;
+      });
+    } else if (dateRange.endDate) {
+      // Only end date selected
+      filtered = filtered.filter(apt => {
+        const aptDate = new Date(apt.appointmentDate);
+        const endDate = new Date(dateRange.endDate!);
+        endDate.setHours(23, 59, 59, 999);
+        return aptDate <= endDate;
+      });
     }
 
     // Filter by mode
@@ -140,7 +171,7 @@ const NurseSchedule = () => {
 
     setFilteredAppointments(filtered);
     setCurrentPage(1);
-  }, [searchText, selectedDate, selectedMode, selectedDoctor, activeTab, appointments]);
+  }, [searchText, dateRange, selectedMode, selectedDoctor, activeTab, appointments]);
 
   const handleViewAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
@@ -361,24 +392,13 @@ const NurseSchedule = () => {
               ))}
             </Select>
 
-            <Select
-              label="Ngày khám"
-              placeholder="Chọn ngày"
-              selectedKeys={selectedDate !== "all" ? new Set([selectedDate]) : new Set([])}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setSelectedDate(selected ? String(selected) : "all");
-              }}
-              size="lg"
-              variant="bordered"
-              startContent={<CalendarIcon className="w-5 h-5 text-gray-400" />}
-            >
-              {[{ key: "all", label: "Tất cả ngày" }, ...dates.map(d => ({ key: d, label: d }))].map((item) => (
-                <SelectItem key={item.key}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </Select>
+            <DateRangePicker
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
+              placeholder="Chọn khoảng thời gian"
+              className="w-full"
+            />
 
             <Select
               label="Hình thức"
