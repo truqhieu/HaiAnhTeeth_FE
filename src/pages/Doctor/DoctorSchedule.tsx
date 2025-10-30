@@ -102,18 +102,13 @@ const DoctorSchedule = () => {
   useEffect(() => {
     let filtered = [...appointments];
 
-    // Filter by time (upcoming vs history)
-    const now = new Date();
+    // Tab logic:
+    // - Upcoming: chỉ hiển thị CheckedIn hoặc InProgress
+    // - History: chỉ hiển thị Completed
     if (activeTab === "upcoming") {
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        return aptDate >= now;
-      });
+      filtered = filtered.filter(apt => apt.status === "CheckedIn" || apt.status === "InProgress");
     } else if (activeTab === "history") {
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        return aptDate < now;
-      });
+      filtered = filtered.filter(apt => apt.status === "Completed");
     }
 
     // Filter by search text

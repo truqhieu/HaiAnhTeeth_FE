@@ -31,6 +31,7 @@ import {
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { nurseApi, type NurseAppointment, appointmentApi } from "@/api";
+import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
 import AppointmentDetailModalNurse from "./AppointmentDetailModalNurse";
@@ -108,10 +109,10 @@ const NurseSchedule = () => {
     let filtered = [...appointments];
 
     // Sửa logic tab:
-    // - Lịch sắp tới: chỉ hiển thị các ca có trạng thái CheckedIn
+    // - Lịch sắp tới: hiển thị các ca có trạng thái CheckedIn hoặc InProgress
     // - Lịch sử khám: chỉ hiển thị các ca Completed
     if (activeTab === "upcoming") {
-      filtered = filtered.filter(apt => apt.status === "CheckedIn");
+      filtered = filtered.filter(apt => apt.status === "CheckedIn" || apt.status === "InProgress");
     } else if (activeTab === "history") {
       filtered = filtered.filter(apt => apt.status === "Completed");
     }
@@ -251,8 +252,8 @@ const NurseSchedule = () => {
   // Stats calculation
   const stats = {
     total: appointments.length,
-    // Sắp tới = số ca đang CheckedIn
-    upcoming: appointments.filter(a => a.status === "CheckedIn").length,
+    // Sắp tới = số ca đang CheckedIn hoặc InProgress
+    upcoming: appointments.filter(a => a.status === "CheckedIn" || a.status === "InProgress").length,
     today: appointments.filter(a => formatDate(a.appointmentDate) === formatDate(new Date().toISOString())).length,
     online: appointments.filter(a => a.mode === "Online").length,
     offline: appointments.filter(a => a.mode === "Offline").length,
@@ -581,17 +582,45 @@ const NurseSchedule = () => {
                       </Button>
                     )}
 
-                    {/* Chỉ hiển thị Hồ sơ bệnh án cho ca Offline, và khi đã bấm 'Đang trong ca khám' hoặc đã Completed */}
-                    {appointment.mode === "Offline" && (inProgressIds.has(appointment.appointmentId) || appointment.status === "Completed") && (
+                    {/* Hiển thị Hồ sơ bệnh án cho ca Offline khi đang khám (InProgress), đã bấm bắt đầu, hoặc đã Completed */}
+                    {appointment.mode === "Offline" && (
+                      appointment.status === "InProgress" ||
+                      appointment.status === "Completed" ||
+                      inProgressIds.has(appointment.appointmentId)
+                    ) && (
                       <Button
                         size="sm"
                         variant="flat"
                         color="success"
                         startContent={<ClipboardDocumentListIcon className="w-4 h-4" />}
-                        onPress={() => navigate(`/nurse/medical/record/${appointment.patientId}`)}
+                        onPress={() => navigate(`/nurse/medical-record/${appointment.appointmentId}`)}
                         isDisabled={!appointment.patientId || appointment.patientId === "N/A" || appointment.patientId === "Trống"}
                       >
                         Hồ sơ bệnh án
+                      </Button>
+                    )}
+
+                    {/* Nút Hoàn thành cho ca InProgress */}
+                    {appointment.status === "InProgress" && (
+                      <Button
+                        size="sm"
+                        color="primary"
+                        variant="flat"
+                        onPress={async () => {
+                          try {
+                            const res = await appointmentApi.updateAppointmentStatus(appointment.appointmentId, "Completed");
+                            if (res.success) {
+                              toast.success("Đã hoàn thành ca khám");
+                              fetchAppointments();
+                            } else {
+                              toast.error(res.message || "Không thể cập nhật trạng thái");
+                            }
+                          } catch (e: any) {
+                            toast.error(e.message || "Không thể cập nhật trạng thái");
+                          }
+                        }}
+                      >
+                        Hoàn thành
                       </Button>
                     )}
                   </div>

@@ -29,6 +29,7 @@ import DoctorLayout from "@/layouts/DoctorLayout";
 import { DoctorSchedule } from "@/pages/Doctor";
 import NurseLayout from "@/layouts/NurseLayout";
 import NurseSchedule from "@/pages/Nurse/NurseSchedule";
+import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
 import MedicalRecordPage from "@/pages/MedicalRecord/MedicalRecordPage";
@@ -117,7 +118,7 @@ function App() {
               <NurseLayout>
                 <Routes>
                   <Route element={<NurseSchedule />} path="schedule" />
-                  <Route path="medical/record/:patientId" element={<MedicalRecordPage />} />
+                  <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
                 </Routes>
               </NurseLayout>
             }

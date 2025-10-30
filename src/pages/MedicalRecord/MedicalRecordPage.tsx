@@ -19,9 +19,11 @@ import {
   PencilSquareIcon,
   HeartIcon,
   CheckCircleIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/AuthContext";
 import defaultLayout from "@/layouts/default";
+import { doctorApi } from "@/api/doctor";
 
 // Type definitions
 interface MedicalRecord {
@@ -51,6 +53,8 @@ const MedicalRecordPage = () => {
   const [success, setSuccess] = useState<string | null>(null);
   
   const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
+  const [patientAppointments, setPatientAppointments] = useState<Array<{ appointmentId: string; serviceName: string; status: string; startTime: string; endTime: string }>>([]);
+  const [additionalServices, setAdditionalServices] = useState<Array<{ _id: string; serviceName: string; price?: number }>>([]);
   const [medicalRecord, setMedicalRecord] = useState<MedicalRecord>({
     symptoms: "",
     diagnosis: "",
@@ -71,6 +75,7 @@ const MedicalRecordPage = () => {
   useEffect(() => {
     if (patientId) {
       fetchMedicalRecord();
+      fetchPatientAppointments(patientId);
     }
   }, [patientId]);
 
@@ -100,6 +105,7 @@ const MedicalRecordPage = () => {
           prescription: "Thuốc giảm đau khi cần thiết. Paracetamol 500mg, uống 1-2 viên khi đau.",
           nursingNotes: "Bệnh nhân đã được hướng dẫn vệ sinh răng miệng đúng cách.",
         });
+        setAdditionalServices([]);
 
         setLoading(false);
       }, 1000);
@@ -107,6 +113,17 @@ const MedicalRecordPage = () => {
       console.error("Error fetching medical record:", err);
       setError(err.message || "Lỗi khi tải hồ sơ khám bệnh");
       setLoading(false);
+    }
+  };
+
+  const fetchPatientAppointments = async (pid: string) => {
+    try {
+      const res = await doctorApi.getAppointmentsOfPatient(pid);
+      if (res.success && Array.isArray(res.data)) {
+        setPatientAppointments(res.data);
+      }
+    } catch (e) {
+      // ignore silently for now
     }
   };
 
@@ -198,9 +215,6 @@ const MedicalRecordPage = () => {
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Hồ Sơ Khám Bệnh</h1>
-            <p className="text-gray-600 mt-1">
-              Mã bệnh nhân: <span className="font-semibold">#{patientId}</span>
-            </p>
           </div>
           <Chip 
             color={isDoctor ? "primary" : "secondary"} 
@@ -278,6 +292,60 @@ const MedicalRecordPage = () => {
       )}
 
       <Divider className="my-6" />
+
+      {/* Patient appointments list */}
+      {isDoctor && patientAppointments.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader className="pb-0 pt-4 px-6">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-gray-600" />
+              <h4 className="font-bold text-lg text-gray-800">Lịch khám của bệnh nhân</h4>
+            </div>
+          </CardHeader>
+          <CardBody className="px-6 pb-4">
+            <div className="divide-y border rounded-lg">
+              {patientAppointments.map((a) => (
+                <div key={a.appointmentId} className="flex items-center justify-between p-3">
+                  <div className="text-sm text-gray-700">
+                    <div className="font-semibold">{new Date(a.startTime).toLocaleString('vi-VN')}</div>
+                    <div className="text-gray-500">{a.serviceName}</div>
+                  </div>
+                  <Chip size="sm" variant="flat" color={a.status === 'Completed' ? 'success' : a.status === 'InProgress' ? 'warning' : 'primary'}>
+                    {a.status === 'Completed' ? 'Hoàn thành' : a.status === 'InProgress' ? 'Đang khám' : 'Đã nhận'}
+                  </Chip>
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Additional Services (read only) to match Nurse UI */}
+      <Card className="mb-6 bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
+        <CardHeader className="pb-0 pt-4 px-6">
+          <div className="flex items-center gap-2">
+            <DocumentTextIcon className="w-6 h-6 text-teal-600" />
+            <h4 className="font-bold text-lg text-gray-800">Dịch vụ bổ sung</h4>
+            <Chip size="sm" variant="flat" color="default" className="ml-2">Chỉ xem</Chip>
+          </div>
+        </CardHeader>
+        <CardBody className="px-6 pb-4">
+          {additionalServices.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {additionalServices.map((s) => (
+                <div key={s._id} className="flex items-center justify-between p-3 rounded-lg bg-white border">
+                  <span className="font-medium text-gray-800">{s.serviceName}</span>
+                  {typeof s.price === 'number' && (
+                    <span className="text-gray-600">{s.price.toLocaleString('vi-VN')}₫</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-gray-600">Không có dịch vụ bổ sung</div>
+          )}
+        </CardBody>
+      </Card>
 
       {/* Medical Record Form */}
       <div className="space-y-6">
