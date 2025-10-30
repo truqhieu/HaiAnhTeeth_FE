@@ -241,6 +241,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
     const startTimeISO = dateObj.toISOString();
 
+    // ⭐ FE validation: không cho đặt thời gian ở quá khứ
+    const nowUtc = new Date();
+    if (dateObj.getTime() < nowUtc.getTime()) {
+      setTimeInputError("Không thể đặt thời gian ở quá khứ");
+      return;
+    }
+
     setTimeInputError(null);
     try {
       const validateRes = await validateAppointmentTime(
@@ -592,8 +599,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Input thời gian và hiển thị kết quả nằm ngang */}
-                    {!errorMessage && (
-                      <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">
                             Nhập giờ bắt đầu
@@ -661,8 +667,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                             </div>
                           </div>
                         )}
-                      </div>
-                    )}
+                    </div>
                   </div>
               ) : (
                 <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">
