@@ -6,6 +6,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
+  DocumentTextIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
@@ -34,11 +35,17 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
       current: location.pathname === "/staff/dashboard",
     },
     {
+      name: "Đơn xin nghỉ phép",
+      href: "/staff/leave-requests",
+      icon: DocumentTextIcon,
+      current: location.pathname === "/staff/leave-requests",
+    },
+    {
       name: "Xử lý yêu cầu",
       href: "/staff/patient-requests",
       icon: ClipboardDocumentListIcon,
       current: location.pathname === "/staff/patient-requests",
-    },
+    }
   ];
 
   const handleNavigation = (href: string) => {

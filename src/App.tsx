@@ -21,6 +21,9 @@ import AdminLayout from "@/layouts/AdminLayout";
 import ServiceManagement from "@/pages/Manager/ServiceManagement";
 import RoomManagement from "@/pages/Manager/RoomManagement";
 import ScheduleManagement from "@/pages/Manager/ScheduleManagement";
+import ComplaintManagement from "@/pages/Manager/ComplaintManagement";
+import LeaveRequestManagement from "@/pages/Manager/LeaveRequestManagement";
+import PromotionManagement from "@/pages/Manager/PromotionManagement";
 import ManagerLayout from "@/layouts/ManagerLayout";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
@@ -29,6 +32,7 @@ import DoctorLayout from "@/layouts/DoctorLayout";
 import { DoctorSchedule } from "@/pages/Doctor";
 import NurseLayout from "@/layouts/NurseLayout";
 import NurseSchedule from "@/pages/Nurse/NurseSchedule";
+import LeaveRequest from "@/pages/Common/LeaveRequest";
 import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
@@ -79,6 +83,15 @@ function App() {
                   <Route element={<ServiceManagement />} path="services" />
                   <Route element={<RoomManagement />} path="rooms" />
                   <Route element={<ScheduleManagement />} path="schedules" />
+                  <Route element={<ComplaintManagement />} path="complaints" />
+                  <Route
+                    element={<LeaveRequestManagement />}
+                    path="leave-requests"
+                  />
+                  <Route
+                    element={<PromotionManagement />}
+                    path="promotions"
+                  />
                 </Routes>
               </ManagerLayout>
             }
@@ -91,6 +104,7 @@ function App() {
               <StaffLayout>
                 <Routes>
                   <Route element={<StaffDashboard />} path="dashboard" />
+                  <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route element={<PatientRequests />} path="patient-requests" />
                 </Routes>
               </StaffLayout>
@@ -104,7 +118,11 @@ function App() {
               <DoctorLayout>
                 <Routes>
                   <Route element={<DoctorSchedule />} path="schedule" />
-                  <Route path="medical/record/:patientId" element={<MedicalRecordPage />} />
+                  <Route element={<LeaveRequest />} path="leave-requests" />
+                  <Route
+                    element={<MedicalRecordPage />}
+                    path="medical/record/:patientId"
+                  />
                 </Routes>
               </DoctorLayout>
             }
@@ -113,15 +131,20 @@ function App() {
 
           {/* Nurse */}
           <Route
-            path="/nurse/*"
             element={
               <NurseLayout>
                 <Routes>
                   <Route element={<NurseSchedule />} path="schedule" />
+                  <Route element={<LeaveRequest />} path="leave-requests" />
+                  <Route
+                    element={<MedicalRecordPage />}
+                    path="medical/record/:patientId"
+                  />
                   <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
                 </Routes>
               </NurseLayout>
             }
+            path="/nurse/*"
           />
 
           {/* Public and Patient Routes with Navbar and Footer */}
@@ -135,11 +158,26 @@ function App() {
                     <Route element={<AboutPage />} path="/about" />
                     <Route element={<VerifyEmail />} path="/verify-email" />
                     <Route element={<Dashboard />} path="/patient/dashboard" />
-                    <Route element={<Appointments />} path="/patient/appointments" />
-                    <Route element={<MedicalRecords />} path="/patient/medical-records" />
-                    <Route element={<Complaints />} path="/patient/complaints" />
-                    <Route element={<AccountSettings />} path="/patient/account-settings" />
-                    <Route element={<PaymentPage />} path="/patient/payment/:paymentId" />
+                    <Route
+                      element={<Appointments />}
+                      path="/patient/appointments"
+                    />
+                    <Route
+                      element={<MedicalRecords />}
+                      path="/patient/medical-records"
+                    />
+                    <Route
+                      element={<Complaints />}
+                      path="/patient/complaints"
+                    />
+                    <Route
+                      element={<AccountSettings />}
+                      path="/patient/account-settings"
+                    />
+                    <Route
+                      element={<PaymentPage />}
+                      path="/patient/payment/:paymentId"
+                    />
                   </Routes>
                 </DefaultLayout>
               </>

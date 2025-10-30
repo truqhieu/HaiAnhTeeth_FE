@@ -7,6 +7,7 @@ import {
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   UserIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -31,6 +32,12 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
       href: "/doctor/schedule",
       icon: CalendarIcon,
       current: location.pathname === "/doctor/schedule",
+    },
+    {
+      name: "Đơn xin nghỉ phép",
+      href: "/doctor/leave-requests",
+      icon: DocumentTextIcon,
+      current: location.pathname === "/doctor/leave-requests",
     },
   ];
 
