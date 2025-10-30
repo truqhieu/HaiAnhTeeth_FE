@@ -41,15 +41,31 @@ const LeaveRequestPage = () => {
   const fetchLeaveRequests = async () => {
     try {
       setLoading(true);
-
+  
       const response = await leaveRequestApi.getAllLeaveRequests({
         limit: 100,
       });
-
-      if (response.success && response.data) {
-        setLeaveRequests(response.data.data || []);
+  
+      // 🔍 DEBUG
+      console.log('📦 LeaveRequest Response:', response);
+      console.log('✅ response.success:', response.success);
+      console.log('✅ response.status:', (response as any).status);
+      console.log('📊 response.data:', response.data);
+  
+      // ✅ Check cả success và status
+      if ((response.success || (response as any).status) && response.data) {
+        // Backend trả về: { status: true, total, totalPages, data: [...] }
+        // Hoặc wrapper: { success: true, data: { status: true, total, totalPages, data: [...] } }
+        const responseData = response.data.data ? response.data : (response as any);
+        const requestsData = responseData.data || [];
+        
+        console.log('✅ Setting leave requests:', requestsData);
+        setLeaveRequests(requestsData);
+      } else {
+        console.log('❌ No data in response');
       }
-    } catch {
+    } catch (error) {
+      console.error('❌ Error fetching leave requests:', error);
       toast.error("Không thể tải danh sách đơn xin nghỉ");
     } finally {
       setLoading(false);
@@ -420,4 +436,5 @@ const LeaveRequestPage = () => {
 };
 
 export default LeaveRequestPage;
+
 

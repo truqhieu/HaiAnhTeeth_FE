@@ -89,9 +89,12 @@ export const appointmentApi = {
     action: "approve" | "cancel",
     cancelReason?: string,
   ): Promise<ApiResponse<any>> => {
+    const payload = { appointmentId, action, cancelReason };
+    console.log("🔍 [API] Review appointment payload:", payload);
+    
     return authenticatedApiCall("/appointments/review", {
       method: "POST",
-      body: JSON.stringify({ appointmentId, action, cancelReason }),
+      body: JSON.stringify(payload),
     });
   },
 
@@ -104,9 +107,12 @@ export const appointmentApi = {
     appointmentId: string,
     status: "CheckedIn" | "Completed" | "Cancelled",
   ): Promise<ApiResponse<any>> => {
+    const payload = { status };
+    console.log("🔍 [API] Update status payload:", { appointmentId, payload });
+    
     return authenticatedApiCall(`/appointments/${appointmentId}/status`, {
       method: "PUT",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(payload),
     });
   },
 
@@ -163,6 +169,83 @@ export const appointmentApi = {
   markAsRefunded: async (appointmentId: string): Promise<ApiResponse<any>> => {
     return authenticatedApiCall(`/appointments/${appointmentId}/mark-refunded`, {
       method: "PUT",
+    });
+  },
+
+  /**
+   * Lấy khung giờ rảnh để đổi lịch theo appointmentId + ngày
+   * GET /api/appointments/:appointmentId/reschedule/slots?date=YYYY-MM-DD
+   */
+  getRescheduleSlots: async (
+    appointmentId: string,
+    date: string,
+  ): Promise<ApiResponse<{
+    date: string;
+    availableSlots: { startTime: string; endTime: string; displayTime?: string }[];
+    totalSlots: number;
+  }>> => {
+    const query = new URLSearchParams({ date }).toString();
+    return authenticatedApiCall(`/appointments/${appointmentId}/reschedule/slots?${query}`, {
+      method: "GET",
+    });
+  },
+
+  /**
+   * Bệnh nhân gửi yêu cầu đổi lịch (chỉ đổi ngày/giờ)
+   * POST /api/appointments/:appointmentId/request-reschedule
+   * Body: { newStartTime: string, newEndTime: string }
+   */
+  requestReschedule: async (
+    appointmentId: string,
+    params: { newStartTime: string; newEndTime: string; reason?: string },
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/request-reschedule`, {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  },
+
+  /**
+   * Bệnh nhân gửi yêu cầu đổi bác sĩ (chỉ đổi bác sĩ)
+   * POST /api/appointments/:appointmentId/request-change-doctor
+   * Body: { newDoctorUserId: string }
+   */
+  requestChangeDoctor: async (
+    appointmentId: string,
+    params: { newDoctorUserId: string; reason?: string },
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/request-change-doctor`, {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  },
+
+  /**
+   * Lấy danh sách bác sĩ khả dụng cho thời gian cụ thể
+   * GET /api/appointments/:appointmentId/available-doctors?startTime=...&endTime=...
+   */
+  getAvailableDoctors: async (
+    appointmentId: string,
+    startTime: string,
+    endTime: string,
+  ): Promise<ApiResponse<{
+    appointmentId: string;
+    currentDoctor: { _id: string; fullName: string };
+    serviceName: string;
+    serviceDuration: number;
+    requestedStartTime: string;
+    requestedEndTime: string;
+    availableDoctors: Array<{
+      _id: string;
+      fullName: string;
+      email: string;
+      workingHours: any;
+    }>;
+    totalAvailable: number;
+  }>> => {
+    const query = new URLSearchParams({ startTime, endTime }).toString();
+    return authenticatedApiCall(`/appointments/${appointmentId}/available-doctors?${query}`, {
+      method: "GET",
     });
   },
 };

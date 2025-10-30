@@ -36,6 +36,13 @@ const LeaveRequestManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(
     null,
   );
@@ -47,15 +54,28 @@ const LeaveRequestManagement = () => {
 
   useEffect(() => {
     fetchLeaveRequests();
-  }, [statusFilter]);
+  }, [statusFilter, currentPage]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchLeaveRequests();
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const fetchLeaveRequests = async () => {
     try {
       setLoading(true);
 
       const params: any = {
-        page: 1,
-        limit: 100,
+        page: currentPage,
+        limit: itemsPerPage,
       };
 
       if (statusFilter !== "all") {
@@ -68,12 +88,22 @@ const LeaveRequestManagement = () => {
 
       const response = await leaveRequestApi.getAllLeaveRequests(params);
 
-      if (response.success && response.data) {
-        setLeaveRequests(response.data.data || []);
+      // ✅ Check cả success và status
+      if ((response.success || (response as any).status) && response.data) {
+        // Backend trả về: { status: true, total, totalPages, data: [...] }
+        // Hoặc wrapper: { success: true, data: { status: true, total, totalPages, data: [...] } }
+        const responseData = response.data.data ? response.data : (response as any);
+        const requestsData = responseData.data || [];
+
+        setLeaveRequests(requestsData);
+        setTotal(responseData.total || 0);
+        setTotalPages(responseData.totalPages || 1);
       } else {
         toast.error("Không thể tải danh sách đơn xin nghỉ");
       }
-    } catch {
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("❌ Error fetching leave requests:", error);
       toast.error("Đã xảy ra lỗi khi tải danh sách đơn xin nghỉ");
     } finally {
       setLoading(false);
@@ -81,7 +111,15 @@ const LeaveRequestManagement = () => {
   };
 
   const handleSearch = () => {
-    fetchLeaveRequests();
+    if (currentPage === 1) {
+      fetchLeaveRequests();
+    } else {
+      setCurrentPage(1);
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   const handleAction = (
@@ -124,7 +162,7 @@ const LeaveRequestManagement = () => {
   };
 
   const getStatusColor = (
-    status: string,
+    status: string
   ): "warning" | "success" | "danger" => {
     switch (status) {
       case "Pending":
@@ -430,6 +468,52 @@ const LeaveRequestManagement = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Pagination */}
+      {!loading && total > 0 && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600 mb-4 sm:mb-0">
+            Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
+            {Math.min(currentPage * itemsPerPage, total)} trong tổng số {total}{" "}
+            đơn xin nghỉ
+          </div>
+          <div className="flex gap-2">
+            {/* Previous button */}
+            <Button
+              isDisabled={currentPage === 1}
+              size="sm"
+              variant="bordered"
+              onPress={() => handlePageChange(currentPage - 1)}
+            >
+              ←
+            </Button>
+
+            {/* Page numbers */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                className="min-w-8"
+                color={currentPage === page ? "primary" : "default"}
+                size="sm"
+                variant={currentPage === page ? "solid" : "bordered"}
+                onPress={() => handlePageChange(page)}
+              >
+                {page}
+              </Button>
+            ))}
+
+            {/* Next button */}
+            <Button
+              isDisabled={currentPage === totalPages}
+              size="sm"
+              variant="bordered"
+              onPress={() => handlePageChange(currentPage + 1)}
+            >
+              →
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

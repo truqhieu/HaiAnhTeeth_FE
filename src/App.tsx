@@ -27,6 +27,7 @@ import PromotionManagement from "@/pages/Manager/PromotionManagement";
 import ManagerLayout from "@/layouts/ManagerLayout";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
+import PatientRequests from "@/pages/Staff/PatientRequests";
 import DoctorLayout from "@/layouts/DoctorLayout";
 import { DoctorSchedule } from "@/pages/Doctor";
 import NurseLayout from "@/layouts/NurseLayout";
@@ -103,6 +104,7 @@ function App() {
                 <Routes>
                   <Route element={<StaffDashboard />} path="dashboard" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
+                  <Route element={<PatientRequests />} path="patient-requests" />
                 </Routes>
               </StaffLayout>
             }

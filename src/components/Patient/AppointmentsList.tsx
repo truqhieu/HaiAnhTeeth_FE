@@ -16,6 +16,7 @@ import {
 
 import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { DateRangePicker } from "@/components/Common";
 
 interface Appointment {
   _id: string;
@@ -45,6 +46,10 @@ export const AppointmentsList = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<{startDate: string | null, endDate: string | null}>({
+    startDate: null,
+    endDate: null
+  });
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -209,12 +214,93 @@ export const AppointmentsList = () => {
     );
   }
 
+  // Filter appointments by date range
+  const filteredAppointments = appointments.filter((appointment) => {
+    if (!dateRange.startDate && !dateRange.endDate) {
+      return true;
+    }
+
+    if (!appointment.timeslotId?.startTime) {
+      return false;
+    }
+
+    const appointmentDate = new Date(appointment.timeslotId.startTime);
+    const appointmentDateStr = appointmentDate.toISOString().split('T')[0];
+
+    if (dateRange.startDate && appointmentDateStr < dateRange.startDate) {
+      return false;
+    }
+    if (dateRange.endDate && appointmentDateStr > dateRange.endDate) {
+      return false;
+    }
+
+    return true;
+  });
+
+  if (filteredAppointments.length === 0) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">Ca khám của tôi</h2>
+
+        {/* Date Range Filter */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex-1">
+              <DateRangePicker
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                onDateChange={(startDate, endDate) => setDateRange({startDate, endDate})}
+                placeholder="Chọn khoảng thời gian để lọc ca khám"
+              />
+            </div>
+            <button
+              onClick={() => setDateRange({startDate: null, endDate: null})}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Xóa bộ lọc
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
+          <CalendarIcon className="w-12 h-12 text-yellow-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            Không tìm thấy ca khám
+          </h3>
+          <p className="text-gray-600">
+            Không có ca khám nào trong khoảng thời gian đã chọn.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Ca khám của tôi</h2>
 
+      {/* Date Range Filter */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="flex-1">
+            <DateRangePicker
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              onDateChange={(startDate, endDate) => setDateRange({startDate, endDate})}
+              placeholder="Chọn khoảng thời gian để lọc ca khám"
+            />
+          </div>
+          <button
+            onClick={() => setDateRange({startDate: null, endDate: null})}
+            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Xóa bộ lọc
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4">
-        {appointments.map((appointment) => (
+        {filteredAppointments.map((appointment) => (
           <Card key={appointment._id} className="border-l-4 border-l-[#39BDCC]">
             <CardHeader className="flex justify-between items-start">
               <div>

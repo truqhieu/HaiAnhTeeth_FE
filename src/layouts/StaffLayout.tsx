@@ -7,6 +7,7 @@ import {
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   DocumentTextIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +40,12 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
       icon: DocumentTextIcon,
       current: location.pathname === "/staff/leave-requests",
     },
+    {
+      name: "Xử lý yêu cầu",
+      href: "/staff/patient-requests",
+      icon: ClipboardDocumentListIcon,
+      current: location.pathname === "/staff/patient-requests",
+    }
   ];
 
   const handleNavigation = (href: string) => {

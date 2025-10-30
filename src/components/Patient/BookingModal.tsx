@@ -193,7 +193,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       const scheduleRes = await getDoctorScheduleRange(
         doctorId,
         formData.serviceId,
-        formData.date
+        formData.date,
+        formData.appointmentFor
       );
 
       if (scheduleRes.success && scheduleRes.data?.scheduleRanges) {
@@ -239,6 +240,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     const utcHours = vnHours - 7; // Convert VN to UTC
     dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
     const startTimeISO = dateObj.toISOString();
+
+    // ⭐ FE validation: không cho đặt thời gian ở quá khứ
+    const nowUtc = new Date();
+    if (dateObj.getTime() < nowUtc.getTime()) {
+      setTimeInputError("Không thể đặt thời gian ở quá khứ");
+      return;
+    }
 
     setTimeInputError(null);
     try {
@@ -419,6 +427,21 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   </label>
                 ))}
               </div>
+              
+              {/* Hiển thị thông tin người được đặt lịch */}
+              {formData.appointmentFor === "self" ? (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Bản thân:</strong> {user?.fullName} ({user?.email})
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    <strong>Người thân:</strong> {formData.fullName} ({formData.email})
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* User Info */}
@@ -576,8 +599,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Input thời gian và hiển thị kết quả nằm ngang */}
-                    {!errorMessage && (
-                      <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">
                             Nhập giờ bắt đầu
@@ -645,8 +667,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                             </div>
                           </div>
                         )}
-                      </div>
-                    )}
+                    </div>
                   </div>
               ) : (
                 <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">

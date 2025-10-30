@@ -79,11 +79,27 @@ const Complaints = () => {
       setLoading(true);
 
       const response = await complaintApi.getMyComplaints();
+      
+      // 🔍 DEBUG: Log toàn bộ response
+      console.log('📦 Full Response:', response);
+      console.log('✅ response.success:', response.success);
+      console.log('✅ response.status:', (response as any).status);
+      console.log('📊 response.data:', response.data);
+      console.log('📋 response.data.data:', response.data?.data);
 
-      if (response.success && response.data) {
-        setComplaints(response.data.data || []);
+      if ((response.success || (response as any).status) && response.data) {
+        const complaintsData = response.data.data || response.data || [];
+        console.log('✅ Setting complaints:', complaintsData);
+        console.log('📏 Complaints length:', Array.isArray(complaintsData) ? complaintsData.length : 'Not an array');
+        setComplaints(complaintsData);
+      } else {
+        console.log('❌ Condition failed - no data loaded');
+        console.log('   - response.success:', response.success);
+        console.log('   - response.status:', (response as any).status);
+        console.log('   - response.data:', response.data);
       }
-    } catch {
+    } catch (error) {
+      console.error('❌ Error fetching complaints:', error);
       toast.error("Không thể tải danh sách khiếu nại");
     } finally {
       setLoading(false);
@@ -191,11 +207,31 @@ const Complaints = () => {
   };
 
   const formatAppointmentLabel = (apt: AppointmentOption) => {
-    const date = new Date(apt.timeslotId?.date).toLocaleDateString("vi-VN");
+    // ✅ Dùng startTime làm date source
+    const dateValue = apt.timeslotId?.startTime || apt.timeslotId?.date;
+    
+    let date = "Chưa có ngày";
+    let time = "";
+    
+    if (dateValue) {
+      try {
+        const dateObj = new Date(dateValue);
+        if (!isNaN(dateObj.getTime())) {
+          date = dateObj.toLocaleDateString("vi-VN");
+          time = dateObj.toLocaleTimeString("vi-VN", { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+        }
+      } catch {
+        date = "Chưa có ngày";
+      }
+    }
+    
     const service = apt.serviceId?.serviceName || "N/A";
     const doctor = apt.doctorUserId?.fullName || "N/A";
-
-    return `${date} - ${service} - BS. ${doctor}`;
+  
+    return `${date} ${time} - ${service} - BS. ${doctor}`;
   };
 
   const columns = [

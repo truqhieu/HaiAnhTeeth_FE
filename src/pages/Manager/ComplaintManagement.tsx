@@ -19,6 +19,7 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Textarea,
 } from "@heroui/react";
 import {
   MagnifyingGlassIcon,
@@ -36,6 +37,12 @@ const ComplaintManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
   // Modal state
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(
     null,
@@ -49,15 +56,28 @@ const ComplaintManagement = () => {
 
   useEffect(() => {
     fetchComplaints();
-  }, [statusFilter]);
+  }, [statusFilter, currentPage]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchComplaints();
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   const fetchComplaints = async () => {
     try {
       setLoading(true);
 
       const params: any = {
-        page: 1,
-        limit: 100,
+        page: currentPage,
+        limit: itemsPerPage,
       };
 
       if (statusFilter !== "all") {
@@ -70,12 +90,22 @@ const ComplaintManagement = () => {
 
       const response = await complaintApi.getAllComplaints(params);
 
-      if (response.success && response.data) {
-        setComplaints(response.data.data || []);
+      // ✅ Check cả success và status
+      if ((response.success || (response as any).status) && response.data) {
+        // Backend trả về: { status: true, total, totalPages, data: [...] }
+        // Hoặc wrapper: { success: true, data: { status: true, total, totalPages, data: [...] } }
+        const responseData = response.data.data ? response.data : (response as any);
+        const complaintsData = responseData.data || [];
+        
+        setComplaints(complaintsData);
+        setTotal(responseData.total || 0);
+        setTotalPages(responseData.totalPages || 1);
       } else {
         toast.error("Không thể tải danh sách khiếu nại");
       }
-    } catch {
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("❌ Error fetching complaints:", error);
       toast.error("Đã xảy ra lỗi khi tải danh sách khiếu nại");
     } finally {
       setLoading(false);
@@ -83,23 +113,46 @@ const ComplaintManagement = () => {
   };
 
   const handleSearch = () => {
-    fetchComplaints();
+    if (currentPage === 1) {
+      fetchComplaints();
+    } else {
+      setCurrentPage(1);
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   const handleViewDetail = async (complaint: Complaint) => {
     try {
       const response = await complaintApi.viewDetailComplaint(complaint._id);
 
+      // 🔍 DEBUG
+      console.log("📦 View Detail Response:", response);
+      console.log("✅ response.success:", response.success);
+      console.log("📊 response.data:", response.data);
+
       if (response.success && response.data) {
-        setSelectedComplaint(response.data.data);
+        // Backend có thể trả về data trực tiếp hoặc nested
+        const complaintDetail = response.data.data || response.data;
+
+        console.log("✅ Setting complaint detail:", complaintDetail);
+        setSelectedComplaint(complaintDetail);
         setIsViewModalOpen(true);
         setResponseText("");
         setActionType(null);
       } else {
+        console.log("❌ No data in response");
         toast.error("Không thể tải chi tiết khiếu nại");
       }
-    } catch {
-      toast.error("Đã xảy ra lỗi khi tải chi tiết khiếu nại");
+    } catch (error: any) {
+      console.error("❌ Exception:", error);
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Đã xảy ra lỗi khi tải chi tiết khiếu nại",
+      );
     }
   };
 
@@ -123,9 +176,16 @@ const ComplaintManagement = () => {
         },
       );
 
+      // 🔍 DEBUG
+      console.log("📦 Handle Complaint Response:", response);
+      console.log("✅ response.success:", response.success);
+      console.log("📊 response.data:", response.data);
+      console.log("📝 response.message:", response.message);
+
       if (response.success) {
         toast.success(
-          response.data?.message ||
+          response.message ||
+            response.data?.message ||
             `Đã ${actionType === "Approved" ? "duyệt" : "từ chối"} khiếu nại`,
         );
         setIsViewModalOpen(false);
@@ -134,10 +194,23 @@ const ComplaintManagement = () => {
         setActionType(null);
         fetchComplaints();
       } else {
-        toast.error("Không thể xử lý khiếu nại");
+        // Hiển thị message từ backend
+        const errorMessage =
+          response.message || response.data?.message || "Không thể xử lý khiếu nại";
+
+        console.log("❌ Error message:", errorMessage);
+        toast.error(errorMessage);
       }
-    } catch {
-      toast.error("Đã xảy ra lỗi khi xử lý khiếu nại");
+    } catch (error: any) {
+      console.error("❌ Exception:", error);
+
+      // Lấy message từ backend nếu có
+      const errorMessage =
+        error.response?.data?.message ||
+        error.message ||
+        "Đã xảy ra lỗi khi xử lý khiếu nại";
+
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -437,14 +510,20 @@ const ComplaintManagement = () => {
                     </p>
 
                     <div className="mb-4">
-                      <Input
+                      <Textarea
                         fullWidth
                         classNames={{
                           base: "w-full",
                           inputWrapper: "w-full",
                         }}
+                        description={
+                          <span className="text-xs text-gray-500">
+                            Chỉ được nhập chữ, số và các ký tự: . , ! ? ; : {`' "`} ( ) _ -
+                          </span>
+                        }
                         label="Phản hồi"
-                        placeholder="Nhập phản hồi của bạn..."
+                        minRows={4}
+                        placeholder="Nhập phản hồi của bạn (tối thiểu 5 ký tự)..."
                         value={responseText}
                         variant="bordered"
                         onValueChange={setResponseText}
@@ -500,6 +579,52 @@ const ComplaintManagement = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {/* Pagination */}
+      {!loading && total > 0 && (
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600 mb-4 sm:mb-0">
+            Hiển thị {(currentPage - 1) * itemsPerPage + 1} đến{" "}
+            {Math.min(currentPage * itemsPerPage, total)} trong tổng số {total}{" "}
+            khiếu nại
+          </div>
+          <div className="flex gap-2">
+            {/* Previous button */}
+            <Button
+              isDisabled={currentPage === 1}
+              size="sm"
+              variant="bordered"
+              onPress={() => handlePageChange(currentPage - 1)}
+            >
+              ←
+            </Button>
+
+            {/* Page numbers */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                className="min-w-8"
+                color={currentPage === page ? "primary" : "default"}
+                size="sm"
+                variant={currentPage === page ? "solid" : "bordered"}
+                onPress={() => handlePageChange(page)}
+              >
+                {page}
+              </Button>
+            ))}
+
+            {/* Next button */}
+            <Button
+              isDisabled={currentPage === totalPages}
+              size="sm"
+              variant="bordered"
+              onPress={() => handlePageChange(currentPage + 1)}
+            >
+              →
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
