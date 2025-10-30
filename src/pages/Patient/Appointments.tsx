@@ -62,7 +62,7 @@ const Appointments = () => {
       setLoading(true);
       setError(null);
 
-      const res = await appointmentApi.getMyAppointments();
+      const res = await appointmentApi.getMyAppointments({ includePendingPayment: true });
 
       if (!res) {
         console.error("❌ Response is null or undefined");
@@ -846,17 +846,14 @@ const Appointments = () => {
                         {/* Thanh toán - chỉ hiển thị khi chờ thanh toán */}
                         {appointment.status === "PendingPayment" && (
                           <button
-                            className="p-2.5 hover:bg-orange-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-md text-xs font-medium hover:bg-orange-200 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
                             title="Thanh toán"
                             onClick={() => {
-                              // TODO: Navigate to payment page
                               console.log("Pay for appointment:", appointment.id);
                             }}
                           >
-                            <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                            </svg>
-                        </button>
+                            Thanh toán
+                          </button>
                         )}
                       </div>
                   </TableCell>

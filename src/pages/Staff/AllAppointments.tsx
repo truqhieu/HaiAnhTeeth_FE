@@ -186,6 +186,11 @@ const AllAppointments = () => {
   useEffect(() => {
     let filtered = [...appointments];
 
+    // Ẩn các ca 'PendingPayment' và 'Expired' khỏi màn Staff
+    filtered = filtered.filter(
+      (apt) => apt.status !== "PendingPayment" && apt.status !== "Expired"
+    );
+
     // Filter by tab
     if (activeTab !== "all") {
       filtered = filtered.filter(apt => apt.status === activeTab);
@@ -442,6 +447,14 @@ const AllAppointments = () => {
     return `${day}/${month}/${year}, ${hours}:${minutes}`;
   };
 
+  // Kiểm tra đã đến thời điểm bắt đầu lịch chưa (so sánh theo UTC ISO)
+  const isAtOrAfterStartTime = (startTimeISO: string): boolean => {
+    if (!startTimeISO) return false;
+    const now = new Date();
+    const start = new Date(startTimeISO);
+    return now.getTime() >= start.getTime();
+  };
+
   // ===== Helper functions =====
   const shouldShowRefundButton = (appointment: any) => {
     // Chỉ hiển thị nút hoàn tiền khi:
@@ -514,15 +527,17 @@ const AllAppointments = () => {
     }
   };
 
-  // Stats calculation
+  // Stats calculation (exclude PendingPayment, Expired)
+  const visibleAppointments = appointments.filter(
+    (a) => a.status !== "PendingPayment" && a.status !== "Expired"
+  );
   const stats = {
-    total: appointments.length,
-    pending: appointments.filter(a => a.status === "Pending").length,
-    approved: appointments.filter(a => a.status === "Approved").length,
-    checkedIn: appointments.filter(a => a.status === "CheckedIn").length,
-    completed: appointments.filter(a => a.status === "Completed").length,
-    cancelled: appointments.filter(a => a.status === "Cancelled").length,
-    expired: appointments.filter(a => a.status === "Expired").length,
+    total: visibleAppointments.length,
+    pending: visibleAppointments.filter((a) => a.status === "Pending").length,
+    approved: visibleAppointments.filter((a) => a.status === "Approved").length,
+    checkedIn: visibleAppointments.filter((a) => a.status === "CheckedIn").length,
+    completed: visibleAppointments.filter((a) => a.status === "Completed").length,
+    cancelled: visibleAppointments.filter((a) => a.status === "Cancelled").length,
   };
 
   const columns = [
@@ -779,7 +794,7 @@ const AllAppointments = () => {
         </Card>
       )}
 
-      {/* Statistics Cards */}
+      {/* Statistics Cards (no expired/pending payment) */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardBody className="text-center py-4">
@@ -864,7 +879,7 @@ const AllAppointments = () => {
         </CardBody>
       </Card>
 
-      {/* Tabs for Status Filter */}
+      {/* Tabs for Status Filter (no Expired tab) */}
       <Card>
         <CardBody className="overflow-x-auto">
           <Tabs
@@ -880,7 +895,6 @@ const AllAppointments = () => {
             <Tab key="CheckedIn" title={`Đã check-in (${stats.checkedIn})`} />
             <Tab key="Completed" title={`Hoàn thành (${stats.completed})`} />
             <Tab key="Cancelled" title={`Đã hủy (${stats.cancelled})`} />
-            <Tab key="Expired" title={`Hết hạn (${stats.expired})`} />
           </Tabs>
         </CardBody>
       </Card>
@@ -984,28 +998,30 @@ const AllAppointments = () => {
                         </>
                       )}
                       {appointment.status === "Approved" && (
-                        <>
-                          <Button
-                            size="sm"
-                            color="primary"
-                            variant="flat"
-                            onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                            isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
-                          >
-                            Check-in
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="warning"
-                            variant="flat"
-                            onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
-                            isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
-                          >
-                            No Show
-                          </Button>
-                        </>
+                        isAtOrAfterStartTime(appointment.startTime) ? (
+                          <>
+                            <Button
+                              size="sm"
+                              color="primary"
+                              variant="flat"
+                              onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                              isDisabled={processingId === appointment.id}
+                              isLoading={processingId === appointment.id}
+                            >
+                              Check-in
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="warning"
+                              variant="flat"
+                              onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
+                              isDisabled={processingId === appointment.id}
+                              isLoading={processingId === appointment.id}
+                            >
+                              No Show
+                            </Button>
+                          </>
+                        ) : null
                       )}
                       {!["Pending", "Approved"].includes(appointment.status) && (
                         <div className="flex gap-2">
