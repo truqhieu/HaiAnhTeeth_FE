@@ -39,6 +39,23 @@ export interface PatientDetail {
   emergencyContact: any;
 }
 
+export interface PatientAppointmentBrief {
+  appointmentId: string;
+  serviceName: string;
+  status: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface ServiceSummary {
+  _id: string;
+  serviceName: string;
+  price: number;
+  category: string;
+  isPrepaid: boolean | string;
+  durationMinutes: number;
+}
+
 export const doctorApi = {
   // Lấy lịch khám của bác sĩ (2 tuần)
   getAppointmentsSchedule: async (): Promise<
@@ -74,5 +91,32 @@ export const doctorApi = {
         method: "GET",
       },
     );
+  },
+
+  // Lấy danh sách lịch hẹn của một bệnh nhân (thuộc bác sĩ hiện tại)
+  getAppointmentsOfPatient: async (
+    patientId: string,
+  ): Promise<ApiResponse<PatientAppointmentBrief[]>> => {
+    return authenticatedApiCall(`/doctor/patients/${patientId}/appointments`, {
+      method: "GET",
+    });
+  },
+
+  // Danh sách dịch vụ (dropdown) cho Bác sĩ chọn thêm dịch vụ bổ sung
+  getActiveServices: async (): Promise<ApiResponse<ServiceSummary[]>> => {
+    return authenticatedApiCall<ServiceSummary[]>(`/doctor/services`, {
+      method: "GET",
+    });
+  },
+
+  // Cập nhật dịch vụ bổ sung vào hồ sơ (ghi đè danh sách)
+  updateAdditionalServices: async (
+    appointmentId: string,
+    serviceIds: string[],
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/doctor/medical-records/${appointmentId}/additional-services`, {
+      method: "PATCH",
+      body: JSON.stringify({ serviceIds }),
+    });
   },
 };

@@ -33,6 +33,7 @@ import { DoctorSchedule } from "@/pages/Doctor";
 import NurseLayout from "@/layouts/NurseLayout";
 import NurseSchedule from "@/pages/Nurse/NurseSchedule";
 import LeaveRequest from "@/pages/Common/LeaveRequest";
+import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
 import MedicalRecordPage from "@/pages/MedicalRecord/MedicalRecordPage";
@@ -139,6 +140,7 @@ function App() {
                     element={<MedicalRecordPage />}
                     path="medical/record/:patientId"
                   />
+                  <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
                 </Routes>
               </NurseLayout>
             }

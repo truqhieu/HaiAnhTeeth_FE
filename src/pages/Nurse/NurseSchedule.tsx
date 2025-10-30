@@ -30,7 +30,8 @@ import {
   HeartIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
-import { nurseApi, type NurseAppointment } from "@/api";
+import { nurseApi, type NurseAppointment, appointmentApi } from "@/api";
+import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
 import AppointmentDetailModalNurse from "./AppointmentDetailModalNurse";
@@ -54,6 +55,8 @@ const NurseSchedule = () => {
   const [selectedMode, setSelectedMode] = useState<string>("all");
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("upcoming");
+  // Theo dõi ca đang trong quá trình khám (UI-only toggle)
+  const [inProgressIds, setInProgressIds] = useState<Set<string>>(new Set());
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,18 +108,13 @@ const NurseSchedule = () => {
   useEffect(() => {
     let filtered = [...appointments];
 
-    // Filter by time (upcoming vs history)
-    const now = new Date();
+    // Sửa logic tab:
+    // - Lịch sắp tới: hiển thị các ca có trạng thái CheckedIn hoặc InProgress
+    // - Lịch sử khám: chỉ hiển thị các ca Completed
     if (activeTab === "upcoming") {
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        return aptDate >= now;
-      });
+      filtered = filtered.filter(apt => apt.status === "CheckedIn" || apt.status === "InProgress");
     } else if (activeTab === "history") {
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        return aptDate < now;
-      });
+      filtered = filtered.filter(apt => apt.status === "Completed");
     }
 
     // Filter by search text
@@ -195,6 +193,8 @@ const NurseSchedule = () => {
         return "success";
       case "CheckedIn":
         return "primary";
+      case "InProgress":
+        return "warning";
       case "Completed":
         return "primary";
       case "Finalized":
@@ -210,6 +210,8 @@ const NurseSchedule = () => {
         return "Đã xác nhận";
       case "CheckedIn":
         return "Đã nhận";
+      case "InProgress":
+        return "Đang khám";
       case "Completed":
         return "Hoàn thành";
       case "Finalized":
@@ -250,11 +252,12 @@ const NurseSchedule = () => {
   // Stats calculation
   const stats = {
     total: appointments.length,
-    upcoming: appointments.filter(a => new Date(a.appointmentDate) >= new Date()).length,
+    // Sắp tới = số ca đang CheckedIn hoặc InProgress
+    upcoming: appointments.filter(a => a.status === "CheckedIn" || a.status === "InProgress").length,
     today: appointments.filter(a => formatDate(a.appointmentDate) === formatDate(new Date().toISOString())).length,
     online: appointments.filter(a => a.mode === "Online").length,
     offline: appointments.filter(a => a.mode === "Offline").length,
-    completed: appointments.filter(a => a.status === "Completed" || a.status === "Finalized").length,
+    completed: appointments.filter(a => a.status === "Completed").length,
   };
 
   // Pagination
@@ -448,7 +451,7 @@ const NurseSchedule = () => {
               title={
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5" />
-                  <span>Lịch sử khám ({appointments.length - stats.upcoming})</span>
+                  <span>Lịch sử khám ({stats.completed})</span>
                 </div>
               } 
             />
@@ -536,7 +539,7 @@ const NurseSchedule = () => {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
                     <Button
                       size="sm"
                       variant="flat"
@@ -557,17 +560,69 @@ const NurseSchedule = () => {
                       Bệnh nhân
                     </Button>
 
-                    {/* ⭐ Nút mới mở hồ sơ bệnh án */}
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      color="success"
-                      startContent={<ClipboardDocumentListIcon className="w-4 h-4" />}
-                      onPress={() => navigate(`/nurse/medical/record/${appointment.patientId}`)}
-                      isDisabled={!appointment.patientId || appointment.patientId === "N/A" || appointment.patientId === "Trống"}
-                    >
-                      Hồ sơ bệnh án
-                    </Button>
+                    {/* Nút đánh dấu đang trong ca khám (chỉ cho CheckedIn) */}
+                    {/* Nút cập nhật trạng thái cho cả Offline và Consultation (Online) */}
+                    {appointment.status === "CheckedIn" && !inProgressIds.has(appointment.appointmentId) && (
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="warning"
+                        onPress={async () => {
+                          try {
+                            await appointmentApi.updateAppointmentStatus(appointment.appointmentId, "InProgress");
+                            setInProgressIds(prev => new Set(prev).add(appointment.appointmentId));
+                            // Cập nhật status hiển thị ngay
+                            appointment.status = "InProgress" as any;
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                      >
+                        Đang trong ca khám
+                      </Button>
+                    )}
+
+                    {/* Hiển thị Hồ sơ bệnh án cho ca Offline khi đang khám (InProgress), đã bấm bắt đầu, hoặc đã Completed */}
+                    {appointment.mode === "Offline" && (
+                      appointment.status === "InProgress" ||
+                      appointment.status === "Completed" ||
+                      inProgressIds.has(appointment.appointmentId)
+                    ) && (
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="success"
+                        startContent={<ClipboardDocumentListIcon className="w-4 h-4" />}
+                        onPress={() => navigate(`/nurse/medical-record/${appointment.appointmentId}`)}
+                        isDisabled={!appointment.patientId || appointment.patientId === "N/A" || appointment.patientId === "Trống"}
+                      >
+                        Hồ sơ bệnh án
+                      </Button>
+                    )}
+
+                    {/* Nút Hoàn thành cho ca InProgress */}
+                    {appointment.status === "InProgress" && (
+                      <Button
+                        size="sm"
+                        color="primary"
+                        variant="flat"
+                        onPress={async () => {
+                          try {
+                            const res = await appointmentApi.updateAppointmentStatus(appointment.appointmentId, "Completed");
+                            if (res.success) {
+                              toast.success("Đã hoàn thành ca khám");
+                              fetchAppointments();
+                            } else {
+                              toast.error(res.message || "Không thể cập nhật trạng thái");
+                            }
+                          } catch (e: any) {
+                            toast.error(e.message || "Không thể cập nhật trạng thái");
+                          }
+                        }}
+                      >
+                        Hoàn thành
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
                 </TableRow>
