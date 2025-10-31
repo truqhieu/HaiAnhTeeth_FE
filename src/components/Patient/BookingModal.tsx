@@ -98,7 +98,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     const fetchServices = async () => {
       try {
         const res = await serviceApi.get({ status: "Active", limit: 1000 });
-        if (res.status && Array.isArray(res.data)) setServices(res.data);
+        if (res.success && Array.isArray(res.data)) setServices(res.data);
       } catch (err) {
         console.error("Error fetching services:", err);
       }

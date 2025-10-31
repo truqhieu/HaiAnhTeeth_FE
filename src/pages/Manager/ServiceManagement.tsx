@@ -65,7 +65,7 @@ const ServiceManagement = () => {
         search: searchTerm || undefined,
       });
 
-      if (response.status && response.data) {
+      if (response.success && response.data) {
         // Map API data to local Service interface
         const mappedServices: Service[] = response.data.map(
           (service: ManagerService) => ({

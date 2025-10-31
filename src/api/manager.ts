@@ -40,7 +40,7 @@ export interface GetServicesParams {
 }
 
 export interface GetServicesResponse {
-  status: boolean;
+  success: boolean;
   total: number;
   totalPages: number;
   page: number;
@@ -200,14 +200,8 @@ export const managerApi = {
   // Get service detail by ID
   getServiceDetail: async (
     id: string,
-  ): Promise<
-    ApiResponse<{ status: boolean; message: string; data: ManagerService }>
-  > => {
-    return authenticatedApiCall<{
-      status: boolean;
-      message: string;
-      data: ManagerService;
-    }>(`/manager/services/${id}`, {
+  ): Promise<ApiResponse<ManagerService>> => {
+    return authenticatedApiCall<ManagerService>(`/manager/services/${id}`, {
       method: "GET",
     });
   },
