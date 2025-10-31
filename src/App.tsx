@@ -24,6 +24,7 @@ import ScheduleManagement from "@/pages/Manager/ScheduleManagement";
 import ComplaintManagement from "@/pages/Manager/ComplaintManagement";
 import LeaveRequestManagement from "@/pages/Manager/LeaveRequestManagement";
 import PromotionManagement from "@/pages/Manager/PromotionManagement";
+import DeviceManagement from "@/pages/Manager/DeviceManagement";
 import ManagerLayout from "@/layouts/ManagerLayout";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
@@ -92,6 +93,7 @@ function App() {
                     element={<PromotionManagement />}
                     path="promotions"
                   />
+                  <Route element={<DeviceManagement />} path="devices" />
                 </Routes>
               </ManagerLayout>
             }

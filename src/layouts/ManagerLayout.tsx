@@ -11,6 +11,7 @@ import {
   ExclamationTriangleIcon,
   DocumentTextIcon,
   TagIcon,
+  CpuChipIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +49,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       href: "/manager/schedules",
       icon: CalendarDaysIcon,
       current: location.pathname === "/manager/schedules",
+    },
+    {
+      name: "Quản lý thiết bị",
+      href: "/manager/devices",
+      icon: CpuChipIcon,
+      current: location.pathname === "/manager/devices",
     },
     {
       name: "Quản lý khiếu nại",

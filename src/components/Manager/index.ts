@@ -6,3 +6,7 @@ export { default as EditScheduleModal } from "./EditScheduleModal";
 export { default as WorkingHoursModal } from "./WorkingHoursModal";
 export { default as AddServiceModal } from "./AddServiceModal";
 export { default as EditServiceModal } from "./EditServiceModal";
+export { default as AddDeviceModal } from "./AddDeviceModal";
+export { default as EditDeviceModal } from "./EditDeviceModal";
+export { default as AddPromotionModal } from "./AddPromotionModal";
+export { default as EditPromotionModal } from "./EditPromotionModal";

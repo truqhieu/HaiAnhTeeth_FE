@@ -40,7 +40,7 @@ export interface GetServicesParams {
 }
 
 export interface GetServicesResponse {
-  status: boolean;
+  success: boolean;
   total: number;
   totalPages: number;
   page: number;
@@ -200,55 +200,46 @@ export const managerApi = {
   // Get service detail by ID
   getServiceDetail: async (
     id: string,
-  ): Promise<
-    ApiResponse<{ status: boolean; message: string; data: ManagerService }>
-  > => {
-    return authenticatedApiCall<{
-      status: boolean;
-      message: string;
-      data: ManagerService;
-    }>(`/manager/services/${id}`, {
-      method: "GET",
-    });
+  ): Promise<ApiResponse<{ success: boolean; message: string; data: ManagerService }>> => {
+    return authenticatedApiCall<{ success: boolean; message: string; data: ManagerService }>(
+      `/manager/services/${id}`,
+      {
+        method: "GET",
+      },
+    );
   },
 
   // Create new service
   createService: async (
     data: CreateServiceData,
-  ): Promise<
-    ApiResponse<{ status: boolean; message: string; data: ManagerService }>
-  > => {
-    return authenticatedApiCall<{
-      status: boolean;
-      message: string;
-      data: ManagerService;
-    }>("/manager/services", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+  ): Promise<ApiResponse<{ success: boolean; message: string; data: ManagerService }>> => {
+    return authenticatedApiCall<{ success: boolean; message: string; data: ManagerService }>(
+      "/manager/services",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       },
-      body: JSON.stringify(data),
-    });
+    );
   },
 
   // Update service
   updateService: async (
     id: string,
     data: UpdateServiceData,
-  ): Promise<
-    ApiResponse<{ status: boolean; message: string; data: ManagerService }>
-  > => {
-    return authenticatedApiCall<{
-      status: boolean;
-      message: string;
-      data: ManagerService;
-    }>(`/manager/services/${id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
+  ): Promise<ApiResponse<{ success: boolean; message: string; data: ManagerService }>> => {
+    return authenticatedApiCall<{ success: boolean; message: string; data: ManagerService }>(
+      `/manager/services/${id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       },
-      body: JSON.stringify(data),
-    });
+    );
   },
 
   // Delete service

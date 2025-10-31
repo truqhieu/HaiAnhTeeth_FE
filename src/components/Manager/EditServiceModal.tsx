@@ -132,7 +132,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
       // Gọi API cập nhật
       const response = await managerApi.updateService(service.id, updateData);
 
-      if (response.status) {
+      if (response.success || response.data) {
         toast.success(response.message || "Cập nhật dịch vụ thành công!");
         // Close modal and notify success
         onClose();

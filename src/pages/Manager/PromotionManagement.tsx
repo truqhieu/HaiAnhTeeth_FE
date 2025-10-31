@@ -17,7 +17,6 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
-  Textarea,
 } from "@heroui/react";
 import {
   MagnifyingGlassIcon,
@@ -27,73 +26,8 @@ import {
   TagIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
-
-// Define types locally (no backend API yet)
-interface Promotion {
-  _id: string;
-  title: string;
-  description: string;
-  discountType: "Percent" | "Fixed";
-  discountValue: number;
-  applyToAll: boolean;
-  applicableServices?: string[];
-  startDate: string;
-  endDate: string;
-  status: "Active" | "Expired" | "Scheduled";
-  createdAt: string;
-  updatedAt?: string;
-}
-
-interface CreatePromotionData {
-  title: string;
-  description: string;
-  discountType: "Percent" | "Fixed";
-  discountValue: number;
-  applyToAll: boolean;
-  applicableServices?: string[];
-  startDate: string;
-  endDate: string;
-}
-
-// Mock data for demo
-const MOCK_PROMOTIONS: Promotion[] = [
-  {
-    _id: "671120000000000000000017",
-    title: "Ưu đãi Quốc Khánh 2/9",
-    description: "Giảm 50% cho tất cả dịch vụ từ 2/9 đến 5/9.",
-    discountType: "Percent",
-    discountValue: 50,
-    applyToAll: true,
-    startDate: "2025-09-02T00:00:00.000Z",
-    endDate: "2025-09-05T23:59:00.000Z",
-    status: "Expired",
-    createdAt: "2025-08-30T09:00:00.000Z",
-  },
-  {
-    _id: "671120000000000000000018",
-    title: "Khuyến mãi tháng 11",
-    description: "Giảm 30% cho dịch vụ làm răng.",
-    discountType: "Percent",
-    discountValue: 30,
-    applyToAll: true,
-    startDate: "2025-11-01T00:00:00.000Z",
-    endDate: "2025-11-30T23:59:00.000Z",
-    status: "Active",
-    createdAt: "2025-10-25T09:00:00.000Z",
-  },
-  {
-    _id: "671120000000000000000019",
-    title: "Giáng sinh vui vẻ",
-    description: "Giảm 100,000đ cho mọi dịch vụ.",
-    discountType: "Fixed",
-    discountValue: 100000,
-    applyToAll: true,
-    startDate: "2025-12-20T00:00:00.000Z",
-    endDate: "2025-12-26T23:59:00.000Z",
-    status: "Scheduled",
-    createdAt: "2025-10-29T09:00:00.000Z",
-  },
-];
+import { promotionApi, type Promotion } from "@/api/promotion";
+import { AddPromotionModal, EditPromotionModal } from "@/components";
 
 const PromotionManagement = () => {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -108,51 +42,45 @@ const PromotionManagement = () => {
   );
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Form states
-  const [formData, setFormData] = useState<CreatePromotionData>({
-    title: "",
-    description: "",
-    discountType: "Percent",
-    discountValue: 0,
-    applyToAll: true,
-    applicableServices: [],
-    startDate: "",
-    endDate: "",
-  });
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchPromotions();
-  }, [statusFilter]);
+  }, [statusFilter, currentPage]);
 
   const fetchPromotions = async () => {
     try {
       setLoading(true);
 
-      // Simulate API call with mock data
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const params: any = {
+        page: currentPage,
+        limit: itemsPerPage,
+        sort: "desc",
+      };
 
-      let filteredPromotions = [...MOCK_PROMOTIONS];
-
-      // Filter by status
       if (statusFilter !== "all") {
-        filteredPromotions = filteredPromotions.filter(
-          (p) => p.status === statusFilter,
-        );
+        params.status = statusFilter;
       }
 
-      // Filter by search term
       if (searchTerm.trim()) {
-        const search = searchTerm.toLowerCase();
-
-        filteredPromotions = filteredPromotions.filter(
-          (p) =>
-            p.title.toLowerCase().includes(search) ||
-            p.description.toLowerCase().includes(search),
-        );
+        params.search = searchTerm.trim();
       }
 
-      setPromotions(filteredPromotions);
-    } catch {
+      const response = await promotionApi.getAllPromotions(params);
+
+      if (response.success && response.data) {
+        setPromotions(response.data);
+        setTotal(response.total || 0);
+        setTotalPages(response.totalPages || 1);
+      } else {
+        toast.error("Không thể tải danh sách ưu đãi");
+      }
+    } catch (error) {
+      console.error("❌ Error fetching promotions:", error);
       toast.error("Đã xảy ra lỗi khi tải danh sách ưu đãi");
     } finally {
       setLoading(false);
@@ -160,39 +88,19 @@ const PromotionManagement = () => {
   };
 
   const handleSearch = () => {
-    fetchPromotions();
-  };
-
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      discountType: "Percent",
-      discountValue: 0,
-      applyToAll: true,
-      applicableServices: [],
-      startDate: "",
-      endDate: "",
-    });
+    if (currentPage === 1) {
+      fetchPromotions();
+    } else {
+      setCurrentPage(1);
+    }
   };
 
   const handleAdd = () => {
-    resetForm();
     setIsAddModalOpen(true);
   };
 
   const handleEdit = (promotion: Promotion) => {
     setSelectedPromotion(promotion);
-    setFormData({
-      title: promotion.title,
-      description: promotion.description,
-      discountType: promotion.discountType,
-      discountValue: promotion.discountValue,
-      applyToAll: promotion.applyToAll,
-      applicableServices: promotion.applicableServices || [],
-      startDate: promotion.startDate.split("T")[0],
-      endDate: promotion.endDate.split("T")[0],
-    });
     setIsEditModalOpen(true);
   };
 
@@ -201,120 +109,25 @@ const PromotionManagement = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const validateForm = (): boolean => {
-    if (!formData.title.trim()) {
-      toast.error("Vui lòng nhập tiêu đề ưu đãi");
-
-      return false;
-    }
-
-    if (!formData.description.trim()) {
-      toast.error("Vui lòng nhập mô tả");
-
-      return false;
-    }
-
-    if (formData.discountValue <= 0) {
-      toast.error("Giá trị giảm giá phải lớn hơn 0");
-
-      return false;
-    }
-
-    if (
-      formData.discountType === "Percent" &&
-      formData.discountValue > 100
-    ) {
-      toast.error("Phần trăm giảm giá không được vượt quá 100%");
-
-      return false;
-    }
-
-    if (!formData.startDate) {
-      toast.error("Vui lòng chọn ngày bắt đầu");
-
-      return false;
-    }
-
-    if (!formData.endDate) {
-      toast.error("Vui lòng chọn ngày kết thúc");
-
-      return false;
-    }
-
-    const start = new Date(formData.startDate);
-    const end = new Date(formData.endDate);
-
-    if (end <= start) {
-      toast.error("Ngày kết thúc phải sau ngày bắt đầu");
-
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmitAdd = async () => {
-    if (!validateForm()) return;
-
-    try {
-      setIsProcessing(true);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast.success(
-        "Tạo ưu đãi thành công! (Chưa kết nối backend - dữ liệu demo)",
-      );
-      setIsAddModalOpen(false);
-      resetForm();
-      // Don't fetch - just close modal in demo mode
-    } catch {
-      toast.error("Đã xảy ra lỗi khi tạo ưu đãi");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleSubmitEdit = async () => {
-    if (!selectedPromotion || !validateForm()) return;
-
-    try {
-      setIsProcessing(true);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast.success(
-        "Cập nhật ưu đãi thành công! (Chưa kết nối backend - dữ liệu demo)",
-      );
-      setIsEditModalOpen(false);
-      setSelectedPromotion(null);
-      resetForm();
-      // Don't fetch - just close modal in demo mode
-    } catch {
-      toast.error("Đã xảy ra lỗi khi cập nhật ưu đãi");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const confirmDelete = async () => {
     if (!selectedPromotion) return;
 
     try {
       setIsProcessing(true);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await promotionApi.deletePromotion(selectedPromotion._id);
 
-      toast.success(
-        "Xóa ưu đãi thành công! (Chưa kết nối backend - dữ liệu demo)",
-      );
-      setIsDeleteModalOpen(false);
-      setSelectedPromotion(null);
-      // Don't fetch - just close modal in demo mode
-    } catch {
-      toast.error("Đã xảy ra lỗi khi xóa ưu đãi");
+      if (response.success) {
+        toast.success("Xóa ưu đãi thành công");
+        setIsDeleteModalOpen(false);
+        setSelectedPromotion(null);
+        fetchPromotions();
+      } else {
+        toast.error(response.message || "Đã xảy ra lỗi khi xóa ưu đãi");
+      }
+    } catch (error: any) {
+      console.error("❌ Error deleting promotion:", error);
+      toast.error(error.message || "Đã xảy ra lỗi khi xóa ưu đãi");
     } finally {
       setIsProcessing(false);
     }
@@ -326,7 +139,7 @@ const PromotionManagement = () => {
     switch (status) {
       case "Active":
         return "success";
-      case "Scheduled":
+      case "Upcoming":
         return "warning";
       case "Expired":
         return "danger";
@@ -339,7 +152,7 @@ const PromotionManagement = () => {
     switch (status) {
       case "Active":
         return "Đang áp dụng";
-      case "Scheduled":
+      case "Upcoming":
         return "Sắp diễn ra";
       case "Expired":
         return "Đã hết hạn";
@@ -420,7 +233,7 @@ const PromotionManagement = () => {
           >
             <SelectItem key="all">Tất cả</SelectItem>
             <SelectItem key="Active">Đang áp dụng</SelectItem>
-            <SelectItem key="Scheduled">Sắp diễn ra</SelectItem>
+            <SelectItem key="Upcoming">Sắp diễn ra</SelectItem>
             <SelectItem key="Expired">Đã hết hạn</SelectItem>
           </Select>
         </div>
@@ -549,199 +362,23 @@ const PromotionManagement = () => {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
-      <Modal
-        isDismissable={!isProcessing}
-        isOpen={isAddModalOpen || isEditModalOpen}
-        size="2xl"
-        onOpenChange={(open) => {
-          if (!open && !isProcessing) {
-            setIsAddModalOpen(false);
-            setIsEditModalOpen(false);
-            setSelectedPromotion(null);
-            resetForm();
-          }
+      {/* Add Promotion Modal */}
+      <AddPromotionModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={fetchPromotions}
+      />
+
+      {/* Edit Promotion Modal */}
+      <EditPromotionModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedPromotion(null);
         }}
-      >
-        <ModalContent>
-          <ModalHeader className="px-4 py-4 border-b">
-            {isAddModalOpen ? "Thêm ưu đãi mới" : "Chỉnh sửa ưu đãi"}
-          </ModalHeader>
-          <ModalBody className="px-4 py-4">
-            <div className="space-y-4">
-              <div>
-                <label
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                  htmlFor="title"
-                >
-                  Tiêu đề <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  fullWidth
-                  classNames={{ base: "w-full", inputWrapper: "w-full" }}
-                  id="title"
-                  placeholder="Ví dụ: Ưu đãi Quốc Khánh 2/9"
-                  value={formData.title}
-                  variant="bordered"
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, title: value })
-                  }
-                />
-              </div>
-
-              <div>
-                <label
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                  htmlFor="description"
-                >
-                  Mô tả <span className="text-red-500">*</span>
-                </label>
-                <Textarea
-                  fullWidth
-                  classNames={{ base: "w-full", inputWrapper: "w-full" }}
-                  id="description"
-                  minRows={3}
-                  placeholder="Mô tả chi tiết về chương trình ưu đãi..."
-                  value={formData.description}
-                  variant="bordered"
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, description: value })
-                  }
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                    htmlFor="discountType"
-                  >
-                    Loại giảm giá <span className="text-red-500">*</span>
-                  </label>
-                  <Select
-                    classNames={{ base: "w-full", trigger: "w-full" }}
-                    id="discountType"
-                    selectedKeys={[formData.discountType]}
-                    variant="bordered"
-                    onSelectionChange={(keys) => {
-                      const selected = Array.from(keys)[0] as
-                        | "Percent"
-                        | "Fixed";
-
-                      setFormData({ ...formData, discountType: selected });
-                    }}
-                  >
-                    <SelectItem key="Percent">Phần trăm (%)</SelectItem>
-                    <SelectItem key="Fixed">Số tiền cố định (đ)</SelectItem>
-                  </Select>
-                </div>
-
-                <div>
-                  <label
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                    htmlFor="discountValue"
-                  >
-                    Giá trị <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    fullWidth
-                    classNames={{ base: "w-full", inputWrapper: "w-full" }}
-                    id="discountValue"
-                    min="0"
-                    placeholder={
-                      formData.discountType === "Percent"
-                        ? "0-100"
-                        : "Số tiền"
-                    }
-                    type="number"
-                    value={formData.discountValue.toString()}
-                    variant="bordered"
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        discountValue: Number(value),
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                    htmlFor="startDate"
-                  >
-                    Ngày bắt đầu <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    fullWidth
-                    classNames={{ base: "w-full", inputWrapper: "w-full" }}
-                    id="startDate"
-                    min={today}
-                    type="date"
-                    value={formData.startDate}
-                    variant="bordered"
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, startDate: value })
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label
-                    className="block text-sm font-semibold text-gray-700 mb-2"
-                    htmlFor="endDate"
-                  >
-                    Ngày kết thúc <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    fullWidth
-                    classNames={{ base: "w-full", inputWrapper: "w-full" }}
-                    id="endDate"
-                    min={formData.startDate || today}
-                    type="date"
-                    value={formData.endDate}
-                    variant="bordered"
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, endDate: value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
-                <p className="text-sm text-blue-800">
-                  <strong>Lưu ý:</strong> Hiện tại chỉ hỗ trợ ưu đãi áp dụng
-                  cho tất cả dịch vụ. Tính năng chọn dịch vụ cụ thể sẽ được bổ
-                  sung sau.
-                </p>
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter className="px-4 py-4 border-t">
-            <Button
-              color="default"
-              variant="light"
-              onPress={() => {
-                setIsAddModalOpen(false);
-                setIsEditModalOpen(false);
-                setSelectedPromotion(null);
-                resetForm();
-              }}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-blue-600 text-white"
-              isLoading={isProcessing}
-              onPress={isAddModalOpen ? handleSubmitAdd : handleSubmitEdit}
-            >
-              {isAddModalOpen ? "Thêm ưu đãi" : "Cập nhật"}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        promotion={selectedPromotion}
+        onSuccess={fetchPromotions}
+      />
 
       {/* Delete Confirmation Modal */}
       <Modal
