@@ -85,9 +85,9 @@ const PatientDetailModal = ({
 
   // Thêm hàm xử lý mở hồ sơ khám bệnh
   const handleOpenMedicalRecord = () => {
-    if (currentPatientId && currentPatientId !== "N/A" && currentPatientId !== "Trống") {
+    if (appointmentId) {
       onClose(); // Đóng modal trước
-      navigate(`/doctor/medical/record/${currentPatientId}`); // Chuyển đến trang hồ sơ
+      navigate(`/doctor/medical-record/${appointmentId}`); // Chuyển đến trang hồ sơ với appointmentId
     }
   };
 

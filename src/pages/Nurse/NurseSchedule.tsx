@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Table,
@@ -41,12 +41,15 @@ const NurseSchedule = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<NurseAppointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<NurseAppointment[]>([]);
+  // Removed filteredAppointments state - now using useMemo
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true); // Separate initial load from subsequent loads
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null); // Track which appointment is being updated
   const [error, setError] = useState<string | null>(null);
   
   // Filter states
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText, setDebouncedSearchText] = useState(""); // Debounced search text
   const [selectedDate, setSelectedDate] = useState<string>("all");
   const [dateRange, setDateRange] = useState<{startDate: string | null, endDate: string | null}>({
     startDate: null,
@@ -56,7 +59,6 @@ const NurseSchedule = () => {
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("upcoming");
   // Theo dõi ca đang trong quá trình khám (UI-only toggle)
-  const [inProgressIds, setInProgressIds] = useState<Set<string>>(new Set());
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,21 +74,43 @@ const NurseSchedule = () => {
   const [dates, setDates] = useState<string[]>([]);
   const [doctors, setDoctors] = useState<string[]>([]);
 
-  const fetchAppointments = async () => {
+  // Fetch tất cả bác sĩ
+  const fetchAllDoctors = async () => {
     try {
-      setLoading(true);
+      const res = await nurseApi.getAllDoctors();
+      if (res.success && res.data) {
+        // Lấy danh sách tên bác sĩ
+        const doctorNames = res.data.map(doctor => doctor.fullName);
+        setDoctors(doctorNames);
+      }
+    } catch (err: any) {
+      console.error("Error fetching all doctors:", err);
+      // Fallback: lấy từ appointments nếu API lỗi
+    }
+  };
+
+  const fetchAppointments = useCallback(async (startDate?: string | null, endDate?: string | null, silent: boolean = false) => {
+    try {
+      // Chỉ set loading khi là lần fetch đầu tiên (không phải silent)
+      if (!silent) {
+        setLoading(prev => {
+          // Nếu đang initial loading, giữ nguyên, nếu không thì set true
+          if (!prev) return true;
+          return prev;
+        });
+      }
       setError(null);
-      const res = await nurseApi.getAppointmentsSchedule();
+      const res = await nurseApi.getAppointmentsSchedule(startDate, endDate);
       
       if (res.success && res.data) {
         setAppointments(res.data);
-        setFilteredAppointments(res.data);
         
-        // Extract unique dates và doctors
-        const uniqueDates = [...new Set(res.data.map(apt => formatDate(apt.appointmentDate)))].filter(d => d !== "N/A");
-        const uniqueDoctors = [...new Set(res.data.map(apt => apt.doctorName))].filter(d => d !== "N/A");
+        // Extract unique dates từ appointments (sử dụng formatDate inline để tránh dependency)
+        const uniqueDates = [...new Set(res.data.map(apt => {
+          if (!apt.appointmentDate || apt.appointmentDate === "N/A") return "N/A";
+          return new Date(apt.appointmentDate).toLocaleDateString("vi-VN");
+        }))].filter(d => d !== "N/A");
         setDates(uniqueDates);
-        setDoctors(uniqueDoctors);
       } else {
         setError(res.message || "Lỗi lấy danh sách lịch khám");
       }
@@ -94,67 +118,63 @@ const NurseSchedule = () => {
       console.error("Error fetching appointments:", err);
       setError(err.message || "Lỗi khi tải lịch khám");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setInitialLoading(false);
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
+      fetchAllDoctors(); // Lấy tất cả bác sĩ trước
+      fetchAppointments(); // Fetch mặc định (2 tuần)
+    }
+  }, [isAuthenticated, fetchAppointments]);
+
+  // Debounce search text để tránh filter quá nhiều lần
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // Refetch appointments khi dateRange thay đổi
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    if (dateRange.startDate && dateRange.endDate) {
+      // Chỉ fetch khi cả startDate và endDate đều có giá trị
+      fetchAppointments(dateRange.startDate, dateRange.endDate);
+    } else if (!dateRange.startDate && !dateRange.endDate) {
+      // Khi clear date range, fetch lại mặc định (2 tuần)
       fetchAppointments();
     }
-  }, [isAuthenticated]);
+  }, [dateRange.startDate, dateRange.endDate, isAuthenticated, fetchAppointments]);
 
-  // Filter appointments
-  useEffect(() => {
+  // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
+  const filteredAppointments = useMemo(() => {
     let filtered = [...appointments];
 
     // Sửa logic tab:
     // - Lịch sắp tới: hiển thị các ca có trạng thái CheckedIn hoặc InProgress
-    // - Lịch sử khám: chỉ hiển thị các ca Completed
+    // - Lịch sử khám: hiển thị các ca Completed, Expired, No-Show
     if (activeTab === "upcoming") {
       filtered = filtered.filter(apt => apt.status === "CheckedIn" || apt.status === "InProgress");
     } else if (activeTab === "history") {
-      filtered = filtered.filter(apt => apt.status === "Completed");
+      filtered = filtered.filter(apt => apt.status === "Completed" || apt.status === "Expired" || apt.status === "No-Show");
     }
 
-    // Filter by search text
-    if (searchText) {
+    // Filter by search text (sử dụng debounced search text)
+    if (debouncedSearchText) {
+      const searchLower = debouncedSearchText.toLowerCase();
       filtered = filtered.filter(apt => 
-        apt.patientName.toLowerCase().includes(searchText.toLowerCase()) ||
-        apt.serviceName.toLowerCase().includes(searchText.toLowerCase()) ||
-        apt.doctorName.toLowerCase().includes(searchText.toLowerCase())
+        apt.patientName.toLowerCase().includes(searchLower) ||
+        apt.serviceName.toLowerCase().includes(searchLower) ||
+        apt.doctorName.toLowerCase().includes(searchLower)
       );
-    }
-
-    // Filter by date range
-    if (dateRange.startDate && dateRange.endDate) {
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        const startDate = new Date(dateRange.startDate!);
-        const endDate = new Date(dateRange.endDate!);
-        
-        // Set time to start of day for comparison
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        
-        return aptDate >= startDate && aptDate <= endDate;
-      });
-    } else if (dateRange.startDate) {
-      // Only start date selected
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        const startDate = new Date(dateRange.startDate!);
-        startDate.setHours(0, 0, 0, 0);
-        return aptDate >= startDate;
-      });
-    } else if (dateRange.endDate) {
-      // Only end date selected
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        const endDate = new Date(dateRange.endDate!);
-        endDate.setHours(23, 59, 59, 999);
-        return aptDate <= endDate;
-      });
     }
 
     // Filter by mode
@@ -167,9 +187,28 @@ const NurseSchedule = () => {
       filtered = filtered.filter(apt => apt.doctorName === selectedDoctor);
     }
 
-    setFilteredAppointments(filtered);
+    // Sort by appointmentDate ascending (ngày cũ nhất lên đầu, ngày mới nhất xuống dưới) sau đó sort by startTime ascending
+    filtered.sort((a, b) => {
+      // So sánh theo appointmentDate trước (ngày cũ nhất lên đầu)
+      const dateA = a.appointmentDate || '';
+      const dateB = b.appointmentDate || '';
+      if (dateA !== dateB) {
+        return dateA.localeCompare(dateB); // Ascending: ngày cũ nhất lên đầu
+      }
+      
+      // Nếu cùng ngày, sort theo startTime (giờ sớm nhất lên đầu trong cùng ngày)
+      const timeA = a.startTime || '';
+      const timeB = b.startTime || '';
+      return timeA.localeCompare(timeB); // Ascending: giờ sớm nhất lên đầu
+    });
+
+    return filtered;
+  }, [appointments, activeTab, debouncedSearchText, selectedMode, selectedDoctor]);
+
+  // Reset page khi filtered appointments thay đổi
+  useEffect(() => {
     setCurrentPage(1);
-  }, [searchText, dateRange, selectedMode, selectedDoctor, activeTab, appointments]);
+  }, [debouncedSearchText, selectedMode, selectedDoctor, activeTab]);
 
   const handleViewAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
@@ -199,6 +238,10 @@ const NurseSchedule = () => {
         return "primary";
       case "Finalized":
         return "success";
+      case "Expired":
+        return "danger";
+      case "No-Show":
+        return "danger";
       default:
         return "default";
     }
@@ -216,6 +259,10 @@ const NurseSchedule = () => {
         return "Hoàn thành";
       case "Finalized":
         return "Đã kết thúc";
+      case "Expired":
+        return "Đã hết hạn";
+      case "No-Show":
+        return "Không đến";
       default:
         return status;
     }
@@ -249,16 +296,7 @@ const NurseSchedule = () => {
     });
   };
 
-  // Stats calculation
-  const stats = {
-    total: appointments.length,
-    // Sắp tới = số ca đang CheckedIn hoặc InProgress
-    upcoming: appointments.filter(a => a.status === "CheckedIn" || a.status === "InProgress").length,
-    today: appointments.filter(a => formatDate(a.appointmentDate) === formatDate(new Date().toISOString())).length,
-    online: appointments.filter(a => a.mode === "Online").length,
-    offline: appointments.filter(a => a.mode === "Offline").length,
-    completed: appointments.filter(a => a.status === "Completed").length,
-  };
+  // Removed duplicate stats calculation - now using useMemo below
 
   // Pagination
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
@@ -290,13 +328,22 @@ const NurseSchedule = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Spinner size="lg" label="Đang tải lịch khám..." />
-      </div>
-    );
-  }
+  // Stats calculation - sử dụng useMemo để tránh tính toán lại
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    return {
+      total: appointments.length,
+      upcoming: appointments.filter(a => a.status === "CheckedIn" || a.status === "InProgress").length,
+      today: appointments.filter(a => {
+        if (!a.appointmentDate) return false;
+        const aptDate = new Date(a.appointmentDate).toISOString().split('T')[0];
+        return aptDate === today;
+      }).length,
+      online: appointments.filter(a => a.mode === "Online").length,
+      offline: appointments.filter(a => a.mode === "Offline").length,
+      completed: appointments.filter(a => a.status === "Completed").length,
+    };
+  }, [appointments]);
 
   return (
     <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
@@ -474,7 +521,13 @@ const NurseSchedule = () => {
               {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
             </TableHeader>
             <TableBody
-              items={currentAppointments}
+              items={initialLoading ? [] : currentAppointments}
+              isLoading={initialLoading}
+              loadingContent={
+                <div className="text-center py-12">
+                  <Spinner size="lg" label="Đang tải lịch khám..." />
+                </div>
+              }
               emptyContent={
                 <div className="text-center py-12">
                   <CalendarIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -562,19 +615,45 @@ const NurseSchedule = () => {
 
                     {/* Nút đánh dấu đang trong ca khám (chỉ cho CheckedIn) */}
                     {/* Nút cập nhật trạng thái cho cả Offline và Consultation (Online) */}
-                    {appointment.status === "CheckedIn" && !inProgressIds.has(appointment.appointmentId) && (
+                    {appointment.status === "CheckedIn" && (
                       <Button
                         size="sm"
                         variant="flat"
                         color="warning"
+                        isLoading={updatingStatusId === appointment.appointmentId}
+                        isDisabled={updatingStatusId === appointment.appointmentId}
                         onPress={async () => {
                           try {
-                            await appointmentApi.updateAppointmentStatus(appointment.appointmentId, "InProgress");
-                            setInProgressIds(prev => new Set(prev).add(appointment.appointmentId));
-                            // Cập nhật status hiển thị ngay
-                            appointment.status = "InProgress" as any;
-                          } catch (e) {
-                            console.error(e);
+                            setUpdatingStatusId(appointment.appointmentId);
+                            // Optimistic update: update UI immediately
+                            const updatedAppointments = appointments.map(apt => 
+                              apt.appointmentId === appointment.appointmentId 
+                                ? { ...apt, status: "InProgress" as const }
+                                : apt
+                            );
+                            setAppointments(updatedAppointments);
+                            
+                            const res = await appointmentApi.updateAppointmentStatus(appointment.appointmentId, "InProgress");
+                            if (res.success) {
+                              toast.success("Đã cập nhật trạng thái: Đang trong ca khám");
+                              // Silent refetch to sync with backend without showing loading
+                              fetchAppointments(
+                                dateRange.startDate || undefined,
+                                dateRange.endDate || undefined,
+                                true // silent = true để không hiển thị loading
+                              );
+                            } else {
+                              // Revert on error
+                              setAppointments(appointments);
+                              toast.error(res.message || "Cập nhật trạng thái thất bại");
+                            }
+                          } catch (e: any) {
+                            // Revert on error
+                            setAppointments(appointments);
+                            console.error("Error updating status:", e);
+                            toast.error(e.message || "Cập nhật trạng thái thất bại");
+                          } finally {
+                            setUpdatingStatusId(null);
                           }
                         }}
                       >
@@ -585,8 +664,7 @@ const NurseSchedule = () => {
                     {/* Hiển thị Hồ sơ bệnh án cho ca Offline khi đang khám (InProgress), đã bấm bắt đầu, hoặc đã Completed */}
                     {appointment.mode === "Offline" && (
                       appointment.status === "InProgress" ||
-                      appointment.status === "Completed" ||
-                      inProgressIds.has(appointment.appointmentId)
+                      appointment.status === "Completed"
                     ) && (
                       <Button
                         size="sm"
@@ -600,28 +678,55 @@ const NurseSchedule = () => {
                       </Button>
                     )}
 
-                    {/* Nút Hoàn thành cho ca InProgress */}
-                    {appointment.status === "InProgress" && (
+                    {/* Nút Hoàn thành cho ca InProgress - chỉ hiển thị khi doctor đã duyệt hồ sơ (status = "Finalized") */}
+                    {appointment.status === "InProgress" && appointment.doctorApproved && (
                       <Button
                         size="sm"
                         color="primary"
                         variant="flat"
+                        isLoading={updatingStatusId === appointment.appointmentId}
+                        isDisabled={updatingStatusId === appointment.appointmentId}
                         onPress={async () => {
+                          setUpdatingStatusId(appointment.appointmentId);
+                          // Optimistic update: update UI immediately
+                          const previousAppointments = [...appointments];
+                          const updatedAppointments = appointments.map(apt => 
+                            apt.appointmentId === appointment.appointmentId 
+                              ? { ...apt, status: "Completed" as const }
+                              : apt
+                          );
+                          setAppointments(updatedAppointments);
+                          
                           try {
                             const res = await appointmentApi.updateAppointmentStatus(appointment.appointmentId, "Completed");
                             if (res.success) {
                               toast.success("Đã hoàn thành ca khám");
-                              fetchAppointments();
+                              // Silent refetch to sync with backend without showing loading
+                              fetchAppointments(
+                                dateRange.startDate || undefined,
+                                dateRange.endDate || undefined,
+                                true // silent = true để không hiển thị loading
+                              );
                             } else {
+                              // Revert on error
+                              setAppointments(previousAppointments);
                               toast.error(res.message || "Không thể cập nhật trạng thái");
                             }
                           } catch (e: any) {
+                            // Revert on error
+                            setAppointments(previousAppointments);
                             toast.error(e.message || "Không thể cập nhật trạng thái");
+                          } finally {
+                            setUpdatingStatusId(null);
                           }
                         }}
                       >
                         Hoàn thành
                       </Button>
+                    )}
+                    {/* Hiển thị thông báo nếu chưa được bác sĩ duyệt */}
+                    {appointment.status === "InProgress" && !appointment.doctorApproved && (
+                      <span className="text-xs text-gray-500 italic">Chờ bác sĩ duyệt hồ sơ</span>
                     )}
                   </div>
                 </TableCell>

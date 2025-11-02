@@ -105,7 +105,7 @@ export const appointmentApi = {
    */
   updateAppointmentStatus: async (
     appointmentId: string,
-    status: "CheckedIn" | "InProgress" | "Completed" | "Cancelled",
+    status: "CheckedIn" | "InProgress" | "Completed" | "Cancelled" | "No-Show",
   ): Promise<ApiResponse<any>> => {
     const payload = { status };
     console.log("🔍 [API] Update status payload:", { appointmentId, payload });
@@ -246,6 +246,31 @@ export const appointmentApi = {
     const query = new URLSearchParams({ startTime, endTime }).toString();
     return authenticatedApiCall(`/appointments/${appointmentId}/available-doctors?${query}`, {
       method: "GET",
+    });
+  },
+
+  // Lấy danh sách tất cả bác sĩ
+  getAllDoctors: async (): Promise<ApiResponse<Array<{ _id: string; fullName: string }>>> => {
+    return authenticatedApiCall(`/appointments/doctors`, {
+      method: "GET",
+    });
+  },
+
+  /**
+   * Staff gán lại bác sĩ cho lịch hẹn (khi bác sĩ cũ nghỉ phép)
+   * PUT /api/appointments/:appointmentId/reassign-doctor
+   * Body: { newDoctorUserId: string, reason: string }
+   * 
+   * ⚠️ TODO: API này chưa có ở BE, đang chờ BE team implement
+   */
+  reassignDoctor: async (
+    appointmentId: string,
+    newDoctorUserId: string,
+    reason: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/reassign-doctor`, {
+      method: "PUT",
+      body: JSON.stringify({ newDoctorUserId, reason }),
     });
   },
 };

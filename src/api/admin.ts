@@ -161,11 +161,12 @@ export const adminApi = {
       status: boolean;
       message: string;
       data: AdminUser;
-    }>(`/admin/accounts/lock/${id}`, {
+    }>(`/admin/accounts/lock`, {
       method: "PATCH",
+      body: JSON.stringify({ selectedIds: [id] }), // ← Gửi array với 1 phần tử
     });
   },
-
+  
   // Unlock account
   unlockAccount: async (
     id: string,
@@ -176,8 +177,9 @@ export const adminApi = {
       status: boolean;
       message: string;
       data: AdminUser;
-    }>(`/admin/accounts/unlock/${id}`, {
+    }>(`/admin/accounts/unlock`, {
       method: "PATCH",
+      body: JSON.stringify({ selectedIds: [id] }), // ← Gửi array với 1 phần tử
     });
   },
 

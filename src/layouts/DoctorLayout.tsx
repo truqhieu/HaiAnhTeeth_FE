@@ -8,9 +8,10 @@ import {
   ArrowRightOnRectangleIcon,
   UserIcon,
   DocumentTextIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/AuthContext";
-import { NotificationBell } from "@/components";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface DoctorLayoutProps {
   children: React.ReactNode;
@@ -21,6 +22,7 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const handleLogout = () => {
     logout();
@@ -39,6 +41,13 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
       href: "/doctor/leave-requests",
       icon: DocumentTextIcon,
       current: location.pathname === "/doctor/leave-requests",
+    },
+    {
+      name: "Thông báo",
+      href: "/doctor/notifications",
+      icon: BellIcon,
+      current: location.pathname === "/doctor/notifications",
+      badge: unreadCount > 0 ? unreadCount : undefined,
     },
   ];
 
@@ -95,7 +104,12 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                 >
-                  <Icon className="w-5 h-5 mr-3" />
+                  <div className="relative mr-3">
+                    <Icon className="w-5 h-5" />
+                    {(item as any).badge && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                    )}
+                  </div>
                   {item.name}
                 </button>
               );
@@ -137,12 +151,6 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
             </div>
             <span className="text-lg font-semibold text-gray-800">Bác sĩ</span>
           </div>
-          <NotificationBell />
-        </div>
-
-        {/* Desktop Header with Notification */}
-        <div className="hidden lg:flex items-center justify-end h-16 px-6 bg-white border-b border-gray-200">
-          <NotificationBell />
         </div>
 
         {/* Page Content */}

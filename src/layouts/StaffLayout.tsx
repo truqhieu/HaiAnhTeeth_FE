@@ -8,10 +8,11 @@ import {
   ArrowRightOnRectangleIcon,
   DocumentTextIcon,
   ClipboardDocumentListIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { NotificationBell } from "@/components";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface StaffLayoutProps {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const handleLogout = () => {
     logout();
@@ -46,7 +48,14 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
       href: "/staff/patient-requests",
       icon: ClipboardDocumentListIcon,
       current: location.pathname === "/staff/patient-requests",
-    }
+    },
+    {
+      name: "Thông báo",
+      href: "/staff/notifications",
+      icon: BellIcon,
+      current: location.pathname === "/staff/notifications",
+      badge: unreadCount > 0 ? unreadCount : undefined,
+    },
   ];
 
   const handleNavigation = (href: string) => {
@@ -103,7 +112,12 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
                   }`}
                   onClick={() => handleNavigation(item.href)}
                 >
-                  <Icon className="w-5 h-5 mr-3" />
+                  <div className="relative mr-3">
+                    <Icon className="w-5 h-5" />
+                    {(item as any).badge && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                    )}
+                  </div>
                   {item.name}
                 </button>
               );
@@ -140,18 +154,11 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <div className="flex items-center space-x-3">
-
             <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
               <UserIcon className="w-5 h-5 text-blue-600" />
             </div>
             <span className="text-lg font-semibold text-gray-800">Staff</span>
           </div>
-          <NotificationBell />
-        </div>
-
-        {/* Desktop Header */}
-        <div className="hidden lg:flex items-center justify-end h-16 px-6 bg-white border-b border-gray-200">
-          <NotificationBell />
         </div>
 
         {/* Page content */}

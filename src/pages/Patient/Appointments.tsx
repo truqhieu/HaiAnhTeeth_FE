@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Table,
   TableHeader,
@@ -8,6 +9,7 @@ import {
   TableCell,
   Spinner,
 } from "@heroui/react";
+import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 import { appointmentApi } from "@/api";
@@ -31,6 +33,7 @@ interface Appointment {
   customerName?: string;
   customerEmail?: string; // ⭐ THÊM: Email của customer
   paymentId?: {
+    _id: string;
     status: string;
     amount: number;
     method: string;
@@ -39,10 +42,10 @@ interface Appointment {
 
 const Appointments = () => {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("upcoming");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -122,6 +125,7 @@ const Appointments = () => {
             customerName: apt.customerId?.fullName || "",
             customerEmail: apt.customerId?.email || "",
             paymentId: apt.paymentId ? {
+              _id: apt.paymentId._id?.toString() || apt.paymentId._id || (typeof apt.paymentId === 'object' && apt.paymentId._id ? String(apt.paymentId._id) : ""),
               status: apt.paymentId.status,
               amount: apt.paymentId.amount,
               method: apt.paymentId.method,
@@ -133,9 +137,14 @@ const Appointments = () => {
       // Debug log để kiểm tra dữ liệu
       console.log('🔍 [Appointments] Mapped appointments:', mappedAppointments.map(apt => ({
         id: apt.id,
+        status: apt.status,
         appointmentFor: apt.appointmentFor,
         customerName: apt.customerName,
-        customerEmail: apt.customerEmail
+        customerEmail: apt.customerEmail,
+        paymentId: apt.paymentId ? {
+          _id: apt.paymentId._id,
+          status: apt.paymentId.status
+        } : null
       })));
 
       setAppointments(mappedAppointments);
@@ -164,22 +173,35 @@ const Appointments = () => {
     refetchAppointments();
   }, [isAuthenticated]);
 
-  const getStatusText = (status: string): string => {
-    switch (status) {
+  const getStatusText = (appointment: Appointment): string => {
+    // ⭐ Nếu appointment đang PendingPayment nhưng payment đã cancelled/expired → hiển thị "Đã hủy"
+    if (
+      appointment.status === "PendingPayment" &&
+      appointment.paymentId &&
+      (appointment.paymentId.status === "Cancelled" ||
+       appointment.paymentId.status === "Expired")
+    ) {
+      return "Đã hủy";
+    }
+    
+    switch (appointment.status) {
       case "Pending":
         return "Chờ duyệt";
       case "Approved":
         return "Đã xác nhận";
       case "CheckedIn":
         return "Đã nhận";
+      case "InProgress":
+        return "Đang trong ca khám";
       case "Completed":
         return "Đã hoàn thành";
       case "Cancelled":
+      case "Expired":
         return "Đã hủy";
       case "PendingPayment":
         return "Chờ thanh toán";
       default:
-        return status;
+        return appointment.status;
     }
   };
 
@@ -194,6 +216,18 @@ const Appointments = () => {
     }
 
     if (appointment.type === "Consultation") {
+      // ⭐ Kiểm tra payment đã hết hạn (Cancelled hoặc Expired)
+      if (
+        appointment.paymentId &&
+        (appointment.paymentId.status === "Cancelled" ||
+         appointment.paymentId.status === "Expired")
+      ) {
+        return {
+          text: "Hết hạn thanh toán",
+          color: "text-red-600 font-semibold",
+        };
+      }
+
       if (
         appointment.paymentId &&
         appointment.paymentId.status === "Completed"
@@ -317,25 +351,22 @@ const Appointments = () => {
         return false;
       }
 
-      // Filter theo tab (Sắp tới / Đã khám)
-      let tabMatch = false;
-      if (activeTab === "upcoming") {
-        tabMatch = aptDate >= today;
-      } else if (activeTab === "completed") {
-        tabMatch = aptDate < today;
-      }
-
-      if (!tabMatch) {
-        return false;
-      }
 
       // Filter theo status
       if (statusFilter !== "all") {
         if (statusFilter === "pending" && apt.status !== "Pending") return false;
         if (statusFilter === "approved" && apt.status !== "Approved") return false;
         if (statusFilter === "checkedIn" && apt.status !== "CheckedIn") return false;
+        if (statusFilter === "inProgress" && apt.status !== "InProgress") return false;
         if (statusFilter === "completed" && apt.status !== "Completed") return false;
-        if (statusFilter === "cancelled" && apt.status !== "Cancelled") return false;
+        // ⭐ Sửa: cancelled bao gồm cả Cancelled và Expired
+        if (statusFilter === "cancelled" && apt.status !== "Cancelled" && apt.status !== "Expired") {
+          // ⭐ Kiểm tra nếu là PendingPayment với payment đã cancelled/expired
+          if (!(apt.status === "PendingPayment" && apt.paymentId && 
+                (apt.paymentId.status === "Cancelled" || apt.paymentId.status === "Expired"))) {
+            return false;
+          }
+        }
         if (statusFilter === "pendingPayment" && apt.status !== "PendingPayment") return false;
       }
 
@@ -457,9 +488,9 @@ const Appointments = () => {
 
   return (
     <div className="w-full bg-gradient-to-br from-blue-50 via-white to-blue-50 min-h-screen">
-      {/* Header Section */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-[1600px] mx-auto px-6 py-8">
+        {/* Title Section */}
+        <div className="mb-6">
           <div className="flex items-center space-x-4">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
               <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -474,9 +505,6 @@ const Appointments = () => {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-[1600px] mx-auto px-6 py-8">
         {rescheduleFor && (
           <RescheduleAppointmentModal
             appointmentId={rescheduleFor.id}
@@ -512,73 +540,6 @@ const Appointments = () => {
             <span>{error}</span>
           </div>
         )}
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Sắp tới</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {appointments.filter(apt => apt.status === "Approved" || apt.status === "Pending" || apt.status === "CheckedIn").length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Đã hoàn thành</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {appointments.filter(apt => apt.status === "Completed").length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Đã nhận</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {appointments.filter(apt => apt.status === "CheckedIn").length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Chờ thanh toán</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {appointments.filter(apt => apt.status === "PendingPayment").length}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Filter Controls */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 mb-6">
@@ -617,6 +578,7 @@ const Appointments = () => {
                 <option value="pending">Chờ duyệt</option>
                 <option value="approved">Đã xác nhận</option>
                 <option value="checkedIn">Đã nhận</option>
+                <option value="inProgress">Đang trong ca khám</option>
                 <option value="completed">Đã hoàn thành</option>
                 <option value="cancelled">Đã hủy</option>
                 <option value="pendingPayment">Chờ thanh toán</option>
@@ -649,47 +611,9 @@ const Appointments = () => {
         </div>
 
 
-        {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-6 w-full">
-          <div className="flex border-b border-gray-200 w-full">
-            <button
-              className={`flex-1 px-8 py-5 text-center text-lg font-semibold transition-all duration-200 ${
-                activeTab === "upcoming"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-              }`}
-              onClick={() => {
-                setActiveTab("upcoming");
-              }}
-            >
-              <div className="flex items-center justify-center space-x-2">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-lg">Sắp tới</span>
-              </div>
-            </button>
-            <button
-              className={`flex-1 px-8 py-5 text-center text-lg font-semibold transition-all duration-200 ${
-                activeTab === "completed"
-                  ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
-                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-              }`}
-              onClick={() => {
-                setActiveTab("completed");
-              }}
-            >
-              <div className="flex items-center justify-center space-x-2">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-lg">Đã khám</span>
-              </div>
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="w-full overflow-x-auto">
+        {/* Table */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-6 w-full overflow-x-auto">
+          <div className="w-full">
             <Table className="w-full table-fixed min-w-[1200px]" aria-label="Appointments table">
             <TableHeader columns={columns}>
               {(column) => (
@@ -776,15 +700,24 @@ const Appointments = () => {
                           : appointment.status === "Pending"
                             ? "bg-yellow-100 text-yellow-800"
                             : appointment.status === "PendingPayment"
-                              ? "bg-orange-100 text-orange-800"
-                                : appointment.status === "Completed"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : appointment.status === "Cancelled"
-                                    ? "bg-red-100 text-red-800"
+                              ? // ⭐ Nếu payment đã cancelled/expired → hiển thị màu đỏ (Đã hủy)
+                                (appointment.paymentId && 
+                                 (appointment.paymentId.status === "Cancelled" || 
+                                  appointment.paymentId.status === "Expired"))
+                                ? "bg-red-100 text-red-800"
+                                : "bg-orange-100 text-orange-800"
+                                : appointment.status === "CheckedIn"
+                                  ? "bg-indigo-100 text-indigo-800"
+                                  : appointment.status === "InProgress"
+                                    ? "bg-purple-100 text-purple-800"
+                                    : appointment.status === "Completed"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : appointment.status === "Cancelled" || appointment.status === "Expired"
+                                        ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {getStatusText(appointment.status)}
+                      {getStatusText(appointment)}
                     </span>
                   </TableCell>
                     <TableCell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium w-64">
@@ -827,29 +760,35 @@ const Appointments = () => {
                           </button>
                         )}
 
-                        {/* Xem hóa đơn - chỉ hiển thị khi đã hoàn thành */}
+                        {/* Xem hồ sơ khám bệnh - chỉ hiển thị khi đã hoàn thành */}
                         {appointment.status === "Completed" && (
                           <button
-                            className="p-2.5 hover:bg-green-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
-                            title="Xem hóa đơn"
+                            className="p-2.5 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            title="Xem hồ sơ khám bệnh"
                             onClick={() => {
-                              // TODO: Navigate to invoice/bill page
-                              console.log("View invoice for appointment:", appointment.id);
+                              navigate(`/patient/medical-record/${appointment.id}`);
                             }}
                           >
-                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <ClipboardDocumentListIcon className="w-5 h-5 text-blue-600" />
                           </button>
                         )}
 
-                        {/* Thanh toán - chỉ hiển thị khi chờ thanh toán */}
-                        {appointment.status === "PendingPayment" && (
+                        {/* Thanh toán - chỉ hiển thị khi chờ thanh toán và payment còn valid */}
+                        {appointment.status === "PendingPayment" &&
+                         appointment.paymentId &&
+                         appointment.paymentId.status !== "Cancelled" &&
+                         appointment.paymentId.status !== "Expired" &&
+                         appointment.paymentId._id && (
                           <button
                             className="px-3 py-1.5 bg-orange-100 text-orange-700 rounded-md text-xs font-medium hover:bg-orange-200 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
                             title="Thanh toán"
                             onClick={() => {
-                              console.log("Pay for appointment:", appointment.id);
+                              if (appointment.paymentId?._id) {
+                                navigate(`/patient/payment/${appointment.paymentId._id}`);
+                              } else {
+                                console.error("❌ PaymentId._id không tồn tại cho appointment:", appointment.id);
+                                toast.error("Không tìm thấy thông tin thanh toán. Vui lòng thử lại sau.");
+                              }
                             }}
                           >
                             Thanh toán

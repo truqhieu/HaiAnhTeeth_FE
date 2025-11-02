@@ -14,6 +14,7 @@ import AccountSettings from "@/pages/Patient/AccountSettings";
 import Complaints from "@/pages/Patient/Complaints";
 import Appointments from "@/pages/Patient/Appointments";
 import MedicalRecords from "@/pages/Patient/MedicalRecords";
+import PatientMedicalRecord from "@/pages/Patient/PatientMedicalRecord";
 import PaymentPage from "@/pages/Patient/PaymentPage";
 import Dashboard from "@/pages/Patient/Dashboard";
 import AccountManagement from "@/pages/Admin/AccountManagement";
@@ -40,6 +41,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import MedicalRecordPage from "@/pages/MedicalRecord/MedicalRecordPage";
+import DoctorMedicalRecord from "@/pages/Doctor/DoctorMedicalRecord";
 function App() {
   return (
     <AuthProvider>
@@ -127,8 +129,8 @@ function App() {
                   <Route element={<DoctorSchedule />} path="schedule" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route
-                    element={<MedicalRecordPage />}
-                    path="medical/record/:patientId"
+                    element={<DoctorMedicalRecord />}
+                    path="medical-record/:appointmentId"
                   />
                   <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
@@ -145,8 +147,8 @@ function App() {
                   <Route element={<NurseSchedule />} path="schedule" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route
-                    element={<MedicalRecordPage />}
-                    path="medical/record/:patientId"
+                    element={<NurseMedicalRecord />}
+                    path="medical-record/:appointmentId"
                   />
                   <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
                   <Route element={<NotificationsPage />} path="notifications" />
@@ -190,6 +192,10 @@ function App() {
                     <Route
                       element={<NotificationsPage />}
                       path="/patient/notifications"
+                    />
+                    <Route
+                      element={<PatientMedicalRecord />}
+                      path="/patient/medical-record/:appointmentId"
                     />
                   </Routes>
                 </DefaultLayout>

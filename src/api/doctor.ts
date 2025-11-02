@@ -10,6 +10,7 @@ export interface DoctorAppointment {
   type: string;
   status: string;
   mode: string;
+  medicalRecordStatus?: "Draft" | "Finalized" | null; // Status của medical record: Draft = chưa duyệt, Finalized = đã duyệt, null = chưa có hồ sơ
 }
 
 export interface AppointmentDetail {
@@ -57,12 +58,29 @@ export interface ServiceSummary {
 }
 
 export const doctorApi = {
-  // Lấy lịch khám của bác sĩ (2 tuần)
-  getAppointmentsSchedule: async (): Promise<
+  // Lấy lịch khám của bác sĩ (2 tuần mặc định, hoặc theo date range)
+  getAppointmentsSchedule: async (
+    startDate?: string | null,
+    endDate?: string | null
+  ): Promise<
     ApiResponse<DoctorAppointment[]>
   > => {
+    // Tạo query params nếu có date range
+    const queryParams = new URLSearchParams();
+    if (startDate) {
+      queryParams.append("startDate", startDate);
+    }
+    if (endDate) {
+      queryParams.append("endDate", endDate);
+    }
+    
+    const query = queryParams.toString();
+    const endpoint = query
+      ? `/doctor/appointments-schedule?${query}`
+      : `/doctor/appointments-schedule`;
+    
     return authenticatedApiCall<DoctorAppointment[]>(
-      "/doctor/appointments-schedule",
+      endpoint,
       {
         method: "GET",
       },
