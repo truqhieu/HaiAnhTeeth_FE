@@ -427,6 +427,7 @@ export const validateAppointmentTime = async (
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // ⭐ Thêm để gửi cookie/auth
       },
     );
 

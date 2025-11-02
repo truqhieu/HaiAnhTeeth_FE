@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay } from "@/api/medicalRecord";
-import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
-import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { Spinner, Card, CardBody, CardHeader, Button } from "@heroui/react";
+import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, ArrowLeftIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
-const NurseMedicalRecord: React.FC = () => {
+const PatientMedicalRecord: React.FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [display, setDisplay] = useState<MedicalRecordDisplay | null>(null);
-  const [nurseNote, setNurseNote] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const calcAge = (dob?: string | null): number | null => {
     if (!dob) return null;
@@ -33,17 +31,11 @@ const NurseMedicalRecord: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await medicalRecordApi.getOrCreateByAppointment(appointmentId, 'nurse');
-        console.log('🔍 [NurseMedicalRecord] API Response:', res);
+        const res = await medicalRecordApi.getMedicalRecordForPatient(appointmentId);
         
         if (res.success && res.data) {
-          console.log('🔍 [NurseMedicalRecord] Record:', res.data.record);
-          console.log('🔍 [NurseMedicalRecord] Display:', res.data.display);
-          console.log('🔍 [NurseMedicalRecord] additionalServices from display:', res.data.display?.additionalServices);
-          
           setRecord(res.data.record);
           setDisplay(res.data.display);
-          setNurseNote(res.data.record.nurseNote || "");
         } else {
           setError(res.message || "Không thể tải hồ sơ khám bệnh");
         }
@@ -56,37 +48,53 @@ const NurseMedicalRecord: React.FC = () => {
     load();
   }, [appointmentId]);
 
-  const onSave = async () => {
-    if (!appointmentId) return;
-    setSaving(true);
-    try {
-      const res = await medicalRecordApi.updateNurseNote(appointmentId, nurseNote);
-      if (res.success && res.data) {
-        setRecord(res.data);
-        toast.success("Đã lưu ghi chú điều dưỡng");
-        navigate(-1);
-      } else {
-        setError(res.message || "Lưu thất bại");
-      }
-    } catch (e: any) {
-      setError(e.message || "Lưu thất bại");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (loading) return (
     <div className="flex items-center justify-center h-96"><Spinner label="Đang tải hồ sơ..." /></div>
   );
 
   if (error) return (
-    <div className="p-6 text-center text-red-600">{error}</div>
+    <div className="p-6 text-center">
+      <div className="text-red-600 mb-4">{error}</div>
+      <Button onClick={() => navigate(-1)} color="default" variant="flat">
+        <ArrowLeftIcon className="w-4 h-4 mr-2" />
+        Quay lại
+      </Button>
+    </div>
   );
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* Patient info */}
-      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <DocumentTextIcon className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Hồ sơ khám bệnh</h1>
+                {display?.doctorName && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Bác sĩ: <span className="font-medium">{display.doctorName}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button 
+              onClick={() => navigate("/patient/medical-records")} 
+              color="default" 
+              variant="flat"
+              className="border border-gray-300"
+            >
+              <ArrowLeftIcon className="w-4 h-4 mr-2" />
+              Quay lại danh sách
+            </Button>
+          </div>
+        </div>
+
+        {/* Patient info */}
+        <Card className="bg-white shadow-lg border border-gray-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
@@ -126,12 +134,16 @@ const NurseMedicalRecord: React.FC = () => {
               <p className="text-sm text-gray-600 font-medium">Địa chỉ</p>
               <p className="text-gray-900 font-semibold">{display?.address || '-'}</p>
             </div>
+            <div className="lg:col-span-2">
+              <p className="text-sm text-gray-600 font-medium">Bác sĩ điều trị</p>
+              <p className="text-gray-900 font-semibold">{display?.doctorName || '-'}</p>
+            </div>
           </div>
         </CardBody>
       </Card>
 
-      {/* Additional Services (read only) */}
-      <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 opacity-70">
+        {/* Additional Services (read-only) */}
+        <Card className="bg-white shadow-lg border border-gray-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <DocumentTextIcon className="w-5 h-5 text-teal-600" />
@@ -156,8 +168,8 @@ const NurseMedicalRecord: React.FC = () => {
         </CardBody>
       </Card>
 
-      {/* Diagnosis (read only) */}
-      <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 opacity-70">
+        {/* Diagnosis (read-only) */}
+        <Card className="bg-white shadow-lg border border-gray-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <BeakerIcon className="w-5 h-5 text-green-600" />
@@ -165,22 +177,16 @@ const NurseMedicalRecord: React.FC = () => {
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
-          <Textarea 
-            value={record?.diagnosis || ""} 
-            isReadOnly 
-            variant="flat" 
-            minRows={3} 
-            placeholder="Nhập chẩn đoán bệnh..."
-            classNames={{ 
-              input: "bg-gray-100 text-gray-500",
-              base: "opacity-60"
-            }} 
-          />
+          <div className="text-gray-900 whitespace-pre-wrap">
+            {record?.diagnosis || (
+              <span className="text-gray-500 italic">Chưa có thông tin chẩn đoán</span>
+            )}
+          </div>
         </CardBody>
       </Card>
 
-      {/* Conclusion (read only) */}
-      <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 opacity-70">
+        {/* Conclusion (read-only) */}
+        <Card className="bg-white shadow-lg border border-gray-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <DocumentTextIcon className="w-5 h-5 text-blue-600" />
@@ -188,22 +194,16 @@ const NurseMedicalRecord: React.FC = () => {
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
-          <Textarea 
-            value={record?.conclusion || ""} 
-            isReadOnly 
-            variant="flat" 
-            minRows={3} 
-            placeholder="Nhập kết luận và hướng dẫn điều trị..."
-            classNames={{ 
-              input: "bg-gray-100 text-gray-500",
-              base: "opacity-60"
-            }} 
-          />
+          <div className="text-gray-900 whitespace-pre-wrap">
+            {record?.conclusion || (
+              <span className="text-gray-500 italic">Chưa có thông tin kết luận</span>
+            )}
+          </div>
         </CardBody>
       </Card>
 
-      {/* Prescription (read only) */}
-      <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 opacity-70">
+        {/* Prescription (read-only) */}
+        <Card className="bg-white shadow-lg border border-gray-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <PencilSquareIcon className="w-5 h-5 text-orange-600" />
@@ -246,8 +246,8 @@ const NurseMedicalRecord: React.FC = () => {
         </CardBody>
       </Card>
 
-      {/* Nurse note (editable) */}
-      <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
+        {/* Nurse note (read-only) */}
+        <Card className="bg-white shadow-lg border border-gray-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <HeartIcon className="w-5 h-5 text-pink-600" />
@@ -255,25 +255,16 @@ const NurseMedicalRecord: React.FC = () => {
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
-          <Textarea
-            placeholder="Nhập ghi chú về bệnh nền hoặc dị ứng của bệnh nhân..."
-            value={nurseNote}
-            onValueChange={setNurseNote}
-            minRows={5}
-            variant="bordered"
-          />
-
-          <div className="flex justify-end mt-4">
-            <Button color="success" onPress={onSave} isLoading={saving} startContent={!saving && <CheckCircleIcon className="w-5 h-5" />}>
-              {saving ? "Đang lưu..." : "Lưu ghi chú"}
-            </Button>
+          <div className="text-gray-900 whitespace-pre-wrap">
+            {record?.nurseNote || (
+              <span className="text-gray-500 italic">Chưa có ghi chú</span>
+            )}
           </div>
         </CardBody>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };
 
-export default NurseMedicalRecord;
-
-
+export default PatientMedicalRecord;

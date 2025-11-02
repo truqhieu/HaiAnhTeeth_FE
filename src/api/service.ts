@@ -9,6 +9,18 @@ export interface Service {
   durationMinutes: number;
   category: string;
   status: string;
+  // ⭐ Promotion fields (từ BE tính toán)
+  originalPrice?: number;
+  finalPrice?: number;
+  hasPromotion?: boolean;
+  promotionInfo?: {
+    promotionId: string;
+    title: string;
+    discountType: string;
+    discountValue: number;
+    discountAmount: number;
+  };
+  discountAmount?: number;
 }
 
 export interface GetServicesParams {

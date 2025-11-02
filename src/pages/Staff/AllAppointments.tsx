@@ -114,6 +114,20 @@ const AllAppointments = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailData, setDetailData] = useState<AppointmentDetailData | null>(null);
 
+  // ===== Hàm lấy tất cả bác sĩ =====
+  const fetchAllDoctors = async () => {
+    try {
+      const res = await appointmentApi.getAllDoctors();
+      if (res.success && res.data) {
+        const doctorNames = res.data.map(doctor => doctor.fullName);
+        setDoctors(doctorNames);
+      }
+    } catch (err: any) {
+      console.error("Error fetching all doctors:", err);
+      // Fallback: lấy từ appointments nếu API lỗi
+    }
+  };
+
   // ===== Hàm lấy tất cả ca khám =====
   const refetchAllAppointments = async () => {
     try {
@@ -154,12 +168,6 @@ const AllAppointments = () => {
 
         setAppointments(allMapped);
         setFilteredAppointments(allMapped);
-
-        const uniqueDoctors = [...new Set(allMapped.map((apt) => apt.doctorName))].filter(
-          (d) => d !== "N/A"
-        );
-        
-        setDoctors(uniqueDoctors);
       } else {
         console.error("API Response:", res);
         if (res.data && !Array.isArray(res.data)) {
@@ -178,6 +186,7 @@ const AllAppointments = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
+      fetchAllDoctors(); // Lấy tất cả bác sĩ trước
       refetchAllAppointments();
     }
   }, [isAuthenticated]);
@@ -317,10 +326,40 @@ const AllAppointments = () => {
     }
   };
 
+  // ===== Helper: Kiểm tra appointment có trong giờ làm việc không =====
+  const isWithinWorkingHours = (appointment: Appointment): boolean => {
+    if (!appointment.startTime) return false;
+    
+    const appointmentDate = new Date(appointment.startTime);
+    const now = new Date();
+    
+    // Lấy ngày của appointment (chỉ phần ngày, không có giờ)
+    const appointmentDateOnly = new Date(appointmentDate);
+    appointmentDateOnly.setUTCHours(0, 0, 0, 0);
+    
+    // Lấy giờ của appointment (VN time, UTC+7)
+    const appointmentHour = (appointmentDate.getUTCHours() + 7) % 24;
+    
+    // Nếu appointment vào buổi sáng (trước 12:00), endTime là 12:00
+    // Nếu appointment vào buổi chiều (từ 12:00 trở đi), endTime là 18:00
+    let scheduleEndHourVN = 18; // Mặc định buổi chiều
+    if (appointmentHour < 12) {
+      scheduleEndHourVN = 12; // Buổi sáng
+    }
+    
+    // Tạo endTime của buổi làm việc (VN time), sau đó convert sang UTC
+    // VN time = UTC + 7, nên UTC = VN time - 7
+    const scheduleEndDate = new Date(appointmentDateOnly);
+    scheduleEndDate.setUTCHours(scheduleEndHourVN - 7, 0, 0, 0); // Convert VN time to UTC
+    
+    // Kiểm tra xem hiện tại có trước endTime không
+    return now < scheduleEndDate;
+  };
+
   // ===== Cập nhật trạng thái ca khám =====
   const handleUpdateStatus = async (
     appointmentId: string,
-    newStatus: "CheckedIn" | "Completed" | "Cancelled"
+    newStatus: "CheckedIn" | "Completed" | "Cancelled" | "No-Show"
   ) => {
     try {
       setProcessingId(appointmentId);
@@ -337,6 +376,7 @@ const AllAppointments = () => {
           CheckedIn: "Đã check-in bệnh nhân thành công!",
           Completed: "Đã hoàn thành ca khám!",
           Cancelled: "Đã hủy ca khám thành công!",
+          "No-Show": "Đã đánh dấu No-Show!",
         };
         toast.success(statusMessages[newStatus]);
         await refetchAllAppointments();
@@ -366,7 +406,7 @@ const AllAppointments = () => {
         return "Đã hủy";
       case "Refunded":
         return "Đã hoàn tiền";
-      case "NoShow":
+      case "No-Show":
         return "Không đến";
       case "PendingPayment":
         return "Chờ thanh toán";
@@ -389,7 +429,7 @@ const AllAppointments = () => {
       case "CheckedIn":
         return "primary";
       case "Cancelled":
-      case "NoShow":
+      case "No-Show":
       case "Expired":
         return "danger";
       case "Refunded":
@@ -998,32 +1038,55 @@ const AllAppointments = () => {
                         </>
                       )}
                       {appointment.status === "Approved" && (
-                        isAtOrAfterStartTime(appointment.startTime) ? (
-                          <>
-                            <Button
-                              size="sm"
-                              color="primary"
-                              variant="flat"
-                              onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                              isDisabled={processingId === appointment.id}
-                              isLoading={processingId === appointment.id}
-                            >
-                              Check-in
-                            </Button>
-                            <Button
-                              size="sm"
-                              color="warning"
-                              variant="flat"
-                              onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
-                              isDisabled={processingId === appointment.id}
-                              isLoading={processingId === appointment.id}
-                            >
-                              No Show
-                            </Button>
-                          </>
-                        ) : null
+                        <>
+                          <Button
+                            size="sm"
+                            color="primary"
+                            variant="flat"
+                            onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                            isDisabled={processingId === appointment.id}
+                            isLoading={processingId === appointment.id}
+                          >
+                            Check-in
+                          </Button>
+                          <Button
+                            size="sm"
+                            color="warning"
+                            variant="flat"
+                            onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
+                            isDisabled={processingId === appointment.id}
+                            isLoading={processingId === appointment.id}
+                          >
+                            No Show
+                          </Button>
+                        </>
                       )}
-                      {!["Pending", "Approved"].includes(appointment.status) && (
+                      {appointment.status === "CheckedIn" && (
+                        <Button
+                          size="sm"
+                          color="warning"
+                          variant="flat"
+                          onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
+                          isDisabled={processingId === appointment.id}
+                          isLoading={processingId === appointment.id}
+                        >
+                          No Show
+                        </Button>
+                      )}
+                      {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && (
+                        <Button
+                          size="sm"
+                          color="primary"
+                          variant="flat"
+                          onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                          isDisabled={processingId === appointment.id}
+                          isLoading={processingId === appointment.id}
+                        >
+                          Check-in
+                        </Button>
+                      )}
+                      {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) || 
+                       (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
                         <div className="flex gap-2">
                           {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
                             <Button

@@ -1,338 +1,191 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardBody,
-  CardHeader,
-  Button,
-  Textarea,
-  Spinner,
-  Chip,
-  Divider,
-} from "@heroui/react";
-import {
-  ArrowLeftIcon,
-  UserIcon,
-  DocumentTextIcon,
-  BeakerIcon,
-  ClipboardDocumentListIcon,
-  PencilSquareIcon,
-  HeartIcon,
-  CheckCircleIcon,
-  CalendarIcon,
-} from "@heroicons/react/24/outline";
+import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay } from "@/api/medicalRecord";
+import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
+import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import defaultLayout from "@/layouts/default";
-import { doctorApi } from "@/api/doctor";
-
-// Type definitions
-interface MedicalRecord {
-  symptoms: string;
-  diagnosis: string;
-  treatmentPlan: string;
-  prescription: string;
-  nursingNotes: string;
-}
-
-interface PatientInfo {
-  fullName: string;
-  gender: string;
-  dateOfBirth: string;
-  email: string;
-  phoneNumber: string;
-}
 
 const MedicalRecordPage = () => {
-  const { patientId } = useParams<{ patientId: string }>();
+  const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  
-  const [patientInfo, setPatientInfo] = useState<PatientInfo | null>(null);
-  const [patientAppointments, setPatientAppointments] = useState<Array<{ appointmentId: string; serviceName: string; status: string; startTime: string; endTime: string }>>([]);
-  const [additionalServices, setAdditionalServices] = useState<Array<{ _id: string; serviceName: string; price?: number }>>([]);
-  const [medicalRecord, setMedicalRecord] = useState<MedicalRecord>({
-    symptoms: "",
-    diagnosis: "",
-    treatmentPlan: "",
-    prescription: "",
-    nursingNotes: "",
+  const [record, setRecord] = useState<MedicalRecord | null>(null);
+  const [display, setDisplay] = useState<MedicalRecordDisplay | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Form state - doctor có thể chỉnh sửa nhiều trường hơn
+  const [diagnosis, setDiagnosis] = useState("");
+  const [conclusion, setConclusion] = useState("");
+  const [prescription, setPrescription] = useState({
+    medicine: "",
+    dosage: "",
+    duration: "",
   });
+  const [nurseNote, setNurseNote] = useState("");
+
   const userRole = user?.role?.toLowerCase();
   const isDoctor = userRole === "doctor";
   const isNurse = userRole === "nurse";
-   console.log("=== MEDICAL RECORD PAGE DEBUG ===");
-  console.log("Current URL:", window.location.pathname);
-  console.log("User from context:", user);
-  console.log("User role:", user?.role);
-  console.log("isDoctor:", user?.role === "doctor");
-  console.log("isNurse:", user?.role === "nurse");
+
+  const calcAge = (dob?: string | null): number | null => {
+    if (!dob) return null;
+    const birth = new Date(dob);
+    const today = new Date();
+    let age = today.getUTCFullYear() - birth.getUTCFullYear();
+    const monthDiff = today.getUTCMonth() - birth.getUTCMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getUTCDate() < birth.getUTCDate())) {
+      age--;
+    }
+    return age < 0 ? 0 : age;
+  };
 
   useEffect(() => {
-    if (patientId) {
-      fetchMedicalRecord();
-      fetchPatientAppointments(patientId);
-    }
-  }, [patientId]);
+    const load = async () => {
+      if (!appointmentId) {
+        setError("Thiếu thông tin appointment. Vui lòng truy cập từ lịch hẹn.");
+        setLoading(false);
+        return;
+      }
 
-  const fetchMedicalRecord = async () => {
-    try {
       setLoading(true);
       setError(null);
 
-      // TODO: Replace with actual API calls
-      // const patientRes = await api.getPatientDetail(patientId);
-      // const recordRes = await api.getMedicalRecord(patientId);
-
-      // Mock data for now
-      setTimeout(() => {
-        setPatientInfo({
-          fullName: "Nguyễn Văn A",
-          gender: "Male",
-          dateOfBirth: "1990-01-15",
-          email: "nguyenvana@email.com",
-          phoneNumber: "0123456789",
-        });
-
-        setMedicalRecord({
-          symptoms: "Bệnh nhân báo cáo đau răng ở góc phần tư trên bên phải.",
-          diagnosis: "Sâu răng.",
-          treatmentPlan: "Trám răng và kiểm tra định kỳ.",
-          prescription: "Thuốc giảm đau khi cần thiết. Paracetamol 500mg, uống 1-2 viên khi đau.",
-          nursingNotes: "Bệnh nhân đã được hướng dẫn vệ sinh răng miệng đúng cách.",
-        });
-        setAdditionalServices([]);
-
+      try {
+        const res = await medicalRecordApi.getOrCreateByAppointment(appointmentId, user?.role);
+        if (res.success && res.data) {
+          setRecord(res.data.record);
+          setDisplay(res.data.display);
+          setDiagnosis(res.data.record.diagnosis || "");
+          setConclusion(res.data.record.conclusion || "");
+          setPrescription({
+            medicine: res.data.record.prescription?.medicine || "",
+            dosage: res.data.record.prescription?.dosage || "",
+            duration: res.data.record.prescription?.duration || "",
+          });
+          setNurseNote(res.data.record.nurseNote || "");
+        } else {
+          setError(res.message || "Không thể tải hồ sơ khám bệnh");
+        }
+      } catch (e: any) {
+        setError(e.message || "Lỗi kết nối máy chủ");
+      } finally {
         setLoading(false);
-      }, 1000);
-    } catch (err: any) {
-      console.error("Error fetching medical record:", err);
-      setError(err.message || "Lỗi khi tải hồ sơ khám bệnh");
-      setLoading(false);
-    }
-  };
-
-  const fetchPatientAppointments = async (pid: string) => {
-    try {
-      const res = await doctorApi.getAppointmentsOfPatient(pid);
-      if (res.success && Array.isArray(res.data)) {
-        setPatientAppointments(res.data);
       }
-    } catch (e) {
-      // ignore silently for now
+    };
+    load();
+  }, [appointmentId]);
+
+  const onSave = async () => {
+    if (!appointmentId) {
+      toast.error("Thiếu thông tin appointment");
+      return;
     }
-  };
 
-  const handleSave = async () => {
+    setSaving(true);
     try {
-      setSaving(true);
-      setError(null);
-      setSuccess(null);
-
-      // TODO: Replace with actual API call
-      // await api.updateMedicalRecord(patientId, medicalRecord);
-
-      // Mock save
-      setTimeout(() => {
-        setSuccess("Lưu hồ sơ khám bệnh thành công!");
-        setSaving(false);
-        
-        // Clear success message after 3 seconds
-        setTimeout(() => setSuccess(null), 3000);
-      }, 1000);
-    } catch (err: any) {
-      console.error("Error saving medical record:", err);
-      setError(err.message || "Lỗi khi lưu hồ sơ khám bệnh");
+      if (isNurse) {
+        const res = await medicalRecordApi.updateNurseNote(appointmentId, nurseNote);
+        if (res.success && res.data) {
+          setRecord(res.data);
+          toast.success("Đã lưu ghi chú điều dưỡng");
+          navigate(-1);
+        } else {
+          setError(res.message || "Lưu thất bại");
+        }
+      } else if (isDoctor) {
+        // Doctor có thể update toàn bộ record
+        const res = await medicalRecordApi.updateMedicalRecordForDoctor(appointmentId, {
+          diagnosis,
+          conclusion,
+          prescription,
+          nurseNote,
+        });
+        if (res.success && res.data) {
+          setRecord(res.data);
+          toast.success("Đã lưu hồ sơ khám bệnh");
+          navigate(-1);
+        } else {
+          setError(res.message || "Lưu thất bại");
+        }
+      }
+    } catch (e: any) {
+      setError(e.message || "Lưu thất bại");
+    } finally {
       setSaving(false);
     }
   };
 
-  const handleChange = (field: keyof MedicalRecord, value: string) => {
-    setMedicalRecord(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
+  if (loading) return (
+    <div className="flex items-center justify-center h-96"><Spinner label="Đang tải hồ sơ..." /></div>
+  );
 
-  const getGenderText = (gender: string) => {
-    switch (gender) {
-      case "Male":
-        return "Nam";
-      case "Female":
-        return "Nữ";
-      case "Other":
-        return "Khác";
-      default:
-        return gender;
-    }
-  };
-
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  const calculateAge = (dateString: string): number => {
-    const birthDate = new Date(dateString);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Spinner size="lg" label="Đang tải hồ sơ khám bệnh..." />
-      </div>
-    );
-  }
+  if (error) return (
+    <div className="p-6 text-center text-red-600">{error}</div>
+  );
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      {/* Header */}
-      <div className="mb-6">
-        <Button
-          variant="light"
-          startContent={<ArrowLeftIcon className="w-5 h-5" />}
-          onPress={() => navigate(-1)}
-          className="mb-4"
-        >
-          Quay lại
-        </Button>
-        
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Hồ Sơ Khám Bệnh</h1>
-          </div>
-          <Chip 
-            color={isDoctor ? "primary" : "secondary"} 
-            variant="flat" 
-            size="lg"
-            startContent={isDoctor ? <UserIcon className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
-          >
-            {isDoctor ? "Bác sĩ" : "Điều dưỡng"}
-          </Chip>
-        </div>
-      </div>
-
-      {/* Success Message */}
-      {success && (
-        <Card className="bg-success-50 border-success-200 mb-6">
-          <CardBody className="flex flex-row items-center gap-3 py-3">
-            <CheckCircleIcon className="w-6 h-6 text-success-600" />
-            <p className="text-success-700 font-semibold">{success}</p>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <Card className="bg-danger-50 border-danger-200 mb-6">
-          <CardBody className="flex flex-row items-center gap-3 py-3">
-            <span className="text-danger-600 text-lg">⚠️</span>
-            <p className="text-danger-700">{error}</p>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Patient Info Card */}
-      {patientInfo && (
-        <Card className="mb-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-          <CardHeader className="pb-0 pt-4 px-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-                <UserIcon className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Thông tin bệnh nhân</h3>
-              </div>
-            </div>
-          </CardHeader>
-          <CardBody className="px-6 pb-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Họ và tên</p>
-                <p className="text-gray-900 font-semibold text-lg">{patientInfo.fullName}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Giới tính</p>
-                <p className="text-gray-900 font-semibold">{getGenderText(patientInfo.gender)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Tuổi</p>
-                <p className="text-gray-900 font-semibold">{calculateAge(patientInfo.dateOfBirth)} tuổi</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Ngày sinh</p>
-                <p className="text-gray-900 font-semibold">{formatDate(patientInfo.dateOfBirth)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Email</p>
-                <p className="text-gray-900 font-semibold">{patientInfo.email}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Số điện thoại</p>
-                <p className="text-gray-900 font-semibold">{patientInfo.phoneNumber}</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      )}
-
-      <Divider className="my-6" />
-
-      {/* Patient appointments list */}
-      {isDoctor && patientAppointments.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader className="pb-0 pt-4 px-6">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-gray-600" />
-              <h4 className="font-bold text-lg text-gray-800">Lịch khám của bệnh nhân</h4>
-            </div>
-          </CardHeader>
-          <CardBody className="px-6 pb-4">
-            <div className="divide-y border rounded-lg">
-              {patientAppointments.map((a) => (
-                <div key={a.appointmentId} className="flex items-center justify-between p-3">
-                  <div className="text-sm text-gray-700">
-                    <div className="font-semibold">{new Date(a.startTime).toLocaleString('vi-VN')}</div>
-                    <div className="text-gray-500">{a.serviceName}</div>
-                  </div>
-                  <Chip size="sm" variant="flat" color={a.status === 'Completed' ? 'success' : a.status === 'InProgress' ? 'warning' : 'primary'}>
-                    {a.status === 'Completed' ? 'Hoàn thành' : a.status === 'InProgress' ? 'Đang khám' : 'Đã nhận'}
-                  </Chip>
-                </div>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Additional Services (read only) to match Nurse UI */}
-      <Card className="mb-6 bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {/* Patient info */}
+      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader className="pb-0 pt-4 px-6">
-          <div className="flex items-center gap-2">
-            <DocumentTextIcon className="w-6 h-6 text-teal-600" />
-            <h4 className="font-bold text-lg text-gray-800">Dịch vụ bổ sung</h4>
-            <Chip size="sm" variant="flat" color="default" className="ml-2">Chỉ xem</Chip>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+              <UserIcon className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Thông tin bệnh nhân</h3>
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
-          {additionalServices.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div>
+              <p className="text-sm text-gray-600 font-medium">Họ và tên</p>
+              <p className="text-gray-900 font-semibold text-lg">{display?.patientName || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 font-medium">Giới tính</p>
+              <p className="text-gray-900 font-semibold">{display?.gender || '-'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 font-medium">Tuổi</p>
+              <p className="text-gray-900 font-semibold">{(() => {
+                const ageFromBE = display?.patientAge ?? null;
+                const fallback = calcAge(display?.patientDob ?? null);
+                const age = ageFromBE && ageFromBE > 0 ? ageFromBE : (fallback ?? 0);
+                return age || '-';
+              })()}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 font-medium">Số điện thoại</p>
+              <p className="text-gray-900 font-semibold">{display?.phoneNumber || '-'}</p>
+            </div>
+            <div className="lg:col-span-2">
+              <p className="text-sm text-gray-600 font-medium">Email</p>
+              <p className="text-gray-900 font-semibold break-all">{display?.email || '-'}</p>
+            </div>
+            <div className="lg:col-span-2">
+              <p className="text-sm text-gray-600 font-medium">Địa chỉ</p>
+              <p className="text-gray-900 font-semibold">{display?.address || '-'}</p>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Additional Services (read only) */}
+      <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 opacity-70">
+        <CardHeader className="pb-0 pt-4 px-6">
+          <div className="flex items-center gap-2">
+            <DocumentTextIcon className="w-5 h-5 text-teal-600" />
+            <h4 className="font-semibold text-gray-800">Dịch vụ bổ sung</h4>
+          </div>
+        </CardHeader>
+        <CardBody className="px-6 pb-4">
+          {display?.additionalServices && display.additionalServices.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {additionalServices.map((s) => (
+              {display.additionalServices.map((s) => (
                 <div key={s._id} className="flex items-center justify-between p-3 rounded-lg bg-white border">
                   <span className="font-medium text-gray-800">{s.serviceName}</span>
                   {typeof s.price === 'number' && (
@@ -347,177 +200,128 @@ const MedicalRecordPage = () => {
         </CardBody>
       </Card>
 
-      {/* Medical Record Form */}
-      <div className="space-y-6">
-        {/* Symptoms - Doctor only */}
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardHeader className="pb-0 pt-4 px-6">
-            <div className="flex items-center gap-2">
-              <ClipboardDocumentListIcon className="w-6 h-6 text-purple-600" />
-              <h4 className="font-bold text-lg text-gray-800">Triệu chứng</h4>
-              {!isDoctor && (
-                <Chip size="sm" variant="flat" color="default" className="ml-2">
-                  Chỉ xem
-                </Chip>
-              )}
-            </div>
-          </CardHeader>
-          <CardBody className="px-6 pb-4">
-            <Textarea
-              value={medicalRecord.symptoms}
-              onChange={(e) => handleChange("symptoms", e.target.value)}
-              placeholder="Mô tả các triệu chứng của bệnh nhân..."
-              minRows={3}
-              maxRows={6}
-              disabled={!isDoctor}
-              variant={isDoctor ? "bordered" : "flat"}
+      {/* Diagnosis (read only cho nurse, editable cho doctor) */}
+      <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 opacity-70">
+        <CardHeader className="pb-0 pt-4 px-6">
+          <div className="flex items-center gap-2">
+            <BeakerIcon className="w-5 h-5 text-green-600" />
+            <h4 className="font-semibold text-gray-800">Chẩn đoán</h4>
+          </div>
+        </CardHeader>
+        <CardBody className="px-6 pb-4">
+          <Textarea 
+            value={diagnosis} 
+            onChange={(e) => setDiagnosis(e.target.value)}
+            isReadOnly={isNurse}
+            variant={isNurse ? "flat" : "bordered"} 
+            minRows={3} 
+            placeholder="Nhập chẩn đoán bệnh..."
+            classNames={{ 
+              input: isNurse ? "bg-gray-100 text-gray-500" : "",
+              base: isNurse ? "opacity-60" : ""
+            }} 
+          />
+        </CardBody>
+      </Card>
+
+      {/* Conclusion (read only cho nurse, editable cho doctor) */}
+      <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 opacity-70">
+        <CardHeader className="pb-0 pt-4 px-6">
+          <div className="flex items-center gap-2">
+            <DocumentTextIcon className="w-5 h-5 text-blue-600" />
+            <h4 className="font-semibold text-gray-800">Kết luận - Hướng dẫn</h4>
+          </div>
+        </CardHeader>
+        <CardBody className="px-6 pb-4">
+          <Textarea 
+            value={conclusion} 
+            onChange={(e) => setConclusion(e.target.value)}
+            isReadOnly={isNurse}
+            variant={isNurse ? "flat" : "bordered"} 
+            minRows={3} 
+            placeholder="Nhập kết luận và hướng dẫn điều trị..."
+            classNames={{ 
+              input: isNurse ? "bg-gray-100 text-gray-500" : "",
+              base: isNurse ? "opacity-60" : ""
+            }} 
+          />
+        </CardBody>
+      </Card>
+
+      {/* Prescription (read only cho nurse, editable cho doctor) */}
+      <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 opacity-70">
+        <CardHeader className="pb-0 pt-4 px-6">
+          <div className="flex items-center gap-2">
+            <PencilSquareIcon className="w-5 h-5 text-orange-600" />
+            <h4 className="font-semibold text-gray-800">Đơn thuốc</h4>
+          </div>
+        </CardHeader>
+        <CardBody className="px-6 pb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Input 
+              label="Thuốc" 
+              value={prescription.medicine} 
+              onChange={(e) => setPrescription({ ...prescription, medicine: e.target.value })}
+              isReadOnly={isNurse}
+              variant="bordered" 
+              placeholder="Thuốc"
               classNames={{
-                input: isDoctor ? "" : "bg-white",
+                input: isNurse ? "bg-gray-100 text-gray-500" : "",
+                inputWrapper: isNurse ? "bg-gray-100" : ""
               }}
             />
-          </CardBody>
-        </Card>
-
-        {/* Diagnosis - Doctor only */}
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardHeader className="pb-0 pt-4 px-6">
-            <div className="flex items-center gap-2">
-              <BeakerIcon className="w-6 h-6 text-green-600" />
-              <h4 className="font-bold text-lg text-gray-800">Chẩn đoán</h4>
-              {!isDoctor && (
-                <Chip size="sm" variant="flat" color="default" className="ml-2">
-                  Chỉ xem
-                </Chip>
-              )}
-            </div>
-          </CardHeader>
-          <CardBody className="px-6 pb-4">
-            <Textarea
-              value={medicalRecord.diagnosis}
-              onChange={(e) => handleChange("diagnosis", e.target.value)}
-              placeholder="Ghi chẩn đoán bệnh..."
-              minRows={3}
-              maxRows={6}
-              disabled={!isDoctor}
-              variant={isDoctor ? "bordered" : "flat"}
+            <Input 
+              label="Liều dùng" 
+              value={prescription.dosage} 
+              onChange={(e) => setPrescription({ ...prescription, dosage: e.target.value })}
+              isReadOnly={isNurse}
+              variant="bordered" 
+              placeholder="Liều dùng"
               classNames={{
-                input: isDoctor ? "" : "bg-white",
+                input: isNurse ? "bg-gray-100 text-gray-500" : "",
+                inputWrapper: isNurse ? "bg-gray-100" : ""
               }}
             />
-          </CardBody>
-        </Card>
-
-        {/* Treatment Plan - Doctor only */}
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardHeader className="pb-0 pt-4 px-6">
-            <div className="flex items-center gap-2">
-              <DocumentTextIcon className="w-6 h-6 text-blue-600" />
-              <h4 className="font-bold text-lg text-gray-800">Kế hoạch điều trị</h4>
-              {!isDoctor && (
-                <Chip size="sm" variant="flat" color="default" className="ml-2">
-                  Chỉ xem
-                </Chip>
-              )}
-            </div>
-          </CardHeader>
-          <CardBody className="px-6 pb-4">
-            <Textarea
-              value={medicalRecord.treatmentPlan}
-              onChange={(e) => handleChange("treatmentPlan", e.target.value)}
-              placeholder="Mô tả kế hoạch điều trị chi tiết..."
-              minRows={4}
-              maxRows={8}
-              disabled={!isDoctor}
-              variant={isDoctor ? "bordered" : "flat"}
+            <Input 
+              label="Thời gian" 
+              value={prescription.duration} 
+              onChange={(e) => setPrescription({ ...prescription, duration: e.target.value })}
+              isReadOnly={isNurse}
+              variant="bordered" 
+              placeholder="Thời gian"
               classNames={{
-                input: isDoctor ? "" : "bg-white",
+                input: isNurse ? "bg-gray-100 text-gray-500" : "",
+                inputWrapper: isNurse ? "bg-gray-100" : ""
               }}
             />
-          </CardBody>
-        </Card>
+          </div>
+        </CardBody>
+      </Card>
 
-        {/* Prescription - Doctor only */}
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <CardHeader className="pb-0 pt-4 px-6">
-            <div className="flex items-center gap-2">
-              <PencilSquareIcon className="w-6 h-6 text-orange-600" />
-              <h4 className="font-bold text-lg text-gray-800">Đơn thuốc</h4>
-              {!isDoctor && (
-                <Chip size="sm" variant="flat" color="default" className="ml-2">
-                  Chỉ xem
-                </Chip>
-              )}
-            </div>
-          </CardHeader>
-          <CardBody className="px-6 pb-4">
-            <Textarea
-              value={medicalRecord.prescription}
-              onChange={(e) => handleChange("prescription", e.target.value)}
-              placeholder="Kê đơn thuốc (tên thuốc, liều lượng, cách dùng)..."
-              minRows={3}
-              maxRows={6}
-              disabled={!isDoctor}
-              variant={isDoctor ? "bordered" : "flat"}
-              classNames={{
-                input: isDoctor ? "" : "bg-white",
-              }}
-            />
-          </CardBody>
-        </Card>
+      {/* Nurse note (editable cho cả doctor và nurse) */}
+      <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
+        <CardHeader className="pb-0 pt-4 px-6">
+          <div className="flex items-center gap-2">
+            <HeartIcon className="w-5 h-5 text-pink-600" />
+            <h4 className="font-semibold text-gray-800">Ghi chú điều dưỡng</h4>
+          </div>
+        </CardHeader>
+        <CardBody className="px-6 pb-4">
+          <Textarea
+            placeholder="Nhập ghi chú về bệnh nền hoặc dị ứng của bệnh nhân..."
+            value={nurseNote}
+            onValueChange={setNurseNote}
+            minRows={5}
+            variant="bordered"
+          />
 
-        {/* Nursing Notes - Both Doctor and Nurse can edit */}
-        <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
-          <CardHeader className="pb-0 pt-4 px-6">
-            <div className="flex items-center gap-2">
-              <HeartIcon className="w-6 h-6 text-pink-600" />
-              <h4 className="font-bold text-lg text-gray-800">Ghi chú điều dưỡng</h4>
-              {(isDoctor || isNurse) && (
-                <Chip size="sm" variant="flat" color="success" className="ml-2">
-                  Có thể chỉnh sửa
-                </Chip>
-              )}
-            </div>
-          </CardHeader>
-          <CardBody className="px-6 pb-4">
-            <Textarea
-              value={medicalRecord.nursingNotes}
-              onChange={(e) => handleChange("nursingNotes", e.target.value)}
-              placeholder="Ghi chú của điều dưỡng về quá trình chăm sóc bệnh nhân..."
-              minRows={3}
-              maxRows={6}
-              disabled={!isDoctor && !isNurse}
-              variant={(isDoctor || isNurse) ? "bordered" : "flat"}
-              classNames={{
-                input: (isDoctor || isNurse) ? "" : "bg-white",
-              }}
-            />
-          </CardBody>
-        </Card>
-
-        {/* Action Buttons */}
-        {(isDoctor || isNurse) && (
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="flat"
-              color="default"
-              size="lg"
-              onPress={() => navigate(-1)}
-            >
-              Hủy
-            </Button>
-            <Button
-              color={isDoctor ? "primary" : "secondary"}
-              size="lg"
-              onPress={handleSave}
-              isLoading={saving}
-              startContent={!saving && <CheckCircleIcon className="w-5 h-5" />}
-              className="font-semibold"
-            >
-              {saving ? "Đang lưu..." : "Lưu thay đổi"}
+          <div className="flex justify-end mt-4">
+            <Button color="success" onPress={onSave} isLoading={saving} startContent={!saving && <CheckCircleIcon className="w-5 h-5" />}>
+              {saving ? "Đang lưu..." : isNurse ? "Lưu ghi chú" : "Lưu thay đổi"}
             </Button>
           </div>
-        )}
-      </div>
+        </CardBody>
+      </Card>
     </div>
   );
 };

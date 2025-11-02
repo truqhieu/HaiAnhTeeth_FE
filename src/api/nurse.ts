@@ -12,6 +12,7 @@ export interface NurseAppointment {
   type: string;
   status: string;
   mode: string;
+  doctorApproved?: boolean;
 }
 
 export interface NurseAppointmentDetail {
@@ -44,9 +45,26 @@ export interface NursePatientDetail {
 }
 
 export const nurseApi = {
-  // Lấy lịch khám của tất cả bác sĩ (2 tuần)
-  getAppointmentsSchedule: async (): Promise<ApiResponse<NurseAppointment[]>> => {
-    return authenticatedApiCall<NurseAppointment[]>('/nurse/appointments-schedule', {
+  // Lấy lịch khám của tất cả bác sĩ (2 tuần mặc định, hoặc theo date range)
+  getAppointmentsSchedule: async (
+    startDate?: string | null,
+    endDate?: string | null
+  ): Promise<ApiResponse<NurseAppointment[]>> => {
+    // Tạo query params nếu có date range
+    const queryParams = new URLSearchParams();
+    if (startDate) {
+      queryParams.append("startDate", startDate);
+    }
+    if (endDate) {
+      queryParams.append("endDate", endDate);
+    }
+    
+    const query = queryParams.toString();
+    const endpoint = query
+      ? `/nurse/appointments-schedule?${query}`
+      : `/nurse/appointments-schedule`;
+    
+    return authenticatedApiCall<NurseAppointment[]>(endpoint, {
       method: 'GET',
     });
   },
@@ -61,6 +79,13 @@ export const nurseApi = {
   // Lấy thông tin chi tiết bệnh nhân
   getPatientDetail: async (patientId: string): Promise<ApiResponse<NursePatientDetail>> => {
     return authenticatedApiCall<NursePatientDetail>(`/nurse/patients/${patientId}`, {
+      method: 'GET',
+    });
+  },
+
+  // Lấy danh sách tất cả bác sĩ
+  getAllDoctors: async (): Promise<ApiResponse<Array<{ _id: string; fullName: string }>>> => {
+    return authenticatedApiCall<Array<{ _id: string; fullName: string }>>('/nurse/doctors', {
       method: 'GET',
     });
   },

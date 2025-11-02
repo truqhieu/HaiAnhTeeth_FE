@@ -14,15 +14,25 @@ interface PaymentStatus {
     _id: string;
     appointmentId: string;
     amount: number;
-    status: "Pending" | "Completed" | "Failed" | "Cancelled";
+    status: "Pending" | "Completed" | "Failed" | "Cancelled" | "Expired";
     QRurl?: string;
     expiresAt?: string;
   };
   appointment?: {
     _id: string;
     status: string;
+    promotionId?: {
+      _id: string;
+      title: string;
+      discountType: string;
+      discountValue: number;
+    } | null;
+    originalPrice?: number;
+    finalPrice?: number;
+    discountAmount?: number;
   };
   confirmed?: boolean;
+  expired?: boolean;
 }
 
 const PaymentPage = () => {
@@ -35,6 +45,100 @@ const PaymentPage = () => {
   const [pollingCount, setPollingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch payment info khi mount
+  useEffect(() => {
+    if (!paymentId) return;
+    const fetchPaymentInfo = async () => {
+      try {
+        setLoading(true);
+        const res = await paymentApi.checkPaymentStatus(paymentId);
+
+        if (res.data) {
+          setPaymentData(res.data);
+          setError(null);
+        } else {
+          setError("Không thể lấy thông tin thanh toán");
+        }
+
+        console.log("💳 Payment Status:", res.data);
+
+        // Nếu thanh toán thành công, không polling nữa
+        if (res.data?.confirmed) {
+          console.log("✅ Thanh toán đã xác nhận!");
+          // Auto redirect sau 3 giây
+          setTimeout(() => {
+            navigate("/patient/appointments");
+          }, 3000);
+        }
+      } catch (err: any) {
+        console.error("Lỗi lấy thông tin thanh toán:", err);
+        setError(err.message || "Lỗi lấy thông tin thanh toán");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPaymentInfo();
+  }, [paymentId, navigate]);
+
+  // Polling để check status thanh toán mỗi 5 giây
+  useEffect(() => {
+    if (!paymentId) return;
+    // ⭐ Chỉ polling nếu thanh toán chưa thành công, chưa hết hạn và chưa bị hủy
+    if (
+      !paymentData?.confirmed &&
+      !paymentData?.expired &&
+      paymentData?.payment?.status === "Pending"
+    ) {
+      const interval = setInterval(async () => {
+        try {
+          setCheckingStatus(true);
+          const res = await paymentApi.checkPaymentStatus(paymentId);
+
+          if (res.data) {
+            setPaymentData(res.data);
+          }
+          setPollingCount((prev) => prev + 1);
+
+          console.log(
+            "🔄 Check #" + (pollingCount + 1) + " - Status:",
+            res.data?.payment?.status,
+          );
+
+          // ⭐ Nếu thanh toán thành công, stop polling và redirect
+          if (res.data?.confirmed) {
+            console.log("✅ Thanh toán đã được xác nhận!");
+            clearInterval(interval);
+            setTimeout(() => {
+              navigate("/patient/appointments");
+            }, 2000);
+          }
+
+          // ⭐ Nếu thanh toán đã hết hạn hoặc bị hủy, stop polling
+          if (
+            res.data?.expired ||
+            res.data?.payment?.status === "Cancelled" ||
+            res.data?.payment?.status === "Expired"
+          ) {
+            console.log("⏰ Thanh toán đã hết hạn hoặc bị hủy!");
+            clearInterval(interval);
+          }
+        } catch (err) {
+          console.error("Lỗi khi check status:", err);
+        } finally {
+          setCheckingStatus(false);
+        }
+      }, 5000); // Check mỗi 5 giây
+
+      return () => clearInterval(interval);
+    }
+  }, [paymentId, paymentData?.confirmed, paymentData?.payment?.status, navigate, pollingCount]);
+
+  const formatCurrency = (amount: number) => {
+    return amount.toLocaleString("vi-VN");
+  };
+
+  // Early return nếu không có paymentId
   if (!paymentId) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 to-red-100">
@@ -56,77 +160,6 @@ const PaymentPage = () => {
       </div>
     );
   }
-
-  // Fetch payment info khi mount
-  useEffect(() => {
-    const fetchPaymentInfo = async () => {
-      try {
-        setLoading(true);
-        const res = await paymentApi.checkPaymentStatus(paymentId);
-
-        setPaymentData(res.data);
-        setError(null);
-
-        console.log("💳 Payment Status:", res.data);
-
-        // Nếu thanh toán thành công, không polling nữa
-        if (res.data?.confirmed) {
-          console.log("✅ Thanh toán đã xác nhận!");
-          // Auto redirect sau 3 giây
-          setTimeout(() => {
-            navigate("/patient/appointments");
-          }, 3000);
-        }
-      } catch (err: any) {
-        console.error("Lỗi lấy thông tin thanh toán:", err);
-        setError(err.message || "Lỗi lấy thông tin thanh toán");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPaymentInfo();
-  }, [paymentId]);
-
-  // Polling để check status thanh toán mỗi 5 giây
-  useEffect(() => {
-    // Chỉ polling nếu thanh toán chưa thành công
-    if (!paymentData?.confirmed && paymentData?.payment?.status === "Pending") {
-      const interval = setInterval(async () => {
-        try {
-          setCheckingStatus(true);
-          const res = await paymentApi.checkPaymentStatus(paymentId);
-
-          setPaymentData(res.data);
-          setPollingCount((prev) => prev + 1);
-
-          console.log(
-            "🔄 Check #" + (pollingCount + 1) + " - Status:",
-            res.data?.payment?.status,
-          );
-
-          // Nếu thanh toán thành công, stop polling và redirect
-          if (res.data?.confirmed) {
-            console.log("✅ Thanh toán đã được xác nhận!");
-            clearInterval(interval);
-            setTimeout(() => {
-              navigate("/patient/appointments");
-            }, 2000);
-          }
-        } catch (err) {
-          console.error("Lỗi khi check status:", err);
-        } finally {
-          setCheckingStatus(false);
-        }
-      }, 5000); // Check mỗi 5 giây
-
-      return () => clearInterval(interval);
-    }
-  }, [paymentId, paymentData?.confirmed, paymentData?.payment?.status]);
-
-  const formatCurrency = (amount: number) => {
-    return amount.toLocaleString("vi-VN");
-  };
 
   // Loading state
   if (loading) {
@@ -160,6 +193,43 @@ const PaymentPage = () => {
     );
   }
 
+  // ⭐ Cancelled/Expired state - thanh toán đã hết hạn hoặc bị hủy
+  if (
+    paymentData.expired ||
+    paymentData.payment.status === "Cancelled" ||
+    paymentData.payment.status === "Expired"
+  ) {
+    const isCancelled = paymentData.payment.status === "Cancelled";
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-red-50 to-red-100 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <XCircleIcon className="w-20 h-20 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+            {isCancelled ? "Thanh toán đã bị hủy" : "Thanh toán đã hết hạn"}
+          </h1>
+          <p className="text-gray-600 mb-4">
+            {isCancelled
+              ? "Thanh toán này đã bị hủy do không thanh toán trong thời gian quy định."
+              : "Thời gian thanh toán đã hết hạn. Vui lòng đặt lịch lại nếu bạn vẫn muốn sử dụng dịch vụ."}
+          </p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-red-800">
+              ⚠️ {isCancelled
+                ? "Lịch hẹn của bạn đã bị hủy. Vui lòng đặt lịch mới."
+                : "Vui lòng quay lại và đặt lịch hẹn mới."}
+            </p>
+          </div>
+          <Button
+            className="w-full bg-blue-500 text-white hover:bg-blue-600"
+            onPress={() => navigate("/")}
+          >
+            Về trang chủ
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Success state - thanh toán đã hoàn tất
   if (paymentData.confirmed && paymentData.payment.status === "Completed") {
     return (
@@ -172,9 +242,27 @@ const PaymentPage = () => {
           <p className="text-gray-600 mb-2">
             Lịch hẹn của bạn đã được xác nhận
           </p>
-          <p className="text-sm text-gray-500 mb-6">
-            Số tiền: {formatCurrency(paymentData.payment.amount)} VND
-          </p>
+          {/* ⭐ Hiển thị giá promotion nếu có */}
+          {paymentData.appointment?.promotionId && paymentData.appointment.originalPrice && paymentData.appointment.originalPrice > paymentData.payment.amount ? (
+            <div className="text-sm mb-6">
+              <p className="text-gray-500 line-through mb-1">
+                Giá gốc: {formatCurrency(paymentData.appointment.originalPrice)} VND
+              </p>
+              <p className="text-green-600 font-semibold">
+                Đã thanh toán: {formatCurrency(paymentData.payment.amount)} VND
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                🎉 {paymentData.appointment.promotionId.title}
+                {paymentData.appointment.discountAmount && (
+                  <span> - Đã tiết kiệm {formatCurrency(paymentData.appointment.discountAmount)} VND</span>
+                )}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 mb-6">
+              Số tiền: {formatCurrency(paymentData.payment.amount)} VND
+            </p>
+          )}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-green-800">
               ✅ Đơn hàng của bạn đã được lưu và sẽ được xử lý ngay. Hãy chờ
@@ -212,9 +300,27 @@ const PaymentPage = () => {
           <p className="text-sm text-gray-600 text-center mb-1">
             Số tiền cần thanh toán
           </p>
-          <p className="text-3xl font-bold text-blue-600 text-center">
-            {formatCurrency(paymentData.payment.amount)} VND
-          </p>
+          {/* ⭐ Hiển thị giá promotion nếu có */}
+          {paymentData.appointment?.promotionId && paymentData.appointment.originalPrice && paymentData.appointment.originalPrice > paymentData.payment.amount ? (
+            <div className="text-center">
+              <p className="text-sm text-gray-500 line-through mb-1">
+                {formatCurrency(paymentData.appointment.originalPrice)} VND
+              </p>
+              <p className="text-3xl font-bold text-red-600 mb-2">
+                {formatCurrency(paymentData.payment.amount)} VND
+              </p>
+              <div className="text-xs text-green-600 font-medium">
+                🎉 {paymentData.appointment.promotionId.title}
+                {paymentData.appointment.discountAmount && (
+                  <span> - Giảm {formatCurrency(paymentData.appointment.discountAmount)} VND</span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-3xl font-bold text-blue-600 text-center">
+              {formatCurrency(paymentData.payment.amount)} VND
+            </p>
+          )}
         </div>
 
         {/* QR Code */}
@@ -283,9 +389,11 @@ const PaymentPage = () => {
               setCheckingStatus(true);
               const res = await paymentApi.checkPaymentStatus(paymentId);
 
-              setPaymentData(res.data);
-              if (res.data?.confirmed) {
-                navigate("/patient/appointments");
+              if (res.data) {
+                setPaymentData(res.data);
+                if (res.data.confirmed) {
+                  navigate("/patient/appointments");
+                }
               }
             } finally {
               setCheckingStatus(false);

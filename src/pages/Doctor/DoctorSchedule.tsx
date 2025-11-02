@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Table,
   TableHeader,
@@ -42,11 +42,12 @@ const DoctorSchedule = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<DoctorAppointment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true); // Separate initial load from subsequent loads
   const [error, setError] = useState<string | null>(null);
   // Filter states
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText, setDebouncedSearchText] = useState(""); // Debounced search text
   const [selectedDate, setSelectedDate] = useState<string>("all");
   const [dateRange, setDateRange] = useState<{startDate: string | null, endDate: string | null}>({
     startDate: null,
@@ -68,18 +69,27 @@ const DoctorSchedule = () => {
   // Danh sách dates
   const [dates, setDates] = useState<string[]>([]);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async (startDate?: string | null, endDate?: string | null, silent: boolean = false) => {
     try {
-      setLoading(true);
+      // Chỉ set loading khi là lần fetch đầu tiên (không phải silent)
+      if (!silent) {
+        setLoading(prev => {
+          // Nếu đang initial loading, giữ nguyên, nếu không thì set true
+          if (!prev) return true;
+          return prev;
+        });
+      }
       setError(null);
-      const res = await doctorApi.getAppointmentsSchedule();
+      const res = await doctorApi.getAppointmentsSchedule(startDate, endDate);
       
       if (res.success && res.data) {
         setAppointments(res.data);
-        setFilteredAppointments(res.data);
         
-        // Extract unique dates
-        const uniqueDates = [...new Set(res.data.map(apt => formatDate(apt.appointmentDate)))].filter(d => d !== "N/A");
+        // Extract unique dates (sử dụng formatDate inline để tránh dependency)
+        const uniqueDates = [...new Set(res.data.map(apt => {
+          if (!apt.appointmentDate || apt.appointmentDate === "N/A") return "N/A";
+          return new Date(apt.appointmentDate).toLocaleDateString("vi-VN");
+        }))].filter(d => d !== "N/A");
         setDates(uniqueDates);
       } else {
         setError(res.message || "Lỗi lấy danh sách lịch khám");
@@ -88,66 +98,52 @@ const DoctorSchedule = () => {
       console.error("Error fetching appointments:", err);
       setError(err.message || "Lỗi khi tải lịch khám");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setInitialLoading(false);
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
+      fetchAppointments(); // Fetch mặc định (2 tuần)
+    }
+  }, [isAuthenticated, fetchAppointments]);
+
+  // Refetch appointments khi dateRange thay đổi
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    if (dateRange.startDate && dateRange.endDate) {
+      // Chỉ fetch khi cả startDate và endDate đều có giá trị
+      fetchAppointments(dateRange.startDate, dateRange.endDate);
+    } else if (!dateRange.startDate && !dateRange.endDate) {
+      // Khi clear date range, fetch lại mặc định (2 tuần)
       fetchAppointments();
     }
-  }, [isAuthenticated]);
+  }, [dateRange.startDate, dateRange.endDate, isAuthenticated, fetchAppointments]);
 
-  // Filter appointments
-  useEffect(() => {
+  // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
+  const filteredAppointments = useMemo(() => {
     let filtered = [...appointments];
 
     // Tab logic:
     // - Upcoming: chỉ hiển thị CheckedIn hoặc InProgress
-    // - History: chỉ hiển thị Completed
+    // - History: hiển thị Completed, Expired, No-Show
     if (activeTab === "upcoming") {
       filtered = filtered.filter(apt => apt.status === "CheckedIn" || apt.status === "InProgress");
     } else if (activeTab === "history") {
-      filtered = filtered.filter(apt => apt.status === "Completed");
+      filtered = filtered.filter(apt => apt.status === "Completed" || apt.status === "Expired" || apt.status === "No-Show");
     }
 
-    // Filter by search text
-    if (searchText) {
+    // Filter by search text (sử dụng debounced search text)
+    if (debouncedSearchText) {
+      const searchLower = debouncedSearchText.toLowerCase();
       filtered = filtered.filter(apt => 
-        apt.patientName.toLowerCase().includes(searchText.toLowerCase()) ||
-        apt.serviceName.toLowerCase().includes(searchText.toLowerCase())
+        apt.patientName.toLowerCase().includes(searchLower) ||
+        apt.serviceName.toLowerCase().includes(searchLower)
       );
-    }
-
-    // Filter by date range
-    if (dateRange.startDate && dateRange.endDate) {
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        const startDate = new Date(dateRange.startDate!);
-        const endDate = new Date(dateRange.endDate!);
-        
-        // Set time to start of day for comparison
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        
-        return aptDate >= startDate && aptDate <= endDate;
-      });
-    } else if (dateRange.startDate) {
-      // Only start date selected
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        const startDate = new Date(dateRange.startDate!);
-        startDate.setHours(0, 0, 0, 0);
-        return aptDate >= startDate;
-      });
-    } else if (dateRange.endDate) {
-      // Only end date selected
-      filtered = filtered.filter(apt => {
-        const aptDate = new Date(apt.appointmentDate);
-        const endDate = new Date(dateRange.endDate!);
-        endDate.setHours(23, 59, 59, 999);
-        return aptDate <= endDate;
-      });
     }
 
     // Filter by mode
@@ -155,9 +151,28 @@ const DoctorSchedule = () => {
       filtered = filtered.filter(apt => apt.mode === selectedMode);
     }
 
-    setFilteredAppointments(filtered);
+    // Sort by appointmentDate ascending (ngày cũ nhất lên đầu, ngày mới nhất xuống dưới) sau đó sort by startTime ascending
+    filtered.sort((a, b) => {
+      // So sánh theo appointmentDate trước (ngày cũ nhất lên đầu)
+      const dateA = a.appointmentDate || '';
+      const dateB = b.appointmentDate || '';
+      if (dateA !== dateB) {
+        return dateA.localeCompare(dateB); // Ascending: ngày cũ nhất lên đầu
+      }
+      
+      // Nếu cùng ngày, sort theo startTime (giờ sớm nhất lên đầu trong cùng ngày)
+      const timeA = a.startTime || '';
+      const timeB = b.startTime || '';
+      return timeA.localeCompare(timeB); // Ascending: giờ sớm nhất lên đầu
+    });
+
+    return filtered;
+  }, [appointments, activeTab, debouncedSearchText, selectedMode]);
+
+  // Reset page khi filtered appointments thay đổi
+  useEffect(() => {
     setCurrentPage(1);
-  }, [searchText, dateRange, selectedMode, activeTab, appointments]);
+  }, [debouncedSearchText, selectedMode, activeTab]);
 
   const handleViewAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
@@ -179,6 +194,10 @@ const DoctorSchedule = () => {
         return "primary";
       case "Finalized":
         return "success";
+      case "Expired":
+        return "danger";
+      case "No-Show":
+        return "danger";
       default:
         return "default";
     }
@@ -194,6 +213,10 @@ const DoctorSchedule = () => {
         return "Hoàn thành";
       case "Finalized":
         return "Đã kết thúc";
+      case "Expired":
+        return "Đã hết hạn";
+      case "No-Show":
+        return "Không đến";
       default:
         return status;
     }
@@ -209,13 +232,14 @@ const DoctorSchedule = () => {
         return mode;
     }
   };
-  const formatDate = (dateString: string): string => {
+  // Memoize format functions để tránh tạo lại mỗi lần render
+  const formatDate = useCallback((dateString: string): string => {
     if (!dateString || dateString === "N/A") return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN");
-  };
+  }, []);
 
-  const formatDateTime = (dateString: string): string => {
+  const formatDateTime = useCallback((dateString: string): string => {
     if (!dateString || dateString === "N/A") return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN", {
@@ -224,17 +248,25 @@ const DoctorSchedule = () => {
       month: "long",
       day: "numeric",
     });
-  };
+  }, []);
 
-  // Stats calculation
-  const stats = {
-    total: appointments.length,
-    upcoming: appointments.filter(a => new Date(a.appointmentDate) >= new Date()).length,
-    today: appointments.filter(a => formatDate(a.appointmentDate) === formatDate(new Date().toISOString())).length,
-    online: appointments.filter(a => a.mode === "Online").length,
-    offline: appointments.filter(a => a.mode === "Offline").length,
-    completed: appointments.filter(a => a.status === "Completed" || a.status === "Finalized").length,
-  };
+  // Stats calculation - sử dụng useMemo để tránh tính toán lại
+  const stats = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const now = new Date();
+    return {
+      total: appointments.length,
+      upcoming: appointments.filter(a => new Date(a.appointmentDate) >= now).length,
+      today: appointments.filter(a => {
+        if (!a.appointmentDate) return false;
+        const aptDate = new Date(a.appointmentDate).toISOString().split('T')[0];
+        return aptDate === today;
+      }).length,
+      online: appointments.filter(a => a.mode === "Online").length,
+      offline: appointments.filter(a => a.mode === "Offline").length,
+      completed: appointments.filter(a => a.status === "Completed" || a.status === "Finalized").length,
+    };
+  }, [appointments]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
@@ -265,28 +297,11 @@ const DoctorSchedule = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Spinner size="lg" label="Đang tải lịch khám..." />
-      </div>
-    );
-  }
-const handleViewMedicalRecord = async (appointmentId: string) => {
-    const toastId = toast.loading("Đang lấy thông tin bệnh nhân...");
-
-    try {
-      const res = await doctorApi.getAppointmentDetail(appointmentId);
-
-      if (res.success && res.data?.patientId) {
-        toast.success("Lấy thông tin thành công, đang chuyển hướng...", { id: toastId });
-        navigate(`/doctor/medical/record/${res.data.patientId}`);
-      } else {
-        throw new Error(res.message || "Không tìm thấy mã bệnh nhân.");
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Lỗi khi lấy thông tin bệnh nhân.", { id: toastId });
-    }
+  // Không hiển thị full-page loading nữa, chỉ hiển thị skeleton hoặc để table hiển thị với loading state
+  
+  const handleViewMedicalRecord = async (appointmentId: string) => {
+    toast.success("Đang chuyển đến hồ sơ khám bệnh...");
+    navigate(`/doctor/medical-record/${appointmentId}`);
   };
   return (
     <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
@@ -445,7 +460,13 @@ const handleViewMedicalRecord = async (appointmentId: string) => {
               {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
             </TableHeader>
             <TableBody
-              items={currentAppointments}
+              items={initialLoading ? [] : currentAppointments}
+              isLoading={initialLoading}
+              loadingContent={
+                <div className="text-center py-12">
+                  <Spinner size="lg" label="Đang tải lịch khám..." />
+                </div>
+              }
               emptyContent={
                 <div className="text-center py-12">
                   <CalendarIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -496,13 +517,46 @@ const handleViewMedicalRecord = async (appointmentId: string) => {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="lg"
-                      color={getStatusColor(appointment.status)}
-                      variant="flat"
-                    >
-                      {getStatusText(appointment.status)}
-                    </Chip>
+                    <div className="flex flex-col gap-2">
+                      <Chip
+                        size="lg"
+                        color={getStatusColor(appointment.status)}
+                        variant="flat"
+                      >
+                        {getStatusText(appointment.status)}
+                      </Chip>
+                      {/* Indicator cho medical record status */}
+                      {appointment.status === "InProgress" || appointment.status === "Completed" ? (
+                        appointment.medicalRecordStatus === "Finalized" ? (
+                          <Chip
+                            size="sm"
+                            color="success"
+                            variant="flat"
+                            className="text-xs"
+                          >
+                            ✓ Đã duyệt hồ sơ
+                          </Chip>
+                        ) : appointment.medicalRecordStatus === "Draft" ? (
+                          <Chip
+                            size="sm"
+                            color="warning"
+                            variant="flat"
+                            className="text-xs"
+                          >
+                            ⚠ Chưa duyệt hồ sơ
+                          </Chip>
+                        ) : (
+                          <Chip
+                            size="sm"
+                            color="default"
+                            variant="flat"
+                            className="text-xs"
+                          >
+                            📝 Chưa có hồ sơ
+                          </Chip>
+                        )
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell>
                   <div className="flex gap-2 flex-wrap">
@@ -526,16 +580,26 @@ const handleViewMedicalRecord = async (appointmentId: string) => {
                         Bệnh nhân
                       </Button>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      color="success"
-                      startContent={<DocumentTextIcon className="w-4 h-4" />}
-                      onPress={() => handleViewMedicalRecord(appointment.appointmentId)}
-                      className="w-full sm:w-auto" // Full width trên mobile
-                    >
-                      Hồ sơ khám bệnh
-                    </Button>
+                    <div className="relative">
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="success"
+                        startContent={<DocumentTextIcon className="w-4 h-4" />}
+                        onPress={() => handleViewMedicalRecord(appointment.appointmentId)}
+                        className="w-full sm:w-auto" // Full width trên mobile
+                      >
+                        Hồ sơ khám bệnh
+                      </Button>
+                      {/* Badge indicator trên button */}
+                      {(appointment.status === "InProgress" || appointment.status === "Completed") && (
+                        appointment.medicalRecordStatus === "Finalized" ? (
+                          <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+                        ) : appointment.medicalRecordStatus === "Draft" ? (
+                          <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full border-2 border-white"></span>
+                        ) : null
+                      )}
+                    </div>
                   </div>
                 </TableCell>
                 </TableRow>

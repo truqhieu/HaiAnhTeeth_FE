@@ -14,6 +14,7 @@ import AccountSettings from "@/pages/Patient/AccountSettings";
 import Complaints from "@/pages/Patient/Complaints";
 import Appointments from "@/pages/Patient/Appointments";
 import MedicalRecords from "@/pages/Patient/MedicalRecords";
+import PatientMedicalRecord from "@/pages/Patient/PatientMedicalRecord";
 import PaymentPage from "@/pages/Patient/PaymentPage";
 import Dashboard from "@/pages/Patient/Dashboard";
 import AccountManagement from "@/pages/Admin/AccountManagement";
@@ -36,7 +37,7 @@ import LeaveRequest from "@/pages/Common/LeaveRequest";
 import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
-import MedicalRecordPage from "@/pages/MedicalRecord/MedicalRecordPage";
+import DoctorMedicalRecord from "@/pages/Doctor/DoctorMedicalRecord";
 function App() {
   return (
     <AuthProvider>
@@ -120,8 +121,8 @@ function App() {
                   <Route element={<DoctorSchedule />} path="schedule" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route
-                    element={<MedicalRecordPage />}
-                    path="medical/record/:patientId"
+                    element={<DoctorMedicalRecord />}
+                    path="medical-record/:appointmentId"
                   />
                 </Routes>
               </DoctorLayout>
@@ -137,10 +138,9 @@ function App() {
                   <Route element={<NurseSchedule />} path="schedule" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route
-                    element={<MedicalRecordPage />}
-                    path="medical/record/:patientId"
+                    element={<NurseMedicalRecord />}
+                    path="medical-record/:appointmentId"
                   />
-                  <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
                 </Routes>
               </NurseLayout>
             }
@@ -177,6 +177,10 @@ function App() {
                     <Route
                       element={<PaymentPage />}
                       path="/patient/payment/:paymentId"
+                    />
+                    <Route
+                      element={<PatientMedicalRecord />}
+                      path="/patient/medical-record/:appointmentId"
                     />
                   </Routes>
                 </DefaultLayout>
