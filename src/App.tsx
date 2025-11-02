@@ -34,20 +34,23 @@ import { DoctorSchedule } from "@/pages/Doctor";
 import NurseLayout from "@/layouts/NurseLayout";
 import NurseSchedule from "@/pages/Nurse/NurseSchedule";
 import LeaveRequest from "@/pages/Common/LeaveRequest";
+import NotificationsPage from "@/pages/Common/Notifications";
 import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import MedicalRecordPage from "@/pages/MedicalRecord/MedicalRecordPage";
 function App() {
   return (
     <AuthProvider>
-      <BookingModalProvider>
-        <Toaster
-          position="top-right"
-          reverseOrder={false}
-          toastOptions={{
-            duration: 3000,
-            style: {
+      <NotificationProvider>
+        <BookingModalProvider>
+          <Toaster
+            position="top-right"
+            reverseOrder={false}
+            toastOptions={{
+              duration: 3000,
+              style: {
               background: "#fff",
               color: "#363636",
               fontSize: "14px",
@@ -94,6 +97,7 @@ function App() {
                     path="promotions"
                   />
                   <Route element={<DeviceManagement />} path="devices" />
+                  <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </ManagerLayout>
             }
@@ -108,6 +112,7 @@ function App() {
                   <Route element={<StaffDashboard />} path="dashboard" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route element={<PatientRequests />} path="patient-requests" />
+                  <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </StaffLayout>
             }
@@ -125,6 +130,7 @@ function App() {
                     element={<MedicalRecordPage />}
                     path="medical/record/:patientId"
                   />
+                  <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </DoctorLayout>
             }
@@ -143,6 +149,7 @@ function App() {
                     path="medical/record/:patientId"
                   />
                   <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
+                  <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </NurseLayout>
             }
@@ -180,6 +187,10 @@ function App() {
                       element={<PaymentPage />}
                       path="/patient/payment/:paymentId"
                     />
+                    <Route
+                      element={<NotificationsPage />}
+                      path="/patient/notifications"
+                    />
                   </Routes>
                 </DefaultLayout>
               </>
@@ -187,7 +198,8 @@ function App() {
             path="/*"
           />
         </Routes>
-      </BookingModalProvider>
+        </BookingModalProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

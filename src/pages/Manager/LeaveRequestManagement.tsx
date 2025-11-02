@@ -209,6 +209,7 @@ const LeaveRequestManagement = () => {
   };
 
   const columns = [
+    { key: "stt", label: "STT" },
     { key: "employee", label: "Nhân viên" },
     { key: "dates", label: "Thời gian nghỉ" },
     { key: "reason", label: "Lý do" },
@@ -307,6 +308,13 @@ const LeaveRequestManagement = () => {
             >
               {(request) => (
                 <TableRow key={request._id}>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {(currentPage - 1) * itemsPerPage +
+                        leaveRequests.indexOf(request) +
+                        1}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">

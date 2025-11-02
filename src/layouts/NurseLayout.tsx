@@ -9,6 +9,7 @@ import {
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "@/components";
 
 interface NurseLayoutProps {
   children: React.ReactNode;
@@ -135,7 +136,12 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
             </div>
             <span className="text-lg font-semibold text-gray-800">Điều dưỡng</span>
           </div>
-          <div className="w-6" />
+          <NotificationBell />
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden lg:flex items-center justify-end h-16 px-6 bg-white border-b border-gray-200">
+          <NotificationBell />
         </div>
 
         {/* Page Content */}

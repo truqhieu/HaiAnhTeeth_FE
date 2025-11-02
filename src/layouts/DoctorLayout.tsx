@@ -10,6 +10,7 @@ import {
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/AuthContext";
+import { NotificationBell } from "@/components";
 
 interface DoctorLayoutProps {
   children: React.ReactNode;
@@ -136,7 +137,12 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
             </div>
             <span className="text-lg font-semibold text-gray-800">Bác sĩ</span>
           </div>
-          <div className="w-6" />
+          <NotificationBell />
+        </div>
+
+        {/* Desktop Header with Notification */}
+        <div className="hidden lg:flex items-center justify-end h-16 px-6 bg-white border-b border-gray-200">
+          <NotificationBell />
         </div>
 
         {/* Page Content */}

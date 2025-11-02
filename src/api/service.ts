@@ -20,9 +20,9 @@ export interface GetServicesParams {
   search?: string;
 }
 
-// Backend trả về object này trực tiếp (status là boolean, không phải success)
+// Backend trả về object này trực tiếp (success là boolean)
 export interface GetServicesResponse {
-  status: boolean;
+  success: boolean;
   total: number;
   totalPages: number;
   page: number;

@@ -176,6 +176,7 @@ const PromotionManagement = () => {
   };
 
   const columns = [
+    { key: "stt", label: "STT" },
     { key: "title", label: "Tiêu đề" },
     { key: "discount", label: "Giảm giá" },
     { key: "duration", label: "Thời gian áp dụng" },
@@ -282,6 +283,13 @@ const PromotionManagement = () => {
             <TableBody emptyContent="Không có ưu đãi nào" items={promotions}>
               {(promotion) => (
                 <TableRow key={promotion._id}>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {(currentPage - 1) * itemsPerPage +
+                        promotions.indexOf(promotion) +
+                        1}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     <div className="py-1">
                       <p className="font-medium text-gray-900">

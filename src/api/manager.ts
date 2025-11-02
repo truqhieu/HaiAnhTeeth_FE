@@ -200,13 +200,10 @@ export const managerApi = {
   // Get service detail by ID
   getServiceDetail: async (
     id: string,
-  ): Promise<ApiResponse<{ success: boolean; message: string; data: ManagerService }>> => {
-    return authenticatedApiCall<{ success: boolean; message: string; data: ManagerService }>(
-      `/manager/services/${id}`,
-      {
-        method: "GET",
-      },
-    );
+  ): Promise<ApiResponse<ManagerService>> => {
+    return authenticatedApiCall<ManagerService>(`/manager/services/${id}`, {
+      method: "GET",
+    });
   },
 
   // Create new service

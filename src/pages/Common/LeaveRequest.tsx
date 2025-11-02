@@ -107,9 +107,8 @@ const LeaveRequestPage = () => {
       return;
     }
 
-    if (end <= start) {
+    if (end < start) {
       toast.error("Ngày kết thúc phải sau ngày bắt đầu");
-
       return;
     }
 

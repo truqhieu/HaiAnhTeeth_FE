@@ -255,6 +255,7 @@ const ComplaintManagement = () => {
   };
 
   const columns = [
+    { key: "stt", label: "STT" },
     { key: "title", label: "Tiêu đề" },
     { key: "patient", label: "Bệnh nhân" },
     { key: "createdAt", label: "Ngày gửi" },
@@ -348,6 +349,13 @@ const ComplaintManagement = () => {
             <TableBody emptyContent="Không có khiếu nại nào" items={complaints}>
               {(complaint) => (
                 <TableRow key={complaint._id}>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {(currentPage - 1) * itemsPerPage +
+                        complaints.indexOf(complaint) +
+                        1}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     <div className="max-w-xs">
                       <p className="font-medium text-gray-900 truncate">
