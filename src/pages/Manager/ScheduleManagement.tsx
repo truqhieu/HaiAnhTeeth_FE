@@ -12,6 +12,15 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+  Chip,
+  Tooltip,
 } from "@heroui/react";
 import toast from "react-hot-toast";
 
@@ -154,6 +163,13 @@ const ScheduleManagement = () => {
     console.log("Delete schedule:", scheduleId);
   };
 
+  const columns = [
+    { key: "shift", label: "Ca làm việc" },
+    { key: "time", label: "Thời gian làm việc" },
+    { key: "doctor", label: "Tên bác sĩ" },
+    { key: "actions", label: "Hành động" },
+  ];
+
   return (
     <div className="p-6 bg-gray-50 min-h-full">
       {/* Header */}
@@ -213,107 +229,107 @@ const ScheduleManagement = () => {
       </div>
 
       {/* Doctors Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-blue-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ca làm việc
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thời gian làm việc
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tên bác sĩ
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hành động
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {isLoading ? (
-                <tr>
-                  <td
-                    className="px-6 py-12 text-center text-gray-500"
-                    colSpan={4}
-                  >
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                      <span className="ml-3">Đang tải...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : filteredDoctors.length === 0 ? (
-                <tr>
-                  <td className="px-6 py-12 text-center" colSpan={4}>
-                    <div className="text-gray-500 text-lg">
-                      Không có bác sĩ nào
-                    </div>
-                    <div className="text-gray-400 text-sm mt-2">
-                      Hãy thêm bác sĩ vào hệ thống
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredDoctors.map((doctor) => (
-                  <tr key={doctor._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
-                            Ca sáng
-                          </span>
-                          <span className="text-sm text-gray-600">
-                            {doctor.workingHours.morningStart} - {doctor.workingHours.morningEnd}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            Ca chiều
-                          </span>
-                          <span className="text-sm text-gray-600">
-                            {doctor.workingHours.afternoonStart} - {doctor.workingHours.afternoonEnd}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="space-y-1">
-                        <div className="font-medium text-gray-800">
-                          Sáng: {doctor.workingHours.morningStart} - {doctor.workingHours.morningEnd}
-                        </div>
-                        <div className="font-medium text-gray-800">
-                          Chiều: {doctor.workingHours.afternoonStart} - {doctor.workingHours.afternoonEnd}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="font-medium text-blue-600">
-                        {doctor.fullName}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {doctor.email}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEditDoctorWorkingHours(doctor._id, doctor.workingHours)}
-                          className="text-indigo-600 hover:text-indigo-900 p-1 rounded"
-                          title="Chỉnh sửa giờ làm việc"
-                        >
-                          <PencilIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <Table
+            aria-label="Bảng quản lý lịch làm việc"
+            classNames={{
+              wrapper: "shadow-none",
+            }}
+          >
+            <TableHeader columns={columns}>
+              {(column) => (
+                <TableColumn
+                  key={column.key}
+                  className="bg-white text-gray-700 font-semibold text-sm uppercase tracking-wider"
+                >
+                  {column.label}
+                </TableColumn>
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableHeader>
+            <TableBody
+              emptyContent="Không có bác sĩ nào"
+              items={filteredDoctors}
+            >
+              {(doctor) => (
+                <TableRow key={doctor._id}>
+                  <TableCell>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Chip
+                          className="bg-orange-100 text-orange-800"
+                          size="sm"
+                          variant="flat"
+                        >
+                          Ca sáng
+                        </Chip>
+                        <span className="text-sm text-gray-600">
+                          {doctor.workingHours.morningStart} -{" "}
+                          {doctor.workingHours.morningEnd}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Chip
+                          className="bg-blue-100 text-blue-800"
+                          size="sm"
+                          variant="flat"
+                        >
+                          Ca chiều
+                        </Chip>
+                        <span className="text-sm text-gray-600">
+                          {doctor.workingHours.afternoonStart} -{" "}
+                          {doctor.workingHours.afternoonEnd}
+                        </span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="font-medium text-gray-800 text-sm">
+                        Sáng: {doctor.workingHours.morningStart} -{" "}
+                        {doctor.workingHours.morningEnd}
+                      </div>
+                      <div className="font-medium text-gray-800 text-sm">
+                        Chiều: {doctor.workingHours.afternoonStart} -{" "}
+                        {doctor.workingHours.afternoonEnd}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-blue-600 text-sm">
+                        {doctor.fullName}
+                      </p>
+                      <p className="text-xs text-gray-500">{doctor.email}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip content="Chỉnh sửa giờ làm việc">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="min-w-8 h-8 text-blue-600 hover:bg-blue-50"
+                        onPress={() =>
+                          handleEditDoctorWorkingHours(
+                            doctor._id,
+                            doctor.workingHours
+                          )
+                        }
+                      >
+                        <PencilIcon className="w-5 h-5" />
+                      </Button>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       {/* Add Schedule Modal */}

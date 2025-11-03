@@ -5,7 +5,26 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from "@heroui/react";
+import {
+  Button,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Select,
+  SelectItem,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+  Chip,
+  Tooltip,
+} from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { AddServiceModal, EditServiceModal } from "@/components";
@@ -144,7 +163,13 @@ const ServiceManagement = () => {
 
   const handleEditSuccess = () => {
     // Refresh service list after successful edit
-    fetchServices();
+    if (statusFilter !== "all") {
+      setStatusFilter("all");
+      // fetchServices will be triggered by useEffect
+    } else {
+      // If already on "all", manually fetch
+      fetchServices();
+    }
     setIsEditModalOpen(false);
     setSelectedService(null);
   };
@@ -211,6 +236,17 @@ const ServiceManagement = () => {
 
     return `${hours} giờ ${remainingMinutes} phút`;
   };
+
+  const columns = [
+    { key: "stt", label: "STT" },
+    { key: "name", label: "Tên dịch vụ" },
+    { key: "description", label: "Mô tả" },
+    { key: "category", label: "Danh mục" },
+    { key: "price", label: "Giá" },
+    { key: "duration", label: "Thời gian" },
+    { key: "status", label: "Trạng thái" },
+    { key: "actions", label: "Thao tác" },
+  ];
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -295,120 +331,119 @@ const ServiceManagement = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-blue-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  STT
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tên dịch vụ
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Mô tả
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Danh mục
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Giá
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thời gian
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {currentServices.map((service, index) => (
-                <tr key={service.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {(currentPage - 1) * itemsPerPage + index + 1}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {service.name}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                    <div className="truncate">{service.description}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {service.category}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <Table
+            aria-label="Bảng quản lý dịch vụ"
+            classNames={{
+              wrapper: "shadow-none",
+            }}
+          >
+            <TableHeader columns={columns}>
+              {(column) => (
+                <TableColumn
+                  key={column.key}
+                  className="bg-white text-gray-700 font-semibold text-sm uppercase tracking-wider"
+                >
+                  {column.label}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody
+              emptyContent="Không tìm thấy dịch vụ"
+              items={currentServices}
+            >
+              {(service) => (
+                <TableRow key={service.id}>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {(currentPage - 1) * itemsPerPage +
+                        currentServices.indexOf(service) +
+                        1}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {formatPrice(service.price)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDuration(service.duration)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        service.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {service.name}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-gray-900 max-w-xs truncate">
+                      {service.description}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      className="bg-blue-100 text-blue-800"
+                      size="sm"
+                      variant="flat"
+                    >
+                      {service.category}
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatPrice(service.price)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-gray-900">
+                      {formatDuration(service.duration)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      color={service.status === "active" ? "success" : "default"}
+                      size="sm"
+                      variant="flat"
                     >
                       {service.status === "active"
                         ? "Hoạt động"
                         : "Không hoạt động"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="text-blue-600 hover:text-blue-700 p-1 rounded hover:bg-blue-50"
-                        title="Chỉnh sửa dịch vụ"
-                        onClick={() => handleEdit(service.id)}
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                        title="Xóa dịch vụ"
-                        onClick={() => handleDelete(service.id, service.name)}
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Tooltip content="Chỉnh sửa dịch vụ">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="min-w-8 h-8 text-blue-600 hover:bg-blue-50"
+                          onPress={() => handleEdit(service.id)}
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Xóa dịch vụ">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="min-w-8 h-8 text-red-600 hover:bg-red-50"
+                          onPress={() => handleDelete(service.id, service.name)}
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </Button>
+                      </Tooltip>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Loading state */}
-        {isLoading && (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">Đang tải dữ liệu...</div>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!isLoading && currentServices.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">Không tìm thấy dịch vụ</div>
-            <div className="text-gray-400 text-sm mt-2">
-              Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
-            </div>
-          </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         )}
       </div>
 
       {/* Pagination */}
       {!isLoading && total > 0 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
-          <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {endIndex} trong {total} kết quả
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600 mb-4 sm:mb-0">
+            Hiển thị {startIndex + 1} đến {endIndex} trong tổng số {total} dịch vụ
           </div>
 
           <div className="flex items-center space-x-2">

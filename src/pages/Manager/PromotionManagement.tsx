@@ -17,6 +17,7 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Tooltip,
 } from "@heroui/react";
 import {
   MagnifyingGlassIcon,
@@ -274,7 +275,7 @@ const PromotionManagement = () => {
               {(column) => (
                 <TableColumn
                   key={column.key}
-                  className="bg-gray-50 text-gray-700 font-semibold text-sm uppercase tracking-wider"
+                  className="bg-white text-gray-700 font-semibold text-sm uppercase tracking-wider"
                 >
                   {column.label}
                 </TableColumn>
@@ -342,25 +343,29 @@ const PromotionManagement = () => {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        isIconOnly
-                        className="bg-blue-50 text-blue-600 hover:bg-blue-100"
-                        size="sm"
-                        variant="flat"
-                        onPress={() => handleEdit(promotion)}
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        isIconOnly
-                        className="bg-red-50 text-red-600 hover:bg-red-100"
-                        size="sm"
-                        variant="flat"
-                        onPress={() => handleDelete(promotion)}
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </Button>
+                    <div className="flex items-center gap-3">
+                      <Tooltip content="Chỉnh sửa ưu đãi">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="min-w-8 h-8 text-blue-600 hover:bg-blue-50"
+                          onPress={() => handleEdit(promotion)}
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Xóa ưu đãi">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="min-w-8 h-8 text-red-600 hover:bg-red-50"
+                          onPress={() => handleDelete(promotion)}
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </Button>
+                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>

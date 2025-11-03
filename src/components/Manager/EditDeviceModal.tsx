@@ -116,8 +116,13 @@ const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
         status: formData.status,
       };
 
+      console.log("📤 Sending update data:", updateData);
+      console.log("📤 Device ID:", device._id);
+
       // Gọi API cập nhật
       const response = await deviceApi.updateDevice(device._id, updateData);
+      
+      console.log("📥 Response from server:", response);
 
       if (response.success) {
         toast.success(response.message || "Cập nhật thiết bị thành công!");
@@ -130,6 +135,7 @@ const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
         throw new Error(response.message || "Không thể cập nhật thiết bị");
       }
     } catch (error: any) {
+      console.error("❌ Error updating device:", error);
       toast.error(
         error.message ||
           "Có lỗi xảy ra khi cập nhật thiết bị. Vui lòng thử lại.",

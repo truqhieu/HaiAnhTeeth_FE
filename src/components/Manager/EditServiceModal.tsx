@@ -127,6 +127,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         category: categoryReverseMap[formData.category] as
           | "Examination"
           | "Consultation",
+        status: formData.status === "active" ? "Active" : "Inactive",
       };
 
       // Gọi API cập nhật

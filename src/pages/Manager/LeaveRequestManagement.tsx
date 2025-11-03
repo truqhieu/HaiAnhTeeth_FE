@@ -17,6 +17,7 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Tooltip,
 } from "@heroui/react";
 import {
   MagnifyingGlassIcon,
@@ -296,7 +297,7 @@ const LeaveRequestManagement = () => {
               {(column) => (
                 <TableColumn
                   key={column.key}
-                  className="bg-gray-50 text-gray-700 font-semibold text-sm uppercase tracking-wider"
+                  className="bg-white text-gray-700 font-semibold text-sm uppercase tracking-wider"
                 >
                   {column.label}
                 </TableColumn>
@@ -360,29 +361,33 @@ const LeaveRequestManagement = () => {
                   </TableCell>
                   <TableCell>
                     {request.status === "Pending" ? (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          isIconOnly
-                          className="bg-green-50 text-green-600 hover:bg-green-100"
-                          size="sm"
-                          variant="flat"
-                          onPress={() => handleAction(request, "Approved")}
-                        >
-                          <CheckCircleIcon className="w-5 h-5" />
-                        </Button>
-                        <Button
-                          isIconOnly
-                          className="bg-red-50 text-red-600 hover:bg-red-100"
-                          size="sm"
-                          variant="flat"
-                          onPress={() => handleAction(request, "Rejected")}
-                        >
-                          <XCircleIcon className="w-5 h-5" />
-                        </Button>
+                      <div className="flex items-center gap-3">
+                        <Tooltip content="Duyệt đơn">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            className="min-w-8 h-8 text-green-600 hover:bg-green-50"
+                            onPress={() => handleAction(request, "Approved")}
+                          >
+                            <CheckCircleIcon className="w-5 h-5" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Từ chối đơn">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            className="min-w-8 h-8 text-red-600 hover:bg-red-50"
+                            onPress={() => handleAction(request, "Rejected")}
+                          >
+                            <XCircleIcon className="w-5 h-5" />
+                          </Button>
+                        </Tooltip>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-gray-500 text-sm">
-                        <ClockIcon className="w-4 h-4" />
+                        <ClockIcon className="w-5 h-5" />
                         <span>Đã xử lý</span>
                       </div>
                     )}

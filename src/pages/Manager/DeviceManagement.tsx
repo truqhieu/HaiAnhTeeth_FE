@@ -17,6 +17,7 @@ import {
   ModalContent,
   ModalFooter,
   ModalHeader,
+  Tooltip,
 } from "@heroui/react";
 import {
   MagnifyingGlassIcon,
@@ -143,7 +144,14 @@ const DeviceManagement = () => {
   };
 
   const handleEditSuccess = () => {
-    fetchDevices();
+    // Reset filter to "all" and fetch devices
+    if (statusFilter !== "all") {
+      setStatusFilter("all");
+      // fetchDevices will be triggered by useEffect
+    } else {
+      // If already on "all", manually fetch
+      fetchDevices();
+    }
   };
 
   const confirmDelete = async () => {
@@ -274,7 +282,7 @@ const DeviceManagement = () => {
               {(column) => (
                 <TableColumn
                   key={column.key}
-                  className="bg-gray-50 text-gray-700 font-semibold text-sm uppercase tracking-wider"
+                  className="bg-white text-gray-700 font-semibold text-sm uppercase tracking-wider"
                 >
                   {column.label}
                 </TableColumn>
@@ -322,21 +330,29 @@ const DeviceManagement = () => {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                        title="Chỉnh sửa thiết bị"
-                        onClick={() => handleEdit(device)}
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                        title="Xóa thiết bị"
-                        onClick={() => handleDelete(device)}
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
+                    <div className="flex items-center gap-3">
+                      <Tooltip content="Chỉnh sửa thiết bị">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="min-w-8 h-8 text-blue-600 hover:bg-blue-50"
+                          onPress={() => handleEdit(device)}
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Xóa thiết bị">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="min-w-8 h-8 text-red-600 hover:bg-red-50"
+                          onPress={() => handleDelete(device)}
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </Button>
+                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
