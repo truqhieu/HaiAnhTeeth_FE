@@ -26,13 +26,24 @@ export const apiCall = async <T = any>(
 
     console.log("🚀 Fetching:", url);
 
+    console.log("🔍 [API Call] Full request details:", {
+      url,
+      method: options.method || "GET",
+      headers: options.headers,
+      body: options.body,
+      credentials: options.credentials,
+    });
+
     const response = await fetch(url, {
       ...options,
+      credentials: options.credentials || "include", // Always include credentials for CORS
       headers: {
         "Content-Type": "application/json",
         ...options.headers,
       },
     });
+
+    console.log("🔍 [API Call] Response headers:", Object.fromEntries(response.headers.entries()));
 
     console.log("📡 Response status:", response.status, response.statusText);
 
@@ -49,6 +60,29 @@ export const apiCall = async <T = any>(
     return result;
   } catch (error: any) {
     console.error("💥 API Call Error:", error);
+    console.error("💥 Error details:", {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause,
+    });
+    
+    // Check if it's a CORS error
+    if (error.message?.includes('CORS') || error.message?.includes('Failed to fetch')) {
+      console.error("🌐 [CORS Error] This is likely a CORS issue. Check:");
+      console.error("   1. Backend CORS config allows this origin");
+      console.error("   2. Backend is running and accessible");
+      console.error("   3. Request URL:", url);
+      console.error("   4. Origin:", typeof window !== 'undefined' ? window.location.origin : 'N/A');
+      
+      throw new Error(
+        `Lỗi CORS: Không thể kết nối đến server. Vui lòng kiểm tra:\n` +
+        `- Backend đang chạy không?\n` +
+        `- CORS config có cho phép origin: ${typeof window !== 'undefined' ? window.location.origin : 'N/A'}?\n` +
+        `- Kiểm tra console để xem log chi tiết`
+      );
+    }
+    
     throw new Error(error.message || "Lỗi kết nối đến server");
   }
 };
@@ -72,6 +106,7 @@ export const authenticatedApiCall = async <T = any>(
 
   return apiCall<T>(endpoint, {
     ...options,
+    credentials: "include", // Include credentials for CORS
     headers: {
       "Content-Type": "application/json",
       ...options.headers,

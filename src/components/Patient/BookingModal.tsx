@@ -203,13 +203,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         const data = scheduleRes.data as any; // Type assertion để handle cả AvailableTimeRangeData và AvailableStartTimesData
         if (data.scheduleRanges && Array.isArray(data.scheduleRanges)) {
           setDoctorScheduleRange(data.scheduleRanges);
-          // ⭐ Lưu doctorScheduleId từ response
-          setFormData((prev) => ({
-            ...prev,
+        // ⭐ Lưu doctorScheduleId từ response
+        setFormData((prev) => ({
+          ...prev,
             doctorScheduleId: data.doctorScheduleId || null,
-          }));
-          
-          // ⭐ Hiển thị message nếu không có gaps khả dụng (không đủ thời gian)
+        }));
+        
+        // ⭐ Hiển thị message nếu không có gaps khả dụng (không đủ thời gian)
           if (data.message) {
             setErrorMessage(data.message);
           }
@@ -355,8 +355,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       // ⭐ Clear error khi validation thành công
       setTimeInputError(null);
       setErrorMessage(null);
-      setFormData((prev) => ({
-        ...prev,
+    setFormData((prev) => ({
+      ...prev,
         userStartTimeInput: timeInput,
         startTime: dateObj,
         endTime: endTimeDate,
@@ -418,7 +418,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         if (formData.appointmentFor === "other" && !value?.trim()) {
           return "Vui lòng nhập họ và tên.";
         }
-        return null;
+    return null;
       case "email":
         if (formData.appointmentFor === "other" && !value?.trim()) {
           return "Vui lòng nhập email.";
@@ -800,11 +800,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   </div>
                 ) : availableDoctors.length ? (
                   <div>
-                    <select
+                  <select
                       className={`w-full border px-3 py-2 rounded-lg ${
                         fieldErrors.doctorUserId ? "border-red-500 focus:ring-red-500" : ""
                       }`}
-                      value={formData.doctorUserId}
+                    value={formData.doctorUserId}
                       onChange={(e) => {
                         handleDoctorSelect(e.target.value);
                         // Clear error when user selects
@@ -817,14 +817,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                         }
                       }}
                       onBlur={() => handleFieldBlur("doctorUserId")}
-                    >
-                      <option value="">-- Chọn bác sĩ --</option>
-                      {availableDoctors.map((d) => (
-                        <option key={d.doctorId} value={d.doctorId}>
-                          {d.doctorName}
-                        </option>
-                      ))}
-                    </select>
+                  >
+                    <option value="">-- Chọn bác sĩ --</option>
+                    {availableDoctors.map((d) => (
+                      <option key={d.doctorId} value={d.doctorId}>
+                        {d.doctorName}
+                      </option>
+                    ))}
+                  </select>
                     {fieldErrors.doctorUserId && (
                       <p className="mt-1 text-xs text-red-600">{fieldErrors.doctorUserId}</p>
                     )}
@@ -937,7 +937,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                               handleFieldBlur("userStartTimeInput");
                               if (formData.userStartTimeInput) {
                                 handleTimeInputBlur(formData.userStartTimeInput);
-                              }
+                            }
                             }}
                           />
                           {(timeInputError || fieldErrors.userStartTimeInput) && (

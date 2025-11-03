@@ -611,7 +611,7 @@ const Appointments = () => {
         </div>
 
 
-        {/* Table */}
+          {/* Table */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-6 w-full overflow-x-auto">
           <div className="w-full">
             <Table className="w-full table-fixed min-w-[1200px]" aria-label="Appointments table">
@@ -710,10 +710,10 @@ const Appointments = () => {
                                   ? "bg-indigo-100 text-indigo-800"
                                   : appointment.status === "InProgress"
                                     ? "bg-purple-100 text-purple-800"
-                                    : appointment.status === "Completed"
-                                      ? "bg-blue-100 text-blue-800"
+                                : appointment.status === "Completed"
+                                  ? "bg-blue-100 text-blue-800"
                                       : appointment.status === "Cancelled" || appointment.status === "Expired"
-                                        ? "bg-red-100 text-red-800"
+                                    ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-800"
                       }`}
                     >

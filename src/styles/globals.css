@@ -1,3 +1,30 @@
 @import "tailwindcss";
 
 @config "../../tailwind.config.js"
+
+/* AI Chatbot Button Animations */
+@keyframes ai-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(5deg);
+  }
+}
+
+@keyframes ai-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.9));
+  }
+}
+
+.ai-float-animation {
+  animation: ai-float 3s ease-in-out infinite;
+}
+
+.ai-glow-effect {
+  animation: ai-glow 2s ease-in-out infinite;
+}

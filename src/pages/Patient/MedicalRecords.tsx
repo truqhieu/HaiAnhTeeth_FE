@@ -164,7 +164,7 @@ const MedicalRecords = () => {
               </p>
             </div>
           </div>
-        </div>
+            </div>
 
         {/* Filters */}
         <Card>
@@ -257,7 +257,7 @@ const MedicalRecords = () => {
                         }}
                       >
                         Xem chi tiết →
-                      </button>
+                </button>
                     </div>
                   </div>
                 ))}
@@ -272,7 +272,7 @@ const MedicalRecords = () => {
                 ? "Không tìm thấy hồ sơ khám bệnh nào phù hợp với bộ lọc"
                 : "Chưa có hồ sơ khám bệnh nào"}
             </p>
-          </div>
+        </div>
         )}
       </div>
     </div>

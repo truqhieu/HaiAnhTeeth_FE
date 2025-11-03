@@ -15,6 +15,7 @@ import Complaints from "@/pages/Patient/Complaints";
 import Appointments from "@/pages/Patient/Appointments";
 import MedicalRecords from "@/pages/Patient/MedicalRecords";
 import PatientMedicalRecord from "@/pages/Patient/PatientMedicalRecord";
+import AIBooking from "@/pages/Patient/AIBooking";
 import PaymentPage from "@/pages/Patient/PaymentPage";
 import Dashboard from "@/pages/Patient/Dashboard";
 import AccountManagement from "@/pages/Admin/AccountManagement";
@@ -38,6 +39,7 @@ import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
 import DoctorMedicalRecord from "@/pages/Doctor/DoctorMedicalRecord";
+import FloatingAIAssistant from "@/components/Common/FloatingAIAssistant";
 function App() {
   return (
     <AuthProvider>
@@ -158,6 +160,7 @@ function App() {
                     <Route element={<AboutPage />} path="/about" />
                     <Route element={<VerifyEmail />} path="/verify-email" />
                     <Route element={<Dashboard />} path="/patient/dashboard" />
+                    <Route element={<AIBooking />} path="/patient/ai-booking" />
                     <Route
                       element={<Appointments />}
                       path="/patient/appointments"
@@ -184,6 +187,7 @@ function App() {
                     />
                   </Routes>
                 </DefaultLayout>
+                <FloatingAIAssistant />
               </>
             }
             path="/*"

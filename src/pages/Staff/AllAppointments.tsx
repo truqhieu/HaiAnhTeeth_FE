@@ -1038,28 +1038,28 @@ const AllAppointments = () => {
                         </>
                       )}
                       {appointment.status === "Approved" && (
-                        <>
-                          <Button
-                            size="sm"
-                            color="primary"
-                            variant="flat"
-                            onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                            isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
-                          >
-                            Check-in
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="warning"
-                            variant="flat"
-                            onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
-                            isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
-                          >
-                            No Show
-                          </Button>
-                        </>
+                          <>
+                            <Button
+                              size="sm"
+                              color="primary"
+                              variant="flat"
+                              onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                              isDisabled={processingId === appointment.id}
+                              isLoading={processingId === appointment.id}
+                            >
+                              Check-in
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="warning"
+                              variant="flat"
+                              onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
+                              isDisabled={processingId === appointment.id}
+                              isLoading={processingId === appointment.id}
+                            >
+                              No Show
+                            </Button>
+                          </>
                       )}
                       {appointment.status === "CheckedIn" && (
                         <Button

@@ -54,8 +54,8 @@ const PaymentPage = () => {
         const res = await paymentApi.checkPaymentStatus(paymentId);
 
         if (res.data) {
-          setPaymentData(res.data);
-          setError(null);
+        setPaymentData(res.data);
+        setError(null);
         } else {
           setError("Không thể lấy thông tin thanh toán");
         }
@@ -96,7 +96,7 @@ const PaymentPage = () => {
           const res = await paymentApi.checkPaymentStatus(paymentId);
 
           if (res.data) {
-            setPaymentData(res.data);
+          setPaymentData(res.data);
           }
           setPollingCount((prev) => prev + 1);
 
@@ -259,9 +259,9 @@ const PaymentPage = () => {
               </p>
             </div>
           ) : (
-            <p className="text-sm text-gray-500 mb-6">
-              Số tiền: {formatCurrency(paymentData.payment.amount)} VND
-            </p>
+          <p className="text-sm text-gray-500 mb-6">
+            Số tiền: {formatCurrency(paymentData.payment.amount)} VND
+          </p>
           )}
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-green-800">
@@ -317,9 +317,9 @@ const PaymentPage = () => {
               </div>
             </div>
           ) : (
-            <p className="text-3xl font-bold text-blue-600 text-center">
-              {formatCurrency(paymentData.payment.amount)} VND
-            </p>
+          <p className="text-3xl font-bold text-blue-600 text-center">
+            {formatCurrency(paymentData.payment.amount)} VND
+          </p>
           )}
         </div>
 
@@ -390,9 +390,9 @@ const PaymentPage = () => {
               const res = await paymentApi.checkPaymentStatus(paymentId);
 
               if (res.data) {
-                setPaymentData(res.data);
+              setPaymentData(res.data);
                 if (res.data.confirmed) {
-                  navigate("/patient/appointments");
+                navigate("/patient/appointments");
                 }
               }
             } finally {

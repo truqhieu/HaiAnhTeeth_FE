@@ -255,4 +255,22 @@ export const appointmentApi = {
       method: "GET",
     });
   },
+  
+  /**
+   * AI Booking - Tự động tạo lịch từ prompt người dùng
+   * POST /api/appointments/ai-create
+   */
+  aiCreate: async (
+    prompt: string,
+    appointmentFor?: "self" | "other",
+  ): Promise<ApiResponse<{
+    appointmentId: string;
+    appointment: any;
+    parsedInfo: any;
+  }>> => {
+    return authenticatedApiCall(`/appointments/ai-create`, {
+      method: "POST",
+      body: JSON.stringify({ prompt, appointmentFor }),
+    });
+  },
 };
