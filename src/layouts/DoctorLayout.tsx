@@ -9,6 +9,7 @@ import {
   UserIcon,
   DocumentTextIcon,
   BellIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -24,6 +25,9 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
 
+  // Mock unread chat count - sẽ thay thế bằng API call sau
+  const unreadChatCount = 3;
+
   const handleLogout = () => {
     logout();
     navigate("/");
@@ -35,6 +39,13 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
       href: "/doctor/schedule",
       icon: CalendarIcon,
       current: location.pathname === "/doctor/schedule",
+    },
+    {
+      name: "Chat với bệnh nhân",
+      href: "/doctor/chat",
+      icon: ChatBubbleLeftRightIcon,
+      current: location.pathname === "/doctor/chat",
+      badge: unreadChatCount > 0 ? unreadChatCount : undefined,
     },
     {
       name: "Đơn xin nghỉ phép",

@@ -17,6 +17,7 @@ import MedicalRecords from "@/pages/Patient/MedicalRecords";
 import PatientMedicalRecord from "@/pages/Patient/PatientMedicalRecord";
 import PaymentPage from "@/pages/Patient/PaymentPage";
 import Dashboard from "@/pages/Patient/Dashboard";
+import Chat from "@/pages/Patient/Chat";
 import AccountManagement from "@/pages/Admin/AccountManagement";
 import AdminLayout from "@/layouts/AdminLayout";
 import ServiceManagement from "@/pages/Manager/ServiceManagement";
@@ -31,7 +32,7 @@ import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
 import PatientRequests from "@/pages/Staff/PatientRequests";
 import DoctorLayout from "@/layouts/DoctorLayout";
-import { DoctorSchedule } from "@/pages/Doctor";
+import { DoctorSchedule, DoctorChat } from "@/pages/Doctor";
 import NurseLayout from "@/layouts/NurseLayout";
 import NurseSchedule from "@/pages/Nurse/NurseSchedule";
 import LeaveRequest from "@/pages/Common/LeaveRequest";
@@ -127,6 +128,7 @@ function App() {
               <DoctorLayout>
                 <Routes>
                   <Route element={<DoctorSchedule />} path="schedule" />
+                  <Route element={<DoctorChat />} path="chat" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route
                     element={<DoctorMedicalRecord />}
@@ -180,6 +182,10 @@ function App() {
                     <Route
                       element={<Complaints />}
                       path="/patient/complaints"
+                    />
+                    <Route
+                      element={<Chat />}
+                      path="/patient/chat"
                     />
                     <Route
                       element={<AccountSettings />}
