@@ -9,6 +9,8 @@ const AIBooking: React.FC = () => {
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<Array<{ role: "bot" | "user"; text: string }>>([]);
   const [submitting, setSubmitting] = useState(false);
+  // 🆕 Lưu conversation history để gửi cho OpenAI API
+  const [conversationHistory, setConversationHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
 
   useEffect(() => {
     setMessages([
@@ -27,14 +29,50 @@ const AIBooking: React.FC = () => {
     }
     try {
       setSubmitting(true);
+      const userMessage = prompt.trim();
+      
       // hiển thị tin nhắn người dùng
-      setMessages((prev) => [...prev, { role: "user", text: prompt.trim() }]);
+      setMessages((prev) => [...prev, { role: "user", text: userMessage }]);
+      setPrompt(""); // Clear input
 
-      const res = await appointmentApi.aiCreate(prompt.trim(), "self");
+      // 🆕 Gửi API với conversation history
+      const res = await appointmentApi.aiCreate(userMessage, "self", conversationHistory);
+      
+      // 🆕 Handle new Function Calling response format
+      // Cả success và needsMoreInfo đều có followUpQuestion (response từ AI)
+      const botResponse = (res.data as any)?.followUpQuestion || res.message || "Xin lỗi, mình gặp lỗi khi xử lý yêu cầu của bạn.";
+      
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: botResponse,
+        },
+      ]);
+      
+      // Update conversation history từ backend response (AI đã tự manage history)
+      const newHistory = (res.data as any)?.parsedData?.conversationHistory;
+      if (newHistory && Array.isArray(newHistory)) {
+        setConversationHistory(newHistory);
+      }
+      
+      // Nếu appointment được tạo thành công, có thể navigate hoặc hiển thị thông báo
+      if (res.success && (res.data as any)?.appointment) {
+        // Appointment created successfully!
+        return;
+      }
+      
+      // Continue conversation if needsMoreInfo
+      if ((res.data as any)?.needsMoreInfo) {
+        return; // Wait for user response
+      }
+
+      // Handle other errors
       if (!res.success || !res.data) {
         throw new Error(res.message || "Không thể tạo lịch tự động");
       }
 
+      // Success - appointment created
       toast.success("Đặt lịch thành công!");
 
       const appointment: any = res.data.appointment;
@@ -85,7 +123,15 @@ const AIBooking: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [prompt, navigate]);
+  }, [prompt, navigate, conversationHistory]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Nhấn Enter (không có Shift) để gửi
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Ngăn xuống dòng
+      handleSubmit();
+    }
+  }, [handleSubmit]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
@@ -112,10 +158,12 @@ const AIBooking: React.FC = () => {
           <div className="px-6 pb-6 pt-3 border-t border-gray-200">
             <div className="flex items-end gap-3">
               <Textarea
-                placeholder="Nhập yêu cầu của bạn..."
+                placeholder="Nhập yêu cầu của bạn... (Enter để gửi, Shift+Enter để xuống dòng)"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={handleKeyDown}
                 minRows={1}
+                maxRows={5}
                 variant="bordered"
               />
               <Button color="primary" onPress={handleSubmit} isDisabled={submitting || !prompt.trim()}>

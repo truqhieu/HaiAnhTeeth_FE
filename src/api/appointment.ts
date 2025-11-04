@@ -263,6 +263,7 @@ export const appointmentApi = {
   aiCreate: async (
     prompt: string,
     appointmentFor?: "self" | "other",
+    conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>
   ): Promise<ApiResponse<{
     appointmentId: string;
     appointment: any;
@@ -270,7 +271,7 @@ export const appointmentApi = {
   }>> => {
     return authenticatedApiCall(`/appointments/ai-create`, {
       method: "POST",
-      body: JSON.stringify({ prompt, appointmentFor }),
+      body: JSON.stringify({ prompt, appointmentFor, conversationHistory }),
     });
   },
 };
