@@ -24,6 +24,7 @@ interface Appointment {
   mode: string;
   patientName: string;
   doctorName: string;
+  doctorStatus?: string | null; // ⭐ Status của doctor: 'Available', 'Busy', 'On Leave', 'Inactive'
   serviceName: string;
   startTime: string;
   endTime: string;
@@ -118,6 +119,7 @@ const Appointments = () => {
             mode: apt.mode,
             patientName: apt.patientUserId?.fullName || "",
             doctorName: apt.doctorUserId?.fullName || "",
+            doctorStatus: apt.doctorStatus || null, // ⭐ Thêm doctorStatus từ backend
             serviceName: apt.serviceId?.serviceName || "",
             startTime: apt.timeslotId?.startTime || "",
             endTime: apt.timeslotId?.endTime || "",
@@ -701,9 +703,16 @@ const Appointments = () => {
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-40">
                       <div className="flex flex-col gap-1">
-                        <div className="text-sm font-medium text-gray-900">
-                          {appointment.doctorName}
-                        </div>
+                        {/* ⭐ Hiển thị "Vắng mặt" nếu bác sĩ On Leave */}
+                        {appointment.doctorStatus === 'On Leave' ? (
+                          <div className="text-sm font-medium text-red-600">
+                            Vắng mặt
+                          </div>
+                        ) : (
+                          <div className="text-sm font-medium text-gray-900">
+                            {appointment.doctorName}
+                          </div>
+                        )}
                         {/* Hiển thị thông báo chờ xác nhận đổi bác sĩ */}
                         {appointment.replacedDoctorName && appointment.confirmDeadline && (
                           <div className="flex flex-col gap-1">

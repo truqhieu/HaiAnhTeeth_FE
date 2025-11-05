@@ -37,6 +37,7 @@ export const apiCall = async <T = any>(
     const response = await fetch(url, {
       ...options,
       credentials: options.credentials || "include", // Always include credentials for CORS
+      cache: options.cache || "default", // ⭐ Support cache option from caller
       headers: {
         "Content-Type": "application/json",
         ...options.headers,
@@ -46,6 +47,31 @@ export const apiCall = async <T = any>(
     console.log("🔍 [API Call] Response headers:", Object.fromEntries(response.headers.entries()));
 
     console.log("📡 Response status:", response.status, response.statusText);
+
+    // ⭐ Xử lý 304 Not Modified - không có body, cần fetch lại với cache-busting
+    if (response.status === 304) {
+      console.warn("⚠️ [API Call] Received 304 Not Modified, response body is empty. This might cause issues.");
+      // Try to fetch again with cache-busting
+      const cacheBustingUrl = `${url}${url.includes('?') ? '&' : '?'}_nocache=${Date.now()}`;
+      console.log("🔄 [API Call] Retrying with cache-busting:", cacheBustingUrl);
+      const retryResponse = await fetch(cacheBustingUrl, {
+        ...options,
+        credentials: options.credentials || "include",
+        cache: "no-cache",
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+      
+      if (retryResponse.ok) {
+        const result = await retryResponse.json();
+        console.log("📦 [API Call] Retry response body:", result);
+        return result;
+      } else {
+        throw new Error(`HTTP error! status: ${retryResponse.status}`);
+      }
+    }
 
     const result = await response.json();
 

@@ -5,7 +5,15 @@ import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { useAuth } from "@/contexts/AuthContext";
 
-const NotificationBell = () => {
+interface NotificationBellProps {
+  iconClassName?: string;
+  iconSize?: string;
+}
+
+const NotificationBell: React.FC<NotificationBellProps> = ({ 
+  iconClassName = "w-6 h-6 text-gray-600",
+  iconSize = "w-6 h-6"
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -64,9 +72,9 @@ const NotificationBell = () => {
         onClick={() => setIsOpen(!isOpen)}
       >
         {unreadCount > 0 ? (
-          <BellSolidIcon className="w-6 h-6 text-blue-600" />
+          <BellSolidIcon className={iconClassName?.includes('text-white') ? iconClassName.replace('text-white', 'text-blue-200') : (iconClassName || `${iconSize} text-blue-600`)} />
         ) : (
-          <BellIcon className="w-6 h-6 text-gray-600" />
+          <BellIcon className={iconClassName || `${iconSize} text-gray-600`} />
         )}
         
         {/* Badge */}

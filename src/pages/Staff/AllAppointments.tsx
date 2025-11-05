@@ -36,7 +36,7 @@ import {
   InformationCircleIcon,
   UserPlusIcon,
 } from "@heroicons/react/24/outline";
-import { appointmentApi } from "@/api";
+import { appointmentApi, leaveRequestApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
 import { ReassignDoctorModal } from "@/components/Staff";
@@ -47,6 +47,8 @@ interface Appointment {
   status: string;
   patientName: string;
   doctorName: string;
+  doctorUserId?: string; // Thêm doctorUserId để check leave
+  doctorStatus?: string | null; // ⭐ Status của doctor: 'Available', 'Busy', 'On Leave', 'Inactive'
   serviceName: string;
   startTime: string;
   endTime: string;
@@ -120,6 +122,25 @@ const AllAppointments = () => {
   const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [reassignAppointment, setReassignAppointment] = useState<Appointment | null>(null);
 
+  // Leave requests state - để check doctor có leave không
+  const [approvedLeaves, setApprovedLeaves] = useState<Array<{
+    userId: string;
+    startDate: string;
+    endDate: string;
+  }>>([]);
+
+  // Debug: Log khi approvedLeaves thay đổi
+  useEffect(() => {
+    console.log('📊 [approvedLeaves State] Updated:', {
+      count: approvedLeaves.length,
+      leaves: approvedLeaves.map(l => ({
+        userId: l.userId,
+        startDate: l.startDate,
+        endDate: l.endDate,
+      })),
+    });
+  }, [approvedLeaves]);
+
   // ===== Hàm lấy tất cả bác sĩ =====
   const fetchAllDoctors = async () => {
     try {
@@ -163,12 +184,44 @@ const AllAppointments = () => {
           const doctorName = apt.replacedDoctorUserId?.fullName 
             || apt.doctorUserId?.fullName 
             || "N/A";
+          
+          // ⭐ QUAN TRỌNG: Để check leave, chúng ta cần check BÁC SĨ GỐC (doctorUserId)
+          // vì đó là bác sĩ có leave request. Nếu đã gán bác sĩ mới (replacedDoctorUserId),
+          // thì bác sĩ mới không có leave, nhưng bác sĩ gốc vẫn có leave.
+          // Vậy nên chúng ta luôn check doctorUserId gốc để xem có leave không.
+          let doctorUserId = null; // doctorUserId gốc để check leave
+          if (apt.doctorUserId) {
+            // doctorUserId có thể là object (populated) hoặc ObjectId
+            if (typeof apt.doctorUserId === 'object') {
+              // Nếu là object, lấy _id
+              doctorUserId = apt.doctorUserId._id?.toString() 
+                || apt.doctorUserId.toString();
+            } else {
+              doctorUserId = apt.doctorUserId.toString();
+            }
+          }
+
+          // Debug log cho appointments có doctor "Huy"
+          if (doctorName.toLowerCase().includes('huy')) {
+            console.log('🔍 [AllAppointments] Doctor Huy appointment:', {
+              appointmentId: apt._id,
+              doctorName: doctorName,
+              doctorUserId: doctorUserId,
+              startTime: apt.timeslotId?.startTime,
+              replacedDoctorUserId: apt.replacedDoctorUserId,
+              originalDoctorUserId: apt.doctorUserId,
+              originalDoctorUserIdType: typeof apt.doctorUserId,
+              originalDoctorUserId_id: apt.doctorUserId?._id,
+            });
+          }
 
           return {
             id: apt._id,
             status: apt.status,
             patientName: patientName,
             doctorName: doctorName,
+            doctorUserId: doctorUserId, // Thêm doctorUserId
+            doctorStatus: apt.doctorStatus || null, // ⭐ Thêm doctorStatus từ backend
             serviceName: apt.serviceId?.serviceName || "N/A",
             startTime: apt.timeslotId?.startTime || "",
             endTime: apt.timeslotId?.endTime || "",
@@ -195,10 +248,108 @@ const AllAppointments = () => {
     }
   };
 
+  // ===== Hàm lấy approved leaves =====
+  const fetchApprovedLeaves = async () => {
+    try {
+      const res = await leaveRequestApi.getAllLeaveRequests({
+        status: "Approved",
+        limit: 1000,
+      });
+      
+      // Backend trả về: { success: true, data: LeaveRequest[], total, totalPages, ... }
+      if (!res || !res.success || !res.data) {
+        console.warn('⚠️ [fetchApprovedLeaves] Invalid response:', res);
+        setApprovedLeaves([]);
+        return;
+      }
+
+      // res.data là array trực tiếp
+      const leavesArray = Array.isArray(res.data) ? res.data : [];
+      
+      if (leavesArray.length > 0) {
+        const leaves = leavesArray.map((leave: any) => {
+          // Extract userId - có thể là object với _id hoặc string
+          let userId = "";
+          if (leave.userId) {
+            if (typeof leave.userId === 'object' && leave.userId._id) {
+              userId = leave.userId._id.toString();
+            } else if (typeof leave.userId === 'string') {
+              userId = leave.userId;
+            } else {
+              userId = String(leave.userId);
+            }
+          }
+          
+          return {
+            userId: userId,
+            startDate: leave.startDate,
+            endDate: leave.endDate,
+          };
+        });
+        
+        console.log('✅ [fetchApprovedLeaves] Loaded', leaves.length, 'approved leaves');
+        setApprovedLeaves(leaves);
+      } else {
+        console.log('⚠️ [fetchApprovedLeaves] No approved leaves found');
+        setApprovedLeaves([]);
+      }
+    } catch (err: any) {
+      console.error("❌ Error fetching approved leaves:", err);
+      setApprovedLeaves([]);
+    }
+  };
+
+  // ===== Helper: Check doctor có leave trong thời gian appointment không =====
+  const isDoctorOnLeave = (appointment: Appointment): boolean => {
+    // ⭐ Cách 1: Check doctorStatus từ backend (nhanh và chính xác nhất)
+    if (appointment.doctorStatus === 'On Leave') {
+      return true;
+    }
+
+    // ⭐ Cách 2: Fallback - check approved leaves (nếu doctorStatus chưa được update)
+    if (!appointment.doctorUserId || !appointment.startTime || approvedLeaves.length === 0) {
+      return false;
+    }
+
+    const appointmentDate = new Date(appointment.startTime);
+    if (isNaN(appointmentDate.getTime())) {
+      return false;
+    }
+    appointmentDate.setHours(0, 0, 0, 0);
+
+    const doctorId = appointment.doctorUserId.toString().trim();
+
+    // Check xem có leave nào cover appointmentDate không
+    return approvedLeaves.some((leave) => {
+      const leaveUserId = (leave.userId?.toString() || leave.userId || "").trim();
+      
+      if (leaveUserId !== doctorId) {
+        return false;
+      }
+
+      const leaveStart = new Date(leave.startDate);
+      const leaveEnd = new Date(leave.endDate);
+      
+      if (isNaN(leaveStart.getTime()) || isNaN(leaveEnd.getTime())) {
+        return false;
+      }
+      
+      leaveStart.setHours(0, 0, 0, 0);
+      leaveEnd.setHours(23, 59, 59, 999);
+
+      return appointmentDate >= leaveStart && appointmentDate <= leaveEnd;
+    });
+  };
+
   useEffect(() => {
+    console.log('🔍 [useEffect] Component mounted/updated, isAuthenticated:', isAuthenticated);
     if (isAuthenticated) {
+      console.log('✅ [useEffect] Calling fetchAllDoctors, fetchApprovedLeaves, refetchAllAppointments');
       fetchAllDoctors(); // Lấy tất cả bác sĩ trước
+      fetchApprovedLeaves(); // Lấy approved leaves
       refetchAllAppointments();
+    } else {
+      console.log('⚠️ [useEffect] Not authenticated, skipping API calls');
     }
   }, [isAuthenticated]);
 
@@ -299,6 +450,7 @@ const AllAppointments = () => {
       if (res.success) {
         toast.success("Đã hủy ca khám thành công!");
         closeCancelModal();
+        await fetchApprovedLeaves(); // Refresh leaves
         await refetchAllAppointments();
       } else {
         toast.error(res.message || "Thao tác thất bại");
@@ -325,6 +477,7 @@ const AllAppointments = () => {
 
       if (res.success) {
         toast.success("Đã duyệt ca khám thành công!");
+        await fetchApprovedLeaves(); // Refresh leaves
         await refetchAllAppointments();
       } else {
         toast.error(res.message || "Thao tác thất bại");
@@ -390,6 +543,7 @@ const AllAppointments = () => {
           "No-Show": "Đã đánh dấu No-Show!",
         };
         toast.success(statusMessages[newStatus]);
+        await fetchApprovedLeaves(); // Refresh leaves
         await refetchAllAppointments();
       } else {
         toast.error(res.message || "Thao tác thất bại");
@@ -416,6 +570,7 @@ const AllAppointments = () => {
 
   // ===== Handle Reassign Success =====
   const handleReassignSuccess = async () => {
+    await fetchApprovedLeaves(); // Refresh leaves
     await refetchAllAppointments();
   };
 
@@ -1011,9 +1166,18 @@ const AllAppointments = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Chip variant="flat" color="default">
-                      {appointment.doctorName}
-                    </Chip>
+                    {(() => {
+                      const isOnLeave = isDoctorOnLeave(appointment);
+                      return isOnLeave ? (
+                        <Chip variant="flat" color="danger">
+                          Not Available
+                        </Chip>
+                      ) : (
+                        <Chip variant="flat" color="default">
+                          {appointment.doctorName}
+                        </Chip>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <p className="text-sm text-gray-700">{appointment.serviceName}</p>
@@ -1042,31 +1206,80 @@ const AllAppointments = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2 flex-wrap">
-                      {appointment.status === "Pending" && (
+                      {/* ⭐ Nếu bác sĩ có lịch nghỉ, chỉ hiển thị nút "Gán BS" */}
+                      {isDoctorOnLeave(appointment) ? (
+                        <Button
+                          size="sm"
+                          color="secondary"
+                          variant="flat"
+                          onPress={() => openReassignModal(appointment)}
+                          isDisabled={processingId === appointment.id}
+                          startContent={<UserPlusIcon className="w-4 h-4" />}
+                        >
+                          Gán BS
+                        </Button>
+                      ) : (
                         <>
-                          <Button
-                            size="sm"
-                            color="success"
-                            variant="flat"
-                            onPress={() => handleApprove(appointment.id)}
-                            isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
-                          >
-                            Xác nhận
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="danger"
-                            variant="flat"
-                            onPress={() => openCancelModal(appointment.id)}
-                            isDisabled={processingId === appointment.id}
-                          >
-                            Hủy
-                          </Button>
-                        </>
-                      )}
-                      {appointment.status === "Approved" && (
-                          <>
+                          {appointment.status === "Pending" && (
+                            <>
+                              <Button
+                                size="sm"
+                                color="success"
+                                variant="flat"
+                                onPress={() => handleApprove(appointment.id)}
+                                isDisabled={processingId === appointment.id}
+                                isLoading={processingId === appointment.id}
+                              >
+                                Xác nhận
+                              </Button>
+                              <Button
+                                size="sm"
+                                color="danger"
+                                variant="flat"
+                                onPress={() => openCancelModal(appointment.id)}
+                                isDisabled={processingId === appointment.id}
+                              >
+                                Hủy
+                              </Button>
+                            </>
+                          )}
+                          {appointment.status === "Approved" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  color="primary"
+                                  variant="flat"
+                                  onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                                  isDisabled={processingId === appointment.id}
+                                  isLoading={processingId === appointment.id}
+                                >
+                                  Check-in
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  color="warning"
+                                  variant="flat"
+                                  onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
+                                  isDisabled={processingId === appointment.id}
+                                  isLoading={processingId === appointment.id}
+                                >
+                                  No Show
+                                </Button>
+                              </>
+                          )}
+                          {appointment.status === "CheckedIn" && (
+                            <Button
+                              size="sm"
+                              color="warning"
+                              variant="flat"
+                              onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
+                              isDisabled={processingId === appointment.id}
+                              isLoading={processingId === appointment.id}
+                            >
+                              No Show
+                            </Button>
+                          )}
+                          {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && (
                             <Button
                               size="sm"
                               color="primary"
@@ -1077,78 +1290,23 @@ const AllAppointments = () => {
                             >
                               Check-in
                             </Button>
-                            <Button
-                              size="sm"
-                              color="warning"
-                              variant="flat"
-                              onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
-                              isDisabled={processingId === appointment.id}
-                              isLoading={processingId === appointment.id}
-                            >
-                              No Show
-                            </Button>
-                            <Button
-                              size="sm"
-                              color="secondary"
-                              variant="flat"
-                              onPress={() => openReassignModal(appointment)}
-                              isDisabled={processingId === appointment.id}
-                              startContent={<UserPlusIcon className="w-4 h-4" />}
-                            >
-                              Gán BS
-                            </Button>
-                          </>
-                      )}
-                      {appointment.status === "CheckedIn" && (
-                        <>
-                          <Button
-                            size="sm"
-                            color="warning"
-                            variant="flat"
-                            onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
-                            isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
-                          >
-                            No Show
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="secondary"
-                            variant="flat"
-                            onPress={() => openReassignModal(appointment)}
-                            isDisabled={processingId === appointment.id}
-                            startContent={<UserPlusIcon className="w-4 h-4" />}
-                          >
-                            Gán BS
-                          </Button>
+                          )}
+                          {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) || 
+                           (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
+                            <div className="flex gap-2">
+                              {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
+                                <Button
+                                  size="sm"
+                                  color="primary"
+                                  variant="flat"
+                                  onPress={() => openDetailModal(appointment.id)}
+                                >
+                                  Xem chi tiết
+                                </Button>
+                              ) : null}
+                            </div>
+                          )}
                         </>
-                      )}
-                      {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && (
-                        <Button
-                          size="sm"
-                          color="primary"
-                          variant="flat"
-                          onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                          isDisabled={processingId === appointment.id}
-                          isLoading={processingId === appointment.id}
-                        >
-                          Check-in
-                        </Button>
-                      )}
-                      {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) || 
-                       (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
-                        <div className="flex gap-2">
-                          {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
-                            <Button
-                              size="sm"
-                              color="primary"
-                              variant="flat"
-                              onPress={() => openDetailModal(appointment.id)}
-                            >
-                              Xem chi tiết
-                            </Button>
-                          ) : null}
-                        </div>
                       )}
                     </div>
                   </TableCell>

@@ -93,34 +93,41 @@ const NurseSchedule = () => {
     try {
       // Chỉ set loading khi là lần fetch đầu tiên (không phải silent)
       if (!silent) {
-        setLoading(prev => {
-          // Nếu đang initial loading, giữ nguyên, nếu không thì set true
-          if (!prev) return true;
-          return prev;
-        });
+        setLoading(true);
       }
       setError(null);
+      
       const res = await nurseApi.getAppointmentsSchedule(startDate, endDate);
       
-      if (res.success && res.data) {
-        setAppointments(res.data);
+      // ⭐ FIX: Kiểm tra response đầy đủ để tránh crash
+      if (res && res.success && res.data) {
+        // ⭐ Đảm bảo data là array
+        const appointmentsData = Array.isArray(res.data) ? res.data : [];
+        setAppointments(appointmentsData);
         
         // Extract unique dates từ appointments (sử dụng formatDate inline để tránh dependency)
-        const uniqueDates = [...new Set(res.data.map(apt => {
+        const uniqueDates = [...new Set(appointmentsData.map(apt => {
           if (!apt.appointmentDate || apt.appointmentDate === "N/A") return "N/A";
-          return new Date(apt.appointmentDate).toLocaleDateString("vi-VN");
+          try {
+            return new Date(apt.appointmentDate).toLocaleDateString("vi-VN");
+          } catch (e) {
+            console.warn("Invalid date format:", apt.appointmentDate);
+            return "N/A";
+          }
         }))].filter(d => d !== "N/A");
         setDates(uniqueDates);
       } else {
-        setError(res.message || "Lỗi lấy danh sách lịch khám");
+        setError(res?.message || "Lỗi lấy danh sách lịch khám");
+        setAppointments([]); // ⭐ Đảm bảo appointments luôn là array
       }
     } catch (err: any) {
       console.error("Error fetching appointments:", err);
       setError(err.message || "Lỗi khi tải lịch khám");
+      setAppointments([]); // ⭐ Đảm bảo appointments luôn là array khi có lỗi
     } finally {
       if (!silent) {
         setInitialLoading(false);
-      setLoading(false);
+        setLoading(false);
       }
     }
   }, []);
@@ -130,7 +137,7 @@ const NurseSchedule = () => {
       fetchAllDoctors(); // Lấy tất cả bác sĩ trước
       fetchAppointments(); // Fetch mặc định (2 tuần)
     }
-  }, [isAuthenticated, fetchAppointments]);
+  }, [isAuthenticated]); // ⭐ FIX: Bỏ fetchAppointments khỏi dependency để tránh infinite loop
 
   // Debounce search text để tránh filter quá nhiều lần
   useEffect(() => {
@@ -152,10 +159,14 @@ const NurseSchedule = () => {
       // Khi clear date range, fetch lại mặc định (2 tuần)
       fetchAppointments();
     }
-  }, [dateRange.startDate, dateRange.endDate, isAuthenticated, fetchAppointments]);
+  }, [dateRange.startDate, dateRange.endDate, isAuthenticated]); 
 
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
+    // ⭐ FIX: Đảm bảo appointments luôn là array
+    if (!Array.isArray(appointments)) {
+      return [];
+    }
     let filtered = [...appointments];
 
     // Sửa logic tab:
@@ -299,10 +310,12 @@ const NurseSchedule = () => {
   // Removed duplicate stats calculation - now using useMemo below
 
   // Pagination
-  const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
+  // ⭐ FIX: Đảm bảo filteredAppointments luôn là array
+  const safeFilteredAppointments = Array.isArray(filteredAppointments) ? filteredAppointments : [];
+  const totalPages = Math.ceil(safeFilteredAppointments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentAppointments = filteredAppointments.slice(startIndex, endIndex);
+  const currentAppointments = safeFilteredAppointments.slice(startIndex, endIndex);
 
   const columns = [
     { key: "date", label: "Ngày" },
@@ -330,18 +343,24 @@ const NurseSchedule = () => {
 
   // Stats calculation - sử dụng useMemo để tránh tính toán lại
   const stats = useMemo(() => {
+    // ⭐ FIX: Đảm bảo appointments luôn là array
+    const safeAppointments = Array.isArray(appointments) ? appointments : [];
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     return {
-      total: appointments.length,
-      upcoming: appointments.filter(a => a.status === "CheckedIn" || a.status === "InProgress").length,
-      today: appointments.filter(a => {
+      total: safeAppointments.length,
+      upcoming: safeAppointments.filter(a => a.status === "CheckedIn" || a.status === "InProgress").length,
+      today: safeAppointments.filter(a => {
         if (!a.appointmentDate) return false;
-        const aptDate = new Date(a.appointmentDate).toISOString().split('T')[0];
-        return aptDate === today;
+        try {
+          const aptDate = new Date(a.appointmentDate).toISOString().split('T')[0];
+          return aptDate === today;
+        } catch (e) {
+          return false;
+        }
       }).length,
-      online: appointments.filter(a => a.mode === "Online").length,
-      offline: appointments.filter(a => a.mode === "Offline").length,
-      completed: appointments.filter(a => a.status === "Completed").length,
+      online: safeAppointments.filter(a => a.mode === "Online").length,
+      offline: safeAppointments.filter(a => a.mode === "Offline").length,
+      completed: safeAppointments.filter(a => a.status === "Completed").length,
     };
   }, [appointments]);
 
@@ -758,7 +777,7 @@ const NurseSchedule = () => {
 
       {/* Result Count */}
       <div className="text-center text-sm text-gray-600">
-        Hiển thị <span className="font-semibold">{startIndex + 1}-{Math.min(endIndex, filteredAppointments.length)}</span> trong tổng số <span className="font-semibold">{filteredAppointments.length}</span> ca khám
+        Hiển thị <span className="font-semibold">{startIndex + 1}-{Math.min(endIndex, safeFilteredAppointments.length)}</span> trong tổng số <span className="font-semibold">{safeFilteredAppointments.length}</span> ca khám
       </div>
 
      

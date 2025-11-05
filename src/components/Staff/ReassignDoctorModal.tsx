@@ -75,6 +75,45 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
   const handleSubmit = async () => {
     setShowValidation(true);
 
+    // ⭐ Nếu không có bác sĩ khả dụng, hủy lịch hẹn
+    if (availableDoctors.length === 0) {
+      if (!reason.trim()) {
+        toast.error("Vui lòng nhập lý do hủy lịch!");
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+
+        const response = await appointmentApi.reviewAppointment(
+          appointmentId,
+          "cancel",
+          reason.trim()
+        );
+
+        if (response.success) {
+          toast.success("Đã hủy lịch hẹn thành công!");
+          
+          // Reset form
+          handleClose();
+          
+          // Trigger refresh
+          if (onSuccess) {
+            onSuccess();
+          }
+        } else {
+          toast.error(response.message || "Không thể hủy lịch hẹn");
+        }
+      } catch (error: any) {
+        console.error("Error cancelling appointment:", error);
+        toast.error(error.message || "Có lỗi xảy ra khi hủy lịch hẹn");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // ⭐ Logic gán bác sĩ mới (khi có bác sĩ khả dụng)
     // Validation
     if (!selectedDoctorId) {
       toast.error("Vui lòng chọn bác sĩ mới!");
@@ -161,52 +200,54 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
             </p>
           </div>
 
-          {/* Select New Doctor */}
-          <div>
-            <Select
-              label="Chọn bác sĩ mới"
-              placeholder="Chọn bác sĩ khả dụng"
-              selectedKeys={selectedDoctorId ? new Set([selectedDoctorId]) : new Set([])}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setSelectedDoctorId(selected ? String(selected) : "");
-              }}
-              isRequired
-              isInvalid={isDoctorInvalid}
-              errorMessage={isDoctorInvalid ? "Vui lòng chọn bác sĩ" : ""}
-              isDisabled={isLoadingDoctors || isSubmitting}
-              variant="bordered"
-              size="lg"
-              classNames={{
-                trigger: "border-2",
-              }}
-            >
-              {isLoadingDoctors ? (
-                <SelectItem key="loading" isDisabled>
-                  <div className="flex items-center gap-2">
-                    <Spinner size="sm" />
-                    <span>Đang tải...</span>
-                  </div>
-                </SelectItem>
-              ) : availableDoctors.length === 0 ? (
-                <SelectItem key="no-doctors" isDisabled>
-                  Không có bác sĩ khả dụng
-                </SelectItem>
-              ) : (
-                availableDoctors.map((doctor) => (
-                  <SelectItem key={doctor._id} value={doctor._id}>
-                    {doctor.fullName}
+          {/* Select New Doctor - Chỉ hiển thị khi có bác sĩ khả dụng */}
+          {availableDoctors.length > 0 && (
+            <div>
+              <Select
+                label="Chọn bác sĩ mới *"
+                placeholder="Chọn bác sĩ khả dụng"
+                selectedKeys={selectedDoctorId ? new Set([selectedDoctorId]) : new Set([])}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0];
+                  setSelectedDoctorId(selected ? String(selected) : "");
+                }}
+                isRequired
+                isInvalid={isDoctorInvalid}
+                errorMessage={isDoctorInvalid ? "Vui lòng chọn bác sĩ" : ""}
+                isDisabled={isLoadingDoctors || isSubmitting}
+                variant="bordered"
+                size="lg"
+                classNames={{
+                  trigger: "border-2",
+                }}
+              >
+                {isLoadingDoctors ? (
+                  <SelectItem key="loading" isDisabled>
+                    <div className="flex items-center gap-2">
+                      <Spinner size="sm" />
+                      <span>Đang tải...</span>
+                    </div>
                   </SelectItem>
-                ))
-              )}
-            </Select>
-          </div>
+                ) : (
+                  availableDoctors.map((doctor) => (
+                    <SelectItem key={doctor._id}>
+                      {doctor.fullName}
+                    </SelectItem>
+                  ))
+                )}
+              </Select>
+            </div>
+          )}
 
-          {/* Reason */}
+          {/* Reason - Label thay đổi dựa trên có bác sĩ hay không */}
           <div>
             <Textarea
-              label="Lý do gán lại bác sĩ"
-              placeholder="Nhập lý do (vd: Bác sĩ cũ xin nghỉ phép...)"
+              label={availableDoctors.length === 0 ? "Lý do hủy lịch *" : "Lý do gán lại bác sĩ *"}
+              placeholder={
+                availableDoctors.length === 0 
+                  ? "Nhập lý do hủy lịch (vd: Không có bác sĩ khả dụng trong khung giờ này...)"
+                  : "Nhập lý do (vd: Bác sĩ cũ xin nghỉ phép...)"
+              }
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               isRequired
@@ -216,7 +257,6 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
               minRows={3}
               maxRows={6}
               isDisabled={isSubmitting}
-             
             />
           </div>
 
@@ -224,7 +264,7 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
           {availableDoctors.length === 0 && !isLoadingDoctors && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <p className="text-sm text-yellow-800">
-                ⚠️ Không có bác sĩ nào khả dụng trong khung giờ này. Vui lòng liên hệ Manager để sắp xếp lại lịch.
+                ⚠️ Không có bác sĩ nào khả dụng trong khung giờ này. Vui lòng hủy lịch hẹn và yêu cầu bệnh nhân dặt lịch hẹn mới.
               </p>
             </div>
           )}
@@ -242,12 +282,16 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
             Hủy
           </Button>
           <Button
-            color="primary"
+            color={availableDoctors.length === 0 ? "danger" : "primary"}
             onPress={handleSubmit}
             isLoading={isSubmitting}
-            isDisabled={isLoadingDoctors || availableDoctors.length === 0}
+            isDisabled={isLoadingDoctors}
           >
-            {isSubmitting ? "Đang xử lý..." : "Xác nhận"}
+            {isSubmitting 
+              ? "Đang xử lý..." 
+              : availableDoctors.length === 0 
+                ? "Xác nhận hủy lịch" 
+                : "Xác nhận"}
           </Button>
         </div>
       </div>

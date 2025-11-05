@@ -63,12 +63,16 @@ export const leaveRequestApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
     if (params?.search) queryParams.append("search", params.search);
+    
+    // ⭐ Thêm cache-busting timestamp để tránh 304 response
+    queryParams.append("_t", Date.now().toString());
 
     const queryString = queryParams.toString();
     const url = `/leave-requests${queryString ? `?${queryString}` : ""}`;
 
     return authenticatedApiCall(url, {
       method: "GET",
+      cache: "no-cache", // ⭐ Force no-cache để luôn fetch fresh data
     });
   },
 

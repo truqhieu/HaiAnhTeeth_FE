@@ -44,6 +44,7 @@ const PatientRequests: React.FC = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
 
   const {
     isOpen: isDetailOpen,
@@ -92,7 +93,14 @@ const PatientRequests: React.FC = () => {
   }, [currentPage, statusFilter, typeFilter]);
 
   const handleApprove = async (requestId: string) => {
+    // ⭐ Tránh double click
+    if (processingRequestId === requestId) {
+      return;
+    }
+
     try {
+      setProcessingRequestId(requestId);
+      
       const response = await patientRequestApi.approveRequest(requestId);
 
       if (response.success) {
@@ -105,10 +113,28 @@ const PatientRequests: React.FC = () => {
         setShowErrorModal(true);
         setErrorMessage("Có lỗi xảy ra khi duyệt yêu cầu");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving request:", error);
-      setShowErrorModal(true);
-      setErrorMessage("Có lỗi xảy ra khi duyệt yêu cầu");
+      
+      // ⭐ Kiểm tra nếu yêu cầu đã được xử lý rồi thì coi như thành công
+      const errorMessage = error?.message || "";
+      if (
+        errorMessage.includes("đã được xử lý") ||
+        errorMessage.includes("already been processed") ||
+        errorMessage.includes("đã được duyệt") ||
+        errorMessage.includes("already approved")
+      ) {
+        // Yêu cầu đã được xử lý rồi - coi như thành công
+        setShowSuccessModal(true);
+        setSuccessMessage("Yêu cầu đã được duyệt trước đó!");
+        loadRequests(); // Refresh để cập nhật UI
+        onDetailClose();
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(errorMessage || "Có lỗi xảy ra khi duyệt yêu cầu");
+      }
+    } finally {
+      setProcessingRequestId(null);
     }
   };
 
@@ -119,7 +145,14 @@ const PatientRequests: React.FC = () => {
       return;
     }
 
+    // ⭐ Tránh double click
+    if (processingRequestId === selectedRequest._id) {
+      return;
+    }
+
     try {
+      setProcessingRequestId(selectedRequest._id);
+      
       const response = await patientRequestApi.rejectRequest(
         selectedRequest._id,
         rejectReason,
@@ -136,10 +169,30 @@ const PatientRequests: React.FC = () => {
         setShowErrorModal(true);
         setErrorMessage("Có lỗi xảy ra khi từ chối yêu cầu");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error rejecting request:", error);
-      setShowErrorModal(true);
-      setErrorMessage("Có lỗi xảy ra khi từ chối yêu cầu");
+      
+      // ⭐ Kiểm tra nếu yêu cầu đã được xử lý rồi thì coi như thành công
+      const errorMessage = error?.message || "";
+      if (
+        errorMessage.includes("đã được xử lý") ||
+        errorMessage.includes("already been processed") ||
+        errorMessage.includes("đã được từ chối") ||
+        errorMessage.includes("already rejected")
+      ) {
+        // Yêu cầu đã được xử lý rồi - coi như thành công
+        setShowSuccessModal(true);
+        setSuccessMessage("Yêu cầu đã được xử lý trước đó!");
+        loadRequests(); // Refresh để cập nhật UI
+        onRejectClose();
+        setRejectReason("");
+        setSelectedRequest(null);
+      } else {
+        setShowErrorModal(true);
+        setErrorMessage(errorMessage || "Có lỗi xảy ra khi từ chối yêu cầu");
+      }
+    } finally {
+      setProcessingRequestId(null);
     }
   };
 
@@ -396,6 +449,8 @@ const PatientRequests: React.FC = () => {
                             size="sm"
                             color="success"
                             onClick={() => handleApprove(request._id)}
+                            isDisabled={processingRequestId === request._id}
+                            isLoading={processingRequestId === request._id}
                           >
                             Duyệt
                           </Button>
@@ -404,6 +459,7 @@ const PatientRequests: React.FC = () => {
                             color="danger"
                             variant="flat"
                             onClick={() => openRejectModal(request)}
+                            isDisabled={processingRequestId === request._id}
                           >
                             Từ chối
                           </Button>
@@ -515,10 +571,20 @@ const PatientRequests: React.FC = () => {
           <ModalFooter>
             {selectedRequest?.status === "Pending" && (
               <>
-                <Button color="success" onClick={() => handleApprove(selectedRequest._id)}>
+                <Button 
+                  color="success" 
+                  onClick={() => handleApprove(selectedRequest._id)}
+                  isDisabled={processingRequestId === selectedRequest._id}
+                  isLoading={processingRequestId === selectedRequest._id}
+                >
                   Duyệt
                 </Button>
-                <Button color="danger" variant="flat" onClick={() => openRejectModal(selectedRequest)}>
+                <Button 
+                  color="danger" 
+                  variant="flat" 
+                  onClick={() => openRejectModal(selectedRequest)}
+                  isDisabled={processingRequestId === selectedRequest._id}
+                >
                   Từ chối
                 </Button>
               </>
@@ -546,10 +612,19 @@ const PatientRequests: React.FC = () => {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button color="danger" onClick={handleReject} isDisabled={!rejectReason.trim()}>
+            <Button 
+              color="danger" 
+              onClick={handleReject} 
+              isDisabled={!rejectReason.trim() || (selectedRequest && processingRequestId === selectedRequest._id)}
+              isLoading={selectedRequest ? processingRequestId === selectedRequest._id : false}
+            >
               Từ chối
             </Button>
-            <Button variant="light" onClick={onRejectClose}>
+            <Button 
+              variant="light" 
+              onClick={onRejectClose}
+              isDisabled={selectedRequest ? processingRequestId === selectedRequest._id : false}
+            >
               Hủy
             </Button>
           </ModalFooter>

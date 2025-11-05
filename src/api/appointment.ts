@@ -116,6 +116,8 @@ export const appointmentApi = {
     });
   },
 
+
+
   /**
    * Hủy ca khám với logic khác nhau cho Examination/Consultation
    * DELETE /api/appointments/:appointmentId/cancel
