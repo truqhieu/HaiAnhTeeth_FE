@@ -741,9 +741,9 @@ const NurseSchedule = () => {
                       Bệnh nhân
                     </Button>
 
-                    {/* Nút đánh dấu đang trong ca khám (chỉ cho CheckedIn) */}
+                    {/* Nút đánh dấu đang trong ca khám (chỉ cho CheckedIn và bác sĩ không vắng mặt) */}
                     {/* Nút cập nhật trạng thái cho cả Offline và Consultation (Online) */}
-                    {appointment.status === "CheckedIn" && (
+                    {appointment.status === "CheckedIn" && !isDoctorOnLeave(appointment) && (
                       <Button
                         size="sm"
                         variant="flat"
