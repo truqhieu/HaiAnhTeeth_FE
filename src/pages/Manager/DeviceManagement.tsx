@@ -250,7 +250,7 @@ const DeviceManagement = () => {
               setStatusFilter(selected);
             }}
           >
-            <SelectItem key="all">Tất cả</SelectItem>
+            <SelectItem key="all">Tất cả trạng thái</SelectItem>
             <SelectItem key="Active">Hoạt động</SelectItem>
             <SelectItem key="Inactive">Không hoạt động</SelectItem>
           </Select>

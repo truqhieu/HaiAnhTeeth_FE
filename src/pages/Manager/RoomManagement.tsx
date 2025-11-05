@@ -52,7 +52,7 @@ const RoomManagement = () => {
     try {
       const response = await managerApi.getAvailableDoctors();
 
-      if (response.status && response.data) {
+      if (response.success && response.data) {
         setDoctors(response.data);
       }
     } catch (error: any) {

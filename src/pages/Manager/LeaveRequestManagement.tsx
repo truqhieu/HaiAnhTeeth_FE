@@ -111,13 +111,6 @@ const LeaveRequestManagement = () => {
     }
   };
 
-  const handleSearch = () => {
-    if (currentPage === 1) {
-      fetchLeaveRequests();
-    } else {
-      setCurrentPage(1);
-    }
-  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -231,53 +224,38 @@ const LeaveRequestManagement = () => {
       </div>
 
       {/* Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Input
-              className="w-full"
-              placeholder="Tìm kiếm theo lý do..."
-              startContent={
-                <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
-              }
-              value={searchTerm}
-              variant="bordered"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch();
-                }
-              }}
-              onValueChange={setSearchTerm}
-            />
-          </div>
-
-          {/* Status Filter */}
-          <Select
-            className="w-48"
-            placeholder="Trạng thái"
-            selectedKeys={[statusFilter]}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Input
+            className="w-full"
+            placeholder="Tìm kiếm theo lý do..."
+            startContent={
+              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
+            }
+            value={searchTerm}
             variant="bordered"
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as string;
-
-              setStatusFilter(selected);
-            }}
-          >
-            <SelectItem key="all">Tất cả</SelectItem>
-            <SelectItem key="Pending">Đang chờ</SelectItem>
-            <SelectItem key="Approved">Đã duyệt</SelectItem>
-            <SelectItem key="Rejected">Đã từ chối</SelectItem>
-          </Select>
+            onValueChange={setSearchTerm}
+          />
         </div>
 
-        <Button
-          className="bg-blue-600 text-white hover:bg-blue-700"
-          startContent={<MagnifyingGlassIcon className="w-5 h-5" />}
-          onPress={handleSearch}
+        {/* Status Filter */}
+        <Select
+          className="w-48"
+          placeholder="Trạng thái"
+          selectedKeys={[statusFilter]}
+          variant="bordered"
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0] as string;
+
+            setStatusFilter(selected);
+          }}
         >
-          Tìm kiếm
-        </Button>
+          <SelectItem key="all">Tất cả trạng thái</SelectItem>
+          <SelectItem key="Pending">Đang chờ</SelectItem>
+          <SelectItem key="Approved">Đã duyệt</SelectItem>
+          <SelectItem key="Rejected">Đã từ chối</SelectItem>
+        </Select>
       </div>
 
       {/* Table */}
