@@ -6,6 +6,7 @@ export { ThemeSwitch } from "./theme-switch";
 export { default as DateRangePicker } from "./DateRangePicker";
 export { default as RescheduleAppointmentModal } from "../Patient/RescheduleAppointmentModal";
 export { default as ChangeDoctorModal } from "../Patient/ChangeDoctorModal";
+export { default as NotificationBell } from "./NotificationBell";
 
 // Common Utilities
 export * from "./icons";

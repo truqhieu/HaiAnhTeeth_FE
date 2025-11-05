@@ -89,10 +89,7 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

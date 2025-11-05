@@ -127,12 +127,13 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         category: categoryReverseMap[formData.category] as
           | "Examination"
           | "Consultation",
+        status: formData.status === "active" ? "Active" : "Inactive",
       };
 
       // Gọi API cập nhật
       const response = await managerApi.updateService(service.id, updateData);
 
-      if (response.status) {
+      if (response.success || response.data) {
         toast.success(response.message || "Cập nhật dịch vụ thành công!");
         // Close modal and notify success
         onClose();
@@ -153,14 +154,7 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      duration: "",
-      category: "",
-      status: "active",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

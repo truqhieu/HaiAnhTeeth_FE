@@ -5,7 +5,26 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-import { Button, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Select, SelectItem } from "@heroui/react";
+import {
+  Button,
+  Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  Select,
+  SelectItem,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+  Chip,
+  Tooltip,
+} from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { AddRoomModal, EditRoomModal } from "@/components";
@@ -222,6 +241,15 @@ const RoomManagement = () => {
     }
   };
 
+  const columns = [
+    { key: "stt", label: "STT" },
+    { key: "name", label: "Tên phòng khám" },
+    { key: "description", label: "Mô tả" },
+    { key: "doctor", label: "Bác sĩ phụ trách" },
+    { key: "status", label: "Trạng thái" },
+    { key: "actions", label: "Thao tác" },
+  ];
+
   return (
     <div className="p-6 bg-gray-50 min-h-full">
       {/* Header */}
@@ -282,112 +310,109 @@ const RoomManagement = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-blue-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  STT
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tên phòng khám
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Mô tả
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Bác sĩ phụ trách
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {currentRooms.map((room, index) => (
-                <tr key={room.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {(currentPage - 1) * itemsPerPage + index + 1}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {room.name}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-                    <div className="truncate">{room.description}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <Table
+            aria-label="Bảng quản lý phòng khám"
+            classNames={{
+              wrapper: "shadow-none",
+            }}
+          >
+            <TableHeader columns={columns}>
+              {(column) => (
+                <TableColumn
+                  key={column.key}
+                  className="bg-white text-gray-700 font-semibold text-sm uppercase tracking-wider"
+                >
+                  {column.label}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody
+              emptyContent="Không tìm thấy phòng khám"
+              items={currentRooms}
+            >
+              {(room) => (
+                <TableRow key={room.id}>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {(currentPage - 1) * itemsPerPage +
+                        currentRooms.indexOf(room) +
+                        1}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {room.name}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-gray-900 max-w-xs truncate">
+                      {room.description}
+                    </div>
+                  </TableCell>
+                  <TableCell>
                     {room.assignedDoctorId ? (
-                      <div className="font-medium text-blue-600">
+                      <span className="font-medium text-blue-600 text-sm">
                         {room.assignedDoctorName || "BS. (Đang tải...)"}
-                      </div>
+                      </span>
                     ) : (
-                      <span className="text-gray-400 italic">
+                      <span className="text-gray-400 italic text-sm">
                         Chưa phân công
                       </span>
                     )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(
-                        room.status,
-                      )}`}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      color={room.status === "active" ? "success" : "default"}
+                      size="sm"
+                      variant="flat"
                     >
                       {getStatusText(room.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                        title="Chỉnh sửa phòng khám"
-                        onClick={() => handleEdit(room.id)}
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                      <button
-                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                        title="Xóa phòng khám"
-                        onClick={() => handleDelete(room.id, room.name)}
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Tooltip content="Chỉnh sửa phòng khám">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="min-w-8 h-8 text-blue-600 hover:bg-blue-50"
+                          onPress={() => handleEdit(room.id)}
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip content="Xóa phòng khám">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="min-w-8 h-8 text-red-600 hover:bg-red-50"
+                          onPress={() => handleDelete(room.id, room.name)}
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </Button>
+                      </Tooltip>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Loading state */}
-        {isLoading && (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">Đang tải dữ liệu...</div>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!isLoading && currentRooms.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">
-              Không tìm thấy phòng khám
-            </div>
-            <div className="text-gray-400 text-sm mt-2">
-              Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
-            </div>
-          </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         )}
       </div>
 
       {/* Pagination */}
       {!isLoading && total > 0 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
-          <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {endIndex} trong {total} kết quả
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600 mb-4 sm:mb-0">
+            Hiển thị {startIndex + 1} đến {endIndex} trong tổng số {total} phòng khám
           </div>
 
           <div className="flex items-center space-x-2">

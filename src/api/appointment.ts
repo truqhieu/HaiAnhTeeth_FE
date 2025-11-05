@@ -255,6 +255,45 @@ export const appointmentApi = {
       method: "GET",
     });
   },
+
+  /**
+   * Staff gán lại bác sĩ cho lịch hẹn (khi bác sĩ cũ nghỉ phép)
+   * POST /api/appointments/:appointmentId/assign-replace-doctor
+   * Body: { newDoctorId: string }
+   */
+  reassignDoctor: async (
+    appointmentId: string,
+    newDoctorId: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/assign-replace-doctor`, {
+      method: "POST",
+      body: JSON.stringify({ newDoctorId }),
+    });
+  },
+
+  /**
+   * Patient xác nhận đổi bác sĩ mới
+   * POST /api/appointments/:appointmentId/confirm-change-doctor
+   */
+  confirmChangeDoctor: async (
+    appointmentId: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/confirm-change-doctor`, {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Patient từ chối đổi bác sĩ (giữ bác sĩ cũ)
+   * POST /api/appointments/:appointmentId/cancel-change-doctor
+   */
+  cancelChangeDoctor: async (
+    appointmentId: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/cancel-change-doctor`, {
+      method: "POST",
+    });
+  },
   
   /**
    * AI Booking - Tự động tạo lịch từ prompt người dùng

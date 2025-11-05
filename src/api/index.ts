@@ -138,6 +138,12 @@ export { complaintApi } from "./complaint";
 // Export leaveRequest API
 export { leaveRequestApi } from "./leaveRequest";
 
+// Export chat API
+export { chatApi } from "./chat";
+
+// Export notification API
+export { notificationApi } from "./notification";
+
 // Export types
 
 // Lấy kiểu User từ auth.ts và thêm thuộc tính _id
@@ -210,4 +216,9 @@ export type {
   LeaveRequestListResponse,
   CreateLeaveRequestData,
 } from "./leaveRequest";
+export type {
+  Doctor,
+  Message,
+  Conversation,
+} from "./chat";
 

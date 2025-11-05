@@ -136,6 +136,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       }
 
       // Handle status change separately if status changed
+      let statusChangeSuccess = true;
       if (user.status !== formData.status) {
         // Ngăn admin tự disable chính mình
         if (
@@ -144,34 +145,48 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
           formData.status === "inactive"
         ) {
           toast.error("Bạn không thể tự khóa tài khoản của chính mình");
-
+          setIsSubmitting(false);
           return;
         }
 
         try {
           if (formData.status === "inactive") {
             // Lock account
-            await adminApi.lockAccount(user.id);
-            toast.success("Đã khóa tài khoản thành công");
+            const lockResponse = await adminApi.lockAccount(user.id);
+            if (lockResponse.success || (lockResponse as any).status) {
+              // Success - toast sẽ hiện ở cuối
+            } else {
+              throw new Error(lockResponse.message || "Không thể khóa tài khoản");
+            }
           } else {
             // Unlock account
-            await adminApi.unlockAccount(user.id);
-            toast.success("Đã mở khóa tài khoản thành công");
+            const unlockResponse = await adminApi.unlockAccount(user.id);
+            if (unlockResponse.success || (unlockResponse as any).status) {
+              // Success - toast sẽ hiện ở cuối
+            } else {
+              throw new Error(unlockResponse.message || "Không thể mở khóa tài khoản");
+            }
           }
         } catch (statusError: any) {
+          console.error("Error updating account status:", statusError);
           toast.error(
             statusError.message || "Có lỗi khi cập nhật trạng thái tài khoản",
           );
-          // Continue anyway since basic info was updated
+          statusChangeSuccess = false;
+          // Không return, vẫn đóng modal vì basic info đã update
         }
       }
 
-      toast.success("Cập nhật tài khoản thành công!");
+      // Hiển thị toast success duy nhất
+      if (statusChangeSuccess) {
+        toast.success("Cập nhật tài khoản thành công!");
+      }
 
-      // Close modal and notify success
+      // Close modal and notify success để refresh data
       if (onSuccess) {
         onSuccess();
       }
+      onClose();
     } catch (error: any) {
       toast.error(
         error.message ||
@@ -183,13 +198,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      role: "",
-      status: "active",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

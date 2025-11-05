@@ -4,7 +4,20 @@ import {
   PlusIcon,
   PencilIcon,
 } from "@heroicons/react/24/outline";
-import { Button, Input, Select, SelectItem } from "@heroui/react";
+import {
+  Button,
+  Input,
+  Select,
+  SelectItem,
+  Spinner,
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+  Chip,
+} from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { AddUserModal, EditUserModal } from "@/components";
@@ -178,6 +191,16 @@ const AccountManagement = () => {
     setSelectedUser(null);
   };
 
+  const columns = [
+    { key: "stt", label: "STT" },
+    { key: "role", label: "Vai trò" },
+    { key: "name", label: "Tên" },
+    { key: "email", label: "Email" },
+    { key: "phone", label: "Số điện thoại" },
+    { key: "status", label: "Trạng thái" },
+    { key: "actions", label: "Chỉnh sửa" },
+  ];
+
   return (
     <div className="p-6 bg-gray-50 min-h-full">
       {/* Header */}
@@ -258,68 +281,71 @@ const AccountManagement = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  STT
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Vai trò
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tên
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Số điện thoại
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Chỉnh sửa
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {currentUsers.map((user, index) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {(currentPage - 1) * itemsPerPage + index + 1}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {user.role}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <Table
+            aria-label="Bảng quản lý tài khoản"
+            classNames={{
+              wrapper: "shadow-none",
+            }}
+          >
+            <TableHeader columns={columns}>
+              {(column) => (
+                <TableColumn
+                  key={column.key}
+                  className="bg-white text-gray-700 font-semibold text-sm uppercase tracking-wider"
+                >
+                  {column.label}
+                </TableColumn>
+              )}
+            </TableHeader>
+            <TableBody
+              emptyContent="Không tìm thấy tài khoản"
+              items={currentUsers}
+            >
+              {(user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <span className="text-sm font-medium text-gray-900">
+                      {(currentPage - 1) * itemsPerPage +
+                        currentUsers.indexOf(user) +
+                        1}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.phone}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.status === "active"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      className="bg-blue-100 text-blue-800"
+                      size="sm"
+                      variant="flat"
+                    >
+                      {user.role}
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-gray-900">{user.name}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-gray-900">{user.email}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-gray-900">{user.phone}</span>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      color={user.status === "active" ? "success" : "default"}
+                      size="sm"
+                      variant="flat"
                     >
                       {user.status === "active"
                         ? "Hoạt động"
                         : "Không hoạt động"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
                     <button
                       className={`p-1 rounded ${
                         user.role === "Bệnh nhân"
@@ -336,36 +362,19 @@ const AccountManagement = () => {
                     >
                       <PencilIcon className="w-4 h-4" />
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Loading state */}
-        {isLoading && (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">Đang tải dữ liệu...</div>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!isLoading && currentUsers.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-gray-500 text-lg">Không tìm thấy dữ liệu</div>
-            <div className="text-gray-400 text-sm mt-2">
-              Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm
-            </div>
-          </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         )}
       </div>
 
       {/* Pagination */}
       {!isLoading && total > 0 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between">
-          <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {endIndex} trong {total} kết quả
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600 mb-4 sm:mb-0">
+            Hiển thị {startIndex + 1} đến {endIndex} trong tổng số {total} tài khoản
           </div>
 
           <div className="flex items-center space-x-2">

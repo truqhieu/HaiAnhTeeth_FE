@@ -8,6 +8,7 @@ import {
   DocumentTextIcon,
   ExclamationTriangleIcon,
   ArrowRightOnRectangleIcon,
+  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 import {
   Button,
@@ -20,9 +21,11 @@ import {
 import Lottie from "lottie-react";
 import searchAnimation from "../../icons/search.json";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const PatientHeader: React.FC = () => {
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [showSearch, setShowSearch] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -73,18 +76,39 @@ const PatientHeader: React.FC = () => {
             <option value="cn">CN</option>
           </select>
 
+          {/* Chat icon */}
+          <div className="relative">
+            <Button
+              isIconOnly
+              className="text-white hover:text-gray-200 min-w-unit-0 p-3"
+              variant="light"
+              size="lg"
+              onClick={() => navigate("/patient/chat")}
+            >
+              <ChatBubbleLeftRightIcon className="w-10 h-10" />
+            </Button>
+            {/* Mock unread chat count - replace with real data */}
+            {3 > 0 && (
+              <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-[#39BDCC]"></span>
+            )}
+          </div>
+
           {/* Notification bell */}
-          <Button
-            isIconOnly
-            className="text-white hover:text-gray-200 min-w-unit-0 p-3"
-            variant="light"
-            size="lg"
-            onClick={() => {
-              /* thêm hành động notification nếu cần */
-            }}
-          >
-            <BellIcon className="w-10 h-10" />
-          </Button>
+          <div className="relative">
+            <Button
+              isIconOnly
+              className="text-white hover:text-gray-200 min-w-unit-0 p-3"
+              variant="light"
+              size="lg"
+              onClick={() => navigate("/patient/notifications")}
+            >
+              <BellIcon className="w-10 h-10" />
+            </Button>
+            {/* Badge for unread notifications */}
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full border-2 border-[#39BDCC]"></span>
+            )}
+          </div>
 
           {/* User name */}
           <span className="text-white font-semibold">

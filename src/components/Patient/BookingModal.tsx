@@ -85,13 +85,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     setSubmitting(false);
   };
 
-  // === Reset form data when modal opens ===
-  useEffect(() => {
-    if (isOpen) {
-      // Reset form data to initial state when modal opens
-      resetForm();
-    }
-  }, [isOpen]);
+  // === KHÔNG reset form khi modal mở - Chỉ reset sau khi submit thành công hoặc F5 ===
+  // useEffect(() => {
+  //   if (isOpen) {
+  //     resetForm();
+  //   }
+  // }, [isOpen]);
 
   // === Fetch services ===
   useEffect(() => {
@@ -117,13 +116,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }
   }, [user?.id]); // Reset when user ID changes (logout/login)
 
-  // === Reset form when modal closes ===
-  useEffect(() => {
-    if (!isOpen) {
-      // Reset form data when modal closes
-      resetForm();
-    }
-  }, [isOpen]);
+  // === KHÔNG reset form khi modal đóng - Chỉ reset khi F5 ===
+  // useEffect(() => {
+  //   if (!isOpen) {
+  //     resetForm();
+  //   }
+  // }, [isOpen]);
 
   // === Auto-fill user info ===
   useEffect(() => {

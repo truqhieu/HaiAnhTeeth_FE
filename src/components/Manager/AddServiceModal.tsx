@@ -104,7 +104,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       // Gọi API tạo mới
       const response = await managerApi.createService(createData);
 
-      if (response.status) {
+      if (response.success || response.data) {
         toast.success(response.message || "Thêm dịch vụ mới thành công!");
         // Reset form
         handleClose();
@@ -125,13 +125,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      duration: "",
-      category: "",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

@@ -11,9 +11,12 @@ import {
   ExclamationTriangleIcon,
   DocumentTextIcon,
   TagIcon,
+  CpuChipIcon,
+  BellIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface ManagerLayoutProps {
   children: React.ReactNode;
@@ -24,6 +27,7 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { unreadCount } = useNotifications();
 
   const handleLogout = () => {
     logout();
@@ -50,6 +54,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       current: location.pathname === "/manager/schedules",
     },
     {
+      name: "Quản lý thiết bị",
+      href: "/manager/devices",
+      icon: CpuChipIcon,
+      current: location.pathname === "/manager/devices",
+    },
+    {
       name: "Quản lý khiếu nại",
       href: "/manager/complaints",
       icon: ExclamationTriangleIcon,
@@ -66,6 +76,13 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       href: "/manager/promotions",
       icon: TagIcon,
       current: location.pathname === "/manager/promotions",
+    },
+    {
+      name: "Thông báo",
+      href: "/manager/notifications",
+      icon: BellIcon,
+      current: location.pathname === "/manager/notifications",
+      badge: unreadCount > 0 ? unreadCount : undefined,
     },
   ];
 
@@ -123,7 +140,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
                   }`}
                   onClick={() => handleNavigation(item.href)}
                 >
-                  <Icon className="w-5 h-5 mr-3" />
+                  <div className="relative mr-3">
+                    <Icon className="w-5 h-5" />
+                    {(item as any).badge && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                    )}
+                  </div>
                   {item.name}
                 </button>
               );
@@ -165,7 +187,6 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
             </div>
             <span className="text-lg font-semibold text-gray-800">Manager</span>
           </div>
-          <div className="w-6" />
         </div>
 
         {/* Page content */}

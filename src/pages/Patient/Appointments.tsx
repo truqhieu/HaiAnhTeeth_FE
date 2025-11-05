@@ -38,6 +38,8 @@ interface Appointment {
     amount: number;
     method: string;
   };
+  replacedDoctorName?: string; // ⭐ THÊM: Bác sĩ mới
+  confirmDeadline?: string; // ⭐ THÊM: Deadline xác nhận (24h)
 }
 
 const Appointments = () => {
@@ -130,6 +132,8 @@ const Appointments = () => {
               amount: apt.paymentId.amount,
               method: apt.paymentId.method,
             } : undefined,
+            replacedDoctorName: apt.replacedDoctorUserId?.fullName || undefined,
+            confirmDeadline: apt.confirmDeadline || undefined,
           };
         },
       );
@@ -332,6 +336,40 @@ const Appointments = () => {
     } catch (error: any) {
       console.error('Error confirming cancellation:', error);
       toast.error(error.message || "Không thể xác nhận hủy lịch hẹn");
+    }
+  };
+
+  // Xác nhận đổi bác sĩ mới
+  const handleConfirmChangeDoctor = async (appointmentId: string) => {
+    try {
+      const response = await appointmentApi.confirmChangeDoctor(appointmentId);
+      
+      if (response.success) {
+        toast.success("Đã xác nhận đổi bác sĩ thành công!");
+        refetchAppointments();
+      } else {
+        toast.error(response.message || "Không thể xác nhận đổi bác sĩ");
+      }
+    } catch (error: any) {
+      console.error('Error confirming change doctor:', error);
+      toast.error(error.message || "Có lỗi xảy ra khi xác nhận đổi bác sĩ");
+    }
+  };
+
+  // Từ chối đổi bác sĩ (giữ bác sĩ cũ)
+  const handleCancelChangeDoctor = async (appointmentId: string) => {
+    try {
+      const response = await appointmentApi.cancelChangeDoctor(appointmentId);
+      
+      if (response.success) {
+        toast.success("Đã từ chối đổi bác sĩ. Giữ nguyên bác sĩ ban đầu.");
+        refetchAppointments();
+      } else {
+        toast.error(response.message || "Không thể từ chối đổi bác sĩ");
+      }
+    } catch (error: any) {
+      console.error('Error canceling change doctor:', error);
+      toast.error(error.message || "Có lỗi xảy ra khi từ chối đổi bác sĩ");
     }
   };
 
@@ -662,8 +700,24 @@ const Appointments = () => {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-40">
-                      <div className="text-sm font-medium text-gray-900">
-                        {appointment.doctorName}
+                      <div className="flex flex-col gap-1">
+                        <div className="text-sm font-medium text-gray-900">
+                          {appointment.doctorName}
+                        </div>
+                        {/* Hiển thị thông báo chờ xác nhận đổi bác sĩ */}
+                        {appointment.replacedDoctorName && appointment.confirmDeadline && (
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-500">→</span>
+                              <span className="text-xs font-semibold text-blue-700">
+                                {appointment.replacedDoctorName}
+                              </span>
+                            </div>
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                              ⏳ Chờ xác nhận
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-48">
@@ -722,8 +776,28 @@ const Appointments = () => {
                   </TableCell>
                     <TableCell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium w-64">
                       <div className="flex items-center justify-end space-x-2">
-                        {/* Đổi lịch hẹn - chỉ hiển thị khi có thể thay đổi */}
-                        {(appointment.status === "Pending" || appointment.status === "Approved") && (
+                        {/* Xác nhận đổi bác sĩ - Ưu tiên hiển thị */}
+                        {appointment.replacedDoctorName && appointment.confirmDeadline && (
+                          <>
+                            <button
+                              className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-xs font-semibold hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+                              title="Xác nhận đổi bác sĩ"
+                              onClick={() => handleConfirmChangeDoctor(appointment.id)}
+                            >
+                              ✓ Xác nhận
+                            </button>
+                            <button
+                              className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-medium hover:bg-red-200 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+                              title="Từ chối đổi bác sĩ"
+                              onClick={() => handleCancelChangeDoctor(appointment.id)}
+                            >
+                              ✗ Từ chối
+                            </button>
+                          </>
+                        )}
+
+                        {/* Đổi lịch hẹn - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
+                        {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
                         <button
                             className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-xs font-medium hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                             title="Đổi lịch hẹn"
@@ -735,8 +809,8 @@ const Appointments = () => {
                         </button>
                         )}
 
-                        {/* Đổi bác sĩ - chỉ hiển thị khi có thể thay đổi */}
-                        {(appointment.status === "Pending" || appointment.status === "Approved") && (
+                        {/* Đổi bác sĩ - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
+                        {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
                           <button
                             className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-xs font-medium hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
                             title="Đổi bác sĩ"

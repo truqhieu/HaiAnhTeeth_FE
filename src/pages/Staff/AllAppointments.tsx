@@ -34,10 +34,12 @@ import {
   ExclamationCircleIcon,
   ExclamationTriangleIcon,
   InformationCircleIcon,
+  UserPlusIcon,
 } from "@heroicons/react/24/outline";
 import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
+import { ReassignDoctorModal } from "@/components/Staff";
 import toast from "react-hot-toast";
 // ===== Interface định nghĩa =====
 interface Appointment {
@@ -114,6 +116,10 @@ const AllAppointments = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailData, setDetailData] = useState<AppointmentDetailData | null>(null);
 
+  // Reassign Doctor Modal states
+  const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
+  const [reassignAppointment, setReassignAppointment] = useState<Appointment | null>(null);
+
   // ===== Hàm lấy tất cả bác sĩ =====
   const fetchAllDoctors = async () => {
     try {
@@ -153,11 +159,16 @@ const AllAppointments = () => {
             patientName = apt.patientUserId.fullName;
           }
 
+          // Ưu tiên hiển thị bác sĩ mới (replacedDoctorUserId) nếu đã được gán
+          const doctorName = apt.replacedDoctorUserId?.fullName 
+            || apt.doctorUserId?.fullName 
+            || "N/A";
+
           return {
             id: apt._id,
             status: apt.status,
             patientName: patientName,
-            doctorName: apt.doctorUserId?.fullName || "N/A",
+            doctorName: doctorName,
             serviceName: apt.serviceId?.serviceName || "N/A",
             startTime: apt.timeslotId?.startTime || "",
             endTime: apt.timeslotId?.endTime || "",
@@ -389,6 +400,23 @@ const AllAppointments = () => {
     } finally {
       setProcessingId(null);
     }
+  };
+
+  // ===== Open Reassign Modal =====
+  const openReassignModal = (appointment: Appointment) => {
+    setReassignAppointment(appointment);
+    setIsReassignModalOpen(true);
+  };
+
+  // ===== Close Reassign Modal =====
+  const closeReassignModal = () => {
+    setIsReassignModalOpen(false);
+    setReassignAppointment(null);
+  };
+
+  // ===== Handle Reassign Success =====
+  const handleReassignSuccess = async () => {
+    await refetchAllAppointments();
   };
 
   // ===== Helper functions =====
@@ -1059,19 +1087,41 @@ const AllAppointments = () => {
                             >
                               No Show
                             </Button>
+                            <Button
+                              size="sm"
+                              color="secondary"
+                              variant="flat"
+                              onPress={() => openReassignModal(appointment)}
+                              isDisabled={processingId === appointment.id}
+                              startContent={<UserPlusIcon className="w-4 h-4" />}
+                            >
+                              Gán BS
+                            </Button>
                           </>
                       )}
                       {appointment.status === "CheckedIn" && (
-                        <Button
-                          size="sm"
-                          color="warning"
-                          variant="flat"
-                          onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
-                          isDisabled={processingId === appointment.id}
-                          isLoading={processingId === appointment.id}
-                        >
-                          No Show
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            color="warning"
+                            variant="flat"
+                            onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
+                            isDisabled={processingId === appointment.id}
+                            isLoading={processingId === appointment.id}
+                          >
+                            No Show
+                          </Button>
+                          <Button
+                            size="sm"
+                            color="secondary"
+                            variant="flat"
+                            onPress={() => openReassignModal(appointment)}
+                            isDisabled={processingId === appointment.id}
+                            startContent={<UserPlusIcon className="w-4 h-4" />}
+                          >
+                            Gán BS
+                          </Button>
+                        </>
                       )}
                       {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && (
                         <Button
@@ -1132,6 +1182,19 @@ const AllAppointments = () => {
       <div className="text-center text-sm text-gray-600">
         Hiển thị <span className="font-semibold">{startIndex + 1}-{Math.min(endIndex, filteredAppointments.length)}</span> trong tổng số <span className="font-semibold">{filteredAppointments.length}</span> ca khám
       </div>
+
+      {/* Reassign Doctor Modal */}
+      {reassignAppointment && (
+        <ReassignDoctorModal
+          isOpen={isReassignModalOpen}
+          onClose={closeReassignModal}
+          onSuccess={handleReassignSuccess}
+          appointmentId={reassignAppointment.id}
+          currentDoctorName={reassignAppointment.doctorName}
+          startTime={reassignAppointment.startTime}
+          endTime={reassignAppointment.endTime}
+        />
+      )}
     </div>
   );
 };

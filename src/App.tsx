@@ -18,6 +18,7 @@ import PatientMedicalRecord from "@/pages/Patient/PatientMedicalRecord";
 import AIBooking from "@/pages/Patient/AIBooking";
 import PaymentPage from "@/pages/Patient/PaymentPage";
 import Dashboard from "@/pages/Patient/Dashboard";
+import Chat from "@/pages/Patient/Chat";
 import AccountManagement from "@/pages/Admin/AccountManagement";
 import AdminLayout from "@/layouts/AdminLayout";
 import ServiceManagement from "@/pages/Manager/ServiceManagement";
@@ -26,30 +27,35 @@ import ScheduleManagement from "@/pages/Manager/ScheduleManagement";
 import ComplaintManagement from "@/pages/Manager/ComplaintManagement";
 import LeaveRequestManagement from "@/pages/Manager/LeaveRequestManagement";
 import PromotionManagement from "@/pages/Manager/PromotionManagement";
+import DeviceManagement from "@/pages/Manager/DeviceManagement";
 import ManagerLayout from "@/layouts/ManagerLayout";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
 import PatientRequests from "@/pages/Staff/PatientRequests";
 import DoctorLayout from "@/layouts/DoctorLayout";
-import { DoctorSchedule } from "@/pages/Doctor";
+import { DoctorSchedule, DoctorChat } from "@/pages/Doctor";
 import NurseLayout from "@/layouts/NurseLayout";
 import NurseSchedule from "@/pages/Nurse/NurseSchedule";
 import LeaveRequest from "@/pages/Common/LeaveRequest";
+import NotificationsPage from "@/pages/Common/Notifications";
 import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
+import MedicalRecordPage from "@/pages/MedicalRecord/MedicalRecordPage";
 import DoctorMedicalRecord from "@/pages/Doctor/DoctorMedicalRecord";
 import FloatingAIAssistant from "@/components/Common/FloatingAIAssistant";
 function App() {
   return (
     <AuthProvider>
-      <BookingModalProvider>
-        <Toaster
-          position="top-right"
-          reverseOrder={false}
-          toastOptions={{
-            duration: 3000,
-            style: {
+      <NotificationProvider>
+        <BookingModalProvider>
+          <Toaster
+            position="top-right"
+            reverseOrder={false}
+            toastOptions={{
+              duration: 3000,
+              style: {
               background: "#fff",
               color: "#363636",
               fontSize: "14px",
@@ -95,6 +101,8 @@ function App() {
                     element={<PromotionManagement />}
                     path="promotions"
                   />
+                  <Route element={<DeviceManagement />} path="devices" />
+                  <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </ManagerLayout>
             }
@@ -109,6 +117,7 @@ function App() {
                   <Route element={<StaffDashboard />} path="dashboard" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route element={<PatientRequests />} path="patient-requests" />
+                  <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </StaffLayout>
             }
@@ -121,11 +130,13 @@ function App() {
               <DoctorLayout>
                 <Routes>
                   <Route element={<DoctorSchedule />} path="schedule" />
+                  <Route element={<DoctorChat />} path="chat" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route
                     element={<DoctorMedicalRecord />}
                     path="medical-record/:appointmentId"
                   />
+                  <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </DoctorLayout>
             }
@@ -143,6 +154,8 @@ function App() {
                     element={<NurseMedicalRecord />}
                     path="medical-record/:appointmentId"
                   />
+                  <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
+                  <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </NurseLayout>
             }
@@ -174,12 +187,20 @@ function App() {
                       path="/patient/complaints"
                     />
                     <Route
+                      element={<Chat />}
+                      path="/patient/chat"
+                    />
+                    <Route
                       element={<AccountSettings />}
                       path="/patient/account-settings"
                     />
                     <Route
                       element={<PaymentPage />}
                       path="/patient/payment/:paymentId"
+                    />
+                    <Route
+                      element={<NotificationsPage />}
+                      path="/patient/notifications"
                     />
                     <Route
                       element={<PatientMedicalRecord />}
@@ -193,7 +214,8 @@ function App() {
             path="/*"
           />
         </Routes>
-      </BookingModalProvider>
+        </BookingModalProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

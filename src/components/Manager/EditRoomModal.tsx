@@ -97,27 +97,42 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
       // Gọi API cập nhật
       const response = await managerApi.updateClinic(room.id, updateData);
 
-      if (response.status) {
+      // Check cả status và success
+      if (response.status || response.success) {
         // Handle assign/unassign doctor nếu có thay đổi
         const oldDoctorId = room.assignedDoctorId;
         const newDoctorId = formData.assignedDoctorId;
+        let doctorChangeSuccess = true;
 
+        // Xử lý assign/unassign doctor
         if (oldDoctorId !== newDoctorId) {
-          if (newDoctorId) {
-            // Assign doctor
-            await managerApi.assignDoctor(room.id, newDoctorId);
-          } else if (oldDoctorId) {
-            // Unassign doctor
-            await managerApi.unassignDoctor(room.id);
+          try {
+            if (newDoctorId) {
+              // Assign doctor
+              await managerApi.assignDoctor(room.id, newDoctorId);
+            } else if (oldDoctorId) {
+              // Unassign doctor
+              await managerApi.unassignDoctor(room.id);
+            }
+          } catch (doctorError: any) {
+            console.error("Error handling doctor assignment:", doctorError);
+            doctorChangeSuccess = false;
+            // Vẫn cho phép tiếp tục vì clinic info đã update thành công
           }
         }
 
-        toast.success(response.message || "Cập nhật phòng khám thành công!");
-        // Close modal and notify success
-        onClose();
+        // Hiển thị toast success duy nhất
+        if (doctorChangeSuccess) {
+          toast.success(response.message || "Cập nhật phòng khám thành công!");
+        } else {
+          toast.success("Cập nhật thông tin phòng khám thành công! (Lưu ý: Không thể thay đổi bác sĩ, vui lòng thử lại)");
+        }
+
+        // Close modal and notify success để refresh data
         if (onSuccess) {
           onSuccess();
         }
+        onClose();
       } else {
         throw new Error(response.message || "Không thể cập nhật phòng khám");
       }
@@ -132,12 +147,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-      status: "active",
-      assignedDoctorId: "",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };
