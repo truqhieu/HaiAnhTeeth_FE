@@ -65,7 +65,7 @@ const MedicalRecordPage = () => {
             medicine: res.data.record.prescription?.medicine || "",
             dosage: res.data.record.prescription?.dosage || "",
             duration: res.data.record.prescription?.duration || "",
-          });
+        });
           setNurseNote(res.data.record.nurseNote || "");
         } else {
           setError(res.message || "Không thể tải hồ sơ khám bệnh");
@@ -73,9 +73,9 @@ const MedicalRecordPage = () => {
       } catch (e: any) {
         setError(e.message || "Lỗi kết nối máy chủ");
       } finally {
-        setLoading(false);
-      }
-    };
+      setLoading(false);
+    }
+  };
     load();
   }, [appointmentId]);
 
@@ -125,41 +125,41 @@ const MedicalRecordPage = () => {
 
   if (error) return (
     <div className="p-6 text-center text-red-600">{error}</div>
-  );
+    );
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Patient info */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-        <CardHeader className="pb-0 pt-4 px-6">
-          <div className="flex items-center gap-3">
+          <CardHeader className="pb-0 pt-4 px-6">
+            <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
               <UserIcon className="w-5 h-5 text-white" />
-            </div>
+              </div>
             <h3 className="text-lg font-bold text-gray-900">Thông tin bệnh nhân</h3>
-          </div>
-        </CardHeader>
-        <CardBody className="px-6 pb-4">
+            </div>
+          </CardHeader>
+          <CardBody className="px-6 pb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Họ và tên</p>
+              <div>
+                <p className="text-sm text-gray-600 font-medium">Họ và tên</p>
               <p className="text-gray-900 font-semibold text-lg">{display?.patientName || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Giới tính</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 font-medium">Giới tính</p>
               <p className="text-gray-900 font-semibold">{display?.gender || '-'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Tuổi</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 font-medium">Tuổi</p>
               <p className="text-gray-900 font-semibold">{(() => {
                 const ageFromBE = display?.patientAge ?? null;
                 const fallback = calcAge(display?.patientDob ?? null);
                 const age = ageFromBE && ageFromBE > 0 ? ageFromBE : (fallback ?? 0);
                 return age || '-';
               })()}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 font-medium">Số điện thoại</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 font-medium">Số điện thoại</p>
               <p className="text-gray-900 font-semibold">{display?.phoneNumber || '-'}</p>
             </div>
             <div className="lg:col-span-2">
@@ -169,10 +169,10 @@ const MedicalRecordPage = () => {
             <div className="lg:col-span-2">
               <p className="text-sm text-gray-600 font-medium">Địa chỉ</p>
               <p className="text-gray-900 font-semibold">{display?.address || '-'}</p>
+                </div>
             </div>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
 
       {/* Additional Services (read only) */}
       <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 opacity-70">
@@ -202,61 +202,61 @@ const MedicalRecordPage = () => {
 
       {/* Diagnosis (read only cho nurse, editable cho doctor) */}
       <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 opacity-70">
-        <CardHeader className="pb-0 pt-4 px-6">
-          <div className="flex items-center gap-2">
+          <CardHeader className="pb-0 pt-4 px-6">
+            <div className="flex items-center gap-2">
             <BeakerIcon className="w-5 h-5 text-green-600" />
             <h4 className="font-semibold text-gray-800">Chẩn đoán</h4>
-          </div>
-        </CardHeader>
-        <CardBody className="px-6 pb-4">
-          <Textarea 
+            </div>
+          </CardHeader>
+          <CardBody className="px-6 pb-4">
+            <Textarea
             value={diagnosis} 
             onChange={(e) => setDiagnosis(e.target.value)}
             isReadOnly={isNurse}
             variant={isNurse ? "flat" : "bordered"} 
-            minRows={3} 
+              minRows={3}
             placeholder="Nhập chẩn đoán bệnh..."
-            classNames={{ 
+              classNames={{
               input: isNurse ? "bg-gray-100 text-gray-500" : "",
               base: isNurse ? "opacity-60" : ""
-            }} 
-          />
-        </CardBody>
-      </Card>
+              }}
+            />
+          </CardBody>
+        </Card>
 
       {/* Conclusion (read only cho nurse, editable cho doctor) */}
       <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 opacity-70">
-        <CardHeader className="pb-0 pt-4 px-6">
-          <div className="flex items-center gap-2">
+          <CardHeader className="pb-0 pt-4 px-6">
+            <div className="flex items-center gap-2">
             <DocumentTextIcon className="w-5 h-5 text-blue-600" />
             <h4 className="font-semibold text-gray-800">Kết luận - Hướng dẫn</h4>
-          </div>
-        </CardHeader>
-        <CardBody className="px-6 pb-4">
-          <Textarea 
+            </div>
+          </CardHeader>
+          <CardBody className="px-6 pb-4">
+            <Textarea
             value={conclusion} 
             onChange={(e) => setConclusion(e.target.value)}
             isReadOnly={isNurse}
             variant={isNurse ? "flat" : "bordered"} 
-            minRows={3} 
+              minRows={3}
             placeholder="Nhập kết luận và hướng dẫn điều trị..."
-            classNames={{ 
+              classNames={{
               input: isNurse ? "bg-gray-100 text-gray-500" : "",
               base: isNurse ? "opacity-60" : ""
-            }} 
-          />
-        </CardBody>
-      </Card>
+              }}
+            />
+          </CardBody>
+        </Card>
 
       {/* Prescription (read only cho nurse, editable cho doctor) */}
       <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 opacity-70">
-        <CardHeader className="pb-0 pt-4 px-6">
-          <div className="flex items-center gap-2">
+          <CardHeader className="pb-0 pt-4 px-6">
+            <div className="flex items-center gap-2">
             <PencilSquareIcon className="w-5 h-5 text-orange-600" />
             <h4 className="font-semibold text-gray-800">Đơn thuốc</h4>
-          </div>
-        </CardHeader>
-        <CardBody className="px-6 pb-4">
+            </div>
+          </CardHeader>
+          <CardBody className="px-6 pb-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input 
               label="Thuốc" 
@@ -295,19 +295,19 @@ const MedicalRecordPage = () => {
               }}
             />
           </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
 
       {/* Nurse note (editable cho cả doctor và nurse) */}
-      <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
-        <CardHeader className="pb-0 pt-4 px-6">
-          <div className="flex items-center gap-2">
+        <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
+          <CardHeader className="pb-0 pt-4 px-6">
+            <div className="flex items-center gap-2">
             <HeartIcon className="w-5 h-5 text-pink-600" />
             <h4 className="font-semibold text-gray-800">Ghi chú điều dưỡng</h4>
-          </div>
-        </CardHeader>
-        <CardBody className="px-6 pb-4">
-          <Textarea
+            </div>
+          </CardHeader>
+          <CardBody className="px-6 pb-4">
+            <Textarea
             placeholder="Nhập ghi chú về bệnh nền hoặc dị ứng của bệnh nhân..."
             value={nurseNote}
             onValueChange={setNurseNote}

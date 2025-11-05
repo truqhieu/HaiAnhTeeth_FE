@@ -24,6 +24,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     password: "",
     confirmPassword: "",
     status: "active",
+    address: "",
+    dob: "",
+    specialization: "",
+    yearsOfExperience: "",
   });
 
   const [showValidation, setShowValidation] = useState(false);
@@ -81,6 +85,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     showValidation &&
     (!formData.confirmPassword ||
       formData.password !== formData.confirmPassword);
+  const isAddressInvalid = showValidation && !formData.address;
+  const isDobInvalid = showValidation && !formData.dob;
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -99,6 +105,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
       !validateEmail(formData.email) ||
       !formData.phone ||
       !formData.role ||
+      !formData.address ||
+      !formData.dob ||
       !formData.password ||
       getPasswordErrors().length > 0 ||
       !formData.confirmPassword ||
@@ -115,9 +123,13 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
       const response = await adminApi.createAccount({
         fullName: formData.name,
         email: formData.email,
-        password: formData.password,
+        passwordHash: formData.password,
         role: formData.role,
-        phone: formData.phone,
+        phoneNumber: formData.phone,
+        address: formData.address,
+        dob: formData.dob,
+        specialization: formData.specialization || undefined,
+        yearsOfExperience: formData.yearsOfExperience ? parseInt(formData.yearsOfExperience) : undefined,
       });
 
       // Backend returns 'status' instead of 'success'
@@ -126,7 +138,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
       if (isSuccess) {
         toast.success(response.message || "Tạo tài khoản thành công!");
 
-        // Reset form
+        // Reset form CHỈ KHI TẠO THÀNH CÔNG
         setFormData({
           name: "",
           email: "",
@@ -135,6 +147,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
           password: "",
           confirmPassword: "",
           status: "active",
+          address: "",
+          dob: "",
+          specialization: "",
+          yearsOfExperience: "",
         });
         setShowValidation(false);
 
@@ -142,6 +158,9 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
         if (onSuccess) {
           onSuccess();
         }
+        
+        // Đóng modal sau khi tạo thành công
+        onClose();
       } else {
         toast.error(response.message || "Có lỗi xảy ra khi tạo tài khoản");
       }
@@ -155,15 +174,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      role: "",
-      password: "",
-      confirmPassword: "",
-      status: "active",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };
@@ -285,6 +296,52 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={formData.phone}
                 variant="bordered"
                 onValueChange={(value) => handleInputChange("phone", value)}
+              />
+
+              <Input
+                fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
+                autoComplete="off"
+                errorMessage={
+                  isAddressInvalid ? "Vui lòng nhập địa chỉ" : ""
+                }
+                isInvalid={isAddressInvalid}
+                label={
+                  <>
+                    Địa chỉ <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="Nhập địa chỉ"
+                type="text"
+                value={formData.address}
+                variant="bordered"
+                onValueChange={(value) => handleInputChange("address", value)}
+              />
+
+              <Input
+                fullWidth
+                classNames={{
+                  base: "w-full",
+                  inputWrapper: "w-full"
+                }}
+                autoComplete="off"
+                errorMessage={
+                  isDobInvalid ? "Vui lòng nhập ngày sinh" : ""
+                }
+                isInvalid={isDobInvalid}
+                label={
+                  <>
+                    Ngày sinh <span className="text-red-500">*</span>
+                  </>
+                }
+                placeholder="Chọn ngày sinh"
+                type="date"
+                value={formData.dob}
+                variant="bordered"
+                onValueChange={(value) => handleInputChange("dob", value)}
               />
 
               <Select
@@ -424,6 +481,41 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   <SelectItem key={option.key}>{option.label}</SelectItem>
                 ))}
               </Select>
+
+              {/* Show specialization and years of experience only for Doctor role */}
+              {formData.role === "Doctor" && (
+                <>
+                  <Input
+                    fullWidth
+                    classNames={{
+                      base: "w-full",
+                      inputWrapper: "w-full"
+                    }}
+                    autoComplete="off"
+                    label="Chuyên khoa"
+                    placeholder="Nhập chuyên khoa (VD: Nha khoa thẩm mỹ)"
+                    type="text"
+                    value={formData.specialization}
+                    variant="bordered"
+                    onValueChange={(value) => handleInputChange("specialization", value)}
+                  />
+
+                  <Input
+                    fullWidth
+                    classNames={{
+                      base: "w-full",
+                      inputWrapper: "w-full"
+                    }}
+                    autoComplete="off"
+                    label="Số năm kinh nghiệm"
+                    placeholder="Nhập số năm kinh nghiệm"
+                    type="number"
+                    value={formData.yearsOfExperience}
+                    variant="bordered"
+                    onValueChange={(value) => handleInputChange("yearsOfExperience", value)}
+                  />
+                </>
+              )}
             </div>
           </Form>
         </div>

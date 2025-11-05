@@ -198,13 +198,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      role: "",
-      status: "active",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

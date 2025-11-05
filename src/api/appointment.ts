@@ -258,19 +258,59 @@ export const appointmentApi = {
 
   /**
    * Staff gán lại bác sĩ cho lịch hẹn (khi bác sĩ cũ nghỉ phép)
-   * PUT /api/appointments/:appointmentId/reassign-doctor
-   * Body: { newDoctorUserId: string, reason: string }
-   * 
-   * ⚠️ TODO: API này chưa có ở BE, đang chờ BE team implement
+   * POST /api/appointments/:appointmentId/assign-replace-doctor
+   * Body: { newDoctorId: string }
    */
   reassignDoctor: async (
     appointmentId: string,
-    newDoctorUserId: string,
-    reason: string,
+    newDoctorId: string,
   ): Promise<ApiResponse<any>> => {
-    return authenticatedApiCall(`/appointments/${appointmentId}/reassign-doctor`, {
-      method: "PUT",
-      body: JSON.stringify({ newDoctorUserId, reason }),
+    return authenticatedApiCall(`/appointments/${appointmentId}/assign-replace-doctor`, {
+      method: "POST",
+      body: JSON.stringify({ newDoctorId }),
+    });
+  },
+
+  /**
+   * Patient xác nhận đổi bác sĩ mới
+   * POST /api/appointments/:appointmentId/confirm-change-doctor
+   */
+  confirmChangeDoctor: async (
+    appointmentId: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/confirm-change-doctor`, {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Patient từ chối đổi bác sĩ (giữ bác sĩ cũ)
+   * POST /api/appointments/:appointmentId/cancel-change-doctor
+   */
+  cancelChangeDoctor: async (
+    appointmentId: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/appointments/${appointmentId}/cancel-change-doctor`, {
+      method: "POST",
+    });
+  },
+  
+  /**
+   * AI Booking - Tự động tạo lịch từ prompt người dùng
+   * POST /api/appointments/ai-create
+   */
+  aiCreate: async (
+    prompt: string,
+    appointmentFor?: "self" | "other",
+    conversationHistory?: Array<{ role: "user" | "assistant"; content: string }>
+  ): Promise<ApiResponse<{
+    appointmentId: string;
+    appointment: any;
+    parsedInfo: any;
+  }>> => {
+    return authenticatedApiCall(`/appointments/ai-create`, {
+      method: "POST",
+      body: JSON.stringify({ prompt, appointmentFor, conversationHistory }),
     });
   },
 };

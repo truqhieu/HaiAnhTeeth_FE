@@ -11,7 +11,7 @@ import { Button, Select, SelectItem } from "@heroui/react";
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
-  const { notifications, markAsRead, markAllAsRead, deleteNotification, clearAll } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, deleteNotification, clearAll, isLoading, refreshNotifications } = useNotifications();
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
 
   const getNotificationIcon = (type: string) => {
@@ -127,7 +127,12 @@ const NotificationsPage = () => {
 
         {/* Notifications List */}
         <div className="space-y-3">
-          {filteredNotifications.length === 0 ? (
+          {isLoading ? (
+            <div className="bg-white rounded-lg shadow-md p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-500">Đang tải thông báo...</p>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
             <div className="bg-white rounded-lg shadow-md p-12 text-center">
               <BellIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">

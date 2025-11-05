@@ -120,7 +120,7 @@ const NurseSchedule = () => {
     } finally {
       if (!silent) {
         setInitialLoading(false);
-        setLoading(false);
+      setLoading(false);
       }
     }
   }, []);

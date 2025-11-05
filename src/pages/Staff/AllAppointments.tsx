@@ -159,11 +159,16 @@ const AllAppointments = () => {
             patientName = apt.patientUserId.fullName;
           }
 
+          // Ưu tiên hiển thị bác sĩ mới (replacedDoctorUserId) nếu đã được gán
+          const doctorName = apt.replacedDoctorUserId?.fullName 
+            || apt.doctorUserId?.fullName 
+            || "N/A";
+
           return {
             id: apt._id,
             status: apt.status,
             patientName: patientName,
-            doctorName: apt.doctorUserId?.fullName || "N/A",
+            doctorName: doctorName,
             serviceName: apt.serviceId?.serviceName || "N/A",
             startTime: apt.timeslotId?.startTime || "",
             endTime: apt.timeslotId?.endTime || "",
@@ -1061,38 +1066,38 @@ const AllAppointments = () => {
                         </>
                       )}
                       {appointment.status === "Approved" && (
-                        <>
-                          <Button
-                            size="sm"
-                            color="primary"
-                            variant="flat"
-                            onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                            isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
-                          >
-                            Check-in
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="warning"
-                            variant="flat"
-                            onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
-                            isDisabled={processingId === appointment.id}
-                            isLoading={processingId === appointment.id}
-                          >
-                            No Show
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="secondary"
-                            variant="flat"
-                            onPress={() => openReassignModal(appointment)}
-                            isDisabled={processingId === appointment.id}
-                            startContent={<UserPlusIcon className="w-4 h-4" />}
-                          >
-                            Gán BS
-                          </Button>
-                        </>
+                          <>
+                            <Button
+                              size="sm"
+                              color="primary"
+                              variant="flat"
+                              onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                              isDisabled={processingId === appointment.id}
+                              isLoading={processingId === appointment.id}
+                            >
+                              Check-in
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="warning"
+                              variant="flat"
+                              onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
+                              isDisabled={processingId === appointment.id}
+                              isLoading={processingId === appointment.id}
+                            >
+                              No Show
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="secondary"
+                              variant="flat"
+                              onPress={() => openReassignModal(appointment)}
+                              isDisabled={processingId === appointment.id}
+                              startContent={<UserPlusIcon className="w-4 h-4" />}
+                            >
+                              Gán BS
+                            </Button>
+                          </>
                       )}
                       {appointment.status === "CheckedIn" && (
                         <>

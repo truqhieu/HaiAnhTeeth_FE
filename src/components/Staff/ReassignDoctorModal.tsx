@@ -89,29 +89,27 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
     try {
       setIsSubmitting(true);
 
-      // TODO: Thay bằng API thật khi BE làm xong
-      // const response = await appointmentApi.reassignDoctor(
-      //   appointmentId,
-      //   selectedDoctorId,
-      //   reason.trim()
-      // );
-
-      // MOCK: Giả lập API call thành công
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      const selectedDoctor = availableDoctors.find(d => d._id === selectedDoctorId);
-      
-      toast.success(
-        `Đã gán bác sĩ mới: ${selectedDoctor?.fullName || "Bác sĩ"}. \n(⚠️ Mock - Chờ BE làm API)`,
-        { duration: 4000 }
+      const response = await appointmentApi.reassignDoctor(
+        appointmentId,
+        selectedDoctorId
       );
 
-      // Reset form
-      handleClose();
-      
-      // Trigger refresh
-      if (onSuccess) {
-        onSuccess();
+      if (response.success) {
+        const selectedDoctor = availableDoctors.find(d => d._id === selectedDoctorId);
+        
+        toast.success(
+          `Đã gán bác sĩ mới: ${selectedDoctor?.fullName || "Bác sĩ"} thành công!`
+        );
+
+        // Reset form
+        handleClose();
+        
+        // Trigger refresh
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        toast.error(response.message || "Không thể gán bác sĩ");
       }
     } catch (error: any) {
       console.error("Error reassigning doctor:", error);
@@ -122,8 +120,7 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
   };
 
   const handleClose = () => {
-    setSelectedDoctorId("");
-    setReason("");
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

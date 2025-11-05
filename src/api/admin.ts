@@ -18,9 +18,13 @@ export interface AdminUser {
 export interface CreateUserData {
   fullName: string;
   email: string;
-  password: string;
+  passwordHash: string;
   role: string;
-  phone?: string;
+  phoneNumber?: string;
+  address: string;
+  dob: string;
+  specialization?: string;
+  yearsOfExperience?: number;
 }
 
 export interface UpdateUserData {

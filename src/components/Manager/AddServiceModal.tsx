@@ -125,13 +125,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      duration: "",
-      category: "",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

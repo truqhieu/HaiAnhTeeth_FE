@@ -147,12 +147,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-      status: "active",
-      assignedDoctorId: "",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

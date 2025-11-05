@@ -115,15 +115,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
 
   const handleClose = () => {
     if (isSubmitting) return;
-    setFormData({
-      title: "",
-      description: "",
-      discountType: "Percent",
-      discountValue: 0,
-      applyToAll: true,
-      startDate: "",
-      endDate: "",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

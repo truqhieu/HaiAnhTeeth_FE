@@ -104,12 +104,7 @@ const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-      purchaseDate: "",
-      expireDate: "",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };

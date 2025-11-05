@@ -146,13 +146,7 @@ const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      description: "",
-      purchaseDate: "",
-      expireDate: "",
-      status: "Active",
-    });
+    // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
     onClose();
   };
