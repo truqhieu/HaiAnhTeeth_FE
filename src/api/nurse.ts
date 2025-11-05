@@ -4,6 +4,8 @@ export interface NurseAppointment {
   appointmentId: string;
   patientId: string;
   doctorName: string;
+  doctorUserId?: string | null; // ⭐ Thêm doctorUserId để check leave
+  doctorStatus?: string | null; // ⭐ Status của doctor: 'Available', 'Busy', 'On Leave', 'Inactive'
   serviceName: string;
   patientName: string;
   appointmentDate: string;

@@ -1170,7 +1170,7 @@ const AllAppointments = () => {
                       const isOnLeave = isDoctorOnLeave(appointment);
                       return isOnLeave ? (
                         <Chip variant="flat" color="danger">
-                          Not Available
+                          Vắng mặt
                         </Chip>
                       ) : (
                         <Chip variant="flat" color="default">

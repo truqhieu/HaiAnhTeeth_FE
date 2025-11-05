@@ -30,7 +30,7 @@ import {
   HeartIcon,
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
-import { nurseApi, type NurseAppointment, appointmentApi } from "@/api";
+import { nurseApi, type NurseAppointment, appointmentApi, leaveRequestApi } from "@/api";
 import toast from "react-hot-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
@@ -73,6 +73,13 @@ const NurseSchedule = () => {
   // Danh sách dates và doctors
   const [dates, setDates] = useState<string[]>([]);
   const [doctors, setDoctors] = useState<string[]>([]);
+  
+  // ⭐ Approved leaves để check bác sĩ có On Leave không
+  const [approvedLeaves, setApprovedLeaves] = useState<Array<{
+    userId: string;
+    startDate: string;
+    endDate: string;
+  }>>([]);
 
   // Fetch tất cả bác sĩ
   const fetchAllDoctors = async () => {
@@ -87,6 +94,81 @@ const NurseSchedule = () => {
       console.error("Error fetching all doctors:", err);
       // Fallback: lấy từ appointments nếu API lỗi
     }
+  };
+
+  // ⭐ Hàm lấy approved leaves
+  const fetchApprovedLeaves = async () => {
+    try {
+      const res = await leaveRequestApi.getAllLeaveRequests({
+        status: "Approved",
+        limit: 1000,
+      });
+      
+      if (!res || !res.success || !res.data) {
+        console.warn('⚠️ [fetchApprovedLeaves] Invalid response:', res);
+        setApprovedLeaves([]);
+        return;
+      }
+
+      const leavesArray = Array.isArray(res.data) ? res.data : [];
+      
+      if (leavesArray.length > 0) {
+        const leaves = leavesArray.map((leave: any) => {
+          let userId = "";
+          if (leave.userId) {
+            if (typeof leave.userId === 'object' && leave.userId._id) {
+              userId = leave.userId._id.toString();
+            } else if (typeof leave.userId === 'string') {
+              userId = leave.userId;
+            } else {
+              userId = String(leave.userId);
+            }
+          }
+          
+          return {
+            userId: userId,
+            startDate: leave.startDate,
+            endDate: leave.endDate,
+          };
+        });
+        
+        console.log('✅ [fetchApprovedLeaves] Loaded', leaves.length, 'approved leaves');
+        setApprovedLeaves(leaves);
+      } else {
+        console.log('⚠️ [fetchApprovedLeaves] No approved leaves found');
+        setApprovedLeaves([]);
+      }
+    } catch (err: any) {
+      console.error("❌ Error fetching approved leaves:", err);
+      setApprovedLeaves([]);
+    }
+  };
+
+  // ⭐ Helper: Check doctor có leave trong thời gian appointment không
+  const isDoctorOnLeave = (appointment: NurseAppointment): boolean => {
+    // ⭐ Cách 1: Check doctorStatus từ backend (nhanh và chính xác nhất)
+    if (appointment.doctorStatus === 'On Leave') {
+      return true;
+    }
+    
+    // ⭐ Cách 2: Fallback - check approved leaves (nếu doctorStatus chưa được set)
+    if (!appointment.doctorUserId || !appointment.appointmentDate || approvedLeaves.length === 0) {
+      return false;
+    }
+
+    const appointmentDate = new Date(appointment.appointmentDate);
+    appointmentDate.setHours(0, 0, 0, 0);
+
+    return approvedLeaves.some((leave) => {
+      if (leave.userId !== appointment.doctorUserId) return false;
+      
+      const leaveStart = new Date(leave.startDate);
+      leaveStart.setHours(0, 0, 0, 0);
+      const leaveEnd = new Date(leave.endDate);
+      leaveEnd.setHours(23, 59, 59, 999);
+      
+      return appointmentDate >= leaveStart && appointmentDate <= leaveEnd;
+    });
   };
 
   const fetchAppointments = useCallback(async (startDate?: string | null, endDate?: string | null, silent: boolean = false) => {
@@ -138,6 +220,7 @@ const NurseSchedule = () => {
     // ⭐ FIX: Chỉ fetch khi đã xác nhận authentication status (không còn loading)
     if (!authLoading && isAuthenticated) {
       fetchAllDoctors(); // Lấy tất cả bác sĩ trước
+      fetchApprovedLeaves(); // ⭐ Lấy approved leaves
       fetchAppointments(); // Fetch mặc định (2 tuần)
     }
   }, [isAuthenticated, authLoading]); // ⭐ FIX: Thêm authLoading vào dependency
@@ -591,9 +674,18 @@ const NurseSchedule = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Chip variant="flat" color="primary" size="sm">
-                      {appointment.doctorName}
-                    </Chip>
+                    {(() => {
+                      const isOnLeave = isDoctorOnLeave(appointment);
+                      return isOnLeave ? (
+                        <Chip variant="flat" color="danger" size="sm">
+                          Vắng mặt
+                        </Chip>
+                      ) : (
+                        <Chip variant="flat" color="primary" size="sm">
+                          {appointment.doctorName}
+                        </Chip>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
