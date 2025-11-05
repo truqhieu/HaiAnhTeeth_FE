@@ -38,7 +38,7 @@ import AppointmentDetailModalNurse from "./AppointmentDetailModalNurse";
 import PatientDetailModalNurse from "./PatientDetailModalNurse";
 
 const NurseSchedule = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<NurseAppointment[]>([]);
   // Removed filteredAppointments state - now using useMemo
@@ -94,6 +94,8 @@ const NurseSchedule = () => {
       // Chỉ set loading khi là lần fetch đầu tiên (không phải silent)
       if (!silent) {
         setLoading(true);
+        // ⭐ FIX: Reset initialLoading khi bắt đầu fetch mới (khi refresh)
+        setInitialLoading(true);
       }
       setError(null);
       
@@ -133,11 +135,12 @@ const NurseSchedule = () => {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // ⭐ FIX: Chỉ fetch khi đã xác nhận authentication status (không còn loading)
+    if (!authLoading && isAuthenticated) {
       fetchAllDoctors(); // Lấy tất cả bác sĩ trước
       fetchAppointments(); // Fetch mặc định (2 tuần)
     }
-  }, [isAuthenticated]); // ⭐ FIX: Bỏ fetchAppointments khỏi dependency để tránh infinite loop
+  }, [isAuthenticated, authLoading]); // ⭐ FIX: Thêm authLoading vào dependency
 
   // Debounce search text để tránh filter quá nhiều lần
   useEffect(() => {
@@ -317,31 +320,7 @@ const NurseSchedule = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentAppointments = safeFilteredAppointments.slice(startIndex, endIndex);
 
-  const columns = [
-    { key: "date", label: "Ngày" },
-    { key: "time", label: "Giờ" },
-    { key: "doctor", label: "Bác sĩ" },
-    { key: "patient", label: "Bệnh nhân" },
-    { key: "service", label: "Dịch vụ" },
-    { key: "mode", label: "Hình thức" },
-    { key: "status", label: "Trạng thái" },
-    { key: "actions", label: "Hành động" },
-  ];
-
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card>
-          <CardBody className="text-center p-8">
-            <ClockIcon className="w-16 h-16 mx-auto mb-4 text-warning-500" />
-            <p className="text-lg font-semibold">Vui lòng đăng nhập để xem lịch khám</p>
-          </CardBody>
-        </Card>
-      </div>
-    );
-  }
-
-  // Stats calculation - sử dụng useMemo để tránh tính toán lại
+  // ⭐ FIX: Stats calculation - phải đặt TRƯỚC các early returns để tuân thủ Rules of Hooks
   const stats = useMemo(() => {
     // ⭐ FIX: Đảm bảo appointments luôn là array
     const safeAppointments = Array.isArray(appointments) ? appointments : [];
@@ -363,6 +342,44 @@ const NurseSchedule = () => {
       completed: safeAppointments.filter(a => a.status === "Completed").length,
     };
   }, [appointments]);
+
+  const columns = [
+    { key: "date", label: "Ngày" },
+    { key: "time", label: "Giờ" },
+    { key: "doctor", label: "Bác sĩ" },
+    { key: "patient", label: "Bệnh nhân" },
+    { key: "service", label: "Dịch vụ" },
+    { key: "mode", label: "Hình thức" },
+    { key: "status", label: "Trạng thái" },
+    { key: "actions", label: "Hành động" },
+  ];
+
+  // ⭐ FIX: Hiển thị loading khi đang check authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Card>
+          <CardBody className="text-center p-8">
+            <Spinner size="lg" label="Đang tải..." />
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
+  // ⭐ FIX: Kiểm tra authentication sau khi đã load xong
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Card>
+          <CardBody className="text-center p-8">
+            <ClockIcon className="w-16 h-16 mx-auto mb-4 text-warning-500" />
+            <p className="text-lg font-semibold">Vui lòng đăng nhập để xem lịch khám</p>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
