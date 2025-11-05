@@ -113,13 +113,6 @@ const ComplaintManagement = () => {
     }
   };
 
-  const handleSearch = () => {
-    if (currentPage === 1) {
-      fetchComplaints();
-    } else {
-      setCurrentPage(1);
-    }
-  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -160,8 +153,9 @@ const ComplaintManagement = () => {
   const handleProcessComplaint = async () => {
     if (!selectedComplaint || !actionType) return;
 
-    if (!responseText.trim()) {
-      toast.error("Vui lòng nhập phản hồi");
+    // Chỉ yêu cầu phản hồi khi duyệt, không yêu cầu khi từ chối
+    if (actionType === "Approved" && !responseText.trim()) {
+      toast.error("Vui lòng nhập phản hồi khi duyệt khiếu nại");
 
       return;
     }
@@ -173,7 +167,7 @@ const ComplaintManagement = () => {
         selectedComplaint._id,
         {
           status: actionType,
-          responseText: responseText.trim(),
+          responseText: responseText.trim() || "",
         },
       );
 
@@ -275,53 +269,38 @@ const ComplaintManagement = () => {
       </div>
 
       {/* Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Input
-              className="w-full"
-              placeholder="Tìm kiếm theo tiêu đề, mô tả..."
-              startContent={
-                <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
-              }
-              value={searchTerm}
-              variant="bordered"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch();
-                }
-              }}
-              onValueChange={setSearchTerm}
-            />
-          </div>
-
-          {/* Status Filter */}
-          <Select
-            className="w-48"
-            placeholder="Trạng thái"
-            selectedKeys={[statusFilter]}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Input
+            className="w-full"
+            placeholder="Tìm kiếm theo tiêu đề, mô tả..."
+            startContent={
+              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
+            }
+            value={searchTerm}
             variant="bordered"
-            onSelectionChange={(keys) => {
-              const selected = Array.from(keys)[0] as string;
-
-              setStatusFilter(selected);
-            }}
-          >
-            <SelectItem key="all">Tất cả</SelectItem>
-            <SelectItem key="Pending">Đang chờ</SelectItem>
-            <SelectItem key="Approved">Đã duyệt</SelectItem>
-            <SelectItem key="Rejected">Đã từ chối</SelectItem>
-          </Select>
+            onValueChange={setSearchTerm}
+          />
         </div>
 
-        <Button
-          className="bg-blue-600 text-white hover:bg-blue-700"
-          startContent={<MagnifyingGlassIcon className="w-5 h-5" />}
-          onPress={handleSearch}
+        {/* Status Filter */}
+        <Select
+          className="w-48"
+          placeholder="Trạng thái"
+          selectedKeys={[statusFilter]}
+          variant="bordered"
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0] as string;
+
+            setStatusFilter(selected);
+          }}
         >
-          Tìm kiếm
-        </Button>
+          <SelectItem key="all">Tất cả trạng thái</SelectItem>
+          <SelectItem key="Pending">Đang chờ</SelectItem>
+          <SelectItem key="Approved">Đã duyệt</SelectItem>
+          <SelectItem key="Rejected">Đã từ chối</SelectItem>
+        </Select>
       </div>
 
       {/* Table */}
@@ -368,14 +347,9 @@ const ComplaintManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {complaint.patientUserId?.fullName || "N/A"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {complaint.patientUserId?.phone || "N/A"}
-                      </p>
-                    </div>
+                    <p className="font-medium text-gray-900">
+                      {complaint.patientUserId?.fullName || "N/A"}
+                    </p>
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-gray-600">
@@ -437,14 +411,16 @@ const ComplaintManagement = () => {
                       {selectedComplaint.patientUserId?.fullName || "N/A"}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">
-                      Số điện thoại
-                    </p>
-                    <p className="text-base text-gray-900">
-                      {selectedComplaint.patientUserId?.phone || "N/A"}
-                    </p>
-                  </div>
+                  {selectedComplaint.patientUserId?.phone && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500 mb-1">
+                        Số điện thoại
+                      </p>
+                      <p className="text-base text-gray-900">
+                        {selectedComplaint.patientUserId.phone}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-medium text-gray-500 mb-1">
                       Ngày gửi
@@ -541,41 +517,16 @@ const ComplaintManagement = () => {
                       />
                     </div>
 
-                    <div className="flex gap-3">
-                      <Button
-                        className="flex-1 bg-green-600 text-white"
-                        startContent={<CheckCircleIcon className="w-5 h-5" />}
-                        onPress={() => setActionType("Approved")}
-                      >
-                        Duyệt khiếu nại
-                      </Button>
-                      <Button
-                        className="flex-1 bg-red-600 text-white"
-                        startContent={<XCircleIcon className="w-5 h-5" />}
-                        onPress={() => setActionType("Rejected")}
-                      >
-                        Từ chối khiếu nại
-                      </Button>
-                    </div>
                   </div>
                 )}
               </div>
             )}
           </ModalBody>
-          <ModalFooter className="px-6 py-4 border-t border-gray-200">
-            <div className="flex justify-end gap-3 w-full">
-              {selectedComplaint?.status === "Pending" && actionType && (
-                <Button
-                  className="bg-blue-600 text-white"
-                  isDisabled={isProcessing || !responseText.trim()}
-                  isLoading={isProcessing}
-                  onPress={handleProcessComplaint}
-                >
-                  Xác nhận {actionType === "Approved" ? "duyệt" : "từ chối"}
-                </Button>
-              )}
+          <ModalFooter className="px-6 py-3 border-t border-gray-200">
+            <div className="flex justify-end gap-2 w-full">
               <Button
-                className="bg-gray-200 text-gray-700"
+                size="sm"
+                variant="light"
                 isDisabled={isProcessing}
                 onPress={() => {
                   setIsViewModalOpen(false);
@@ -586,6 +537,37 @@ const ComplaintManagement = () => {
               >
                 Đóng
               </Button>
+              {selectedComplaint?.status === "Pending" && (
+                <>
+                  {responseText.trim() ? (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 text-white hover:bg-green-700"
+                      startContent={<CheckCircleIcon className="w-4 h-4" />}
+                      isLoading={isProcessing}
+                      onPress={() => {
+                        setActionType("Approved");
+                        handleProcessComplaint();
+                      }}
+                    >
+                      Duyệt
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="bg-red-600 text-white hover:bg-red-700"
+                      startContent={<XCircleIcon className="w-4 h-4" />}
+                      isLoading={isProcessing}
+                      onPress={() => {
+                        setActionType("Rejected");
+                        handleProcessComplaint();
+                      }}
+                    >
+                      Từ chối
+                    </Button>
+                  )}
+                </>
+              )}
             </div>
           </ModalFooter>
         </ModalContent>

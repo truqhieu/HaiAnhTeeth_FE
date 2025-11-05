@@ -53,6 +53,19 @@ const PromotionManagement = () => {
     fetchPromotions();
   }, [statusFilter, currentPage]);
 
+  // Debounce search term
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (currentPage === 1) {
+        fetchPromotions();
+      } else {
+        setCurrentPage(1);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
   const fetchPromotions = async () => {
     try {
       setLoading(true);
@@ -88,13 +101,6 @@ const PromotionManagement = () => {
     }
   };
 
-  const handleSearch = () => {
-    if (currentPage === 1) {
-      fetchPromotions();
-    } else {
-      setCurrentPage(1);
-    }
-  };
 
   const handleAdd = () => {
     setIsAddModalOpen(true);
@@ -212,11 +218,6 @@ const PromotionManagement = () => {
               }
               value={searchTerm}
               variant="bordered"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleSearch();
-                }
-              }}
               onValueChange={setSearchTerm}
             />
           </div>
@@ -233,29 +234,20 @@ const PromotionManagement = () => {
               setStatusFilter(selected);
             }}
           >
-            <SelectItem key="all">Tất cả</SelectItem>
+            <SelectItem key="all">Tất cả trạng thái</SelectItem>
             <SelectItem key="Active">Đang áp dụng</SelectItem>
             <SelectItem key="Upcoming">Sắp diễn ra</SelectItem>
             <SelectItem key="Expired">Đã hết hạn</SelectItem>
           </Select>
         </div>
 
-        <div className="flex gap-2">
-          <Button
-            className="bg-blue-600 text-white hover:bg-blue-700"
-            startContent={<MagnifyingGlassIcon className="w-5 h-5" />}
-            onPress={handleSearch}
-          >
-            Tìm kiếm
-          </Button>
-          <Button
-            className="bg-green-600 text-white hover:bg-green-700"
-            startContent={<PlusIcon className="w-5 h-5" />}
-            onPress={handleAdd}
-          >
-            Thêm ưu đãi
-          </Button>
-        </div>
+        <Button
+          className="bg-green-600 text-white hover:bg-green-700"
+          startContent={<PlusIcon className="w-5 h-5" />}
+          onPress={handleAdd}
+        >
+          Thêm ưu đãi
+        </Button>
       </div>
 
       {/* Table */}
