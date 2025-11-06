@@ -108,16 +108,17 @@ const LeaveRequestPage = () => {
     }
 
     if (end < start) {
-      toast.error("Ngày kết thúc phải sau ngày bắt đầu");
+      toast.error("Ngày kết thúc không thể trước ngày bắt đầu");
       return;
     }
 
     try {
       setSubmitting(true);
 
+      // ✅ Gửi date ở dạng ISO với timezone VN để tránh lệch múi giờ
       const response = await leaveRequestApi.createLeaveRequest({
-        startDate,
-        endDate,
+        startDate: new Date(startDate + 'T00:00:00+07:00').toISOString(),
+        endDate: new Date(endDate + 'T23:59:59+07:00').toISOString(),
         reason: reason.trim(),
       });
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   UserIcon,
@@ -12,11 +12,11 @@ import {
   DocumentTextIcon,
   TagIcon,
   CpuChipIcon,
-  BellIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useNotifications } from "@/contexts/NotificationContext";
+import { complaintApi } from "@/api/complaint";
+import { leaveRequestApi } from "@/api/leaveRequest";
 
 interface ManagerLayoutProps {
   children: React.ReactNode;
@@ -27,11 +27,75 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { unreadCount } = useNotifications();
+  
+  // State cho số lượng pending complaints và leave requests
+  const [pendingComplaintsCount, setPendingComplaintsCount] = useState(0);
+  const [pendingLeaveRequestsCount, setPendingLeaveRequestsCount] = useState(0);
 
   const handleLogout = () => {
     logout();
     navigate("/");
+  };
+
+  // Fetch pending counts khi component mount
+  useEffect(() => {
+    fetchPendingCounts();
+    
+    // Refresh mỗi 30 giây
+    const interval = setInterval(() => {
+      fetchPendingCounts();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchPendingCounts = async () => {
+    try {
+      console.log("🔍 Fetching pending counts...");
+      
+      // Fetch pending complaints
+      const complaintsRes = await complaintApi.getAllComplaints({
+        status: "Pending",
+        limit: 1000, // Lấy tất cả để đếm
+      });
+
+      console.log("📋 Complaints response:", complaintsRes);
+
+      // Check cả success và status vì backend có thể dùng field khác
+      if ((complaintsRes.success || (complaintsRes as any).status) && complaintsRes.data) {
+        const total = complaintsRes.data.total || (complaintsRes as any).total || 0;
+        console.log("✅ Pending complaints count:", total);
+        setPendingComplaintsCount(total);
+      } else {
+        console.log("❌ Complaints response failed or no data");
+      }
+
+      // Fetch pending leave requests
+      const leaveRequestsRes = await leaveRequestApi.getAllLeaveRequests({
+        status: "Pending",
+        limit: 1000, // Lấy tất cả để đếm
+      });
+
+      console.log("📋 Leave requests response:", leaveRequestsRes);
+
+      // Check cả success và status vì backend có thể dùng field khác
+      if ((leaveRequestsRes.success || (leaveRequestsRes as any).status) && leaveRequestsRes.data) {
+        const total = leaveRequestsRes.data.total || (leaveRequestsRes as any).total || 0;
+        console.log("✅ Pending leave requests count:", total);
+        setPendingLeaveRequestsCount(total);
+      } else {
+        console.log("❌ Leave requests response failed or no data");
+      }
+
+      console.log("🔴 Badge states:", {
+        pendingComplaintsCount,
+        pendingLeaveRequestsCount,
+        shouldShowComplaintsBadge: pendingComplaintsCount > 0,
+        shouldShowLeaveRequestsBadge: pendingLeaveRequestsCount > 0
+      });
+    } catch (error) {
+      console.error("❌ Error fetching pending counts:", error);
+    }
   };
 
   const navigation = [
@@ -64,25 +128,20 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       href: "/manager/complaints",
       icon: ExclamationTriangleIcon,
       current: location.pathname === "/manager/complaints",
+      badge: pendingComplaintsCount > 0, // Hiển thị badge nếu có pending
     },
     {
       name: "Quản lý đơn nghỉ phép",
       href: "/manager/leave-requests",
       icon: DocumentTextIcon,
       current: location.pathname === "/manager/leave-requests",
+      badge: pendingLeaveRequestsCount > 0, // Hiển thị badge nếu có pending
     },
     {
       name: "Quản lý ưu đãi",
       href: "/manager/promotions",
       icon: TagIcon,
       current: location.pathname === "/manager/promotions",
-    },
-    {
-      name: "Thông báo",
-      href: "/manager/notifications",
-      icon: BellIcon,
-      current: location.pathname === "/manager/notifications",
-      badge: unreadCount > 0 ? unreadCount : undefined,
     },
   ];
 
@@ -143,7 +202,7 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
                   <div className="relative mr-3">
                     <Icon className="w-5 h-5" />
                     {(item as any).badge && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                     )}
                   </div>
                   {item.name}

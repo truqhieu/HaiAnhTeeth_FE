@@ -163,11 +163,15 @@ const ComplaintManagement = () => {
     try {
       setIsProcessing(true);
 
+      // Nếu từ chối và không có response text, dùng message mặc định
+      const finalResponseText = responseText.trim() || 
+        (actionType === "Rejected" ? "Khiếu nại không được chấp nhận" : "");
+
       const response = await complaintApi.handleComplaint(
         selectedComplaint._id,
         {
           status: actionType,
-          responseText: responseText.trim() || "",
+          responseText: finalResponseText,
         },
       );
 
