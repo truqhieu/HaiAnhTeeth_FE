@@ -36,7 +36,7 @@ export const chatApi = {
    * Chỉ lấy bác sĩ từ các ca khám có trạng thái Completed hoặc Finalized
    */
   getAvailableDoctors: async (): Promise<ApiResponse<Doctor[]>> => {
-    return authenticatedApiCall("/chat/available-doctors", {
+    return authenticatedApiCall("/chat/patient/doctors", {
       method: "GET",
     });
   },
@@ -51,21 +51,10 @@ export const chatApi = {
   },
 
   /**
-   * Lấy tin nhắn của một cuộc trò chuyện
+   * Lấy tin nhắn theo appointmentId
    */
-  getMessages: async (
-    doctorId: string,
-    limit?: number,
-    before?: string
-  ): Promise<ApiResponse<Message[]>> => {
-    const queryParams = new URLSearchParams();
-    if (limit) queryParams.append("limit", limit.toString());
-    if (before) queryParams.append("before", before);
-    
-    const queryString = queryParams.toString();
-    const url = `/chat/messages/${doctorId}${queryString ? `?${queryString}` : ""}`;
-
-    return authenticatedApiCall(url, {
+  getMessages: async (appointmentId: string): Promise<ApiResponse<Message[]>> => {
+    return authenticatedApiCall(`/chat/messages?appointmentId=${appointmentId}`, {
       method: "GET",
     });
   },
@@ -73,21 +62,22 @@ export const chatApi = {
   /**
    * Gửi tin nhắn mới
    */
-  sendMessage: async (
-    doctorId: string,
-    content: string
-  ): Promise<ApiResponse<Message>> => {
-    return authenticatedApiCall("/chat/send", {
+  sendMessage: async (data: {
+    receiverId: string;
+    appointmentId: string;
+    content: string;
+  }): Promise<ApiResponse<Message>> => {
+    return authenticatedApiCall("/chat/send-message", {
       method: "POST",
-      body: JSON.stringify({ doctorId, content }),
+      body: JSON.stringify(data),
     });
   },
 
   /**
    * Đánh dấu tin nhắn đã đọc
    */
-  markAsRead: async (doctorId: string): Promise<ApiResponse<void>> => {
-    return authenticatedApiCall(`/chat/read/${doctorId}`, {
+  markAsRead: async (appointmentId: string): Promise<ApiResponse<void>> => {
+    return authenticatedApiCall(`/chat/read/${appointmentId}`, {
       method: "PUT",
     });
   },

@@ -40,7 +40,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     { key: "Doctor", label: "Bác sĩ" },
     { key: "Nurse", label: "Điều dưỡng" },
     { key: "Staff", label: "Lễ Tân" },
-    { key: "Patient", label: "Bệnh nhân" },
     { key: "Manager", label: "Manager" },
   ];
 

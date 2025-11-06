@@ -9,7 +9,7 @@ import {
   TableCell,
   Spinner,
 } from "@heroui/react";
-import { ClipboardDocumentListIcon } from "@heroicons/react/24/outline";
+import { ClipboardDocumentListIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 import { appointmentApi } from "@/api";
@@ -24,6 +24,7 @@ interface Appointment {
   mode: string;
   patientName: string;
   doctorName: string;
+  doctorId?: string; // ⭐ THÊM: ID của doctor để navigate sang chat
   doctorStatus?: string | null; // ⭐ Status của doctor: 'Available', 'Busy', 'On Leave', 'Inactive'
   serviceName: string;
   startTime: string;
@@ -111,6 +112,14 @@ const Appointments = () => {
       // Map backend response to frontend interface
       const mappedAppointments: Appointment[] = res.data.map(
         (apt: any, _index: number) => {
+          // 🔍 DEBUG: Kiểm tra doctor data từ backend
+          console.log(`🔍 Appointment ${apt._id} doctor data:`, {
+            doctorUserId: apt.doctorUserId,
+            replacedDoctorUserId: apt.replacedDoctorUserId,
+            hasReplacedDoctorId: !!apt.replacedDoctorUserId?._id,
+            hasDoctorId: !!apt.doctorUserId?._id,
+            finalDoctorId: apt.replacedDoctorUserId?._id || apt.doctorUserId?._id || undefined,
+          });
 
           return {
             id: apt._id,
@@ -119,6 +128,7 @@ const Appointments = () => {
             mode: apt.mode,
             patientName: apt.patientUserId?.fullName || "",
             doctorName: apt.doctorUserId?.fullName || "",
+            doctorId: apt.replacedDoctorUserId?._id || apt.doctorUserId?._id || undefined, // ⭐ Thêm doctorId (ưu tiên replaced)
             doctorStatus: apt.doctorStatus || null, // ⭐ Thêm doctorStatus từ backend
             serviceName: apt.serviceId?.serviceName || "",
             startTime: apt.timeslotId?.startTime || "",
@@ -840,6 +850,17 @@ const Appointments = () => {
                             disabled={loading}
                           >
                             Hủy lịch hẹn
+                          </button>
+                        )}
+
+                        {/* Chat với bác sĩ - chỉ hiển thị khi đã hoàn thành */}
+                        {(appointment.status === "Completed" || appointment.status === "Finalized") && appointment.doctorId && (
+                          <button
+                            className="p-2.5 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            title="Chat với bác sĩ"
+                            onClick={() => navigate(`/patient/chat?doctorId=${appointment.doctorId}&appointmentId=${appointment.id}`)}
+                          >
+                            <ChatBubbleLeftRightIcon className="w-5 h-5 text-blue-600" />
                           </button>
                         )}
 
