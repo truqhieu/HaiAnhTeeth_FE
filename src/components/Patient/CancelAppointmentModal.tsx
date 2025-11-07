@@ -451,7 +451,7 @@ const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
                     <p className="text-xs text-red-600">{bankErrors.bankName}</p>
                   )}
                 </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+              <div className="bg-blue-50 border border-gray-200 rounded-md p-3">
                 <p className="text-xs text-blue-700">
                   <strong>Lưu ý:</strong> Thông tin ngân hàng sẽ được sử dụng để hoàn tiền. 
                   Vui lòng kiểm tra kỹ thông tin trước khi xác nhận hủy lịch.

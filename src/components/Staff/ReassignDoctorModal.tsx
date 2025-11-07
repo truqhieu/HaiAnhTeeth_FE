@@ -187,7 +187,7 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
         {/* Body */}
         <div className="px-6 py-4 space-y-4">
           {/* Current Doctor Info */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-blue-50 border border-gray-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
               <span className="font-semibold">Bác sĩ hiện tại:</span> {currentDoctorName}
             </p>
