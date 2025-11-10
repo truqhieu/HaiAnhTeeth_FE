@@ -144,7 +144,7 @@ const ForgotPasswordModal = () => {
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-600">
+            <div className="bg-blue-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
               <p className="font-semibold text-gray-700 mb-2">
                 📧 Không nhận được email?
               </p>

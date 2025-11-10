@@ -660,7 +660,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
               
               {/* Hiển thị thông tin người được đặt lịch */}
               {formData.appointmentFor === "self" ? (
-                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-3 p-3 bg-blue-50 border border-gray-200 rounded-lg">
                   <p className="text-sm text-blue-800">
                     <strong>Bản thân:</strong> {user?.fullName} ({user?.email})
                   </p>
@@ -849,7 +849,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 ) : doctorScheduleRange && Array.isArray(doctorScheduleRange) ? (
                   <div className="space-y-3">
                     {/* Hiển thị các khoảng thời gian khả dụng chi tiết */}
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="p-3 bg-blue-50 border border-gray-200 rounded-lg">
                       <p className="text-xs text-gray-600 font-medium mb-2">
                         Khoảng thời gian khả dụng:
                       </p>
@@ -956,7 +956,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                             <label className="block text-xs text-gray-600 mb-1">
                               Thời gian kết thúc dự kiến
                             </label>
-                            <div className="border px-3 py-2 rounded-lg bg-blue-50 border-blue-200">
+                            <div className="border px-3 py-2 rounded-lg bg-blue-50 border-gray-200">
                               <span className="font-semibold text-[#39BDCC]">
                                 {String((formData.endTime.getUTCHours() + 7) % 24).padStart(2, '0')}:{String(formData.endTime.getUTCMinutes()).padStart(2, '0')}
                               </span>
