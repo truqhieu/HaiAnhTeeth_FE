@@ -12,6 +12,7 @@ import {
   DocumentTextIcon,
   TagIcon,
   CpuChipIcon,
+  NewspaperIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -142,6 +143,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       href: "/manager/promotions",
       icon: TagIcon,
       current: location.pathname === "/manager/promotions",
+    },
+    {
+      name: "Quản lý Blog",
+      href: "/manager/blogs",
+      icon: NewspaperIcon,
+      current: location.pathname === "/manager/blogs",
     },
   ];
 

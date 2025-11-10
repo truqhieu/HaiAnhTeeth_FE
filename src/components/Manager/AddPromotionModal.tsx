@@ -126,9 +126,10 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
         endDate: new Date(formData.endDate).toISOString(),
       };
 
-      // Only include applicableServices if not applying to all
+      // Only include serviceIds if not applying to all
+      // Backend expects "serviceIds", not "applicableServices"
       if (!formData.applyToAll) {
-        createData.applicableServices = formData.applicableServices;
+        createData.serviceIds = formData.applicableServices;
       }
 
       const response = await promotionApi.createPromotion(createData as any);
@@ -150,7 +151,17 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
 
   const handleClose = () => {
     if (isSubmitting) return;
-    // Chỉ ẩn validation errors, KHÔNG clear form data
+    // Reset form khi đóng modal
+    setFormData({
+      title: "",
+      description: "",
+      discountType: "Percent" as "Percent" | "Fixed",
+      discountValue: 0,
+      applyToAll: true,
+      applicableServices: [] as string[],
+      startDate: "",
+      endDate: "",
+    });
     setShowValidation(false);
     onClose();
   };
@@ -384,7 +395,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                     ) : (
                       <div className={`border rounded-lg p-4 max-h-60 overflow-y-auto ${isServicesInvalid ? 'border-red-500' : 'border-gray-300'}`}>
                         <p className="text-sm font-medium text-gray-700 mb-3">
-                          Chọn dịch vụ áp dụng:
+                          Chọn dịch vụ áp dụng: ({formData.applicableServices.length} đã chọn)
                         </p>
                         <CheckboxGroup
                           value={formData.applicableServices}

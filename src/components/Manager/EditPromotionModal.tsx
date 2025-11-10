@@ -44,13 +44,26 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
 
   useEffect(() => {
     if (promotion) {
+      // 🔧 Convert applicableServices to array of IDs if it's array of objects
+      let serviceIds: string[] = [];
+      if (promotion.applicableServices && Array.isArray(promotion.applicableServices)) {
+        serviceIds = promotion.applicableServices.map((item: any) => {
+          // If item is object with _id, extract _id
+          if (typeof item === 'object' && item._id) {
+            return item._id;
+          }
+          // If item is already a string ID, use it
+          return item;
+        });
+      }
+      
       setFormData({
         title: promotion.title,
         description: promotion.description,
         discountType: promotion.discountType === "Fix" ? "Fixed" : "Percent",
         discountValue: promotion.discountValue,
         applyToAll: promotion.applyToAll,
-        applicableServices: promotion.applicableServices || [],
+        applicableServices: serviceIds, // ✅ Now always array of string IDs
         startDate: promotion.startDate.split("T")[0],
         endDate: promotion.endDate.split("T")[0],
       });
@@ -145,9 +158,10 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
         endDate: new Date(formData.endDate).toISOString(),
       };
 
-      // Only include applicableServices if not applying to all
+      // Only include serviceIds if not applying to all
+      // Backend expects "serviceIds", not "applicableServices"
       if (!formData.applyToAll) {
-        updateData.applicableServices = formData.applicableServices;
+        updateData.serviceIds = formData.applicableServices;
       }
 
       const response = await promotionApi.updatePromotion(
@@ -405,7 +419,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                     ) : (
                       <div className={`border rounded-lg p-4 max-h-60 overflow-y-auto ${isServicesInvalid ? 'border-red-500' : 'border-gray-300'}`}>
                         <p className="text-sm font-medium text-gray-700 mb-3">
-                          Chọn dịch vụ áp dụng:
+                          Chọn dịch vụ áp dụng: ({formData.applicableServices.length} đã chọn)
                         </p>
                         <CheckboxGroup
                           value={formData.applicableServices}

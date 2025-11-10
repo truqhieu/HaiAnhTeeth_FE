@@ -28,6 +28,7 @@ import ComplaintManagement from "@/pages/Manager/ComplaintManagement";
 import LeaveRequestManagement from "@/pages/Manager/LeaveRequestManagement";
 import PromotionManagement from "@/pages/Manager/PromotionManagement";
 import DeviceManagement from "@/pages/Manager/DeviceManagement";
+import BlogManagement from "@/pages/Manager/BlogManagement";
 import ManagerLayout from "@/layouts/ManagerLayout";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
@@ -102,6 +103,7 @@ function App() {
                     path="promotions"
                   />
                   <Route element={<DeviceManagement />} path="devices" />
+                  <Route element={<BlogManagement />} path="blogs" />
                   <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </ManagerLayout>
