@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay } from "@/api/medicalRecord";
+import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
-import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 const NurseMedicalRecord: React.FC = () => {
@@ -12,8 +12,41 @@ const NurseMedicalRecord: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [display, setDisplay] = useState<MedicalRecordDisplay | null>(null);
+  const [permissions, setPermissions] = useState<MedicalRecordPermissions | null>(null);
+  const [diagnosis, setDiagnosis] = useState("");
+  const [conclusion, setConclusion] = useState("");
+  const [prescription, setPrescription] = useState({
+    medicine: "",
+    dosage: "",
+    duration: "",
+  });
   const [nurseNote, setNurseNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [currentServices, setCurrentServices] = useState<Array<{ _id: string; serviceName: string; price: number }>>([]);
+  const [allServices, setAllServices] = useState<Array<{ _id: string; serviceName: string; price: number }>>([]);
+  const [updatingServices, setUpdatingServices] = useState(false);
+  const [serviceListLoading, setServiceListLoading] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownButtonRef = useRef<HTMLButtonElement>(null);
+  const dropdownMenuRef = useRef<HTMLDivElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  const canEdit = permissions?.nurse?.canEdit ?? true;
+  const lockReason = !canEdit ? permissions?.nurse?.reason || null : null;
+
+  const mapAdditionalServices = (services: any[] | undefined | null) =>
+    (services || [])
+      .filter((s) => s && s._id)
+      .map((s) => ({
+        _id: s._id.toString(),
+        serviceName: s.serviceName || "",
+        price: s.price || 0,
+      }));
+
+  const closeDropdown = () => {
+    setIsDropdownOpen(false);
+    setDropdownPosition(null);
+  };
 
   const calcAge = (dob?: string | null): number | null => {
     if (!dob) return null;
@@ -43,7 +76,19 @@ const NurseMedicalRecord: React.FC = () => {
           
           setRecord(res.data.record);
           setDisplay(res.data.display);
+          setPermissions(res.data.permissions || null);
+          setDiagnosis(res.data.record.diagnosis || "");
+          setConclusion(res.data.record.conclusion || "");
+          const prescriptionObj = res.data.record.prescription || {};
+          setPrescription({
+            medicine: prescriptionObj.medicine || "",
+            dosage: prescriptionObj.dosage || "",
+            duration: prescriptionObj.duration || "",
+          });
           setNurseNote(res.data.record.nurseNote || "");
+          const mappedServices = mapAdditionalServices(res.data.display?.additionalServices);
+          setCurrentServices(mappedServices);
+          setDisplay((prev) => (prev ? { ...prev, additionalServices: mappedServices } : prev));
         } else {
           setError(res.message || "Không thể tải hồ sơ khám bệnh");
         }
@@ -56,14 +101,179 @@ const NurseMedicalRecord: React.FC = () => {
     load();
   }, [appointmentId]);
 
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | FocusEvent) => {
+      const target = event.target as Node;
+      const isClickInsideButton = dropdownButtonRef.current?.contains(target);
+      const isClickInsideDropdownMenu = dropdownMenuRef.current?.contains(target);
+      const isClickInsideCard = dropdownRef.current?.contains(target);
+      const isClickInsideDropdownArea = isClickInsideButton || isClickInsideDropdownMenu || isClickInsideCard;
+
+      if (!isClickInsideDropdownArea) {
+        closeDropdown();
+      }
+    };
+
+    const updateDropdownPosition = () => {
+      if (dropdownButtonRef.current && isDropdownOpen) {
+        const rect = dropdownButtonRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + window.scrollY + 8,
+          left: rect.left + window.scrollX,
+          width: rect.width,
+        });
+      }
+    };
+
+    updateDropdownPosition();
+
+    const timeoutId = window.setTimeout(() => {
+      window.addEventListener("resize", updateDropdownPosition);
+      document.addEventListener("mousedown", handleClickOutside, true);
+      document.addEventListener("click", handleClickOutside, true);
+      document.addEventListener("scroll", updateDropdownPosition, true);
+      document.addEventListener("focusin", handleClickOutside, true);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("resize", updateDropdownPosition);
+      document.removeEventListener("mousedown", handleClickOutside, true);
+      document.removeEventListener("click", handleClickOutside, true);
+      document.removeEventListener("scroll", updateDropdownPosition, true);
+      document.removeEventListener("focusin", handleClickOutside, true);
+    };
+  }, [isDropdownOpen]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      setServiceListLoading(true);
+      try {
+        const res = await medicalRecordApi.getActiveServicesForNurse();
+        if (res.success && Array.isArray(res.data)) {
+          setAllServices(res.data);
+        }
+      } catch (error) {
+        console.error("❌ Error loading services for nurse:", error);
+      } finally {
+        setServiceListLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
+  const handleAdditionalServicesUpdate = (recordData: MedicalRecord) => {
+    const updatedServices = mapAdditionalServices(recordData.additionalServiceIds as any);
+    setCurrentServices(updatedServices);
+    setRecord(recordData);
+    setDisplay((prev) => (prev ? { ...prev, additionalServices: updatedServices } : prev));
+  };
+
+  const handleAddService = async (service: { _id: string; serviceName: string; price: number }) => {
+    if (!appointmentId) return;
+    if (!canEdit) {
+      toast.error(lockReason || "Hồ sơ đã được khóa, không thể chỉnh sửa.");
+      closeDropdown();
+      return;
+    }
+
+    if (currentServices.some((s) => s._id === service._id)) {
+      toast.error("Dịch vụ này đã được thêm");
+      closeDropdown();
+      return;
+    }
+
+    closeDropdown();
+
+    const previousServices = [...currentServices];
+    const newServices = [...currentServices, service];
+    setCurrentServices(newServices);
+
+    setUpdatingServices(true);
+    try {
+      const nextIds = newServices.map((s) => s._id);
+      const res = await medicalRecordApi.updateAdditionalServicesForNurse(appointmentId, nextIds);
+      if (res.success && res.data) {
+        handleAdditionalServicesUpdate(res.data);
+        toast.success(`Đã thêm dịch vụ: ${service.serviceName}`);
+      } else {
+        setCurrentServices(previousServices);
+        toast.error(res.message || "Không thể cập nhật dịch vụ bổ sung");
+      }
+    } catch (error: any) {
+      setCurrentServices(previousServices);
+      toast.error(error.message || "Không thể cập nhật dịch vụ bổ sung");
+    } finally {
+      setUpdatingServices(false);
+    }
+  };
+
+  const handleRemoveService = async (serviceId: string) => {
+    if (!appointmentId) return;
+    if (!canEdit) {
+      toast.error(lockReason || "Hồ sơ đã được khóa, không thể chỉnh sửa.");
+      return;
+    }
+
+    const serviceToRemove = currentServices.find((s) => s._id === serviceId);
+    if (!serviceToRemove) return;
+
+    const previousServices = [...currentServices];
+    const newServices = currentServices.filter((s) => s._id !== serviceId);
+    setCurrentServices(newServices);
+
+    setUpdatingServices(true);
+    try {
+      const remainingIds = newServices.map((s) => s._id);
+      const res = await medicalRecordApi.updateAdditionalServicesForNurse(appointmentId, remainingIds);
+      if (res.success && res.data) {
+        handleAdditionalServicesUpdate(res.data);
+        toast.success(`Đã xóa dịch vụ: ${serviceToRemove.serviceName}`);
+      } else {
+        setCurrentServices(previousServices);
+        toast.error(res.message || "Không thể cập nhật dịch vụ bổ sung");
+      }
+    } catch (error: any) {
+      setCurrentServices(previousServices);
+      toast.error(error.message || "Không thể cập nhật dịch vụ bổ sung");
+    } finally {
+      setUpdatingServices(false);
+    }
+  };
+
+  const availableServices = allServices.filter(
+    (service) => !currentServices.some((current) => current._id === service._id),
+  );
+
   const onSave = async () => {
     if (!appointmentId) return;
+    if (!canEdit) {
+      toast.error(lockReason || "Hồ sơ đã được khóa, không thể chỉnh sửa.");
+      return;
+    }
     setSaving(true);
     try {
-      const res = await medicalRecordApi.updateNurseNote(appointmentId, nurseNote);
+      const res = await medicalRecordApi.updateMedicalRecordForNurse(appointmentId, {
+        diagnosis,
+        conclusion,
+        prescription,
+        nurseNote,
+      });
       if (res.success && res.data) {
         setRecord(res.data);
-        toast.success("Đã lưu ghi chú điều dưỡng");
+        setDiagnosis(res.data.diagnosis || "");
+        setConclusion(res.data.conclusion || "");
+        const updatedPrescription = res.data.prescription || {};
+        setPrescription({
+          medicine: updatedPrescription.medicine || "",
+          dosage: updatedPrescription.dosage || "",
+          duration: updatedPrescription.duration || "",
+        });
+        setNurseNote(res.data.nurseNote || "");
+        toast.success("Đã lưu hồ sơ khám bệnh");
         navigate(-1);
       } else {
         setError(res.message || "Lưu thất bại");
@@ -85,6 +295,14 @@ const NurseMedicalRecord: React.FC = () => {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {!canEdit && lockReason && (
+        <Card className="bg-warning-50 border-warning-200">
+          <CardBody>
+            <p className="text-warning-700 font-medium">{lockReason}</p>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Patient info */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader className="pb-0 pt-4 px-6">
@@ -130,34 +348,128 @@ const NurseMedicalRecord: React.FC = () => {
         </CardBody>
       </Card>
 
-      {/* Additional Services (read only) */}
-      <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200 opacity-70">
-        <CardHeader className="pb-0 pt-4 px-6">
-          <div className="flex items-center gap-2">
-            <DocumentTextIcon className="w-5 h-5 text-teal-600" />
-            <h4 className="font-semibold text-gray-800">Dịch vụ bổ sung</h4>
-          </div>
-        </CardHeader>
-        <CardBody className="px-6 pb-4">
-          {display?.additionalServices && display.additionalServices.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {display.additionalServices.map((s) => (
-                <div
-                  key={s._id}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-teal-200 shadow-sm"
-                >
-                  <span className="font-medium text-gray-800">{s.serviceName}</span>
-                </div>
-              ))}
+      {/* Additional Services (editable) */}
+      <div className="relative" ref={dropdownRef}>
+        <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
+          <CardHeader className="pb-0 pt-4 px-6">
+            <div className="flex items-center gap-2">
+              <DocumentTextIcon className="w-5 h-5 text-teal-600" />
+              <h4 className="font-semibold text-gray-800">Dịch vụ bổ sung</h4>
             </div>
-          ) : (
-            <div className="text-gray-600">Không có dịch vụ bổ sung</div>
-          )}
-        </CardBody>
-      </Card>
+          </CardHeader>
+          <CardBody className="px-6 pb-4 space-y-4">
+            {currentServices.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {currentServices.map((service) => (
+                  <div
+                    key={service._id}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-teal-200 shadow-sm"
+                  >
+                    <span className="font-medium text-gray-800">{service.serviceName}</span>
+                    {typeof service.price === "number" && service.price > 0 && (
+                      <span className="text-xs text-gray-500">
+                        {service.price.toLocaleString("vi-VN")}₫
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleRemoveService(service._id)}
+                      disabled={!canEdit || updatingServices}
+                      className={`ml-1 p-1 rounded-full transition-colors ${canEdit && !updatingServices ? "hover:bg-red-100" : "opacity-50 cursor-not-allowed"}`}
+                      type="button"
+                    >
+                      <XMarkIcon className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-gray-600">Không có dịch vụ bổ sung</div>
+            )}
 
-      {/* Diagnosis (read only) */}
-      <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 opacity-70">
+            <div>
+              <button
+                ref={dropdownButtonRef}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!canEdit || updatingServices || serviceListLoading) return;
+                  setIsDropdownOpen(!isDropdownOpen);
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                }}
+                disabled={!canEdit || updatingServices || serviceListLoading || availableServices.length === 0}
+                className={`flex items-center justify-between w-full px-4 py-2 bg-white border border-teal-300 rounded-lg transition-colors shadow-sm ${canEdit && !updatingServices && !serviceListLoading && availableServices.length > 0 ? "hover:bg-teal-50" : "opacity-60 cursor-not-allowed"}`}
+                type="button"
+              >
+                <span className="text-gray-700">
+                  {serviceListLoading ? "Đang tải danh sách dịch vụ..." : "Thêm dịch vụ"}
+                </span>
+                <ChevronDownIcon
+                  className={`w-5 h-5 text-gray-500 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {availableServices.length === 0 && !serviceListLoading && (
+                <p className="text-xs text-gray-500 mt-2">Không còn dịch vụ nào để thêm.</p>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+
+        {canEdit && isDropdownOpen && dropdownPosition && (
+          <div
+            ref={dropdownMenuRef}
+            className="fixed z-50 bg-white border border-teal-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`,
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            {serviceListLoading ? (
+              <div className="px-4 py-2 text-gray-500 text-center">Đang tải dịch vụ...</div>
+            ) : availableServices.length > 0 ? (
+              <div className="py-2">
+                {availableServices.map((service) => (
+                  <button
+                    key={service._id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (updatingServices) return;
+                      handleAddService(service);
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    className={`w-full px-4 py-2 text-left transition-colors ${updatingServices ? "cursor-not-allowed opacity-60" : "hover:bg-teal-50"}`}
+                    type="button"
+                    disabled={updatingServices}
+                  >
+                    <span className="font-medium text-gray-800">{service.serviceName}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-2 text-gray-500 text-center">Không còn dịch vụ nào để thêm</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Diagnosis */}
+      <Card
+        className={`bg-gradient-to-br from-green-50 to-green-100 border-green-200 ${canEdit ? "" : "opacity-70"}`}
+        onMouseDown={() => {
+          if (isDropdownOpen) {
+            closeDropdown();
+          }
+        }}
+      >
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <BeakerIcon className="w-5 h-5 text-green-600" />
@@ -166,21 +478,39 @@ const NurseMedicalRecord: React.FC = () => {
         </CardHeader>
         <CardBody className="px-6 pb-4">
           <Textarea 
-            value={record?.diagnosis || ""} 
-            isReadOnly 
-            variant="flat" 
+            value={diagnosis} 
+            onChange={(e) => setDiagnosis(e.target.value)}
+            isReadOnly={!canEdit}
+            variant={canEdit ? "bordered" : "flat"}
             minRows={3} 
             placeholder="Nhập chẩn đoán bệnh..."
+            onFocus={() => {
+              if (isDropdownOpen) {
+                closeDropdown();
+              }
+            }}
+            onMouseDown={() => {
+              if (isDropdownOpen) {
+                closeDropdown();
+              }
+            }}
             classNames={{ 
-              input: "bg-gray-100 text-gray-500",
-              base: "opacity-60"
+              input: canEdit ? undefined : "bg-gray-100 text-gray-500",
+              base: canEdit ? undefined : "opacity-60"
             }} 
           />
         </CardBody>
       </Card>
 
-      {/* Conclusion (read only) */}
-      <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 opacity-70">
+      {/* Conclusion */}
+      <Card
+        className={`bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 ${canEdit ? "" : "opacity-70"}`}
+        onMouseDown={() => {
+          if (isDropdownOpen) {
+            closeDropdown();
+          }
+        }}
+      >
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <DocumentTextIcon className="w-5 h-5 text-blue-600" />
@@ -189,21 +519,39 @@ const NurseMedicalRecord: React.FC = () => {
         </CardHeader>
         <CardBody className="px-6 pb-4">
           <Textarea 
-            value={record?.conclusion || ""} 
-            isReadOnly 
-            variant="flat" 
+            value={conclusion} 
+            onChange={(e) => setConclusion(e.target.value)}
+            isReadOnly={!canEdit}
+            variant={canEdit ? "bordered" : "flat"}
             minRows={3} 
             placeholder="Nhập kết luận và hướng dẫn điều trị..."
+            onFocus={() => {
+              if (isDropdownOpen) {
+                closeDropdown();
+              }
+            }}
+            onMouseDown={() => {
+              if (isDropdownOpen) {
+                closeDropdown();
+              }
+            }}
             classNames={{ 
-              input: "bg-gray-100 text-gray-500",
-              base: "opacity-60"
+              input: canEdit ? undefined : "bg-gray-100 text-gray-500",
+              base: canEdit ? undefined : "opacity-60"
             }} 
           />
         </CardBody>
       </Card>
 
-      {/* Prescription (read only) */}
-      <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 opacity-70">
+      {/* Prescription */}
+      <Card
+        className={`bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 ${canEdit ? "" : "opacity-70"}`}
+        onMouseDown={() => {
+          if (isDropdownOpen) {
+            closeDropdown();
+          }
+        }}
+      >
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <PencilSquareIcon className="w-5 h-5 text-orange-600" />
@@ -211,43 +559,74 @@ const NurseMedicalRecord: React.FC = () => {
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
-          {record?.prescription ? (
-            (() => {
-              const prescriptionObj = record.prescription;
-              const hasPrescription = prescriptionObj.medicine || prescriptionObj.dosage || prescriptionObj.duration;
-              return hasPrescription ? (
-                <div className="space-y-3">
-                  {prescriptionObj.medicine && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium mb-1">Thuốc</p>
-                      <p className="text-gray-900">{prescriptionObj.medicine}</p>
-                    </div>
-                  )}
-                  {prescriptionObj.dosage && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium mb-1">Liều dùng</p>
-                      <p className="text-gray-900">{prescriptionObj.dosage}</p>
-                    </div>
-                  )}
-                  {prescriptionObj.duration && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium mb-1">Thời gian sử dụng</p>
-                      <p className="text-gray-900">{prescriptionObj.duration}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-gray-600">Chưa có đơn thuốc</div>
-              );
-            })()
-          ) : (
-            <div className="text-gray-600">Chưa có đơn thuốc</div>
-          )}
+          <div className="space-y-4">
+            <Input 
+              label="Thuốc" 
+              value={prescription.medicine}
+              onChange={(e) => setPrescription({ ...prescription, medicine: e.target.value })}
+              isReadOnly={!canEdit}
+              variant={canEdit ? "bordered" : "flat"}
+              placeholder="Nhập tên thuốc (ví dụ: Paracetamol 500mg)"
+              onFocus={() => {
+                if (isDropdownOpen) {
+                  closeDropdown();
+                }
+              }}
+              onMouseDown={() => {
+                if (isDropdownOpen) {
+                  closeDropdown();
+                }
+              }}
+            />
+            <Input 
+              label="Liều dùng" 
+              value={prescription.dosage}
+              onChange={(e) => setPrescription({ ...prescription, dosage: e.target.value })}
+              isReadOnly={!canEdit}
+              variant={canEdit ? "bordered" : "flat"}
+              placeholder="Ví dụ: 2 viên/lần, 3 lần/ngày"
+              onFocus={() => {
+                if (isDropdownOpen) {
+                  closeDropdown();
+                }
+              }}
+              onMouseDown={() => {
+                if (isDropdownOpen) {
+                  closeDropdown();
+                }
+              }}
+            />
+            <Input 
+              label="Thời gian sử dụng" 
+              value={prescription.duration}
+              onChange={(e) => setPrescription({ ...prescription, duration: e.target.value })}
+              isReadOnly={!canEdit}
+              variant={canEdit ? "bordered" : "flat"}
+              placeholder="Ví dụ: Sau bữa ăn, 7 ngày"
+              onFocus={() => {
+                if (isDropdownOpen) {
+                  closeDropdown();
+                }
+              }}
+              onMouseDown={() => {
+                if (isDropdownOpen) {
+                  closeDropdown();
+                }
+              }}
+            />
+          </div>
         </CardBody>
       </Card>
 
-      {/* Nurse note (editable) */}
-      <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
+      {/* Nurse note */}
+      <Card
+        className={`bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200 ${canEdit ? "" : "opacity-70"}`}
+        onMouseDown={() => {
+          if (isDropdownOpen) {
+            closeDropdown();
+          }
+        }}
+      >
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <HeartIcon className="w-5 h-5 text-pink-600" />
@@ -260,12 +639,29 @@ const NurseMedicalRecord: React.FC = () => {
             value={nurseNote}
             onValueChange={setNurseNote}
             minRows={5}
-            variant="bordered"
+            isReadOnly={!canEdit}
+            variant={canEdit ? "bordered" : "flat"}
+            onFocus={() => {
+              if (isDropdownOpen) {
+                closeDropdown();
+              }
+            }}
+            onMouseDown={() => {
+              if (isDropdownOpen) {
+                closeDropdown();
+              }
+            }}
           />
 
           <div className="flex justify-end mt-4">
-            <Button color="success" onPress={onSave} isLoading={saving} startContent={!saving && <CheckCircleIcon className="w-5 h-5" />}>
-              {saving ? "Đang lưu..." : "Lưu ghi chú"}
+            <Button 
+              color="success" 
+              onPress={onSave} 
+              isLoading={saving} 
+              isDisabled={saving || !canEdit}
+              startContent={!saving && <CheckCircleIcon className="w-5 h-5" />}
+            >
+              {saving ? "Đang lưu..." : "Lưu hồ sơ"}
             </Button>
           </div>
         </CardBody>

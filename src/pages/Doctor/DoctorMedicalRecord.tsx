@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay } from "@/api/medicalRecord";
+import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
 import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
@@ -13,6 +13,7 @@ const DoctorMedicalRecord: React.FC = () => {
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [display, setDisplay] = useState<MedicalRecordDisplay | null>(null);
   const [saving, setSaving] = useState(false);
+  const [permissions, setPermissions] = useState<MedicalRecordPermissions | null>(null);
 
   // Form state - doctor có thể chỉnh sửa tất cả trường
   const [diagnosis, setDiagnosis] = useState("");
@@ -32,6 +33,11 @@ const DoctorMedicalRecord: React.FC = () => {
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const canEdit = permissions?.doctor?.canEdit ?? true;
+  const isFinalized = permissions?.recordStatus === "Finalized";
+  const lockReason = !canEdit ? permissions?.doctor?.reason || null : null;
+  const canApprove = canEdit && !isFinalized;
 
   const calcAge = (dob?: string | null): number | null => {
     if (!dob) return null;
@@ -64,6 +70,7 @@ const DoctorMedicalRecord: React.FC = () => {
           
           setRecord(res.data.record);
           setDisplay(res.data.display);
+          setPermissions(res.data.permissions || null);
           setDiagnosis(res.data.record.diagnosis || "");
           setConclusion(res.data.record.conclusion || "");
           // Load prescription vào 3 trường riêng biệt
@@ -173,6 +180,11 @@ const DoctorMedicalRecord: React.FC = () => {
 
   const handleAddService = async (service: { _id: string; serviceName: string; price: number }) => {
     if (!appointmentId) return;
+    if (!canEdit) {
+      toast.error(lockReason || "Hồ sơ đã được khóa, không thể chỉnh sửa.");
+      closeDropdown();
+      return;
+    }
     
     // Check if service already exists
     if (currentServices.some(s => s._id === service._id)) {
@@ -234,6 +246,10 @@ const DoctorMedicalRecord: React.FC = () => {
 
   const handleRemoveService = async (serviceId: string) => {
     if (!appointmentId) return;
+    if (!canEdit) {
+      toast.error(lockReason || "Hồ sơ đã được khóa, không thể chỉnh sửa.");
+      return;
+    }
     
     const serviceToRemove = currentServices.find(s => s._id === serviceId);
     if (!serviceToRemove) return;
@@ -287,6 +303,14 @@ const DoctorMedicalRecord: React.FC = () => {
 
   const onSave = async (approve: boolean = false) => {
     if (!appointmentId) return;
+    if (!canEdit) {
+      toast.error(lockReason || "Hồ sơ đã được khóa, không thể chỉnh sửa.");
+      return;
+    }
+    if (approve && !canApprove) {
+      toast.error("Không thể duyệt hồ sơ khi đã được khóa.");
+      return;
+    }
     setSaving(true);
     try {
       const res = await medicalRecordApi.updateMedicalRecordForDoctor(appointmentId, {
@@ -298,6 +322,35 @@ const DoctorMedicalRecord: React.FC = () => {
       });
       if (res.success && res.data) {
         setRecord(res.data);
+        setPermissions((prev) => {
+          if (!prev) return prev;
+          const nextRecordStatus = res.data.status || prev.recordStatus;
+          const appointmentStatus = prev.appointmentStatus;
+          const appointmentLocked = appointmentStatus ? ['Completed', 'Finalized'].includes(appointmentStatus) : false;
+          const recordFinalized = nextRecordStatus === 'Finalized';
+          const doctorCanEdit = !appointmentLocked && !recordFinalized;
+          const nurseCanEdit = !appointmentLocked && !recordFinalized;
+          return {
+            ...prev,
+            recordStatus: nextRecordStatus,
+            doctor: {
+              canEdit: doctorCanEdit,
+              reason: doctorCanEdit
+                ? null
+                : appointmentLocked
+                ? 'Ca khám đã hoàn thành, không thể chỉnh sửa hồ sơ.'
+                : 'Hồ sơ đã được duyệt. Nếu cần chỉnh sửa, vui lòng liên hệ quản trị.'
+            },
+            nurse: {
+              canEdit: nurseCanEdit,
+              reason: nurseCanEdit
+                ? null
+                : appointmentLocked
+                ? 'Ca khám đã hoàn thành, không thể chỉnh sửa hồ sơ.'
+                : 'Hồ sơ đã được bác sĩ duyệt, điều dưỡng không thể chỉnh sửa.'
+            }
+          };
+        });
         if (approve) {
           toast.success("Đã lưu và duyệt hồ sơ khám bệnh");
         } else {
@@ -315,6 +368,10 @@ const DoctorMedicalRecord: React.FC = () => {
   };
 
   const onApprove = async () => {
+    if (!canApprove) {
+      toast.error(lockReason || "Hồ sơ đã được khóa, không thể duyệt.");
+      return;
+    }
     await onSave(true);
   };
 
@@ -333,6 +390,14 @@ const DoctorMedicalRecord: React.FC = () => {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {!canEdit && lockReason && (
+        <Card className="bg-warning-50 border-warning-200">
+          <CardBody>
+            <p className="text-warning-700 font-medium">{lockReason}</p>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Patient info */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader className="pb-0 pt-4 px-6">
@@ -399,7 +464,8 @@ const DoctorMedicalRecord: React.FC = () => {
                     <span className="font-medium text-gray-800">{s.serviceName}</span>
                     <button
                       onClick={() => handleRemoveService(s._id)}
-                      className="ml-1 p-1 hover:bg-red-100 rounded-full transition-colors"
+                      disabled={!canEdit}
+                      className={`ml-1 p-1 rounded-full transition-colors ${canEdit ? "hover:bg-red-100" : "opacity-50 cursor-not-allowed"}`}
                       type="button"
                     >
                       <XMarkIcon className="w-4 h-4 text-red-500" />
@@ -417,12 +483,14 @@ const DoctorMedicalRecord: React.FC = () => {
                 ref={dropdownButtonRef}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!canEdit) return;
                   setIsDropdownOpen(!isDropdownOpen);
                 }}
                 onMouseDown={(e) => {
                   e.stopPropagation();
                 }}
-                className="flex items-center justify-between w-full px-4 py-2 bg-white border border-teal-300 rounded-lg hover:bg-teal-50 transition-colors shadow-sm"
+                disabled={!canEdit}
+                className={`flex items-center justify-between w-full px-4 py-2 bg-white border border-teal-300 rounded-lg transition-colors shadow-sm ${canEdit ? "hover:bg-teal-50" : "opacity-60 cursor-not-allowed"}`}
                 type="button"
               >
                 <span className="text-gray-700">Thêm dịch vụ</span>
@@ -435,7 +503,7 @@ const DoctorMedicalRecord: React.FC = () => {
         </Card>
 
         {/* Dropdown menu - Hiển thị bên ngoài Card với fixed positioning */}
-        {isDropdownOpen && dropdownPosition && (
+        {canEdit && isDropdownOpen && dropdownPosition && (
           <div
             ref={dropdownMenuRef}
             className="fixed z-50 bg-white border border-teal-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"
@@ -496,9 +564,10 @@ const DoctorMedicalRecord: React.FC = () => {
           <Textarea 
             value={diagnosis} 
             onChange={(e) => setDiagnosis(e.target.value)}
-            variant="bordered" 
+            variant={canEdit ? "bordered" : "flat"} 
             minRows={3} 
             placeholder="Nhập chẩn đoán bệnh..."
+            isReadOnly={!canEdit}
             onFocus={() => {
               if (isDropdownOpen) {
                 closeDropdown();
@@ -508,6 +577,10 @@ const DoctorMedicalRecord: React.FC = () => {
               if (isDropdownOpen) {
                 closeDropdown();
               }
+            }}
+            classNames={{
+              input: canEdit ? undefined : "bg-gray-100 text-gray-500",
+              base: canEdit ? undefined : "opacity-60"
             }}
           />
         </CardBody>
@@ -532,9 +605,10 @@ const DoctorMedicalRecord: React.FC = () => {
           <Textarea 
             value={conclusion} 
             onChange={(e) => setConclusion(e.target.value)}
-            variant="bordered" 
+            variant={canEdit ? "bordered" : "flat"} 
             minRows={3} 
             placeholder="Nhập kết luận và hướng dẫn điều trị..."
+            isReadOnly={!canEdit}
             onFocus={() => {
               if (isDropdownOpen) {
                 closeDropdown();
@@ -544,6 +618,10 @@ const DoctorMedicalRecord: React.FC = () => {
               if (isDropdownOpen) {
                 closeDropdown();
               }
+            }}
+            classNames={{
+              input: canEdit ? undefined : "bg-gray-100 text-gray-500",
+              base: canEdit ? undefined : "opacity-60"
             }}
           />
         </CardBody>
@@ -571,8 +649,9 @@ const DoctorMedicalRecord: React.FC = () => {
               label="Thuốc" 
               value={prescription.medicine} 
               onChange={(e) => setPrescription({ ...prescription, medicine: e.target.value })}
-              variant="bordered" 
+              variant={canEdit ? "bordered" : "flat"} 
               placeholder="Nhập tên thuốc (ví dụ: Paracetamol 500mg)"
+              isReadOnly={!canEdit}
               onFocus={() => {
                 if (isDropdownOpen) {
                   closeDropdown();
@@ -583,14 +662,16 @@ const DoctorMedicalRecord: React.FC = () => {
                   closeDropdown();
                 }
               }}
+              classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
             />
             
             <Input 
               label="Liều dùng" 
               value={prescription.dosage} 
               onChange={(e) => setPrescription({ ...prescription, dosage: e.target.value })}
-              variant="bordered" 
+              variant={canEdit ? "bordered" : "flat"} 
               placeholder="Ví dụ: 2 viên/lần, 3 lần/ngày hoặc 500mg/ngày"
+              isReadOnly={!canEdit}
               onFocus={() => {
                 if (isDropdownOpen) {
                   closeDropdown();
@@ -601,14 +682,16 @@ const DoctorMedicalRecord: React.FC = () => {
                   closeDropdown();
                 }
               }}
+              classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
             />
             
             <Input 
               label="Thời gian sử dụng" 
               value={prescription.duration} 
               onChange={(e) => setPrescription({ ...prescription, duration: e.target.value })}
-              variant="bordered" 
+              variant={canEdit ? "bordered" : "flat"} 
               placeholder="Ví dụ: Sau bữa ăn, Trước khi ngủ, 7 ngày, v.v."
+              isReadOnly={!canEdit}
               onFocus={() => {
                 if (isDropdownOpen) {
                   closeDropdown();
@@ -619,6 +702,7 @@ const DoctorMedicalRecord: React.FC = () => {
                   closeDropdown();
                 }
               }}
+              classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
             />
           </div>
         </CardBody>
@@ -645,7 +729,8 @@ const DoctorMedicalRecord: React.FC = () => {
             value={nurseNote}
             onValueChange={setNurseNote}
             minRows={5}
-            variant="bordered"
+            variant={canEdit ? "bordered" : "flat"}
+            isReadOnly={!canEdit}
             onFocus={() => {
               if (isDropdownOpen) {
                 closeDropdown();
@@ -656,6 +741,10 @@ const DoctorMedicalRecord: React.FC = () => {
                 closeDropdown();
               }
             }}
+            classNames={{
+              input: canEdit ? undefined : "bg-gray-100 text-gray-500",
+              base: canEdit ? undefined : "opacity-60"
+            }}
           />
 
           <div className="flex justify-end gap-3 mt-4">
@@ -664,7 +753,7 @@ const DoctorMedicalRecord: React.FC = () => {
               variant="flat"
               onPress={() => onSave(false)} 
               isLoading={saving} 
-              isDisabled={saving}
+              isDisabled={saving || !canEdit}
             >
               {saving ? "Đang lưu..." : "Lưu"}
             </Button>
@@ -672,7 +761,7 @@ const DoctorMedicalRecord: React.FC = () => {
               color="success" 
               onPress={onApprove} 
               isLoading={saving} 
-              isDisabled={saving}
+              isDisabled={saving || !canApprove}
               startContent={!saving && <CheckCircleIcon className="w-5 h-5" />}
             >
               {saving ? "Đang xử lý..." : "Duyệt hồ sơ"}
