@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { Modal, ModalContent, ModalBody, ModalFooter } from "@heroui/react";
-import { Input, Button, Textarea, Select, SelectItem } from "@heroui/react";
+import React, { useState, useEffect } from "react";
+import { XMarkIcon } from "@heroicons/react/24/solid";
+import { Input, Button, Textarea, Select, SelectItem, Checkbox, CheckboxGroup, Spinner } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { promotionApi } from "@/api/promotion";
+import { serviceApi, type Service } from "@/api/service";
 
 interface AddPromotionModalProps {
   isOpen: boolean;
@@ -22,12 +23,37 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     discountType: "Percent" as "Percent" | "Fixed",
     discountValue: 0,
     applyToAll: true,
+    applicableServices: [] as string[],
     startDate: "",
     endDate: "",
   });
 
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+
+  // Fetch services when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchServices();
+    }
+  }, [isOpen]);
+
+  const fetchServices = async () => {
+    try {
+      setLoadingServices(true);
+      const response = await serviceApi.get({ limit: 1000, status: "Active" });
+      if (response.success && response.data) {
+        setServices(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      toast.error("Không thể tải danh sách dịch vụ");
+    } finally {
+      setLoadingServices(false);
+    }
+  };
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -46,6 +72,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     formData.discountValue > 100;
   const isStartDateInvalid = showValidation && !formData.startDate;
   const isEndDateInvalid = showValidation && !formData.endDate;
+  const isServicesInvalid = showValidation && !formData.applyToAll && formData.applicableServices.length === 0;
 
   // Check if end date is after start date
   const isDateRangeInvalid =
@@ -69,7 +96,8 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       !formData.endDate ||
       (formData.startDate &&
         formData.endDate &&
-        new Date(formData.endDate) <= new Date(formData.startDate));
+        new Date(formData.endDate) <= new Date(formData.startDate)) ||
+      (!formData.applyToAll && formData.applicableServices.length === 0);
 
     if (hasErrors) {
       if (
@@ -78,6 +106,8 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
         new Date(formData.endDate) <= new Date(formData.startDate)
       ) {
         toast.error("Ngày kết thúc phải sau ngày bắt đầu");
+      } else if (!formData.applyToAll && formData.applicableServices.length === 0) {
+        toast.error("Vui lòng chọn ít nhất một dịch vụ");
       }
       return;
     }
@@ -86,7 +116,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
 
     try {
       // Convert date to ISO format and discountType
-      const createData = {
+      const createData: any = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         discountType: formData.discountType === "Fixed" ? "Fix" : "Percent",
@@ -95,6 +125,11 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
         startDate: new Date(formData.startDate).toISOString(),
         endDate: new Date(formData.endDate).toISOString(),
       };
+
+      // Only include applicableServices if not applying to all
+      if (!formData.applyToAll) {
+        createData.applicableServices = formData.applicableServices;
+      }
 
       const response = await promotionApi.createPromotion(createData as any);
 
@@ -120,16 +155,52 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     onClose();
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Modal
-      size="2xl"
-      isOpen={isOpen}
-      onClose={handleClose}
-      isDismissable={!isSubmitting}
-      scrollBehavior="inside"
-    >
-      <ModalContent>
-        <ModalBody className="p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        aria-label="Close modal"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        role="button"
+        tabIndex={0}
+        onClick={!isSubmitting ? handleClose : undefined}
+        onKeyDown={(e) => {
+          if (!isSubmitting && (e.key === "Enter" || e.key === " ")) {
+            handleClose();
+          }
+        }}
+      />
+
+      {/* Modal Content */}
+      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <img
+              alt="Logo"
+              className="h-8 w-auto object-contain"
+              src="/logo1.png"
+            />
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Thêm ưu đãi mới</h2>
+              <p className="text-sm text-gray-600">Tạo chương trình ưu đãi cho dịch vụ</p>
+            </div>
+          </div>
+          <Button
+            isIconOnly
+            className="text-gray-500 hover:text-gray-700"
+            variant="light"
+            onPress={handleClose}
+            isDisabled={isSubmitting}
+          >
+            <XMarkIcon className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-4 overflow-y-auto flex-1">
           <div className="space-y-4">
             <div>
               <label
@@ -191,6 +262,12 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                   onSelectionChange={(keys) => {
                     const selected = Array.from(keys)[0] as "Percent" | "Fixed";
                     handleInputChange("discountType", selected);
+                  }}
+                  popoverProps={{
+                    shouldCloseOnInteractOutside: (element) => {
+                      // Don't close modal when clicking on select dropdown
+                      return !element.closest('[role="listbox"]');
+                    }
                   }}
                 >
                   <SelectItem key="Percent">Phần trăm (%)</SelectItem>
@@ -280,16 +357,67 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
               </div>
             </div>
 
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
-              <p className="text-sm text-blue-800">
-                <strong>Lưu ý:</strong> Hiện tại chỉ hỗ trợ ưu đãi áp dụng cho
-                tất cả dịch vụ. Tính năng chọn dịch vụ cụ thể sẽ được bổ sung sau.
-              </p>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Phạm vi áp dụng <span className="text-red-500">*</span>
+              </label>
+              <div className="space-y-3">
+                <Checkbox
+                  isSelected={formData.applyToAll}
+                  onValueChange={(checked) => {
+                    handleInputChange("applyToAll", checked);
+                    if (checked) {
+                      handleInputChange("applicableServices", []);
+                    }
+                  }}
+                >
+                  <span className="text-sm font-medium">Áp dụng cho tất cả dịch vụ</span>
+                </Checkbox>
+
+                {!formData.applyToAll && (
+                  <div className="ml-6 mt-3">
+                    {loadingServices ? (
+                      <div className="flex items-center gap-2 py-4">
+                        <Spinner size="sm" />
+                        <span className="text-sm text-gray-600">Đang tải danh sách dịch vụ...</span>
+                      </div>
+                    ) : (
+                      <div className={`border rounded-lg p-4 max-h-60 overflow-y-auto ${isServicesInvalid ? 'border-red-500' : 'border-gray-300'}`}>
+                        <p className="text-sm font-medium text-gray-700 mb-3">
+                          Chọn dịch vụ áp dụng:
+                        </p>
+                        <CheckboxGroup
+                          value={formData.applicableServices}
+                          onValueChange={(value) => handleInputChange("applicableServices", value)}
+                        >
+                          {services.map((service) => (
+                            <Checkbox key={service._id} value={service._id}>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">{service.serviceName}</span>
+                                <span className="text-xs text-gray-500">
+                                  {service.price.toLocaleString()}đ - {service.category}
+                                </span>
+                              </div>
+                            </Checkbox>
+                          ))}
+                        </CheckboxGroup>
+                        {isServicesInvalid && (
+                          <p className="text-xs text-red-500 mt-2">
+                            Vui lòng chọn ít nhất một dịch vụ
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </ModalBody>
-        <ModalFooter className="px-6 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
-          <div className="flex justify-end gap-4 w-full">
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-end gap-4">
             <Button
               variant="bordered"
               onPress={handleClose}
@@ -305,9 +433,9 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
               Tạo ưu đãi
             </Button>
           </div>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        </div>
+      </div>
+    </div>
   );
 };
 

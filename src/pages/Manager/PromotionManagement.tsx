@@ -242,7 +242,7 @@ const PromotionManagement = () => {
         </div>
 
         <Button
-          className="bg-green-600 text-white hover:bg-green-700"
+          className="bg-blue-600 text-white hover:bg-blue-700"
           startContent={<PlusIcon className="w-5 h-5" />}
           onPress={handleAdd}
         >
@@ -315,15 +315,45 @@ const PromotionManagement = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      color={promotion.applyToAll ? "primary" : "default"}
-                      size="sm"
-                      variant="flat"
-                    >
-                      {promotion.applyToAll
-                        ? "Tất cả dịch vụ"
-                        : "Dịch vụ chỉ định"}
-                    </Chip>
+                    {promotion.applyToAll ? (
+                      <Chip
+                        color="primary"
+                        size="sm"
+                        variant="flat"
+                      >
+                        Tất cả dịch vụ
+                      </Chip>
+                    ) : (
+                      <Tooltip
+                        content={
+                          <div className="max-w-xs">
+                            <p className="font-semibold mb-2">Dịch vụ áp dụng:</p>
+                            <ul className="list-disc list-inside space-y-1">
+                              {promotion.applicableServices && promotion.applicableServices.length > 0 ? (
+                                promotion.applicableServices.map((serviceId: any, idx: number) => (
+                                  <li key={idx} className="text-xs">
+                                    {typeof serviceId === 'object' && serviceId?.serviceName 
+                                      ? serviceId.serviceName 
+                                      : `Dịch vụ ${idx + 1}`}
+                                  </li>
+                                ))
+                              ) : (
+                                <li className="text-xs">Chưa có dịch vụ nào</li>
+                              )}
+                            </ul>
+                          </div>
+                        }
+                      >
+                        <Chip
+                          color="default"
+                          size="sm"
+                          variant="flat"
+                          className="cursor-pointer"
+                        >
+                          {promotion.applicableServices?.length || 0} dịch vụ
+                        </Chip>
+                      </Tooltip>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Chip
