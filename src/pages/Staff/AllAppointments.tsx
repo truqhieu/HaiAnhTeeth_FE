@@ -49,6 +49,7 @@ interface Appointment {
   doctorName: string;
   doctorUserId?: string; // Thêm doctorUserId để check leave
   doctorStatus?: string | null; // ⭐ Status của doctor: 'Available', 'Busy', 'On Leave', 'Inactive'
+  hasReplacementDoctor?: boolean;
   serviceName: string;
   startTime: string;
   endTime: string;
@@ -222,6 +223,7 @@ const AllAppointments = () => {
             doctorName: doctorName,
             doctorUserId: doctorUserId, // Thêm doctorUserId
             doctorStatus: apt.doctorStatus || null, // ⭐ Thêm doctorStatus từ backend
+            hasReplacementDoctor: Boolean(apt.replacedDoctorUserId),
             serviceName: apt.serviceId?.serviceName || "N/A",
             startTime: apt.timeslotId?.startTime || "",
             endTime: apt.timeslotId?.endTime || "",
@@ -339,6 +341,46 @@ const AllAppointments = () => {
 
       return appointmentDate >= leaveStart && appointmentDate <= leaveEnd;
     });
+  };
+
+  const hasAppointmentDayEnded = (startTime: string): boolean => {
+    if (!startTime) {
+      return false;
+    }
+
+    const appointmentDate = new Date(startTime);
+    if (Number.isNaN(appointmentDate.getTime())) {
+      return false;
+    }
+
+    const endOfDay = new Date(appointmentDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    return new Date().getTime() > endOfDay.getTime();
+  };
+
+  const shouldShowReassignButton = (
+    appointment: Appointment,
+    isOnLeaveOverride?: boolean
+  ): boolean => {
+    const doctorOnLeave =
+      typeof isOnLeaveOverride === "boolean"
+        ? isOnLeaveOverride
+        : isDoctorOnLeave(appointment);
+
+    if (!doctorOnLeave) {
+      return false;
+    }
+
+    if (appointment.status === "Completed") {
+      return false;
+    }
+
+    if (hasAppointmentDayEnded(appointment.startTime) && !appointment.hasReplacementDoctor) {
+      return false;
+    }
+
+    return true;
   };
 
   useEffect(() => {
@@ -1206,44 +1248,49 @@ const AllAppointments = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2 flex-wrap">
-                      {/* ⭐ Nếu bác sĩ có lịch nghỉ, chỉ hiển thị nút "Gán BS" */}
-                      {isDoctorOnLeave(appointment) ? (
-                        <Button
-                          size="sm"
-                          color="secondary"
-                          variant="flat"
-                          onPress={() => openReassignModal(appointment)}
-                          isDisabled={processingId === appointment.id}
-                          startContent={<UserPlusIcon className="w-4 h-4" />}
-                        >
-                          Gán BS
-                        </Button>
-                      ) : (
-                        <>
-                          {appointment.status === "Pending" && (
-                            <>
-                              <Button
-                                size="sm"
-                                color="success"
-                                variant="flat"
-                                onPress={() => handleApprove(appointment.id)}
-                                isDisabled={processingId === appointment.id}
-                                isLoading={processingId === appointment.id}
-                              >
-                                Xác nhận
-                              </Button>
-                              <Button
-                                size="sm"
-                                color="danger"
-                                variant="flat"
-                                onPress={() => openCancelModal(appointment.id)}
-                                isDisabled={processingId === appointment.id}
-                              >
-                                Hủy
-                              </Button>
-                            </>
-                          )}
-                          {appointment.status === "Approved" && (
+                      {(() => {
+                        const isOnLeave = isDoctorOnLeave(appointment);
+                        if (isOnLeave) {
+                          return shouldShowReassignButton(appointment, isOnLeave) ? (
+                            <Button
+                              size="sm"
+                              color="secondary"
+                              variant="flat"
+                              onPress={() => openReassignModal(appointment)}
+                              isDisabled={processingId === appointment.id}
+                              startContent={<UserPlusIcon className="w-4 h-4" />}
+                            >
+                              Gán BS
+                            </Button>
+                          ) : null;
+                        }
+
+                        return (
+                          <>
+                            {appointment.status === "Pending" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  color="success"
+                                  variant="flat"
+                                  onPress={() => handleApprove(appointment.id)}
+                                  isDisabled={processingId === appointment.id}
+                                  isLoading={processingId === appointment.id}
+                                >
+                                  Xác nhận
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  color="danger"
+                                  variant="flat"
+                                  onPress={() => openCancelModal(appointment.id)}
+                                  isDisabled={processingId === appointment.id}
+                                >
+                                  Hủy
+                                </Button>
+                              </>
+                            )}
+                            {appointment.status === "Approved" && (
                               <>
                                 <Button
                                   size="sm"
@@ -1266,48 +1313,49 @@ const AllAppointments = () => {
                                   No Show
                                 </Button>
                               </>
-                          )}
-                          {appointment.status === "CheckedIn" && (
-                            <Button
-                              size="sm"
-                              color="warning"
-                              variant="flat"
-                              onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
-                              isDisabled={processingId === appointment.id}
-                              isLoading={processingId === appointment.id}
-                            >
-                              No Show
-                            </Button>
-                          )}
-                          {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && (
-                            <Button
-                              size="sm"
-                              color="primary"
-                              variant="flat"
-                              onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                              isDisabled={processingId === appointment.id}
-                              isLoading={processingId === appointment.id}
-                            >
-                              Check-in
-                            </Button>
-                          )}
-                          {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) || 
-                           (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
-                            <div className="flex gap-2">
-                              {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
-                                <Button
-                                  size="sm"
-                                  color="primary"
-                                  variant="flat"
-                                  onPress={() => openDetailModal(appointment.id)}
-                                >
-                                  Xem chi tiết
-                                </Button>
-                              ) : null}
-                            </div>
-                          )}
-                        </>
-                      )}
+                            )}
+                            {appointment.status === "CheckedIn" && (
+                              <Button
+                                size="sm"
+                                color="warning"
+                                variant="flat"
+                                onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
+                                isDisabled={processingId === appointment.id}
+                                isLoading={processingId === appointment.id}
+                              >
+                                No Show
+                              </Button>
+                            )}
+                            {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && (
+                              <Button
+                                size="sm"
+                                color="primary"
+                                variant="flat"
+                                onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                                isDisabled={processingId === appointment.id}
+                                isLoading={processingId === appointment.id}
+                              >
+                                Check-in
+                              </Button>
+                            )}
+                            {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) ||
+                              (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
+                              <div className="flex gap-2">
+                                {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
+                                  <Button
+                                    size="sm"
+                                    color="primary"
+                                    variant="flat"
+                                    onPress={() => openDetailModal(appointment.id)}
+                                  >
+                                    Xem chi tiết
+                                  </Button>
+                                ) : null}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                 </TableRow>

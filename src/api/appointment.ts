@@ -183,8 +183,21 @@ export const appointmentApi = {
     date: string,
   ): Promise<ApiResponse<{
     date: string;
-    availableSlots: { startTime: string; endTime: string; displayTime?: string }[];
-    totalSlots: number;
+    serviceName: string;
+    serviceDuration: number;
+    doctorName: string;
+    doctorScheduleId: string | null;
+    scheduleRanges: Array<{
+      shift: string;
+      shiftDisplay: string;
+      startTime: string;
+      endTime: string;
+      displayRange: string;
+      availableGaps: Array<{ start: string; end: string; display?: string }>;
+    }>;
+    availableGaps: Array<{ start: string; end: string; display?: string }>;
+    hasDoctorSchedule: boolean;
+    message?: string | null;
   }>> => {
     const query = new URLSearchParams({ date }).toString();
     return authenticatedApiCall(`/appointments/${appointmentId}/reschedule/slots?${query}`, {

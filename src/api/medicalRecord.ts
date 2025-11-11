@@ -35,11 +35,29 @@ export interface MedicalRecord {
   updatedAt: string;
 }
 
+export interface MedicalRecordRolePermission {
+  canEdit: boolean;
+  reason?: string | null;
+}
+
+export interface MedicalRecordPermissions {
+  appointmentStatus: string;
+  recordStatus: string;
+  nurse: MedicalRecordRolePermission;
+  doctor: MedicalRecordRolePermission;
+}
+
+export interface MedicalRecordResponsePayload {
+  record: MedicalRecord;
+  display: MedicalRecordDisplay;
+  permissions?: MedicalRecordPermissions;
+}
+
 export const medicalRecordApi = {
   getOrCreateByAppointment: async (
     appointmentId: string,
     userRole?: string
-  ): Promise<ApiResponse<{ record: MedicalRecord; display: MedicalRecordDisplay }>> => {
+  ): Promise<ApiResponse<MedicalRecordResponsePayload>> => {
     // Sử dụng endpoint phù hợp với role (backend check role với chữ cái đầu hoa)
     const endpoint = userRole?.toLowerCase() === 'doctor' 
       ? `/doctor/medical-records/${appointmentId}`
@@ -57,6 +75,27 @@ export const medicalRecordApi = {
     return authenticatedApiCall(`/nurse/medical-records/${appointmentId}/nurse-note`, {
       method: "PATCH",
       body: JSON.stringify({ nurseNote }),
+    });
+  },
+
+  updateMedicalRecordForNurse: async (
+    appointmentId: string,
+    updateData: {
+      diagnosis?: string;
+      conclusion?: string;
+      prescription?: {
+        medicine?: string;
+        dosage?: string;
+        duration?: string;
+      };
+      nurseNote?: string;
+      patientAge?: number | null;
+      address?: string;
+    }
+  ): Promise<ApiResponse<MedicalRecord>> => {
+    return authenticatedApiCall(`/nurse/medical-records/${appointmentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(updateData),
     });
   },
 
@@ -94,11 +133,27 @@ export const medicalRecordApi = {
     });
   },
 
+  getActiveServicesForNurse: async (): Promise<ApiResponse<Array<{ _id: string; serviceName: string; price: number; category?: string }>>> => {
+    return authenticatedApiCall(`/nurse/services`, {
+      method: "GET",
+    });
+  },
+
   updateAdditionalServicesForDoctor: async (
     appointmentId: string,
     serviceIds: string[]
   ): Promise<ApiResponse<MedicalRecord>> => {
     return authenticatedApiCall(`/doctor/medical-records/${appointmentId}/additional-services`, {
+      method: "PATCH",
+      body: JSON.stringify({ serviceIds }),
+    });
+  },
+
+  updateAdditionalServicesForNurse: async (
+    appointmentId: string,
+    serviceIds: string[]
+  ): Promise<ApiResponse<MedicalRecord>> => {
+    return authenticatedApiCall(`/nurse/medical-records/${appointmentId}/additional-services`, {
       method: "PATCH",
       body: JSON.stringify({ serviceIds }),
     });

@@ -33,6 +33,36 @@ export interface GetAvailableDoctorsResponse {
   message?: string;
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:9999/api";
+
+const fetchJsonWithCacheBypass = async (
+  endpoint: string,
+): Promise<GetAvailableDoctorsResponse> => {
+  const doFetch = async (url: string) =>
+    fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+
+  let response = await doFetch(`${API_BASE}${endpoint}`);
+
+  if (response.status === 304) {
+    const separator = endpoint.includes("?") ? "&" : "?";
+    const retryEndpoint = `${endpoint}${separator}_cb=${Date.now()}`;
+
+    response = await doFetch(`${API_BASE}${retryEndpoint}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return (await response.json()) as GetAvailableDoctorsResponse;
+};
+
 export const availableDoctorApi = {
   /**
    * ⭐ NEW: Lấy danh sách bác sĩ có khung giờ rảnh vào một ngày cụ thể
@@ -44,6 +74,7 @@ export const availableDoctorApi = {
   ): Promise<GetAvailableDoctorsResponse> => {
     try {
       const queryParams = new URLSearchParams();
+
       queryParams.append("serviceId", serviceId);
       queryParams.append("date", date);
 
@@ -52,24 +83,10 @@ export const availableDoctorApi = {
         ? `/available-slots/doctors/list?${query}`
         : "/available-slots/doctors/list";
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      const data = await fetchJsonWithCacheBypass(endpoint);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: GetAvailableDoctorsResponse = await response.json();
       return data;
     } catch (error: any) {
-      console.error("Error fetching available doctors by date:", error);
       throw error;
     }
   },
@@ -97,25 +114,10 @@ export const availableDoctorApi = {
         : "/available-slots/doctors/time-slot";
 
       // Gọi trực tiếp fetch (giống serviceApi)
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: GetAvailableDoctorsResponse = await response.json();
+      const data = await fetchJsonWithCacheBypass(endpoint);
 
       return data;
     } catch (error: any) {
-      console.error("Error fetching available doctors:", error);
       throw error;
     }
   },
