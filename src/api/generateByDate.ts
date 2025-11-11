@@ -75,7 +75,7 @@ export const generateByDateApi = {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
         {
           method: "GET",
           headers,

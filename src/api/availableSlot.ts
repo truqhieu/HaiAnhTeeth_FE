@@ -122,7 +122,7 @@ export const availableSlotApi = {
       const endpoint = query ? `/available-slots?${query}` : "/available-slots";
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
         {
           method: "GET",
           headers: {
@@ -170,7 +170,7 @@ export const getAvailableStartTimes = async (
     const endpoint = `/available-slots/start-times?${query}`;
 
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
       {
         method: "GET",
         headers: {
@@ -218,7 +218,7 @@ export const checkStartTimeAvailability = async (
     const endpoint = `/available-slots/check-start-time?${query}`;
 
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
       {
         method: "GET",
         headers: {
@@ -265,7 +265,7 @@ export const getAvailableTimeRange = async (
     const endpoint = `/available-slots/time-range?${query}`;
 
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
       {
         method: "GET",
         headers: {
@@ -313,7 +313,7 @@ export const validateAndCheckStartTime = async (
     const endpoint = `/available-slots/validate-time?${query}`;
 
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
       {
         method: "GET",
         headers: {
@@ -375,7 +375,7 @@ export const getDoctorScheduleRange = async (
     }
 
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
       {
         method: "GET",
         headers,
@@ -421,7 +421,7 @@ export const validateAppointmentTime = async (
     const endpoint = `/available-slots/validate-appointment-time?${query}`;
 
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
+      `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
       {
         method: "GET",
         headers: {
