@@ -16,8 +16,6 @@ import {
   CalendarIcon,
   CheckCircleIcon,
   XCircleIcon,
-  UserPlusIcon,
-  DocumentArrowDownIcon,
   CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import DatePicker from "react-datepicker";
@@ -88,15 +86,6 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [startDate, endDate]);
 
-  const handleExport = () => {
-    // TODO: Implement export functionality khi có API
-    toast.success("Đang xuất dữ liệu...", {
-      icon: "📊",
-      duration: 2000,
-    });
-    console.log("Exporting data from", startDate, "to", endDate);
-  };
-
   // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -148,15 +137,6 @@ const Dashboard = () => {
                 />
               </div>
             </div>
-
-            {/* Export Button */}
-            <button
-              onClick={handleExport}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#39BDCC] text-white rounded-lg hover:bg-[#2da5b3] transition-all duration-200 shadow-sm hover:shadow-md font-medium text-sm"
-            >
-              <DocumentArrowDownIcon className="w-5 h-5" />
-              <span>Xuất Báo Cáo</span>
-            </button>
           </div>
         </div>
       </div>
@@ -171,17 +151,22 @@ const Dashboard = () => {
       {/* Summary Cards */}
       {!isLoading && dashboardData && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             {/* Total Appointments */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-gray-600 mb-1">
                     Tổng ca khám
                   </p>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className="text-3xl font-bold text-gray-900 mb-2">
                     {dashboardData.appointments.total.toLocaleString()}
                   </p>
+                  <div className="flex items-center">
+                    <span className="text-xs text-gray-500 font-medium">
+                      Trong khoảng thời gian đã chọn
+                    </span>
+                  </div>
                 </div>
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <CalendarIcon className="w-6 h-6 text-blue-600" />
@@ -233,28 +218,6 @@ const Dashboard = () => {
                 </div>
                 <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                   <XCircleIcon className="w-6 h-6 text-red-600" />
-                </div>
-              </div>
-            </div>
-
-            {/* New Patients */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    Bệnh nhân mới
-                  </p>
-                  <p className="text-3xl font-bold text-gray-900 mb-2">
-                    {dashboardData.patients.newPatients.toLocaleString()}
-                  </p>
-                  <div className="flex items-center">
-                    <span className="text-xs text-gray-500 font-medium">
-                      Tổng: {dashboardData.patients.total.toLocaleString()} bệnh nhân
-                    </span>
-                  </div>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <UserPlusIcon className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
             </div>

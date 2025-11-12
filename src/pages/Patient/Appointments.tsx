@@ -667,7 +667,9 @@ const Appointments = () => {
             <Table className="w-full table-fixed min-w-[1200px]" aria-label="Appointments table">
             <TableHeader columns={columns}>
               {(column) => (
-                  <TableColumn key={column.key} className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                  <TableColumn key={column.key} className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                    column.key === 'actions' ? 'text-center w-64' : 'text-left'
+                  } ${
                     column.key === 'date' ? 'w-32' :
                     column.key === 'startTime' ? 'w-24' :
                     column.key === 'endTime' ? 'w-24' :
@@ -793,8 +795,8 @@ const Appointments = () => {
                       {getStatusText(appointment)}
                     </span>
                   </TableCell>
-                    <TableCell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium w-64">
-                      <div className="flex items-center justify-end space-x-2">
+                    <TableCell className="px-4 py-4 w-64">
+                      <div className="flex items-center justify-center gap-2">
                         {/* Xác nhận đổi bác sĩ - Ưu tiên hiển thị */}
                         {appointment.replacedDoctorName && appointment.confirmDeadline && (
                           <>

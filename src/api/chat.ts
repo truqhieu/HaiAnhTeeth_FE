@@ -4,19 +4,36 @@ export interface Doctor {
   _id: string;
   fullName: string;
   email: string;
+  specialization?: string;
   avatar?: string;
-  specialty?: string;
+  appointmentId?: string;
+  appointmentDate?: string;
 }
 
 export interface Message {
   _id: string;
-  conversationId: string;
-  senderId: string;
-  senderName: string;
-  senderRole: string;
+  senderId: {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
+  receiverId: {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
+  appointmentId: {
+    _id: string;
+    appointmentDate?: string;
+    status?: string;
+  } | string;
   content: string;
-  timestamp: Date;
-  isRead: boolean;
+  status: string;
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Conversation {
@@ -66,8 +83,9 @@ export const chatApi = {
 
   /**
    * Lấy tin nhắn theo appointmentId
+   * BE returns: { data: { messages: [], medicalRecord: {}, appointment: {} } }
    */
-  getMessages: async (appointmentId: string): Promise<ApiResponse<Message[]>> => {
+  getMessages: async (appointmentId: string): Promise<ApiResponse<any>> => {
     return authenticatedApiCall(`/chat/messages?appointmentId=${appointmentId}`, {
       method: "GET",
     });

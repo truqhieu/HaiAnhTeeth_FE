@@ -25,7 +25,6 @@ import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  NewspaperIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { blogApi, type Blog } from "@/api/blog";
@@ -192,8 +191,7 @@ const BlogManagement = () => {
     <div className="p-6 bg-gray-50 min-h-full">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <NewspaperIcon className="w-8 h-8 text-blue-600" />
+        <div className="mb-2">
           <h1 className="text-3xl font-bold text-gray-900">Quản lý Blog</h1>
         </div>
         <p className="text-gray-600 mt-2">

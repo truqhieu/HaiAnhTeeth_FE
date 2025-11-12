@@ -154,7 +154,7 @@ const MedicalRecords = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#39BDCC] to-[#2ca6b5] flex items-center justify-center">
               <DocumentTextIcon className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -195,7 +195,7 @@ const MedicalRecords = () => {
         {/* All Records List */}
         {filteredRecords.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4">
+            <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] px-6 py-4">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <CalendarIcon className="w-6 h-6" />
                 Tất cả hồ sơ khám bệnh
@@ -209,55 +209,47 @@ const MedicalRecords = () => {
                 {filteredRecords.map((record) => (
                   <div
                     key={record._id}
-                    className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer bg-white hover:border-blue-300"
+                    className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer bg-white hover:border-[#39BDCC]"
                     onClick={() => navigate(`/patient/medical-record/${record.appointmentId}`)}
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {record.serviceName}
-                          </h3>
-                          <span className="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                            {formatDate(record.date)}
-                          </span>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                          {record.serviceName}
+                        </h3>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <CalendarIcon className="w-4 h-4 text-[#39BDCC]" />
+                            <span className="font-medium text-gray-700">Ngày khám:</span>
+                            <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-[#39BDCC] text-white">
+                              {formatDate(record.date)}
+                            </span>
+                          </div>
                           {record.startTime && record.endTime && (
-                            <span className="px-3 py-1 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800 flex items-center gap-1">
-                              <ClockIcon className="w-3 h-3" />
-                              {record.startTime} - {record.endTime}
-                            </span>
+                            <div className="flex items-center gap-2 text-sm">
+                              <ClockIcon className="w-4 h-4 text-gray-500" />
+                              <span className="font-medium text-gray-700">Giờ khám:</span>
+                              <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-gray-100 text-gray-700">
+                                {record.startTime} - {record.endTime}
+                              </span>
+                            </div>
                           )}
-                        </div>
-                        <p className="text-sm text-gray-600 mb-2">
-                          <span className="font-medium">Bác sĩ:</span> {record.doctorName}
-                        </p>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {record.hasDiagnosis && (
-                            <span className="px-2 py-1 text-xs font-medium rounded bg-green-100 text-green-800">
-                              ✓ Có chẩn đoán
-                            </span>
-                          )}
-                          {record.hasPrescription && (
-                            <span className="px-2 py-1 text-xs font-medium rounded bg-orange-100 text-orange-800">
-                              💊 Có đơn thuốc
-                            </span>
-                          )}
-                          {record.conclusion && (
-                            <span className="px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-800">
-                              📋 Có kết luận
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2 text-sm">
+                            <DocumentTextIcon className="w-4 h-4 text-gray-500" />
+                            <span className="font-medium text-gray-700">Bác sĩ:</span>
+                            <span className="text-gray-900">{record.doctorName}</span>
+                          </div>
                         </div>
                       </div>
                       <button
-                        className="ml-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="ml-4 px-4 py-2 text-sm font-medium text-[#39BDCC] hover:text-[#2ca6b5] hover:bg-[#39BDCC]/10 rounded-lg transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate(`/patient/medical-record/${record.appointmentId}`);
                         }}
                       >
                         Xem chi tiết →
-                </button>
+                      </button>
                     </div>
                   </div>
                 ))}

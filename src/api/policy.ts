@@ -1,77 +1,76 @@
-import { authenticatedApiCall, ApiResponse } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse } from "./index";
 
 export interface Policy {
   _id: string;
   title: string;
   description: string;
   active: boolean;
-  status: string;
+  status: "Active" | "Inactive" | "Draft";
   createdAt: string;
   updatedAt: string;
 }
 
+export interface CreatePolicyData {
+  title: string;
+  description: string;
+  active?: boolean;
+  status?: "Active" | "Inactive" | "Draft";
+}
+
+export interface UpdatePolicyData {
+  title?: string;
+  description?: string;
+  active?: boolean;
+  status?: "Active" | "Inactive" | "Draft";
+}
+
+export interface PolicyResponse extends ApiResponse {
+  data?: Policy | Policy[];
+}
+
 export const policyApi = {
   /**
-   * Lấy tất cả policies đang hoạt động (public API)
-   * GET /api/policies
+   * Lấy danh sách policies đang active (public)
    */
-  getActivePolicies: async (): Promise<ApiResponse<Policy[]>> => {
-    return authenticatedApiCall("/policies", {
-      method: "GET",
-    });
+  getActivePolicies: async (): Promise<PolicyResponse> => {
+    return await apiCall("/policies");
   },
 
   /**
-   * Lấy tất cả policies (bao gồm cả inactive) - cần authentication
-   * GET /api/policies/all
+   * Lấy tất cả policies (cần auth)
    */
-  getAllPolicies: async (): Promise<ApiResponse<Policy[]>> => {
-    return authenticatedApiCall("/policies/all", {
-      method: "GET",
-    });
+  getAllPolicies: async (): Promise<PolicyResponse> => {
+    return await authenticatedApiCall("/policies/all");
   },
 
   /**
-   * Tạo policy mới - cần authentication
-   * POST /api/policies
+   * Tạo policy mới
    */
-  createPolicy: async (data: {
-    title: string;
-    description: string;
-    active?: boolean;
-    status?: string;
-  }): Promise<ApiResponse<Policy>> => {
-    return authenticatedApiCall("/policies", {
+  createPolicy: async (data: CreatePolicyData): Promise<PolicyResponse> => {
+    return await authenticatedApiCall("/policies", {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
 
   /**
-   * Cập nhật policy - cần authentication
-   * PUT /api/policies/:id
+   * Cập nhật policy
    */
   updatePolicy: async (
     id: string,
-    data: {
-      title?: string;
-      description?: string;
-      active?: boolean;
-      status?: string;
-    }
-  ): Promise<ApiResponse<Policy>> => {
-    return authenticatedApiCall(`/policies/${id}`, {
+    data: UpdatePolicyData
+  ): Promise<PolicyResponse> => {
+    return await authenticatedApiCall(`/policies/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   },
 
   /**
-   * Xóa policy - cần authentication
-   * DELETE /api/policies/:id
+   * Xóa policy
    */
-  deletePolicy: async (id: string): Promise<ApiResponse<any>> => {
-    return authenticatedApiCall(`/policies/${id}`, {
+  deletePolicy: async (id: string): Promise<PolicyResponse> => {
+    return await authenticatedApiCall(`/policies/${id}`, {
       method: "DELETE",
     });
   },

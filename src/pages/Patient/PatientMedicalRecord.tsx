@@ -69,7 +69,7 @@ const PatientMedicalRecord: React.FC = () => {
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#39BDCC] to-[#2ca6b5] flex items-center justify-center shadow-md">
                 <DocumentTextIcon className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -88,7 +88,7 @@ const PatientMedicalRecord: React.FC = () => {
               className="border border-gray-300"
             >
               <ArrowLeftIcon className="w-4 h-4 mr-2" />
-              Quay lại danh sách
+              Quay lại
             </Button>
           </div>
         </div>
@@ -97,7 +97,7 @@ const PatientMedicalRecord: React.FC = () => {
         <Card className="bg-white shadow-lg border border-gray-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#39BDCC] to-[#2ca6b5] flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-white" />
             </div>
             <h3 className="text-lg font-bold text-gray-900">Thông tin bệnh nhân</h3>

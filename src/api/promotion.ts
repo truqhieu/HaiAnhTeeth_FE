@@ -8,7 +8,8 @@ export interface Promotion {
   discountType: "Percent" | "Fix";
   discountValue: number;
   applyToAll: boolean;
-  applicableServices?: string[];
+  applicableServices?: string[]; // Deprecated - use services instead
+  services?: any[]; // Backend returns this field with populated service data
   startDate: string;
   endDate: string;
   status: "Upcoming" | "Active" | "Expired";

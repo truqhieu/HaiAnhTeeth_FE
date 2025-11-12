@@ -14,6 +14,7 @@ import {
   CpuChipIcon,
   NewspaperIcon,
   ChartBarIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -156,6 +157,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       href: "/manager/blogs",
       icon: NewspaperIcon,
       current: location.pathname === "/manager/blogs",
+    },
+    {
+      name: "Quản lý chính sách",
+      href: "/manager/policies",
+      icon: ClipboardDocumentListIcon,
+      current: location.pathname === "/manager/policies",
     },
   ];
 
