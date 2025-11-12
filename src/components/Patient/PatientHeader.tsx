@@ -7,7 +7,6 @@ import {
   DocumentTextIcon,
   ExclamationTriangleIcon,
   ArrowRightOnRectangleIcon,
-  ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 import {
   Button,
@@ -52,23 +51,6 @@ const PatientHeader: React.FC = () => {
 
           {/* Right: Patient actions */}
           <div className="flex items-center space-x-4">
-            {/* Chat icon */}
-            <div className="relative">
-              <Button
-                isIconOnly
-                className="text-white hover:bg-white/10 transition-colors"
-                variant="light"
-                size="sm"
-                onClick={() => navigate("/patient/chat")}
-              >
-                <ChatBubbleLeftRightIcon className="w-6 h-6" />
-              </Button>
-              {/* Mock unread chat count */}
-              {3 > 0 && (
-                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#39BDCC]"></span>
-              )}
-            </div>
-
             {/* Notification bell */}
             <div className="relative">
               <NotificationBell iconClassName="w-6 h-6 text-white" />

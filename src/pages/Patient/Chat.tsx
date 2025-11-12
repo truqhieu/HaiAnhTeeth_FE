@@ -7,11 +7,14 @@ import {
   CardBody,
   Avatar,
   Spinner,
+  Accordion,
+  AccordionItem,
 } from "@heroui/react";
 import {
   PaperAirplaneIcon,
   ChatBubbleLeftRightIcon,
   ArrowLeftIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { chatApi, appointmentApi } from "@/api";
@@ -38,6 +41,38 @@ interface Message {
   read?: boolean;
 }
 
+// Interface cho medical record
+interface MedicalRecord {
+  _id: string;
+  patient: {
+    fullName: string;
+    email: string;
+    phone?: string;
+    age?: number;
+    address?: string;
+  };
+  doctor: {
+    fullName: string;
+    email: string;
+    specialization?: string;
+  };
+  medicalInfo: {
+    symptoms: string;
+    diagnosis: string;
+    conclusion: string;
+    nurseNote: string;
+  };
+  prescription: {
+    medicine: string;
+    dosage: string;
+    duration: string;
+  };
+  followUp: {
+    date: string | null;
+  };
+  createdAt: string;
+}
+
 // Interface cho thông tin bác sĩ
 interface DoctorInfo {
   _id: string;
@@ -59,6 +94,7 @@ const Chat = () => {
   const appointmentIdFromUrl = searchParams.get("appointmentId");
   
   const [messages, setMessages] = useState<Message[]>([]);
+  const [medicalRecord, setMedicalRecord] = useState<MedicalRecord | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -69,7 +105,6 @@ const Chat = () => {
   useEffect(() => {
     if (!user?._id) return;
 
-    // Connect to Socket.IO server
     const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:9999';
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
@@ -80,7 +115,6 @@ const Chat = () => {
 
     socket.on('connect', () => {
       console.log('🔌 [Socket] Connected:', socket.id);
-      // Join room with userId
       socket.emit('join-user-room', user._id);
       console.log('📱 [Socket] Joined room for user:', user._id);
     });
@@ -93,14 +127,13 @@ const Chat = () => {
     socket.on('new-message', (data: any) => {
       console.log('📨 [Socket] New message received:', data);
       
-      const incomingMessage = data.message as Message;
-      // appointmentId might be string or object
-      const incomingAppointmentId = typeof incomingMessage.appointmentId === 'string'
-        ? incomingMessage.appointmentId
-        : (incomingMessage as any).appointmentId?._id;
+      const incomingMessage = data.message as any;
+      const msgAppointmentId = typeof incomingMessage.appointmentId === 'object' 
+        ? incomingMessage.appointmentId._id 
+        : incomingMessage.appointmentId;
       
       // Update messages if it's for current appointment
-      if (appointmentIdFromUrl && incomingAppointmentId === appointmentIdFromUrl) {
+      if (appointmentIdFromUrl && msgAppointmentId === appointmentIdFromUrl) {
         setMessages(prev => [...prev, incomingMessage]);
         toast.success(`Tin nhắn mới từ ${data.senderName}`, {
           icon: '💬',
@@ -113,7 +146,6 @@ const Chat = () => {
       console.error('❌ [Socket] Connection error:', error);
     });
 
-    // Cleanup on unmount
     return () => {
       console.log('🔌 [Socket] Cleaning up...');
       socket.disconnect();
@@ -121,14 +153,15 @@ const Chat = () => {
   }, [user?._id, appointmentIdFromUrl]);
 
   useEffect(() => {
-    // Nếu không có params, redirect về appointments
     if (!doctorIdFromUrl || !appointmentIdFromUrl) {
       toast.error("Vui lòng chọn ca khám để chat");
       navigate("/patient/appointments");
       return;
     }
     
-    fetchConversationData();
+    if (appointmentIdFromUrl) {
+      fetchConversationData();
+    }
   }, [doctorIdFromUrl, appointmentIdFromUrl]);
 
   useEffect(() => {
@@ -145,22 +178,17 @@ const Chat = () => {
       console.log("🔍 [Chat] Fetching conversation data...");
       console.log("📋 [Chat] Params:", { doctorIdFromUrl, appointmentIdFromUrl });
       
-      // 1. Lấy thông tin appointment (để hiển thị thông tin bác sĩ)
+      // 1. Lấy thông tin appointment
       const aptResponse = await appointmentApi.getMyAppointments({ 
         includePendingPayment: false 
       });
-      
-      console.log("📋 [Chat] Appointments response:", aptResponse);
       
       if (aptResponse.success && aptResponse.data) {
         const appointment = aptResponse.data.find(
           (apt: any) => apt._id === appointmentIdFromUrl
         );
         
-        console.log("🔍 [Chat] Found appointment:", appointment);
-        
         if (!appointment) {
-          console.error("❌ [Chat] Appointment not found");
           toast.error("Không tìm thấy ca khám");
           navigate("/patient/appointments");
           return;
@@ -168,7 +196,6 @@ const Chat = () => {
         
         // Kiểm tra status
         if (!["Completed", "Finalized"].includes(appointment.status)) {
-          console.error("❌ [Chat] Appointment status not Completed/Finalized:", appointment.status);
           toast.error("Chỉ có thể chat với ca khám đã hoàn thành");
           navigate("/patient/appointments");
           return;
@@ -178,42 +205,60 @@ const Chat = () => {
         
         // Lấy thông tin doctor
         const doctor = appointment.replacedDoctorUserId || appointment.doctorUserId;
-        console.log("👨‍⚕️ [Chat] Doctor data:", doctor);
         
         if (doctor) {
-          const doctorInfo = {
+          setDoctorInfo({
             _id: doctor._id,
             fullName: doctor.fullName,
             email: doctor.email,
             specialization: doctor.specialization,
             avatar: doctor.avatar
-          };
-          console.log("✅ [Chat] Setting doctor info:", doctorInfo);
-          setDoctorInfo(doctorInfo);
-        } else {
-          console.error("❌ [Chat] No doctor data found");
+          });
         }
-      } else {
-        console.error("❌ [Chat] Failed to fetch appointments");
       }
       
-      // 2. Lấy tin nhắn
+      // 2. Lấy tin nhắn và medical record từ API
       try {
-        console.log("📨 [Chat] Fetching messages for appointmentId:", appointmentIdFromUrl);
-        const msgResponse = await chatApi.getMessages(appointmentIdFromUrl);
+        const msgResponse = await chatApi.getMessages(appointmentIdFromUrl!);
         
-        console.log("📨 [Chat] Messages response:", msgResponse);
+        console.log("📨 [Chat] Full response:", msgResponse);
+        console.log("📨 [Chat] Response type:", typeof msgResponse);
+        console.log("📨 [Chat] Response keys:", Object.keys(msgResponse));
         
-        if (msgResponse.success && msgResponse.data) {
-          console.log("✅ [Chat] Messages loaded:", msgResponse.data.length, "messages");
-          setMessages(msgResponse.data);
-        } else {
-          console.log("⚠️ [Chat] No messages data in response");
-          setMessages([]);
+        if (msgResponse.success) {
+          // Check if data exists
+          console.log("📋 [Chat] msgResponse.data:", msgResponse.data);
+          console.log("📋 [Chat] data type:", typeof msgResponse.data);
+          console.log("📋 [Chat] data keys:", msgResponse.data ? Object.keys(msgResponse.data) : 'null');
+          
+          const responseData = msgResponse.data;
+          
+          if (responseData) {
+            // Lấy messages - try multiple paths
+            const messagesData = responseData.messages || responseData.data?.messages || responseData;
+            console.log("✅ [Chat] Messages data:", messagesData);
+            console.log("✅ [Chat] Messages length:", Array.isArray(messagesData) ? messagesData.length : 'not array');
+            setMessages(Array.isArray(messagesData) ? messagesData : []);
+            
+            // Lấy medical record - try multiple paths
+            const medicalRecordData = responseData.medicalRecord || responseData.data?.medicalRecord;
+            console.log("🏥 [Chat] Medical record check:", {
+              hasMedicalRecord: !!medicalRecordData,
+              medicalRecordKeys: medicalRecordData ? Object.keys(medicalRecordData) : 'none',
+              fullData: medicalRecordData
+            });
+            
+            if (medicalRecordData) {
+              console.log("✅ [Chat] Setting medical record!");
+              setMedicalRecord(medicalRecordData);
+            } else {
+              console.log("⚠️ [Chat] No medical record found");
+              setMedicalRecord(null);
+            }
+          }
         }
       } catch (msgError: any) {
-        // Nếu chưa có tin nhắn nào thì OK, không cần báo lỗi
-        console.log("ℹ️ [Chat] No messages yet or error loading messages:", msgError.message);
+        console.log("ℹ️ [Chat] No messages yet:", msgError.message);
         setMessages([]);
       }
       
@@ -231,27 +276,17 @@ const Chat = () => {
     try {
       setSendingMessage(true);
       
-      console.log("📤 [Chat] Sending message:", {
-        receiverId: doctorIdFromUrl,
-        appointmentId: appointmentIdFromUrl,
-        content: newMessage.trim()
-      });
-      
       const response = await chatApi.sendMessage({
         receiverId: doctorIdFromUrl,
         appointmentId: appointmentIdFromUrl,
         content: newMessage.trim()
       });
       
-      console.log("📤 [Chat] Send message response:", response);
-      
       if (response.success && response.data) {
-        console.log("✅ [Chat] Message sent successfully");
         setMessages([...messages, response.data]);
         setNewMessage("");
         toast.success("Đã gửi tin nhắn");
       } else {
-        console.error("❌ [Chat] Send message failed:", response.message);
         toast.error(response.message || "Không thể gửi tin nhắn");
       }
       
@@ -313,7 +348,7 @@ const Chat = () => {
               Không tìm thấy thông tin bác sĩ
             </p>
             <Button
-              color="primary"
+              className="bg-blue-600 text-white hover:bg-blue-700"
               onPress={() => navigate("/patient/appointments")}
             >
               Quay lại danh sách ca khám
@@ -326,7 +361,7 @@ const Chat = () => {
 
   return (
     <div className="w-full bg-gray-50 min-h-screen">
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Button
@@ -341,117 +376,241 @@ const Chat = () => {
           <h1 className="text-3xl font-bold text-gray-800">Chat với bác sĩ</h1>
         </div>
 
-        {/* Chat Container */}
-        <Card className="shadow-lg border-0 overflow-hidden h-[calc(100vh-200px)]">
-          <CardBody className="p-0 flex flex-col h-full">
-            {/* Doctor Info Header */}
-            <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white px-4 py-3 flex items-center gap-3 shadow-md">
-              <Avatar
-                name={doctorInfo.fullName}
-                src={doctorInfo.avatar}
-                className="ring-2 ring-white/50 shadow-lg"
-                size="md"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-lg truncate">BS. {doctorInfo.fullName}</p>
-                {doctorInfo.specialization && (
-                  <p className="text-sm text-blue-50 flex items-center gap-1 truncate">
-                    <span className="w-1.5 h-1.5 bg-blue-200 rounded-full flex-shrink-0"></span>
-                    {doctorInfo.specialization}
-                  </p>
-                )}
-              </div>
-              {appointmentInfo && (
-                <div className="text-xs text-blue-100">
-                  <p>Ca khám: {new Date(appointmentInfo.timeslotId?.startTime).toLocaleDateString("vi-VN")}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Messages */}
-            <div 
-              ref={chatContainerRef}
-              className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white"
-            >
-              {messages.length === 0 ? (
-                <div className="text-center mt-16">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <ChatBubbleLeftRightIcon className="w-10 h-10 text-[#39BDCC]" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Medical Record Panel - Left side */}
+          {medicalRecord && (
+            <Card className="shadow-lg border-0 lg:col-span-1 overflow-hidden h-[calc(100vh-200px)]">
+              <CardBody className="p-0 flex flex-col h-full">
+                <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white px-4 py-3 shadow-md min-h-[72px] flex items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                      <ClipboardDocumentListIcon className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-semibold text-lg">Hồ sơ khám bệnh</h3>
                   </div>
-                  <p className="text-gray-600 font-medium">Chưa có tin nhắn nào</p>
-                  <p className="text-sm text-gray-400 mt-1">Hãy bắt đầu cuộc trò chuyện!</p>
                 </div>
-              ) : (
-                <>
-                  {messages.map((message, index) => {
-                    const isCurrentUser = message.senderId._id === user?._id;
-                    return (
-                      <div
-                        key={message._id || index}
-                        className={`mb-4 flex ${
-                          isCurrentUser ? "justify-end" : "justify-start"
-                        }`}
-                      >
-                        <div
-                          className={`max-w-[70%] ${
-                            isCurrentUser ? "order-2" : "order-1"
-                          } animate-fade-in`}
-                        >
-                          <div
-                            className={`rounded-2xl p-3.5 shadow-sm transition-all duration-200 hover:shadow-md ${
-                              isCurrentUser
-                                ? "bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white"
-                                : "bg-white text-gray-800 border border-gray-100"
-                            }`}
-                          >
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                              {message.content}
-                            </p>
+
+                <div className="p-4 overflow-y-auto flex-1 bg-gradient-to-b from-gray-50 to-white">
+                  <Accordion 
+                    defaultExpandedKeys={["1", "2", "3"]}
+                    selectionMode="multiple"
+                    variant="splitted"
+                    className="px-0"
+                  >
+                    {/* Thông tin cơ bản */}
+                    <AccordionItem
+                      key="1"
+                      title={
+                        <span className="font-semibold text-gray-800">
+                          Thông tin bệnh nhân
+                        </span>
+                      }
+                    >
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-600">Họ tên:</span>
+                          <p className="text-gray-900">{medicalRecord.patient.fullName}</p>
+                        </div>
+                        {medicalRecord.patient.age && (
+                          <div>
+                            <span className="font-medium text-gray-600">Tuổi:</span>
+                            <p className="text-gray-900">{medicalRecord.patient.age}</p>
                           </div>
-                          <p
-                            className={`text-xs text-gray-400 mt-1.5 px-1 ${
-                              isCurrentUser ? "text-right" : "text-left"
-                            }`}
-                          >
-                            {formatTime(message.createdAt)}
+                        )}
+                        {medicalRecord.patient.phone && (
+                          <div>
+                            <span className="font-medium text-gray-600">SĐT:</span>
+                            <p className="text-gray-900">{medicalRecord.patient.phone}</p>
+                          </div>
+                        )}
+                      </div>
+                    </AccordionItem>
+
+                    {/* Thông tin y tế */}
+                    <AccordionItem
+                      key="2"
+                      title={
+                        <span className="font-semibold text-gray-800">
+                          Thông tin khám bệnh
+                        </span>
+                      }
+                    >
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-600">Triệu chứng:</span>
+                          <p className="text-gray-900 mt-1 whitespace-pre-wrap">
+                            {medicalRecord.medicalInfo.symptoms}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Chẩn đoán:</span>
+                          <p className="text-gray-900 mt-1 whitespace-pre-wrap">
+                            {medicalRecord.medicalInfo.diagnosis}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Kết luận:</span>
+                          <p className="text-gray-900 mt-1 whitespace-pre-wrap">
+                            {medicalRecord.medicalInfo.conclusion}
                           </p>
                         </div>
                       </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
+                    </AccordionItem>
 
-            {/* Input */}
-            <div className="p-4 bg-white border-t border-gray-100 shadow-lg">
-              <div className="flex gap-3">
-                <Input
-                  placeholder="Nhập tin nhắn..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="flex-1"
-                  disabled={sendingMessage}
-                  classNames={{
-                    input: "text-sm",
-                    inputWrapper: "border-gray-200 hover:border-[#39BDCC] transition-colors shadow-sm"
-                  }}
-                />
-                <Button
-                  color="primary"
-                  className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] shadow-md hover:shadow-lg transition-all duration-200"
-                  isIconOnly
-                  onClick={handleSendMessage}
-                  isLoading={sendingMessage}
-                  disabled={!newMessage.trim() || sendingMessage}
-                >
-                  <PaperAirplaneIcon className="w-5 h-5" />
-                </Button>
+                    {/* Đơn thuốc */}
+                    <AccordionItem
+                      key="3"
+                      title={
+                        <span className="font-semibold text-gray-800">
+                          Đơn thuốc
+                        </span>
+                      }
+                    >
+                      <div className="space-y-2 text-sm">
+                        <div>
+                          <span className="font-medium text-gray-600">Thuốc:</span>
+                          <p className="text-gray-900 mt-1 whitespace-pre-wrap">
+                            {medicalRecord.prescription.medicine}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Liều lượng:</span>
+                          <p className="text-gray-900 mt-1">
+                            {medicalRecord.prescription.dosage}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="font-medium text-gray-600">Thời gian:</span>
+                          <p className="text-gray-900 mt-1">
+                            {medicalRecord.prescription.duration}
+                          </p>
+                        </div>
+                      </div>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+
+          {/* Chat Container */}
+          <Card className={`shadow-lg border-0 overflow-hidden h-[calc(100vh-200px)] ${medicalRecord ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+            <CardBody className="p-0 flex flex-col h-full">
+              {/* Doctor Info Header */}
+              <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white px-4 py-3 shadow-md min-h-[72px]">
+                <div className="flex items-center gap-3 h-full">
+                  <Avatar
+                    name={doctorInfo.fullName}
+                    src={doctorInfo.avatar}
+                    className="ring-2 ring-white/50 shadow-lg"
+                    size="md"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-lg truncate">BS. {doctorInfo.fullName}</p>
+                    {doctorInfo.specialization && (
+                      <p className="text-sm text-blue-50 flex items-center gap-1 truncate">
+                        <span className="w-1.5 h-1.5 bg-blue-200 rounded-full flex-shrink-0"></span>
+                        {doctorInfo.specialization}
+                      </p>
+                    )}
+                  </div>
+                  {appointmentInfo && (
+                    <div className="text-xs text-blue-100">
+                      <p>Ca khám: {new Date(appointmentInfo.timeslotId?.startTime).toLocaleDateString("vi-VN")}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </CardBody>
-        </Card>
+
+              {/* Messages */}
+              <div 
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white"
+              >
+                {messages.length === 0 ? (
+                  <div className="text-center mt-16">
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                      <ChatBubbleLeftRightIcon className="w-10 h-10 text-[#39BDCC]" />
+                    </div>
+                    <p className="text-gray-600 font-medium">Chưa có tin nhắn nào</p>
+                    <p className="text-sm text-gray-400 mt-1">Hãy bắt đầu cuộc trò chuyện!</p>
+                  </div>
+                ) : (
+                  <>
+                    {messages.map((message, index) => {
+                      const isCurrentUser = message.senderId._id === user?._id;
+                      return (
+                        <div
+                          key={message._id || index}
+                          className={`mb-4 flex ${
+                            isCurrentUser ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`max-w-[70%] ${
+                              isCurrentUser ? "order-2" : "order-1"
+                            } animate-fade-in`}
+                          >
+                            {!isCurrentUser && (
+                              <p className="text-xs text-gray-500 mb-1 px-1">
+                                BS. {message.senderId.fullName}
+                              </p>
+                            )}
+                            <div
+                              className={`rounded-2xl p-3.5 shadow-sm transition-all duration-200 hover:shadow-md ${
+                                isCurrentUser
+                                  ? "bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white"
+                                  : "bg-white text-gray-800 border border-gray-100"
+                              }`}
+                            >
+                              <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                {message.content}
+                              </p>
+                            </div>
+                            <p
+                              className={`text-xs text-gray-400 mt-1.5 px-1 ${
+                                isCurrentUser ? "text-right" : "text-left"
+                              }`}
+                            >
+                              {formatTime(message.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+
+              {/* Input */}
+              <div className="p-4 bg-white border-t border-gray-100 shadow-lg">
+                <div className="flex gap-3">
+                  <Input
+                    placeholder="Nhập tin nhắn..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="flex-1"
+                    disabled={sendingMessage}
+                    classNames={{
+                      input: "text-sm",
+                      inputWrapper: "border-gray-200 hover:border-[#39BDCC] transition-colors shadow-sm"
+                    }}
+                  />
+                  <Button
+                    className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white shadow-md hover:shadow-lg transition-all duration-200"
+                    isIconOnly
+                    onClick={handleSendMessage}
+                    isLoading={sendingMessage}
+                    disabled={!newMessage.trim() || sendingMessage}
+                  >
+                    <PaperAirplaneIcon className="w-5 h-5" />
+                  </Button>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
       </div>
     </div>
   );
