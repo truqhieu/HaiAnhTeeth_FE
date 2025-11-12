@@ -35,6 +35,7 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   UserPlusIcon,
+  DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import { appointmentApi, leaveRequestApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -743,6 +744,58 @@ const AllAppointments = () => {
     return !isNoShow;
   };
 
+  // ===== Xuất phiếu khám bệnh PDF =====
+  const handleDownloadPDF = async (appointmentId: string) => {
+    try {
+      setProcessingId(appointmentId);
+      toast.loading("Đang tạo file PDF...", { id: "pdf-download" });
+
+      // Call API với authentication header
+      const token = sessionStorage.getItem("authToken");
+      
+      if (!token) {
+        toast.error("Token không tồn tại. Vui lòng đăng nhập lại.", { id: "pdf-download" });
+        return;
+      }
+      
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:9999/api";
+      
+      const response = await fetch(`${API_URL}/appointments/${appointmentId}/visit-ticket/pdf`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Không thể tải file PDF");
+      }
+
+      // Get PDF blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `phieu-kham-${appointmentId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Đã tải xuống phiếu khám bệnh!", { id: "pdf-download" });
+    } catch (error: any) {
+      console.error("❌ Error downloading PDF:", error);
+      toast.error(error.message || "Lỗi khi tải file PDF", { id: "pdf-download" });
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   // ===== Detail modal handlers =====
   const openDetailModal = async (appointmentId: string) => {
     try {
@@ -1341,6 +1394,19 @@ const AllAppointments = () => {
                             {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) ||
                               (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
                               <div className="flex gap-2">
+                                {appointment.status === "Completed" && (
+                                  <Button
+                                    size="sm"
+                                    color="success"
+                                    variant="flat"
+                                    onPress={() => handleDownloadPDF(appointment.id)}
+                                    isDisabled={processingId === appointment.id}
+                                    isLoading={processingId === appointment.id}
+                                    startContent={<DocumentArrowDownIcon className="w-4 h-4" />}
+                                  >
+                                    Xuất PDF
+                                  </Button>
+                                )}
                                 {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
                                   <Button
                                     size="sm"

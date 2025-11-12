@@ -16,6 +16,7 @@ import {
 import toast from "react-hot-toast";
 import { chatApi, appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { io, Socket } from "socket.io-client";
 
 // Interface cho tin nhắn từ backend
 interface Message {
@@ -51,6 +52,7 @@ const Chat = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
   
   // Lấy params từ URL
   const doctorIdFromUrl = searchParams.get("doctorId");
@@ -62,6 +64,61 @@ const Chat = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null);
   const [appointmentInfo, setAppointmentInfo] = useState<any>(null);
+
+  // Setup Socket.IO connection
+  useEffect(() => {
+    if (!user?._id) return;
+
+    // Connect to Socket.IO server
+    const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:9999';
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('🔌 [Socket] Connected:', socket.id);
+      // Join room with userId
+      socket.emit('join-user-room', user._id);
+      console.log('📱 [Socket] Joined room for user:', user._id);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('🔌 [Socket] Disconnected');
+    });
+
+    // Listen for new messages
+    socket.on('new-message', (data: any) => {
+      console.log('📨 [Socket] New message received:', data);
+      
+      const incomingMessage = data.message as Message;
+      // appointmentId might be string or object
+      const incomingAppointmentId = typeof incomingMessage.appointmentId === 'string'
+        ? incomingMessage.appointmentId
+        : (incomingMessage as any).appointmentId?._id;
+      
+      // Update messages if it's for current appointment
+      if (appointmentIdFromUrl && incomingAppointmentId === appointmentIdFromUrl) {
+        setMessages(prev => [...prev, incomingMessage]);
+        toast.success(`Tin nhắn mới từ ${data.senderName}`, {
+          icon: '💬',
+          duration: 3000,
+        });
+      }
+    });
+
+    socket.on('connect_error', (error: any) => {
+      console.error('❌ [Socket] Connection error:', error);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      console.log('🔌 [Socket] Cleaning up...');
+      socket.disconnect();
+    };
+  }, [user?._id, appointmentIdFromUrl]);
 
   useEffect(() => {
     // Nếu không có params, redirect về appointments
