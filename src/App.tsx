@@ -29,6 +29,7 @@ import LeaveRequestManagement from "@/pages/Manager/LeaveRequestManagement";
 import PromotionManagement from "@/pages/Manager/PromotionManagement";
 import DeviceManagement from "@/pages/Manager/DeviceManagement";
 import BlogManagement from "@/pages/Manager/BlogManagement";
+import ManagerDashboard from "@/pages/Manager/Dashboard";
 import ManagerLayout from "@/layouts/ManagerLayout";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
@@ -90,6 +91,7 @@ function App() {
             element={
               <ManagerLayout>
                 <Routes>
+                  <Route element={<ManagerDashboard />} path="dashboard" />
                   <Route element={<ServiceManagement />} path="services" />
                   <Route element={<RoomManagement />} path="rooms" />
                   <Route element={<ScheduleManagement />} path="schedules" />

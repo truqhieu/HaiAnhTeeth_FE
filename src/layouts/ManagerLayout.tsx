@@ -13,6 +13,7 @@ import {
   TagIcon,
   CpuChipIcon,
   NewspaperIcon,
+  ChartBarIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -100,6 +101,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
   };
 
   const navigation = [
+    {
+      name: "Dashboard",
+      href: "/manager/dashboard",
+      icon: ChartBarIcon,
+      current: location.pathname === "/manager/dashboard",
+    },
     {
       name: "Quản lý dịch vụ",
       href: "/manager/services",

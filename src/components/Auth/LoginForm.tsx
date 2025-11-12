@@ -76,17 +76,17 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b3f0f5] via-[#d9fafa] to-[#e0fdfd]">
-      <div className="bg-white shadow-2xl rounded-3xl px-10 py-10 w-full max-w-md">
+    <div className="w-full min-h-screen flex items-center justify-center bg-gradient-to-br from-[#b3f0f5] via-[#d9fafa] to-[#e0fdfd] p-4">
+      <div className="bg-white shadow-2xl rounded-3xl px-8 py-8 md:px-10 md:py-10 w-full max-w-lg">
         {/* Header */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-6 md:mb-8">
           <img
             alt="Logo"
-            className="h-20 w-auto mb-4 object-contain"
+            className="h-16 md:h-20 w-auto mb-3 md:mb-4 object-contain"
             src="/logo1.png"
           />
-          <h2 className="text-4xl font-extrabold text-gray-800">Đăng nhập</h2>
-          <p className="text-gray-500 text-lg mt-2 text-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-800">Đăng nhập</h2>
+          <p className="text-gray-500 text-base md:text-lg mt-2 text-center">
             Chào mừng bạn quay lại với hệ thống nha khoa
           </p>
         </div>
@@ -99,7 +99,7 @@ const LoginForm = () => {
         )}
 
         {/* Form */}
-        <Form autoComplete="off" className="space-y-6" onSubmit={onSubmit}>
+        <Form autoComplete="off" className="space-y-5" onSubmit={onSubmit}>
           <Input
             fullWidth
             autoComplete="off"
@@ -156,25 +156,28 @@ const LoginForm = () => {
           </Button>
         </Form>
 
-        {/* Signup */}
-        <p className="mt-6 text-center text-base text-gray-600">
-          Bạn chưa có tài khoản?{" "}
-          <button
-            className="text-[#39BDCC] hover:underline font-semibold"
-            onClick={() => navigate("/signup")}
-          >
-            Đăng ký ngay
-          </button>
-        </p>
-        <p className="mt-6 text-center text-base text-gray-600">
-          Bạn quên mật khẩu?{" "}
-          <button
-            className="text-[#39BDCC] hover:underline font-semibold"
-            onClick={() => navigate("/forgot-password")}
-          >
-            Đặt lại mật khẩu
-          </button>
-        </p>
+        {/* Signup and Links */}
+        <div className="mt-6 space-y-3">
+          <p className="text-center text-sm md:text-base text-gray-600">
+            Bạn chưa có tài khoản?{" "}
+            <button
+              className="text-[#39BDCC] hover:underline font-semibold"
+              onClick={() => navigate("/signup")}
+            >
+              Đăng ký ngay
+            </button>
+          </p>
+          <p className="text-center text-sm md:text-base text-gray-600">
+            Bạn quên mật khẩu?{" "}
+            <button
+              className="text-[#39BDCC] hover:underline font-semibold"
+              onClick={() => navigate("/forgot-password")}
+            >
+              Đặt lại mật khẩu
+            </button>
+          </p>
+        </div>
+
         {/* ✅ Nút trở về trang chủ */}
         <div className="mt-8 flex justify-center">
           <Button
