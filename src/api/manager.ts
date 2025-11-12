@@ -631,4 +631,49 @@ export const managerApi = {
       body: JSON.stringify({ workingHours }),
     });
   },
+
+  // ==================== DASHBOARD/STATISTICS APIs ====================
+
+  // Get dashboard statistics
+  getDashboardStats: async (
+    startDate?: string,
+    endDate?: string,
+  ): Promise<
+    ApiResponse<{
+      success: boolean;
+      message: string;
+      result: {
+        filterRange: {
+          startDate: string;
+          endDate: string;
+        };
+        appointments: {
+          total: number;
+          completed: number;
+          cancelled: number;
+          other: number;
+        };
+        revenue: {
+          Examination: number;
+          Consultation: number;
+          total: number;
+        };
+        patients: {
+          total: number;
+          newPatients: number;
+        };
+      };
+    }>
+  > => {
+    const queryParams = new URLSearchParams();
+    if (startDate) queryParams.append("startDate", startDate);
+    if (endDate) queryParams.append("endDate", endDate);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/appointments/dashboard${queryString ? `?${queryString}` : ""}`;
+
+    return authenticatedApiCall(endpoint, {
+      method: "GET",
+    });
+  },
 };

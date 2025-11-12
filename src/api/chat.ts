@@ -30,6 +30,20 @@ export interface Conversation {
   unreadCount: number;
 }
 
+// For Doctor view
+export interface DoctorConversation {
+  appointmentId: string;
+  appointmentDate: string;
+  status: string;
+  patient: {
+    _id: string;
+    fullName: string;
+    email: string;
+  };
+  lastMessage: any;
+  unreadCount: number;
+}
+
 export const chatApi = {
   /**
    * Lấy danh sách bác sĩ đã từng khám cho bệnh nhân
@@ -73,13 +87,6 @@ export const chatApi = {
     });
   },
 
-  /**
-   * Đánh dấu tin nhắn đã đọc
-   */
-  markAsRead: async (appointmentId: string): Promise<ApiResponse<void>> => {
-    return authenticatedApiCall(`/chat/read/${appointmentId}`, {
-      method: "PUT",
-    });
-  },
+  // Note: Mark as read is automatically handled when fetching messages via getMessages
 };
 

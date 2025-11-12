@@ -14,116 +14,147 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
-import { type Message } from "@/api";
+import { chatApi, type DoctorConversation } from "@/api/chat";
 import { useAuth } from "@/contexts/AuthContext";
+import { io, Socket } from "socket.io-client";
 
-// Patient interface for doctor's chat
-interface Patient {
+// Patient interface for doctor's chat - mapped from conversation
+interface PatientChat {
   _id: string;
   fullName: string;
   email: string;
   avatar?: string;
   lastAppointmentDate?: string;
-  unreadCount?: number;
+  unreadCount: number;
+  appointmentId: string;
 }
 
-// Mock data - Danh sách bệnh nhân đã khám
-const mockPatients: Patient[] = [
-  {
-    _id: "patient1",
-    fullName: "Nguyễn Thị Lan",
-    email: "nguyenlan@example.com",
-    lastAppointmentDate: "2024-01-15",
-    unreadCount: 2,
-  },
-  {
-    _id: "patient2",
-    fullName: "Trần Văn Hùng",
-    email: "tranvanhung@example.com",
-    lastAppointmentDate: "2024-01-10",
-    unreadCount: 1,
-  },
-];
-
-const mockMessagesData: Record<string, Message[]> = {
-  patient1: [
-    {
-      _id: "m1",
-      conversationId: "c1",
-      senderId: "patient1",
-      senderName: "Nguyễn Thị Lan",
-      senderRole: "patient",
-      content: "Chào bác sĩ, em muốn hỏi về kết quả khám răng lần trước ạ",
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      isRead: true,
-    },
-    {
-      _id: "m2",
-      conversationId: "c1",
-      senderId: "doctor1",
-      senderName: "Bác sĩ",
-      senderRole: "doctor",
-      content: "Chào em, kết quả khám của em khá tốt. Răng của em đã ổn định sau khi trám.",
-      timestamp: new Date(Date.now() - 1.5 * 60 * 60 * 1000),
-      isRead: true,
-    },
-    {
-      _id: "m3",
-      conversationId: "c1",
-      senderId: "patient1",
-      senderName: "Nguyễn Thị Lan",
-      senderRole: "patient",
-      content: "Dạ em cảm ơn bác sĩ. Em có cần tái khám không ạ?",
-      timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      isRead: false,
-    },
-    {
-      _id: "m4",
-      conversationId: "c1",
-      senderId: "patient1",
-      senderName: "Nguyễn Thị Lan",
-      senderRole: "patient",
-      content: "Và em nên chú ý những gì trong thời gian này ạ?",
-      timestamp: new Date(Date.now() - 25 * 60 * 1000),
-      isRead: false,
-    },
-  ],
-  patient2: [
-    {
-      _id: "m5",
-      conversationId: "c2",
-      senderId: "patient2",
-      senderName: "Trần Văn Hùng",
-      senderRole: "patient",
-      content: "Bác sĩ ơi, sau khi nhổ răng khôn, em bị sưng má có sao không ạ?",
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      isRead: false,
-    },
-  ],
-  
-};
+// Message interface matching BE response
+interface ChatMessage {
+  _id: string;
+  senderId: {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
+  receiverId: {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
+  appointmentId: {
+    _id: string;
+    appointmentDate: string;
+    status: string;
+  };
+  content: string;
+  status: string;
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 const DoctorChat = () => {
   const { user } = useAuth();
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [patients, setPatients] = useState<PatientChat[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<PatientChat | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
+
+  // Setup Socket.IO connection
+  useEffect(() => {
+    if (!user?._id) return;
+
+    // Connect to Socket.IO server
+    const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:9999';
+    const socket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('🔌 [Socket] Connected:', socket.id);
+      // Join room with userId
+      socket.emit('join-user-room', user._id);
+      console.log('📱 [Socket] Joined room for user:', user._id);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('🔌 [Socket] Disconnected');
+    });
+
+    // Listen for new messages
+    socket.on('new-message', (data: any) => {
+      console.log('📨 [Socket] New message received:', data);
+      
+      const incomingMessage = data.message as ChatMessage;
+      // appointmentId might be string or object depending on population
+      const incomingAppointmentId = typeof incomingMessage.appointmentId === 'string' 
+        ? incomingMessage.appointmentId 
+        : incomingMessage.appointmentId._id;
+      
+      // Update messages if chat is open with this appointment
+      if (selectedPatient && incomingAppointmentId === selectedPatient.appointmentId) {
+        setMessages(prev => [...prev, incomingMessage]);
+        toast.success(`Tin nhắn mới từ ${data.senderName}`, {
+          icon: '💬',
+          duration: 3000,
+        });
+      } else {
+        // Update unread count in patients list
+        setPatients(prev => prev.map(p => 
+          p.appointmentId === incomingAppointmentId
+            ? { ...p, unreadCount: (p.unreadCount || 0) + 1 }
+            : p
+        ));
+        
+        toast.success(`Tin nhắn mới từ ${data.senderName}`, {
+          icon: '💬',
+          duration: 3000,
+        });
+      }
+    });
+
+    socket.on('connect_error', (error: any) => {
+      console.error('❌ [Socket] Connection error:', error);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      console.log('🔌 [Socket] Cleaning up...');
+      socket.disconnect();
+    };
+  }, [user?._id, selectedPatient?.appointmentId]);
 
   useEffect(() => {
-    fetchPatients();
+    fetchConversations();
   }, []);
 
   useEffect(() => {
     if (selectedPatient) {
-      fetchMessages(selectedPatient._id);
-      scrollChatToCenter();
+      fetchMessages(selectedPatient.appointmentId);
     }
   }, [selectedPatient]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
 
   const scrollChatToCenter = () => {
     setTimeout(() => {
@@ -134,62 +165,83 @@ const DoctorChat = () => {
     }, 100);
   };
 
-  // Mock function - lấy danh sách bệnh nhân đã khám
-  const fetchPatients = async () => {
+  // Fetch conversations from API
+  const fetchConversations = async () => {
     try {
       setLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setPatients(mockPatients);
+      const response = await chatApi.getConversations();
+      
+      if (response.success && response.data) {
+        // Map conversations to PatientChat format
+        const conversations = response.data as unknown as DoctorConversation[];
+        const patientsData: PatientChat[] = conversations.map((conv) => ({
+          _id: conv.patient._id,
+          fullName: conv.patient.fullName,
+          email: conv.patient.email,
+          lastAppointmentDate: conv.appointmentDate,
+          unreadCount: conv.unreadCount || 0,
+          appointmentId: conv.appointmentId,
+        }));
+        
+        setPatients(patientsData);
+      } else {
+        toast.error("Không thể tải danh sách bệnh nhân");
+      }
     } catch (error: any) {
-      console.error("Error fetching patients:", error);
-      toast.error("Không thể tải danh sách bệnh nhân");
+      console.error("Error fetching conversations:", error);
+      toast.error(error?.message || "Không thể tải danh sách bệnh nhân");
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock function - lấy tin nhắn với bệnh nhân
-  const fetchMessages = async (patientId: string) => {
+  // Fetch messages from API
+  const fetchMessages = async (appointmentId: string) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      setMessages(mockMessagesData[patientId] || []);
+      const response = await chatApi.getMessages(appointmentId);
       
-      // Đánh dấu đã đọc khi mở chat
-      setPatients(prev => prev.map(p => 
-        p._id === patientId ? { ...p, unreadCount: 0 } : p
-      ));
+      if (response.success && response.data) {
+        setMessages(response.data as unknown as ChatMessage[]);
+        
+        // Note: BE automatically marks messages as read when fetching
+        // Update unread count in patients list
+        setPatients(prev => prev.map(p => 
+          p.appointmentId === appointmentId ? { ...p, unreadCount: 0 } : p
+        ));
+      } else {
+        toast.error("Không thể tải tin nhắn");
+      }
     } catch (error: any) {
       console.error("Error fetching messages:", error);
-      toast.error("Không thể tải tin nhắn");
+      toast.error(error?.message || "Không thể tải tin nhắn");
     }
   };
 
-  // Mock function - gửi tin nhắn
+  // Send message via API
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedPatient) return;
 
     try {
       setSendingMessage(true);
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      const newMsg: Message = {
-        _id: `m${Date.now()}`,
-        conversationId: `c${selectedPatient._id}`,
-        senderId: user?._id || "doctor1",
-        senderName: user?.fullName || "Bác sĩ",
-        senderRole: "doctor",
+      const response = await chatApi.sendMessage({
+        receiverId: selectedPatient._id,
+        appointmentId: selectedPatient.appointmentId,
         content: newMessage.trim(),
-        timestamp: new Date(),
-        isRead: false,
-      };
+      });
 
-      setMessages([...messages, newMsg]);
-      setNewMessage("");
-      toast.success("Đã gửi tin nhắn");
+      if (response.success && response.data) {
+        // Add new message to list
+        const newMsg = response.data as unknown as ChatMessage;
+        setMessages(prev => [...prev, newMsg]);
+        setNewMessage("");
+        toast.success("Đã gửi tin nhắn");
+      } else {
+        toast.error(response.message || "Không thể gửi tin nhắn");
+      }
     } catch (error: any) {
       console.error("Error sending message:", error);
-      toast.error("Không thể gửi tin nhắn");
+      toast.error(error?.message || "Không thể gửi tin nhắn");
     } finally {
       setSendingMessage(false);
     }
@@ -202,8 +254,8 @@ const DoctorChat = () => {
     }
   };
 
-  const formatTime = (date: Date | string) => {
-    const d = new Date(date);
+  const formatTime = (dateString: string) => {
+    const d = new Date(dateString);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -328,8 +380,10 @@ const DoctorChat = () => {
                             className="flex-shrink-0 ring-2 ring-white shadow-md"
                             size="md"
                           />
-                          {patient.unreadCount && patient.unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                          {patient.unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full border-2 border-white flex items-center justify-center font-bold">
+                              {patient.unreadCount}
+                            </span>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -390,22 +444,23 @@ const DoctorChat = () => {
                     ) : (
                       <>
                         {messages.map((message, index) => {
-                          const isDoctor = message.senderRole === "doctor";
+                          const isDoctor = message.senderId.role === "Doctor";
+                          const isCurrentUser = message.senderId._id === user?._id;
                           return (
                             <div
                               key={message._id || index}
                               className={`mb-4 flex ${
-                                isDoctor ? "justify-end" : "justify-start"
+                                isCurrentUser ? "justify-end" : "justify-start"
                               }`}
                             >
                               <div
                                 className={`max-w-[70%] ${
-                                  isDoctor ? "order-2" : "order-1"
+                                  isCurrentUser ? "order-2" : "order-1"
                                 } animate-fade-in`}
                               >
                                 <div
                                   className={`rounded-2xl p-3.5 shadow-sm transition-all duration-200 hover:shadow-md ${
-                                    isDoctor
+                                    isCurrentUser
                                       ? "bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white"
                                       : "bg-white text-gray-800 border border-gray-100"
                                   }`}
@@ -415,12 +470,12 @@ const DoctorChat = () => {
                                   </p>
                                 </div>
                                 <div className={`flex items-center gap-2 mt-1.5 px-1 ${
-                                  isDoctor ? "justify-end" : "justify-start"
+                                  isCurrentUser ? "justify-end" : "justify-start"
                                 }`}>
                                   <p className="text-xs text-gray-400">
-                                    {formatTime(message.timestamp)}
+                                    {formatTime(message.createdAt)}
                                   </p>
-                                  {!message.isRead && !isDoctor && (
+                                  {!message.read && !isCurrentUser && (
                                     <span className="inline-flex items-center gap-1 text-red-500 text-xs font-semibold">
                                       <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
                                       Mới
@@ -431,6 +486,7 @@ const DoctorChat = () => {
                             </div>
                           );
                         })}
+                        <div ref={messagesEndRef} />
                       </>
                     )}
                   </div>
@@ -487,4 +543,3 @@ const DoctorChat = () => {
 };
 
 export default DoctorChat;
-

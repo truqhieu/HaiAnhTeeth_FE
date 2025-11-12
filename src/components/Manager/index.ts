@@ -10,3 +10,5 @@ export { default as AddDeviceModal } from "./AddDeviceModal";
 export { default as EditDeviceModal } from "./EditDeviceModal";
 export { default as AddPromotionModal } from "./AddPromotionModal";
 export { default as EditPromotionModal } from "./EditPromotionModal";
+export { default as AddBlogModal } from "./AddBlogModal";
+export { default as EditBlogModal } from "./EditBlogModal";
