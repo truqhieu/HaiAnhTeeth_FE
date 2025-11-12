@@ -1,7 +1,6 @@
 // src/contexts/BookingModalContext.tsx
 
 import React, { createContext, useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import BookingModal from "../components/Patient/BookingModal";
@@ -20,22 +19,16 @@ export const BookingModalProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const { isAuthenticated, user } = useAuth();
-  const navigate = useNavigate();
 
   // Hàm để các component khác (như Navbar) gọi để MỞ modal
   const openBookingModal = () => {
     // Kiểm tra đăng nhập trước khi mở modal
     if (!isAuthenticated || !user) {
       toast.error("Vui lòng đăng nhập để đặt lịch khám!", {
-        duration: 2000,
+        duration: 3000,
         position: "top-center",
         icon: "🔒",
       });
-      
-      // Redirect đến trang login sau 2 giây
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
       
       return;
     }
