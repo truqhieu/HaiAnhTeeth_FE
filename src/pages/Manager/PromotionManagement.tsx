@@ -329,8 +329,8 @@ const PromotionManagement = () => {
                           <div className="max-w-xs">
                             <p className="font-semibold mb-2">Dịch vụ áp dụng:</p>
                             <ul className="list-disc list-inside space-y-1">
-                              {promotion.applicableServices && promotion.applicableServices.length > 0 ? (
-                                promotion.applicableServices.map((serviceId: any, idx: number) => (
+                              {promotion.services && promotion.services.length > 0 ? (
+                                promotion.services.map((serviceId: any, idx: number) => (
                                   <li key={idx} className="text-xs">
                                     {typeof serviceId === 'object' && serviceId?.serviceName 
                                       ? serviceId.serviceName 
@@ -350,7 +350,7 @@ const PromotionManagement = () => {
                           variant="flat"
                           className="cursor-pointer"
                         >
-                          {promotion.applicableServices?.length || 0} dịch vụ
+                          {promotion.services?.length || 0} dịch vụ
                         </Chip>
                       </Tooltip>
                     )}

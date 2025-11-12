@@ -1,0 +1,363 @@
+import { useState, useEffect } from "react";
+import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  Input,
+  Textarea,
+  Select,
+  SelectItem,
+  Chip,
+  useDisclosure,
+  Tooltip,
+} from "@heroui/react";
+import toast from "react-hot-toast";
+import { policyApi, Policy, CreatePolicyData } from "@/api/policy";
+
+const PolicyManagement = () => {
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState<CreatePolicyData>({
+    title: "",
+    description: "",
+    active: true,
+    status: "Active",
+  });
+
+  // Fetch policies
+  const fetchPolicies = async () => {
+    try {
+      setIsLoading(true);
+      const response = await policyApi.getAllPolicies();
+      if (response.success && Array.isArray(response.data)) {
+        setPolicies(response.data);
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Không thể tải danh sách chính sách");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPolicies();
+  }, []);
+
+  // Handle open modal for create
+  const handleOpenCreate = () => {
+    setEditingPolicy(null);
+    setFormData({
+      title: "",
+      description: "",
+      active: true,
+      status: "Active",
+    });
+    onOpen();
+  };
+
+  // Handle open modal for edit
+  const handleOpenEdit = (policy: Policy) => {
+    setEditingPolicy(policy);
+    setFormData({
+      title: policy.title,
+      description: policy.description,
+      active: policy.active,
+      status: policy.status,
+    });
+    onOpen();
+  };
+
+  // Handle submit (create or update)
+  const handleSubmit = async () => {
+    if (!formData.title.trim() || !formData.description.trim()) {
+      toast.error("Vui lòng nhập đầy đủ thông tin");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      if (editingPolicy) {
+        // Update
+        const response = await policyApi.updatePolicy(editingPolicy._id, formData);
+        if (response.success) {
+          toast.success("Cập nhật chính sách thành công");
+          fetchPolicies();
+          onClose();
+        }
+      } else {
+        // Create
+        const response = await policyApi.createPolicy(formData);
+        if (response.success) {
+          toast.success("Tạo chính sách thành công");
+          fetchPolicies();
+          onClose();
+        }
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Có lỗi xảy ra");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle delete
+  const handleDelete = async (policy: Policy) => {
+    if (!confirm(`Bạn có chắc muốn xóa chính sách "${policy.title}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await policyApi.deletePolicy(policy._id);
+      if (response.success) {
+        toast.success("Xóa chính sách thành công");
+        fetchPolicies();
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Không thể xóa chính sách");
+    }
+  };
+
+  // Get status chip
+  const getStatusChip = (status: string, active: boolean) => {
+    if (!active || status === "Inactive") {
+      return (
+        <Chip color="default" size="sm" variant="flat">
+          Không hoạt động
+        </Chip>
+      );
+    }
+    if (status === "Draft") {
+      return (
+        <Chip color="warning" size="sm" variant="flat">
+          Nháp
+        </Chip>
+      );
+    }
+    return (
+      <Chip color="success" size="sm" variant="flat" startContent={<CheckCircleIcon className="w-4 h-4" />}>
+        Hoạt động
+      </Chip>
+    );
+  };
+
+  return (
+    <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+              Quản lý chính sách
+            </h1>
+            <p className="text-sm text-gray-600">
+              Quản lý các chính sách và điều khoản của phòng khám
+            </p>
+          </div>
+
+          <Button
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            startContent={<PlusIcon className="w-5 h-5" />}
+            onPress={handleOpenCreate}
+          >
+            Thêm chính sách
+          </Button>
+        </div>
+      </div>
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#39BDCC]"></div>
+        </div>
+      )}
+
+      {/* Policies List */}
+      {!isLoading && (
+        <div className="grid grid-cols-1 gap-4">
+          {policies.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-sm p-12 text-center border border-gray-100">
+              <p className="text-gray-500 text-lg">Chưa có chính sách nào</p>
+              <Button
+                className="bg-blue-600 text-white hover:bg-blue-700 mt-4"
+                onPress={handleOpenCreate}
+              >
+                Tạo chính sách đầu tiên
+              </Button>
+            </div>
+          ) : (
+            policies.map((policy) => (
+              <div
+                key={policy._id}
+                className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                          {policy.title}
+                        </h3>
+                        <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
+                          {policy.description}
+                        </p>
+                      </div>
+                      {getStatusChip(policy.status, policy.active)}
+                    </div>
+
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mt-4">
+                      <span>
+                        Tạo: {new Date(policy.createdAt).toLocaleDateString("vi-VN")}
+                      </span>
+                      <span>•</span>
+                      <span>
+                        Cập nhật: {new Date(policy.updatedAt).toLocaleDateString("vi-VN")}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Tooltip content="Chỉnh sửa chính sách">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="min-w-8 h-8 text-blue-600 hover:bg-blue-50"
+                        onPress={() => handleOpenEdit(policy)}
+                      >
+                        <PencilIcon className="w-5 h-5" />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip content="Xóa chính sách">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="min-w-8 h-8 text-red-600 hover:bg-red-50"
+                        onPress={() => handleDelete(policy)}
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </Button>
+                    </Tooltip>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Create/Edit Modal */}
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
+        size="2xl"
+        scrollBehavior="inside"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <h2 className="text-2xl font-bold">
+                  {editingPolicy ? "Chỉnh sửa chính sách" : "Tạo chính sách mới"}
+                </h2>
+              </ModalHeader>
+              <ModalBody>
+                <div className="space-y-4">
+                  <Input
+                    label="Tiêu đề"
+                    placeholder="Nhập tiêu đề chính sách"
+                    value={formData.title}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, title: value })
+                    }
+                    isRequired
+                    size="lg"
+                  />
+
+                  <Textarea
+                    label="Mô tả"
+                    placeholder="Nhập mô tả chi tiết chính sách"
+                    value={formData.description}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, description: value })
+                    }
+                    isRequired
+                    minRows={6}
+                    size="lg"
+                  />
+
+                  <Select
+                    label="Trạng thái"
+                    placeholder="Chọn trạng thái"
+                    selectedKeys={[formData.status || "Active"]}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        status: e.target.value as "Active" | "Inactive" | "Draft",
+                      })
+                    }
+                    size="lg"
+                  >
+                    <SelectItem key="Active" value="Active">
+                      Hoạt động
+                    </SelectItem>
+                    <SelectItem key="Draft" value="Draft">
+                      Nháp
+                    </SelectItem>
+                    <SelectItem key="Inactive" value="Inactive">
+                      Không hoạt động
+                    </SelectItem>
+                  </Select>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="active"
+                      checked={formData.active}
+                      onChange={(e) =>
+                        setFormData({ ...formData, active: e.target.checked })
+                      }
+                      className="w-4 h-4 text-[#39BDCC] border-gray-300 rounded focus:ring-[#39BDCC]"
+                    />
+                    <label htmlFor="active" className="text-sm font-medium text-gray-700">
+                      Kích hoạt chính sách
+                    </label>
+                  </div>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={onClose}>
+                  Hủy
+                </Button>
+                <Button
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  onPress={handleSubmit}
+                  isLoading={isSubmitting}
+                >
+                  {editingPolicy ? "Cập nhật" : "Tạo mới"}
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </div>
+  );
+};
+
+export default PolicyManagement;
+
