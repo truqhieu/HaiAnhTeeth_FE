@@ -5,6 +5,7 @@ import { Navbar } from "@/components";
 import DefaultLayout from "@/layouts/default";
 import IndexPage from "@/pages/Public/index";
 import AboutPage from "@/pages/Public/about";
+import ServicesPage from "@/pages/Public/Services";
 import LoginPage from "@/pages/Public/LoginPage";
 import SignupPage from "@/pages/Public/SignupPage";
 import ForgotPassWord from "@/pages/Public/ForgorPasswordPage";
@@ -177,6 +178,7 @@ function App() {
                   <Routes>
                     <Route element={<IndexPage />} path="/" />
                     <Route element={<AboutPage />} path="/about" />
+                    <Route element={<ServicesPage />} path="/services" />
                     <Route element={<VerifyEmail />} path="/verify-email" />
                     <Route element={<Dashboard />} path="/patient/dashboard" />
                     <Route element={<AIBooking />} path="/patient/ai-booking" />
