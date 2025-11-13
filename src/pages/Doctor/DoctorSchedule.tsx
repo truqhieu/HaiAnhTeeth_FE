@@ -27,7 +27,6 @@ import {
   ClockIcon,
   VideoCameraIcon,
   BuildingOfficeIcon,
-  CheckCircleIcon,
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import { doctorApi, type DoctorAppointment } from "@/api";
@@ -374,9 +373,6 @@ const DoctorSchedule = () => {
           <h1 className="text-3xl font-bold text-gray-900">Lịch khám của tôi</h1>
           <p className="text-gray-600 mt-1">Quản lý và theo dõi lịch khám bệnh</p>
         </div>
-        <Chip color="primary" variant="flat" size="lg" startContent={<CheckCircleIcon className="w-5 h-5" />}>
-          Bác sĩ
-        </Chip>
       </div>
 
       {/* Error Message */}

@@ -27,7 +27,6 @@ import {
   ClockIcon,
   VideoCameraIcon,
   BuildingOfficeIcon,
-  HeartIcon,
   ClipboardDocumentListIcon,
   CheckCircleIcon,
   PlayIcon,
@@ -530,9 +529,6 @@ const NurseSchedule = () => {
           <h1 className="text-3xl font-bold text-gray-900">Lịch khám của phòng khám</h1>
           <p className="text-gray-600 mt-1">Theo dõi tất cả ca khám của các bác sĩ</p>
         </div>
-        <Chip color="secondary" variant="flat" size="lg" startContent={<HeartIcon className="w-5 h-5" />}>
-          Điều dưỡng
-        </Chip>
       </div>
 
       {/* Error Message */}
