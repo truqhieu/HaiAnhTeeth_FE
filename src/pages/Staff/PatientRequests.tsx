@@ -22,7 +22,9 @@ import {
   CardHeader,
   Spinner,
   Pagination,
+  Tooltip,
 } from "@heroui/react";
+import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
 
 import { patientRequestApi, PatientRequest } from "../../api/patientRequest";
 import { formatDate, formatTime } from "../../utils/dateUtils";
@@ -445,24 +447,31 @@ const PatientRequests: React.FC = () => {
                       </Button>
                       {request.status === "Pending" && (
                         <>
-                          <Button
-                            size="sm"
-                            color="success"
-                            onClick={() => handleApprove(request._id)}
-                            isDisabled={processingRequestId === request._id}
-                            isLoading={processingRequestId === request._id}
-                          >
-                            Duyệt
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="danger"
-                            variant="flat"
-                            onClick={() => openRejectModal(request)}
-                            isDisabled={processingRequestId === request._id}
-                          >
-                            Từ chối
-                          </Button>
+                          <Tooltip content="Duyệt yêu cầu">
+                            <Button
+                              size="md"
+                              variant="light"
+                              className="min-w-10 h-10 text-green-600 hover:bg-green-50"
+                              isIconOnly
+                              onClick={() => handleApprove(request._id)}
+                              isDisabled={processingRequestId === request._id}
+                              isLoading={processingRequestId === request._id}
+                            >
+                              <CheckCircleIcon className="w-6 h-6" />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content="Từ chối yêu cầu">
+                            <Button
+                              size="md"
+                              variant="light"
+                              className="min-w-10 h-10 text-red-600 hover:bg-red-50"
+                              isIconOnly
+                              onClick={() => openRejectModal(request)}
+                              isDisabled={processingRequestId === request._id}
+                            >
+                              <XCircleIcon className="w-6 h-6" />
+                            </Button>
+                          </Tooltip>
                         </>
                       )}
                     </div>
@@ -569,26 +578,6 @@ const PatientRequests: React.FC = () => {
             )}
           </ModalBody>
           <ModalFooter>
-            {selectedRequest?.status === "Pending" && (
-              <>
-                <Button 
-                  color="success" 
-                  onClick={() => handleApprove(selectedRequest._id)}
-                  isDisabled={processingRequestId === selectedRequest._id}
-                  isLoading={processingRequestId === selectedRequest._id}
-                >
-                  Duyệt
-                </Button>
-                <Button 
-                  color="danger" 
-                  variant="flat" 
-                  onClick={() => openRejectModal(selectedRequest)}
-                  isDisabled={processingRequestId === selectedRequest._id}
-                >
-                  Từ chối
-                </Button>
-              </>
-            )}
             <Button variant="light" onClick={onDetailClose}>
               Đóng
             </Button>
