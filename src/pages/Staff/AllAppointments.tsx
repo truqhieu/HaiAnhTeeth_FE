@@ -360,6 +360,28 @@ const AllAppointments = () => {
     return new Date().getTime() > endOfDay.getTime();
   };
 
+  // ⭐ Kiểm tra xem đã đến ngày của ca khám chưa (chỉ cho phép check-in khi đã đến ngày)
+  const isAppointmentDateReached = (startTime: string): boolean => {
+    if (!startTime) {
+      return false;
+    }
+
+    const appointmentDate = new Date(startTime);
+    if (Number.isNaN(appointmentDate.getTime())) {
+      return false;
+    }
+
+    // Chỉ lấy phần ngày, bỏ phần giờ
+    const appointmentDay = new Date(appointmentDate);
+    appointmentDay.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Cho phép check-in khi đã đến ngày (today >= appointmentDay)
+    return today.getTime() >= appointmentDay.getTime();
+  };
+
   const shouldShowReassignButton = (
     appointment: Appointment,
     isOnLeaveOverride?: boolean
@@ -373,7 +395,10 @@ const AllAppointments = () => {
       return false;
     }
 
-    if (appointment.status === "Completed") {
+    // ⭐ Chỉ hiển thị vắng mặt cho các ca đang chờ duyệt, đã approved, hoặc đã check-in
+    // KHÔNG hiển thị cho các ca đã hoàn thành (Completed) hoặc đang tiến hành (InProgress)
+    const allowedStatuses = ['Pending', 'Approved', 'CheckedIn'];
+    if (!allowedStatuses.includes(appointment.status)) {
       return false;
     }
 
@@ -1263,7 +1288,12 @@ const AllAppointments = () => {
                   <TableCell>
                     {(() => {
                       const isOnLeave = isDoctorOnLeave(appointment);
-                      return isOnLeave ? (
+                      // ⭐ Chỉ hiển thị vắng mặt cho các ca đang chờ duyệt, đã approved, hoặc đã check-in
+                      // KHÔNG hiển thị cho các ca đã hoàn thành (Completed) hoặc đang tiến hành (InProgress)
+                      const allowedStatuses = ['Pending', 'Approved', 'CheckedIn'];
+                      const shouldShowAbsent = isOnLeave && allowedStatuses.includes(appointment.status);
+                      
+                      return shouldShowAbsent ? (
                         <Chip variant="flat" color="danger">
                           Vắng mặt
                         </Chip>
@@ -1345,26 +1375,20 @@ const AllAppointments = () => {
                             )}
                             {appointment.status === "Approved" && (
                               <>
-                                <Button
-                                  size="sm"
-                                  color="primary"
-                                  variant="flat"
-                                  onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                                  isDisabled={processingId === appointment.id}
-                                  isLoading={processingId === appointment.id}
-                                >
-                                  Check-in
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  color="warning"
-                                  variant="flat"
-                                  onPress={() => handleUpdateStatus(appointment.id, "Cancelled")}
-                                  isDisabled={processingId === appointment.id}
-                                  isLoading={processingId === appointment.id}
-                                >
-                                  No Show
-                                </Button>
+                                {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám */}
+                                {isAppointmentDateReached(appointment.startTime) ? (
+                                  <Button
+                                    size="sm"
+                                    color="primary"
+                                    variant="flat"
+                                    onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                                    isDisabled={processingId === appointment.id}
+                                    isLoading={processingId === appointment.id}
+                                  >
+                                    Check-in
+                                  </Button>
+                                ) : null}
+                                {/* ⭐ Không hiển thị nút No Show khi chỉ approved - chỉ hiển thị khi đã check-in */}
                               </>
                             )}
                             {appointment.status === "CheckedIn" && (
@@ -1379,7 +1403,8 @@ const AllAppointments = () => {
                                 No Show
                               </Button>
                             )}
-                            {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && (
+                            {/* ⭐ Chỉ cho phép check-in từ No-Show khi đã đến ngày và trong giờ làm việc */}
+                            {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && isAppointmentDateReached(appointment.startTime) && (
                               <Button
                                 size="sm"
                                 color="primary"

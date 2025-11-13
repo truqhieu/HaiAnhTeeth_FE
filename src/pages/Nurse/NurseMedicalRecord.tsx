@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
-import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, ChevronDownIcon, XMarkIcon, ArrowLeftIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 const NurseMedicalRecord: React.FC = () => {
@@ -15,11 +15,8 @@ const NurseMedicalRecord: React.FC = () => {
   const [permissions, setPermissions] = useState<MedicalRecordPermissions | null>(null);
   const [diagnosis, setDiagnosis] = useState("");
   const [conclusion, setConclusion] = useState("");
-  const [prescription, setPrescription] = useState({
-    medicine: "",
-    dosage: "",
-    duration: "",
-  });
+  // ⭐ Đổi thành array để hỗ trợ nhiều đơn thuốc
+  const [prescriptions, setPrescriptions] = useState<Array<{ medicine: string; dosage: string; duration: string }>>([]);
   const [nurseNote, setNurseNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [currentServices, setCurrentServices] = useState<Array<{ _id: string; serviceName: string; price: number }>>([]);
@@ -79,12 +76,19 @@ const NurseMedicalRecord: React.FC = () => {
           setPermissions(res.data.permissions || null);
           setDiagnosis(res.data.record.diagnosis || "");
           setConclusion(res.data.record.conclusion || "");
-          const prescriptionObj = res.data.record.prescription || {};
-          setPrescription({
-            medicine: prescriptionObj.medicine || "",
-            dosage: prescriptionObj.dosage || "",
-            duration: prescriptionObj.duration || "",
-          });
+          // ⭐ Load prescriptions (array mới) hoặc prescription (object cũ - backward compatibility)
+          const prescriptionsData = res.data.record.prescriptions || (res.data.record.prescription ? [res.data.record.prescription] : []);
+          const loadedPrescriptions = prescriptionsData.map((p: any) => ({
+            medicine: p.medicine || "",
+            dosage: p.dosage || "",
+            duration: p.duration || "",
+          }));
+          // ⭐ Nếu không có đơn thuốc nào và có thể edit, tự động thêm 1 đơn trống
+          if (loadedPrescriptions.length === 0 && (res.data.permissions?.nurse?.canEdit ?? true)) {
+            setPrescriptions([{ medicine: "", dosage: "", duration: "" }]);
+          } else {
+            setPrescriptions(loadedPrescriptions);
+          }
           setNurseNote(res.data.record.nurseNote || "");
           const mappedServices = mapAdditionalServices(res.data.display?.additionalServices);
           setCurrentServices(mappedServices);
@@ -259,19 +263,20 @@ const NurseMedicalRecord: React.FC = () => {
       const res = await medicalRecordApi.updateMedicalRecordForNurse(appointmentId, {
         diagnosis,
         conclusion,
-        prescription,
+        prescription: prescriptions, // ⭐ Gửi prescriptions array
         nurseNote,
       });
       if (res.success && res.data) {
         setRecord(res.data);
         setDiagnosis(res.data.diagnosis || "");
         setConclusion(res.data.conclusion || "");
-        const updatedPrescription = res.data.prescription || {};
-        setPrescription({
-          medicine: updatedPrescription.medicine || "",
-          dosage: updatedPrescription.dosage || "",
-          duration: updatedPrescription.duration || "",
-        });
+        // ⭐ Load prescriptions (array mới) hoặc prescription (object cũ - backward compatibility)
+        const updatedPrescriptionsData = res.data.prescriptions || (res.data.prescription ? [res.data.prescription] : []);
+        setPrescriptions(updatedPrescriptionsData.map((p: any) => ({
+          medicine: p.medicine || "",
+          dosage: p.dosage || "",
+          duration: p.duration || "",
+        })));
         setNurseNote(res.data.nurseNote || "");
         toast.success("Đã lưu hồ sơ khám bệnh");
         navigate(-1);
@@ -295,6 +300,20 @@ const NurseMedicalRecord: React.FC = () => {
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {/* ⭐ Nút Back khi không thể chỉnh sửa (read-only) */}
+      {!canEdit && (
+        <div className="mb-4">
+          <Button
+            onClick={() => navigate(-1)}
+            color="default"
+            variant="flat"
+            className="border border-gray-300"
+            startContent={<ArrowLeftIcon className="w-4 h-4" />}
+          >
+            Quay lại
+          </Button>
+        </div>
+      )}
       {!canEdit && lockReason && (
         <Card className="bg-warning-50 border-warning-200">
           <CardBody>
@@ -556,64 +575,130 @@ const NurseMedicalRecord: React.FC = () => {
           <div className="flex items-center gap-2">
             <PencilSquareIcon className="w-5 h-5 text-orange-600" />
             <h4 className="font-semibold text-gray-800">Đơn thuốc</h4>
+            <span className="text-xs text-gray-500 ml-2">(Tùy chọn - có thể bỏ qua nếu không cần)</span>
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
           <div className="space-y-4">
-            <Input 
-              label="Thuốc" 
-              value={prescription.medicine}
-              onChange={(e) => setPrescription({ ...prescription, medicine: e.target.value })}
-              isReadOnly={!canEdit}
-              variant={canEdit ? "bordered" : "flat"}
-              placeholder="Nhập tên thuốc (ví dụ: Paracetamol 500mg)"
-              onFocus={() => {
-                if (isDropdownOpen) {
-                  closeDropdown();
-                }
-              }}
-              onMouseDown={() => {
-                if (isDropdownOpen) {
-                  closeDropdown();
-                }
-              }}
-            />
-            <Input 
-              label="Liều dùng" 
-              value={prescription.dosage}
-              onChange={(e) => setPrescription({ ...prescription, dosage: e.target.value })}
-              isReadOnly={!canEdit}
-              variant={canEdit ? "bordered" : "flat"}
-              placeholder="Ví dụ: 2 viên/lần, 3 lần/ngày"
-              onFocus={() => {
-                if (isDropdownOpen) {
-                  closeDropdown();
-                }
-              }}
-              onMouseDown={() => {
-                if (isDropdownOpen) {
-                  closeDropdown();
-                }
-              }}
-            />
-            <Input 
-              label="Thời gian sử dụng" 
-              value={prescription.duration}
-              onChange={(e) => setPrescription({ ...prescription, duration: e.target.value })}
-              isReadOnly={!canEdit}
-              variant={canEdit ? "bordered" : "flat"}
-              placeholder="Ví dụ: Sau bữa ăn, 7 ngày"
-              onFocus={() => {
-                if (isDropdownOpen) {
-                  closeDropdown();
-                }
-              }}
-              onMouseDown={() => {
-                if (isDropdownOpen) {
-                  closeDropdown();
-                }
-              }}
-            />
+            {/* ⭐ Hiển thị danh sách đơn thuốc */}
+            {prescriptions.length === 0 && !canEdit ? (
+              <div className="text-center text-gray-500 py-4">
+                Chưa có đơn thuốc
+              </div>
+            ) : (
+              prescriptions.map((prescription, index) => (
+              <div key={index} className="flex items-start gap-3 p-4 bg-white rounded-lg border border-gray-200">
+                {/* ⭐ 3 trường hiển thị theo hàng ngang */}
+                <div className="flex-1 grid grid-cols-3 gap-3">
+                  <Input 
+                    label="Thuốc" 
+                    value={prescription.medicine} 
+                    onChange={(e) => {
+                      const updated = [...prescriptions];
+                      updated[index] = { ...updated[index], medicine: e.target.value };
+                      setPrescriptions(updated);
+                    }}
+                    variant={canEdit ? "bordered" : "flat"} 
+                    placeholder="Nhập tên thuốc"
+                    isReadOnly={!canEdit}
+                    onFocus={() => {
+                      if (isDropdownOpen) {
+                        closeDropdown();
+                      }
+                    }}
+                    onMouseDown={() => {
+                      if (isDropdownOpen) {
+                        closeDropdown();
+                      }
+                    }}
+                    classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
+                  />
+                  
+                  <Input 
+                    label="Liều dùng" 
+                    value={prescription.dosage} 
+                    onChange={(e) => {
+                      const updated = [...prescriptions];
+                      updated[index] = { ...updated[index], dosage: e.target.value };
+                      setPrescriptions(updated);
+                    }}
+                    variant={canEdit ? "bordered" : "flat"} 
+                    placeholder="Ví dụ: 2 viên/lần"
+                    isReadOnly={!canEdit}
+                    onFocus={() => {
+                      if (isDropdownOpen) {
+                        closeDropdown();
+                      }
+                    }}
+                    onMouseDown={() => {
+                      if (isDropdownOpen) {
+                        closeDropdown();
+                      }
+                    }}
+                    classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
+                  />
+                  
+                  <Input 
+                    label="Thời gian sử dụng" 
+                    value={prescription.duration} 
+                    onChange={(e) => {
+                      const updated = [...prescriptions];
+                      updated[index] = { ...updated[index], duration: e.target.value };
+                      setPrescriptions(updated);
+                    }}
+                    variant={canEdit ? "bordered" : "flat"} 
+                    placeholder="Ví dụ: 7 ngày"
+                    isReadOnly={!canEdit}
+                    onFocus={() => {
+                      if (isDropdownOpen) {
+                        closeDropdown();
+                      }
+                    }}
+                    onMouseDown={() => {
+                      if (isDropdownOpen) {
+                        closeDropdown();
+                      }
+                    }}
+                    classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
+                  />
+                </div>
+                
+                {/* ⭐ Nút xóa đơn thuốc (chỉ hiển thị khi có thể edit và có nhiều hơn 1 đơn) */}
+                {canEdit && prescriptions.length > 1 && (
+                  <Button
+                    isIconOnly
+                    color="danger"
+                    variant="light"
+                    size="sm"
+                    onPress={() => {
+                      const updated = prescriptions.filter((_, i) => i !== index);
+                      setPrescriptions(updated);
+                    }}
+                    className="mt-6"
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                  </Button>
+                )}
+              </div>
+              ))
+            )}
+            
+            {/* ⭐ Nút thêm đơn thuốc mới - Icon dấu cộng ở góc phải dưới */}
+            {canEdit && (
+              <div className="flex justify-end pt-2">
+                <Button
+                  isIconOnly
+                  color="primary"
+                  variant="solid"
+                  size="md"
+                  onPress={() => {
+                    setPrescriptions([...prescriptions, { medicine: "", dosage: "", duration: "" }]);
+                  }}
+                >
+                  <PlusIcon className="w-5 h-5" />
+                </Button>
+              </div>
+            )}
           </div>
         </CardBody>
       </Card>

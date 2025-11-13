@@ -124,15 +124,44 @@ const DoctorSchedule = () => {
     }
   }, [dateRange.startDate, dateRange.endDate, isAuthenticated, fetchAppointments]);
 
+  // ⭐ Helper: Lấy ngày hôm nay theo timezone Việt Nam (UTC+7) dưới dạng YYYY-MM-DD
+  const getTodayInVietnam = (): string => {
+    const now = new Date();
+    // Lấy ngày hôm nay theo timezone Việt Nam
+    const vietnamDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // Format: YYYY-MM-DD
+    return vietnamDateStr;
+  };
+
+  // ⭐ Helper: Kiểm tra xem appointment có phải là của ngày hôm nay không (theo timezone Việt Nam)
+  const isTodayAppointment = (appointmentDate: string): boolean => {
+    if (!appointmentDate) return false;
+    
+    const aptDate = new Date(appointmentDate);
+    if (isNaN(aptDate.getTime())) return false;
+    
+    // Lấy ngày của appointment theo timezone Việt Nam
+    const aptDateStr = aptDate.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // Format: YYYY-MM-DD
+    
+    const today = getTodayInVietnam();
+    
+    // So sánh chuỗi ngày (YYYY-MM-DD)
+    return aptDateStr === today;
+  };
+
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
     let filtered = [...appointments];
 
     // Tab logic:
-    // - Upcoming: chỉ hiển thị CheckedIn hoặc InProgress
+    // - Các ca khám hôm nay: hiển thị các ca có trạng thái CheckedIn hoặc InProgress VÀ là của ngày hôm nay
     // - History: hiển thị Completed, Expired, No-Show
     if (activeTab === "upcoming") {
-      filtered = filtered.filter(apt => apt.status === "CheckedIn" || apt.status === "InProgress");
+      filtered = filtered.filter(apt => {
+        // Chỉ hiển thị các ca có trạng thái CheckedIn hoặc InProgress VÀ là của ngày hôm nay
+        const isToday = isTodayAppointment(apt.appointmentDate);
+        const isValidStatus = apt.status === "CheckedIn" || apt.status === "InProgress";
+        return isValidStatus && isToday;
+      });
     } else if (activeTab === "history") {
       filtered = filtered.filter(apt => apt.status === "Completed" || apt.status === "Expired" || apt.status === "No-Show");
     }
@@ -256,7 +285,12 @@ const DoctorSchedule = () => {
     const now = new Date();
     return {
       total: appointments.length,
-      upcoming: appointments.filter(a => new Date(a.appointmentDate) >= now).length,
+      // ⭐ Đếm số ca khám hôm nay (CheckedIn hoặc InProgress và là của ngày hôm nay)
+      upcoming: appointments.filter(a => {
+        const isToday = isTodayAppointment(a.appointmentDate);
+        const isValidStatus = a.status === "CheckedIn" || a.status === "InProgress";
+        return isValidStatus && isToday;
+      }).length,
       today: appointments.filter(a => {
         if (!a.appointmentDate) return false;
         const aptDate = new Date(a.appointmentDate).toISOString().split('T')[0];
@@ -428,7 +462,7 @@ const DoctorSchedule = () => {
               title={
                 <div className="flex items-center gap-2">
                   <ClockIcon className="w-5 h-5" />
-                  <span>Lịch sắp tới ({stats.upcoming})</span>
+                  <span>Các ca khám hôm nay ({stats.upcoming})</span>
                 </div>
               } 
             />

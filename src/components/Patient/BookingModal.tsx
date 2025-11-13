@@ -309,9 +309,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     const startTimeISO = dateObj.toISOString();
 
     // ⭐ FE validation: không cho đặt thời gian ở quá khứ
+    // ⭐ Clear tất cả lỗi cũ trước khi validate
+    setTimeInputError(null);
+    setErrorMessage(null);
+    
     const nowUtc = new Date();
     if (dateObj.getTime() < nowUtc.getTime()) {
+      // ⭐ Chỉ hiển thị lỗi quá khứ, không gọi backend validation
       setTimeInputError("Không thể đặt thời gian ở quá khứ");
+      setErrorMessage(null);
       // Clear endTime on error
       setFormData((prev) => ({
         ...prev,
@@ -320,11 +326,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       return;
     }
 
-    // Clear previous error
-    setTimeInputError(null);
-    // ⭐ Clear errorMessage nếu có (để không hiển thị ở trên cùng form)
-    setErrorMessage(null);
-
+    // ⭐ Chỉ gọi backend validation sau khi đã pass FE validation quá khứ
     try {
       const validateRes = await validateAppointmentTime(
         formData.doctorUserId,
@@ -335,7 +337,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
       if (!validateRes.success) {
         const errorMsg = validateRes.message || "Thời gian không hợp lệ";
-        // ⭐ Luôn set vào timeInputError để hiển thị dưới ô input
+        // ⭐ Chỉ set vào timeInputError, clear errorMessage để tránh hiển thị chồng chéo
         setTimeInputError(errorMsg);
         setErrorMessage(null);
         // Clear endTime on error
@@ -361,8 +363,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       }));
     } catch (err: any) {
       console.error("Error validating time:", err);
-      const errorMsg = err.message || "Lỗi validate thời gian";
-      // ⭐ Luôn set vào timeInputError để hiển thị dưới ô input
+      // ⭐ Chỉ lấy message đầu tiên từ error, không hiển thị nhiều lỗi
+      const errorMsg = err.message || err.response?.data?.message || "Lỗi validate thời gian";
+      // ⭐ Chỉ set vào timeInputError, clear errorMessage để tránh hiển thị chồng chéo
       setTimeInputError(errorMsg);
       setErrorMessage(null);
       // Clear endTime on error
@@ -893,7 +896,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                             value={formData.userStartTimeInput}
                             onChange={(e) => {
                               const timeInput = e.target.value;
+                              // ⭐ Clear tất cả lỗi khi user nhập để tránh hiển thị lỗi cũ
                               setTimeInputError(null);
+                              setErrorMessage(null);
                               
                               // Clear field error when user types
                               if (fieldErrors.userStartTimeInput) {

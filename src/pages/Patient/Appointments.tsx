@@ -224,6 +224,14 @@ const Appointments = () => {
   const formatPaymentInfo = (
     appointment: Appointment,
   ): { text: string; color: string } => {
+    // ⭐ Nếu appointment đã bị hủy (Cancelled hoặc Expired), hiển thị "Ca khám đã hủy" thay vì "Hết hạn thanh toán"
+    if (appointment.status === "Cancelled" || appointment.status === "Expired") {
+      return {
+        text: "Ca khám đã hủy",
+        color: "text-red-600 font-semibold",
+      };
+    }
+
     if (appointment.type === "Examination") {
       return {
         text: "Thanh toán tại phòng khám",
@@ -232,7 +240,7 @@ const Appointments = () => {
     }
 
     if (appointment.type === "Consultation") {
-      // ⭐ Kiểm tra payment đã hết hạn (Cancelled hoặc Expired)
+      // ⭐ Kiểm tra payment đã hết hạn (Cancelled hoặc Expired) - chỉ khi appointment chưa bị hủy
       if (
         appointment.paymentId &&
         (appointment.paymentId.status === "Cancelled" ||
@@ -715,16 +723,20 @@ const Appointments = () => {
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-40">
                       <div className="flex flex-col gap-1">
-                        {/* ⭐ Hiển thị "Vắng mặt" nếu bác sĩ On Leave */}
-                        {appointment.doctorStatus === 'On Leave' ? (
-                          <div className="text-sm font-medium text-red-600">
-                            Vắng mặt
-                          </div>
-                        ) : (
-                          <div className="text-sm font-medium text-gray-900">
-                            {appointment.doctorName}
-                          </div>
-                        )}
+                        {/* ⭐ Hiển thị "Vắng mặt" nếu bác sĩ On Leave - chỉ cho các ca đang chờ duyệt, đã approved, hoặc đã check-in */}
+                        {(() => {
+                          const allowedStatuses = ['Pending', 'Approved', 'CheckedIn'];
+                          const shouldShowAbsent = appointment.doctorStatus === 'On Leave' && allowedStatuses.includes(appointment.status);
+                          return shouldShowAbsent ? (
+                            <div className="text-sm font-medium text-red-600">
+                              Vắng mặt
+                            </div>
+                          ) : (
+                            <div className="text-sm font-medium text-gray-900">
+                              {appointment.doctorName}
+                            </div>
+                          );
+                        })()}
                         {/* Hiển thị thông báo chờ xác nhận đổi bác sĩ */}
                         {appointment.replacedDoctorName && appointment.confirmDeadline && (
                           <div className="flex flex-col gap-1">
