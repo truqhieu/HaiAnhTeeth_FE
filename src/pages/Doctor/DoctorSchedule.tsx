@@ -54,6 +54,7 @@ const DoctorSchedule = () => {
     endDate: null
   });
   const [selectedMode, setSelectedMode] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("upcoming");
   
   // Pagination
@@ -169,15 +170,39 @@ const DoctorSchedule = () => {
     // Filter by search text (sử dụng debounced search text)
     if (debouncedSearchText) {
       const searchLower = debouncedSearchText.toLowerCase();
-      filtered = filtered.filter(apt => 
-        apt.patientName.toLowerCase().includes(searchLower) ||
-        apt.serviceName.toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter(apt => {
+        // Tìm theo tên bệnh nhân, dịch vụ
+        const matchesBasic = 
+          apt.patientName.toLowerCase().includes(searchLower) ||
+          apt.serviceName.toLowerCase().includes(searchLower);
+        
+        // Tìm theo trạng thái (text search)
+        const statusText = getStatusText(apt.status).toLowerCase();
+        const matchesStatus = statusText.includes(searchLower);
+        
+        // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
+        if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
+          // Khi search "đang trong ca khám", chỉ hiển thị InProgress, không hiển thị CheckedIn
+          return apt.status === 'InProgress';
+        }
+        if (searchLower.includes('đã có mặt') || searchLower.includes('đã nhận') || searchLower.includes('check-in')) {
+          // Khi search "đã có mặt", chỉ hiển thị CheckedIn
+          return apt.status === 'CheckedIn';
+        }
+        
+        // Nếu không có keyword đặc biệt, tìm theo basic search hoặc status text
+        return matchesBasic || matchesStatus;
+      });
     }
 
     // Filter by mode
     if (selectedMode !== "all") {
       filtered = filtered.filter(apt => apt.mode === selectedMode);
+    }
+
+    // Filter by status
+    if (selectedStatus !== "all") {
+      filtered = filtered.filter(apt => apt.status === selectedStatus);
     }
 
     // Sort by appointmentDate ascending (ngày cũ nhất lên đầu, ngày mới nhất xuống dưới) sau đó sort by startTime ascending
@@ -196,12 +221,12 @@ const DoctorSchedule = () => {
     });
 
     return filtered;
-  }, [appointments, activeTab, debouncedSearchText, selectedMode]);
+  }, [appointments, activeTab, debouncedSearchText, selectedMode, selectedStatus]);
 
   // Reset page khi filtered appointments thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchText, selectedMode, activeTab]);
+  }, [debouncedSearchText, selectedMode, selectedStatus, activeTab]);
 
   const handleViewAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
@@ -237,11 +262,15 @@ const DoctorSchedule = () => {
       case "Approved":
         return "Đã xác nhận";
       case "CheckedIn":
-        return "Đã nhận";
+        return "Đã có mặt";
+      case "InProgress":
+        return "Đang trong ca khám";
       case "Completed":
         return "Hoàn thành";
       case "Finalized":
         return "Đã kết thúc";
+      case "Cancelled":
+        return "Ca khám đã hủy";
       case "Expired":
         return "Đã hết hạn";
       case "No-Show":
@@ -403,7 +432,7 @@ const DoctorSchedule = () => {
       {/* Filters */}
       <Card>
         <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input
               placeholder="Tìm kiếm bệnh nhân, dịch vụ..."
               value={searchText}
@@ -442,6 +471,23 @@ const DoctorSchedule = () => {
               <SelectItem key="Offline" startContent={<BuildingOfficeIcon className="w-4 h-4" />}>
                 Tại phòng khám
               </SelectItem>
+            </Select>
+
+            <Select
+              label="Trạng thái"
+              placeholder="Chọn trạng thái"
+              selectedKeys={selectedStatus !== "all" ? new Set([selectedStatus]) : new Set([])}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setSelectedStatus(selected ? String(selected) : "all");
+              }}
+              size="lg"
+              variant="bordered"
+              startContent={<DocumentTextIcon className="w-5 h-5 text-gray-400" />}
+            >
+              <SelectItem key="all">Tất cả trạng thái</SelectItem>
+              <SelectItem key="CheckedIn">Đã có mặt</SelectItem>
+              <SelectItem key="InProgress">Đang trong ca khám</SelectItem>
             </Select>
           </div>
         </CardBody>
@@ -596,34 +642,36 @@ const DoctorSchedule = () => {
                   <div className="flex gap-2 flex-wrap">
                     <div className="flex gap-2">
                       <Button
+                        isIconOnly
                         size="sm"
                         variant="flat"
                         color="primary"
-                        startContent={<EyeIcon className="w-4 h-4" />}
                         onPress={() => handleViewAppointment(appointment.appointmentId)}
+                        title="Xem chi tiết ca khám"
                       >
-                        Chi tiết
+                        <EyeIcon className="w-5 h-5" />
                       </Button>
                       <Button
+                        isIconOnly
                         size="sm"
                         variant="flat"
                         color="secondary"
-                        startContent={<UserIcon className="w-4 h-4" />}
                         onPress={() => handleViewPatient(appointment.appointmentId)}
+                        title="Xem chi tiết bệnh nhân"
                       >
-                        Bệnh nhân
+                        <UserIcon className="w-5 h-5" />
                       </Button>
                     </div>
                     <div className="relative">
                       <Button
+                        isIconOnly
                         size="sm"
                         variant="flat"
                         color="success"
-                        startContent={<DocumentTextIcon className="w-4 h-4" />}
                         onPress={() => handleViewMedicalRecord(appointment.appointmentId)}
-                        className="w-full sm:w-auto" // Full width trên mobile
+                        title="Xem hồ sơ khám bệnh"
                       >
-                        Hồ sơ khám bệnh
+                        <DocumentTextIcon className="w-5 h-5" />
                       </Button>
                       {/* Badge indicator trên button */}
                       {(appointment.status === "InProgress" || appointment.status === "Completed") && (

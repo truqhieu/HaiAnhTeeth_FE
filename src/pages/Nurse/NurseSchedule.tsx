@@ -29,6 +29,8 @@ import {
   BuildingOfficeIcon,
   HeartIcon,
   ClipboardDocumentListIcon,
+  CheckCircleIcon,
+  PlayIcon,
 } from "@heroicons/react/24/outline";
 import { nurseApi, type NurseAppointment, appointmentApi, leaveRequestApi } from "@/api";
 import toast from "react-hot-toast";
@@ -57,6 +59,7 @@ const NurseSchedule = () => {
   });
   const [selectedMode, setSelectedMode] = useState<string>("all");
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("upcoming");
   // Theo dõi ca đang trong quá trình khám (UI-only toggle)
   
@@ -296,11 +299,30 @@ const NurseSchedule = () => {
     // Filter by search text (sử dụng debounced search text)
     if (debouncedSearchText) {
       const searchLower = debouncedSearchText.toLowerCase();
-      filtered = filtered.filter(apt => 
-        apt.patientName.toLowerCase().includes(searchLower) ||
-        apt.serviceName.toLowerCase().includes(searchLower) ||
-        apt.doctorName.toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter(apt => {
+        // Tìm theo tên bệnh nhân, bác sĩ, dịch vụ
+        const matchesBasic = 
+          apt.patientName.toLowerCase().includes(searchLower) ||
+          apt.serviceName.toLowerCase().includes(searchLower) ||
+          apt.doctorName.toLowerCase().includes(searchLower);
+        
+        // Tìm theo trạng thái (text search)
+        const statusText = getStatusText(apt.status).toLowerCase();
+        const matchesStatus = statusText.includes(searchLower);
+        
+        // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
+        if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
+          // Khi search "đang trong ca khám", chỉ hiển thị InProgress, không hiển thị CheckedIn
+          return apt.status === 'InProgress';
+        }
+        if (searchLower.includes('đã có mặt') || searchLower.includes('đã nhận') || searchLower.includes('check-in')) {
+          // Khi search "đã có mặt", chỉ hiển thị CheckedIn
+          return apt.status === 'CheckedIn';
+        }
+        
+        // Nếu không có keyword đặc biệt, tìm theo basic search hoặc status text
+        return matchesBasic || matchesStatus;
+      });
     }
 
     // Filter by mode
@@ -329,12 +351,12 @@ const NurseSchedule = () => {
     });
 
     return filtered;
-  }, [appointments, activeTab, debouncedSearchText, selectedMode, selectedDoctor]);
+  }, [appointments, activeTab, debouncedSearchText, selectedMode, selectedDoctor, selectedStatus]);
 
   // Reset page khi filtered appointments thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchText, selectedMode, selectedDoctor, activeTab]);
+  }, [debouncedSearchText, selectedMode, selectedDoctor, selectedStatus, activeTab]);
 
   const handleViewAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
@@ -378,13 +400,15 @@ const NurseSchedule = () => {
       case "Approved":
         return "Đã xác nhận";
       case "CheckedIn":
-        return "Đã nhận";
+        return "Đã có mặt";
       case "InProgress":
-        return "Đang khám";
+        return "Đang trong ca khám";
       case "Completed":
         return "Hoàn thành";
       case "Finalized":
         return "Đã kết thúc";
+      case "Cancelled":
+        return "Ca khám đã hủy";
       case "Expired":
         return "Đã hết hạn";
       case "No-Show":
@@ -564,7 +588,7 @@ const NurseSchedule = () => {
       {/* Filters */}
       <Card>
         <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Input
               placeholder="Tìm kiếm bệnh nhân, bác sĩ, dịch vụ..."
               value={searchText}
@@ -622,6 +646,23 @@ const NurseSchedule = () => {
               <SelectItem key="Offline" startContent={<BuildingOfficeIcon className="w-4 h-4" />}>
                 Tại phòng khám
               </SelectItem>
+            </Select>
+
+            <Select
+              label="Trạng thái"
+              placeholder="Chọn trạng thái"
+              selectedKeys={selectedStatus !== "all" ? new Set([selectedStatus]) : new Set([])}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setSelectedStatus(selected ? String(selected) : "all");
+              }}
+              size="lg"
+              variant="bordered"
+              startContent={<ClipboardDocumentListIcon className="w-5 h-5 text-gray-400" />}
+            >
+              <SelectItem key="all">Tất cả trạng thái</SelectItem>
+              <SelectItem key="CheckedIn">Đã có mặt</SelectItem>
+              <SelectItem key="InProgress">Đang trong ca khám</SelectItem>
             </Select>
           </div>
         </CardBody>
@@ -756,34 +797,38 @@ const NurseSchedule = () => {
                   <TableCell>
                   <div className="flex gap-2 flex-wrap items-center">
                     <Button
+                      isIconOnly
                       size="sm"
                       variant="flat"
                       color="primary"
-                      startContent={<EyeIcon className="w-4 h-4" />}
                       onPress={() => handleViewAppointment(appointment.appointmentId)}
+                      title="Xem chi tiết ca khám"
                     >
-                      Chi tiết
+                      <EyeIcon className="w-5 h-5" />
                     </Button>
 
                     <Button
+                      isIconOnly
                       size="sm"
                       variant="flat"
                       color="secondary"
-                      startContent={<UserIcon className="w-4 h-4" />}
                       onPress={() => handleViewPatient(appointment.patientId)}
+                      title="Xem chi tiết bệnh nhân"
                     >
-                      Bệnh nhân
+                      <UserIcon className="w-5 h-5" />
                     </Button>
 
                     {/* Nút đánh dấu đang trong ca khám (chỉ cho CheckedIn và bác sĩ không vắng mặt) */}
                     {/* Nút cập nhật trạng thái cho cả Offline và Consultation (Online) */}
                     {appointment.status === "CheckedIn" && !isDoctorOnLeave(appointment) && (
                       <Button
+                        isIconOnly
                         size="sm"
                         variant="flat"
                         color="warning"
                         isLoading={updatingStatusId === appointment.appointmentId}
                         isDisabled={updatingStatusId === appointment.appointmentId}
+                        title="Bắt đầu ca khám"
                         onPress={async () => {
                           try {
                             setUpdatingStatusId(appointment.appointmentId);
@@ -819,7 +864,7 @@ const NurseSchedule = () => {
                           }
                         }}
                       >
-                        Đang trong ca khám
+                        <PlayIcon className="w-5 h-5" />
                       </Button>
                     )}
 
@@ -829,25 +874,28 @@ const NurseSchedule = () => {
                       appointment.status === "Completed"
                     ) && (
                       <Button
+                        isIconOnly
                         size="sm"
                         variant="flat"
                         color="success"
-                        startContent={<ClipboardDocumentListIcon className="w-4 h-4" />}
                         onPress={() => navigate(`/nurse/medical-record/${appointment.appointmentId}`)}
                         isDisabled={!appointment.patientId || appointment.patientId === "N/A" || appointment.patientId === "Trống"}
+                        title="Xem hồ sơ bệnh án"
                       >
-                        Hồ sơ bệnh án
+                        <ClipboardDocumentListIcon className="w-5 h-5" />
                       </Button>
                     )}
 
                     {/* Nút Hoàn thành cho ca InProgress - chỉ hiển thị khi doctor đã duyệt hồ sơ (status = "Finalized") */}
                     {appointment.status === "InProgress" && appointment.doctorApproved && (
                       <Button
+                        isIconOnly
                         size="sm"
                         color="primary"
                         variant="flat"
                         isLoading={updatingStatusId === appointment.appointmentId}
                         isDisabled={updatingStatusId === appointment.appointmentId}
+                        title="Hoàn thành ca khám"
                         onPress={async () => {
                           setUpdatingStatusId(appointment.appointmentId);
                           // Optimistic update: update UI immediately
@@ -883,7 +931,7 @@ const NurseSchedule = () => {
                           }
                         }}
                       >
-                        Hoàn thành
+                        <CheckCircleIcon className="w-5 h-5" />
                       </Button>
                     )}
                     {/* Hiển thị thông báo nếu chưa được bác sĩ duyệt */}

@@ -190,14 +190,16 @@ const Appointments = () => {
   }, [isAuthenticated]);
 
   const getStatusText = (appointment: Appointment): string => {
-    // ⭐ Nếu appointment đang PendingPayment nhưng payment đã cancelled/expired → hiển thị "Đã hủy"
+    // ⭐ Nếu appointment đang PendingPayment nhưng payment đã cancelled/expired → hiển thị theo status thực tế
     if (
       appointment.status === "PendingPayment" &&
       appointment.paymentId &&
       (appointment.paymentId.status === "Cancelled" ||
        appointment.paymentId.status === "Expired")
     ) {
-      return "Đã hủy";
+      // Nếu payment cancelled → có thể là user hủy hoặc system hủy, nhưng appointment vẫn PendingPayment
+      // Nên giữ nguyên "Chờ thanh toán" hoặc check appointment status thực tế
+      return "Chờ thanh toán";
     }
     
     switch (appointment.status) {
@@ -212,8 +214,9 @@ const Appointments = () => {
       case "Completed":
         return "Đã hoàn thành";
       case "Cancelled":
+        return "Ca khám đã hủy";
       case "Expired":
-        return "Đã hủy";
+        return "Đã hết hạn";
       case "PendingPayment":
         return "Chờ thanh toán";
       default:
@@ -224,10 +227,17 @@ const Appointments = () => {
   const formatPaymentInfo = (
     appointment: Appointment,
   ): { text: string; color: string } => {
-    // ⭐ Nếu appointment đã bị hủy (Cancelled hoặc Expired), hiển thị "Ca khám đã hủy" thay vì "Hết hạn thanh toán"
-    if (appointment.status === "Cancelled" || appointment.status === "Expired") {
+    // ⭐ Phân biệt rõ ràng: Cancelled = user hủy, Expired = hết hạn thanh toán
+    if (appointment.status === "Cancelled") {
       return {
         text: "Ca khám đã hủy",
+        color: "text-red-600 font-semibold",
+      };
+    }
+    
+    if (appointment.status === "Expired") {
+      return {
+        text: "Hết hạn thanh toán",
         color: "text-red-600 font-semibold",
       };
     }
@@ -799,8 +809,10 @@ const Appointments = () => {
                                     ? "bg-purple-100 text-purple-800"
                                 : appointment.status === "Completed"
                                   ? "bg-blue-100 text-blue-800"
-                                      : appointment.status === "Cancelled" || appointment.status === "Expired"
+                                      : appointment.status === "Cancelled"
                                     ? "bg-red-100 text-red-800"
+                                    : appointment.status === "Expired"
+                                      ? "bg-orange-100 text-orange-800"
                               : "bg-gray-100 text-gray-800"
                       }`}
                     >
