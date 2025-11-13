@@ -17,7 +17,7 @@ const AIBooking: React.FC = () => {
       {
         role: "bot",
         text:
-          "Xin chào 👋 Mình là trợ lý AI đặt lịch. Bạn chỉ cần mô tả nhu cầu của mình, mình sẽ giúp bạn đặt lịch khám một cách nhanh chóng và tiện lợi!",
+          "Xin chào 👋 Mình là trợ lý AI đặt lịch. Bạn chỉ cần mô tả nhu cầu của mình, mình sẽ giúp bạn đặt lịch khám một cách nhanh chóng và tiện lợi!\n\nVui lòng cung cấp ngày, giờ mong muốn, tên dịch vụ, tên bác sĩ để mình hỗ trợ bạn đặt lịch một cách tốt nhất nhé.",
       },
     ]);
   }, []);
