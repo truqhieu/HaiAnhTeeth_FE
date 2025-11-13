@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse } from "./index";
 
 // Promotion Interface
 export interface Promotion {
@@ -65,6 +65,52 @@ export interface GetPromotionsResponse {
 
 // Promotion API Functions
 export const promotionApi = {
+  // ========== PUBLIC APIs (for guests/patients) ==========
+  
+  // Get active promotions (no authentication required)
+  getPublicPromotions: async (
+    params?: GetPromotionsParams,
+  ): Promise<GetPromotionsResponse> => {
+    const queryParams = new URLSearchParams();
+
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.discountType) queryParams.append("discountType", params.discountType);
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.sort) queryParams.append("sort", params.sort);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/promotions${queryString ? `?${queryString}` : ""}`;
+
+    try {
+      const result = await apiCall<any>(endpoint, {
+        method: "GET",
+      });
+
+      return result as unknown as GetPromotionsResponse;
+    } catch (error) {
+      console.error("🌐 API Error:", error);
+      throw error;
+    }
+  },
+
+  // Get promotion detail (no authentication required)
+  getPublicPromotionDetail: async (
+    id: string,
+  ): Promise<
+    ApiResponse<{ success: boolean; message: string; data: Promotion }>
+  > => {
+    return apiCall<{
+      success: boolean;
+      message: string;
+      data: Promotion;
+    }>(`/promotions/${id}`, {
+      method: "GET",
+    });
+  },
+
+  // ========== MANAGER APIs (authentication required) ==========
+  
   // Get all promotions with pagination and filters
   getAllPromotions: async (
     params?: GetPromotionsParams,

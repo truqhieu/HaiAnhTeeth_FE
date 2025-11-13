@@ -101,7 +101,7 @@ const Dashboard = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
-                Dashboard phòng khám
+                Thống kê phòng khám
             </h1>
             <p className="text-sm text-gray-600">
               Theo dõi hiệu suất và phân tích dữ liệu phòng khám
