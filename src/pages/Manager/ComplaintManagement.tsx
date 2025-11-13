@@ -26,7 +26,6 @@ import {
   MagnifyingGlassIcon,
   EyeIcon,
   CheckCircleIcon,
-  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
@@ -77,11 +76,13 @@ const ComplaintManagement = () => {
       setLoading(true);
 
       const params: any = {
-        page: currentPage,
-        limit: itemsPerPage,
+        page: statusFilter === "Processed" ? 1 : currentPage,
+        limit: statusFilter === "Processed" ? 1000 : itemsPerPage, // Lấy nhiều data cho client-side filtering
       };
 
-      if (statusFilter !== "all") {
+      // Chỉ gửi status lên backend nếu là "Pending"
+      // "Processed" sẽ filter ở client side
+      if (statusFilter === "Pending") {
         params.status = statusFilter;
       }
 
@@ -96,11 +97,26 @@ const ComplaintManagement = () => {
         // Backend trả về: { status: true, total, totalPages, data: [...] }
         // Hoặc wrapper: { success: true, data: { status: true, total, totalPages, data: [...] } }
         const responseData = response.data.data ? response.data : (response as any);
-        const complaintsData = responseData.data || [];
+        let complaintsData = responseData.data || [];
         
-        setComplaints(complaintsData);
-        setTotal(responseData.total || 0);
-        setTotalPages(responseData.totalPages || 1);
+        // ✅ Filter client-side cho "Processed" (Đã xử lý = Approved + Rejected)
+        if (statusFilter === "Processed") {
+          complaintsData = complaintsData.filter(
+            (complaint: any) => complaint.status === "Approved" || complaint.status === "Rejected"
+          );
+          // Paginate client-side
+          const startIndex = (currentPage - 1) * itemsPerPage;
+          const endIndex = startIndex + itemsPerPage;
+          const paginatedData = complaintsData.slice(startIndex, endIndex);
+          
+          setComplaints(paginatedData);
+          setTotal(complaintsData.length);
+          setTotalPages(Math.ceil(complaintsData.length / itemsPerPage));
+        } else {
+          setComplaints(complaintsData);
+          setTotal(responseData.total || complaintsData.length);
+          setTotalPages(responseData.totalPages || Math.ceil(complaintsData.length / itemsPerPage));
+        }
       } else {
         toast.error("Không thể tải danh sách khiếu nại");
       }
@@ -153,17 +169,10 @@ const ComplaintManagement = () => {
   const handleProcessComplaint = async () => {
     if (!selectedComplaint || !actionType) return;
 
-    // Chỉ yêu cầu phản hồi khi duyệt, không yêu cầu khi từ chối
-    if (actionType === "Approved" && !responseText.trim()) {
-      toast.error("Vui lòng nhập phản hồi khi duyệt khiếu nại");
-
-      return;
-    }
-
     try {
       setIsProcessing(true);
 
-      // Nếu từ chối và không có response text, dùng message mặc định
+      // Nếu không có response text, dùng message mặc định cho Rejected
       const finalResponseText = responseText.trim() || 
         (actionType === "Rejected" ? "Khiếu nại không được chấp nhận" : "");
 
@@ -185,7 +194,7 @@ const ComplaintManagement = () => {
         toast.success(
           response.message ||
             response.data?.message ||
-            `Đã ${actionType === "Approved" ? "duyệt" : "từ chối"} khiếu nại`,
+            "Đã xử lý khiếu nại thành công",
         );
         setIsViewModalOpen(false);
         setSelectedComplaint(null);
@@ -222,7 +231,7 @@ const ComplaintManagement = () => {
       case "Approved":
         return "success";
       case "Rejected":
-        return "danger";
+        return "success";
       default:
         return "warning";
     }
@@ -233,9 +242,9 @@ const ComplaintManagement = () => {
       case "Pending":
         return "Đang chờ";
       case "Approved":
-        return "Đã duyệt";
+        return "Đã xử lý";
       case "Rejected":
-        return "Đã từ chối";
+        return "Đã xử lý";
       default:
         return status;
     }
@@ -298,12 +307,12 @@ const ComplaintManagement = () => {
             const selected = Array.from(keys)[0] as string;
 
             setStatusFilter(selected);
+            setCurrentPage(1); // Reset về trang 1 khi đổi filter
           }}
         >
           <SelectItem key="all">Tất cả trạng thái</SelectItem>
           <SelectItem key="Pending">Đang chờ</SelectItem>
-          <SelectItem key="Approved">Đã duyệt</SelectItem>
-          <SelectItem key="Rejected">Đã từ chối</SelectItem>
+          <SelectItem key="Processed">Đã xử lý</SelectItem>
         </Select>
       </div>
 
@@ -497,7 +506,7 @@ const ComplaintManagement = () => {
                 {selectedComplaint.status === "Pending" && (
                   <div className="border-t border-gray-200 pt-6">
                     <p className="text-sm font-medium text-gray-700 mb-3">
-                      Xử lý khiếu nại <span className="text-red-500">*</span>
+                      Phản hồi khiếu nại
                     </p>
 
                     <div className="mb-4">
@@ -509,12 +518,12 @@ const ComplaintManagement = () => {
                         }}
                         description={
                           <span className="text-xs text-gray-500">
-                            Chỉ được nhập chữ, số và các ký tự: . , ! ? ; : {`' "`} ( ) _ -
+                            Nhập phản hồi nếu muốn xử lý khiếu nại. Nếu để trống, khiếu nại sẽ bị từ chối.
                           </span>
                         }
-                        label="Phản hồi"
+                        label="Nội dung phản hồi"
                         minRows={4}
-                        placeholder="Nhập phản hồi của bạn (tối thiểu 5 ký tự)..."
+                        placeholder="Nhập phản hồi của bạn (tùy chọn)..."
                         value={responseText}
                         variant="bordered"
                         onValueChange={setResponseText}
@@ -542,35 +551,19 @@ const ComplaintManagement = () => {
                 Đóng
               </Button>
               {selectedComplaint?.status === "Pending" && (
-                <>
-                  {responseText.trim() ? (
-                    <Button
-                      size="sm"
-                      className="bg-green-600 text-white hover:bg-green-700"
-                      startContent={<CheckCircleIcon className="w-4 h-4" />}
-                      isLoading={isProcessing}
-                      onPress={() => {
-                        setActionType("Approved");
-                        handleProcessComplaint();
-                      }}
-                    >
-                      Duyệt
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="bg-red-600 text-white hover:bg-red-700"
-                      startContent={<XCircleIcon className="w-4 h-4" />}
-                      isLoading={isProcessing}
-                      onPress={() => {
-                        setActionType("Rejected");
-                        handleProcessComplaint();
-                      }}
-                    >
-                      Từ chối
-                    </Button>
-                  )}
-                </>
+                <Button
+                  size="sm"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  startContent={<CheckCircleIcon className="w-4 h-4" />}
+                  isLoading={isProcessing}
+                  onPress={() => {
+                    // Logic: Nếu có text -> Approved, không có text -> Rejected (xử lý như cũ)
+                    setActionType(responseText.trim() ? "Approved" : "Rejected");
+                    handleProcessComplaint();
+                  }}
+                >
+                  Xử lý
+                </Button>
               )}
             </div>
           </ModalFooter>

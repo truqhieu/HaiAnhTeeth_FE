@@ -165,7 +165,8 @@ const PatientHeader: React.FC = () => {
             {[
               { label: "Giới thiệu", href: "/about" },
               { label: "Dịch vụ", href: "/services" },
-              { label: "Tin tức & Ưu đãi", href: "/news" },
+              { label: "Tin tức", href: "/news" },
+              { label: "Ưu đãi", href: "/promotions" },
             ].map((item) => (
               <Link
                 key={item.href}

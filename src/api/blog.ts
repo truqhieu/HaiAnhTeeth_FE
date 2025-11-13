@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse } from "./index";
 
 // Blog Interface
 export interface Blog {
@@ -59,6 +59,48 @@ export interface GetBlogsResponse {
 
 // Blog API Functions
 export const blogApi = {
+  // ========== PUBLIC APIs (for guests/patients) ==========
+  
+  // Get published blogs (no authentication required)
+  getPublicBlogs: async (params?: GetBlogsParams): Promise<GetBlogsResponse> => {
+    const queryParams = new URLSearchParams();
+
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.category) queryParams.append("category", params.category);
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.sort) queryParams.append("sort", params.sort);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/blogs${queryString ? `?${queryString}` : ""}`;
+
+    try {
+      const result = await apiCall<any>(endpoint, {
+        method: "GET",
+      });
+
+      return result as unknown as GetBlogsResponse;
+    } catch (error) {
+      console.error("🌐 API Error:", error);
+      throw error;
+    }
+  },
+
+  // Get published blog detail (no authentication required)
+  getPublicBlogDetail: async (
+    id: string,
+  ): Promise<ApiResponse<{ success: boolean; message: string; data: Blog }>> => {
+    return apiCall<{
+      success: boolean;
+      message: string;
+      data: Blog;
+    }>(`/blogs/${id}`, {
+      method: "GET",
+    });
+  },
+
+  // ========== MANAGER APIs (authentication required) ==========
+  
   // Get all blogs with pagination and filters
   getAllBlogs: async (params?: GetBlogsParams): Promise<GetBlogsResponse> => {
     const queryParams = new URLSearchParams();

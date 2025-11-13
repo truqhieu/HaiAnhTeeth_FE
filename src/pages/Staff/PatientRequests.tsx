@@ -24,7 +24,7 @@ import {
   Pagination,
   Tooltip,
 } from "@heroui/react";
-import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon, XCircleIcon, EyeIcon } from "@heroicons/react/24/outline";
 
 import { patientRequestApi, PatientRequest } from "../../api/patientRequest";
 import { formatDate, formatTime } from "../../utils/dateUtils";
@@ -437,14 +437,17 @@ const PatientRequests: React.FC = () => {
                   <TableCell>{formatDateTime(request.createdAt)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        color="primary"
-                        variant="flat"
-                        onClick={() => openDetailModal(request)}
-                      >
-                        Xem chi tiết
-                      </Button>
+                      <Tooltip content="Xem chi tiết">
+                        <Button
+                          size="md"
+                          variant="light"
+                          className="min-w-10 h-10 text-blue-600 hover:bg-blue-50"
+                          isIconOnly
+                          onClick={() => openDetailModal(request)}
+                        >
+                          <EyeIcon className="w-6 h-6" />
+                        </Button>
+                      </Tooltip>
                       {request.status === "Pending" && (
                         <>
                           <Tooltip content="Duyệt yêu cầu">
