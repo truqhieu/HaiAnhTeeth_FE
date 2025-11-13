@@ -32,7 +32,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
 
   const navigation = [
     {
-      name: "Dashboard",
+      name: "Quản lý ca khám",
       href: "/staff/dashboard",
       icon: HomeIcon,
       current: location.pathname === "/staff/dashboard",
@@ -89,7 +89,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
             <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
               <UserIcon className="w-5 h-5 text-blue-600" />
             </div>
-            <span className="text-lg font-semibold text-gray-800">Staff</span>
+            <span className="text-lg font-semibold text-gray-800">Lễ tân</span>
           </div>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <XMarkIcon className="w-6 h-6 text-gray-500" />
@@ -128,7 +128,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
         {/* Logout Button - Fixed at bottom */}
         <div className="px-4 py-4 border-t border-gray-200">
           <div className="mb-3 px-4">
-            <p className="text-xs text-gray-500 mb-1">Đang đăng nhập</p>
+  
             <p className="text-sm font-medium text-gray-700 truncate">
               {user?.fullName || user?.email || "Staff"}
             </p>
@@ -157,7 +157,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
             <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
               <UserIcon className="w-5 h-5 text-blue-600" />
             </div>
-            <span className="text-lg font-semibold text-gray-800">Staff</span>
+            <span className="text-lg font-semibold text-gray-800">Lễ tân</span>
           </div>
         </div>
 

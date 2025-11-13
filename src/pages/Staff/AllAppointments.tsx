@@ -605,10 +605,10 @@ const AllAppointments = () => {
 
       if (res.success) {
         const statusMessages = {
-          CheckedIn: "Đã check-in bệnh nhân thành công!",
+          CheckedIn: "Đã đánh dấu có mặt thành công!",
           Completed: "Đã hoàn thành ca khám!",
           Cancelled: "Đã hủy ca khám thành công!",
-          "No-Show": "Đã đánh dấu No-Show!",
+          "No-Show": "Đã đánh dấu vắng mặt!",
         };
         toast.success(statusMessages[newStatus]);
         await fetchApprovedLeaves(); // Refresh leaves
@@ -650,7 +650,9 @@ const AllAppointments = () => {
       case "Approved":
         return "Đã xác nhận";
       case "CheckedIn":
-        return "Đã check-in";
+        return "Đã có mặt";
+      case "InProgress":
+        return "Đang trong ca khám";
       case "Completed":
         return "Đã hoàn thành";
       case "Cancelled":
@@ -658,7 +660,7 @@ const AllAppointments = () => {
       case "Refunded":
         return "Đã hoàn tiền";
       case "No-Show":
-        return "Không đến";
+        return "Vắng mặt";
       case "PendingPayment":
         return "Chờ thanh toán";
       case "Expired":
@@ -678,6 +680,7 @@ const AllAppointments = () => {
       case "Completed":
         return "primary";
       case "CheckedIn":
+      case "InProgress":
         return "primary";
       case "Cancelled":
       case "No-Show":
@@ -879,6 +882,7 @@ const AllAppointments = () => {
     pending: visibleAppointments.filter((a) => a.status === "Pending").length,
     approved: visibleAppointments.filter((a) => a.status === "Approved").length,
     checkedIn: visibleAppointments.filter((a) => a.status === "CheckedIn").length,
+    inProgress: visibleAppointments.filter((a) => a.status === "InProgress").length,
     completed: visibleAppointments.filter((a) => a.status === "Completed").length,
     cancelled: visibleAppointments.filter((a) => a.status === "Cancelled").length,
   };
@@ -1120,11 +1124,6 @@ const AllAppointments = () => {
           <h1 className="text-3xl font-bold text-gray-900">Quản lý ca khám</h1>
           <p className="text-gray-600 mt-1">Theo dõi và quản lý tất cả các ca khám</p>
         </div>
-        {user && (
-          <Chip color="primary" variant="flat" size="lg">
-            {user.role}
-          </Chip>
-        )}
       </div>
 
       {/* Error Message */}
@@ -1138,7 +1137,7 @@ const AllAppointments = () => {
       )}
 
       {/* Statistics Cards (no expired/pending payment) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardBody className="text-center py-4">
             <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
@@ -1160,7 +1159,13 @@ const AllAppointments = () => {
         <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
           <CardBody className="text-center py-4">
             <p className="text-2xl font-bold text-indigo-700">{stats.checkedIn}</p>
-            <p className="text-sm text-indigo-600 mt-1">Đã check-in</p>
+            <p className="text-sm text-indigo-600 mt-1">Đã có mặt</p>
+          </CardBody>
+        </Card>
+        <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
+          <CardBody className="text-center py-4">
+            <p className="text-2xl font-bold text-cyan-700">{stats.inProgress}</p>
+            <p className="text-sm text-cyan-600 mt-1">Đang khám</p>
           </CardBody>
         </Card>
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
@@ -1235,7 +1240,8 @@ const AllAppointments = () => {
             <Tab key="all" title={`Tất cả (${stats.total})`} />
             <Tab key="Pending" title={`Chờ duyệt (${stats.pending})`} />
             <Tab key="Approved" title={`Đã xác nhận (${stats.approved})`} />
-            <Tab key="CheckedIn" title={`Đã check-in (${stats.checkedIn})`} />
+            <Tab key="CheckedIn" title={`Đã có mặt (${stats.checkedIn})`} />
+            <Tab key="InProgress" title={`Đang khám (${stats.inProgress})`} />
             <Tab key="Completed" title={`Hoàn thành (${stats.completed})`} />
             <Tab key="Cancelled" title={`Đã hủy (${stats.cancelled})`} />
           </Tabs>
@@ -1385,7 +1391,7 @@ const AllAppointments = () => {
                                     isDisabled={processingId === appointment.id}
                                     isLoading={processingId === appointment.id}
                                   >
-                                    Check-in
+                                    Có mặt
                                   </Button>
                                 ) : null}
                                 {/* ⭐ Không hiển thị nút No Show khi chỉ approved - chỉ hiển thị khi đã check-in */}
@@ -1400,7 +1406,7 @@ const AllAppointments = () => {
                                 isDisabled={processingId === appointment.id}
                                 isLoading={processingId === appointment.id}
                               >
-                                No Show
+                                Vắng mặt
                               </Button>
                             )}
                             {/* ⭐ Chỉ cho phép check-in từ No-Show khi đã đến ngày và trong giờ làm việc */}
@@ -1413,7 +1419,7 @@ const AllAppointments = () => {
                                 isDisabled={processingId === appointment.id}
                                 isLoading={processingId === appointment.id}
                               >
-                                Check-in
+                                Có mặt
                               </Button>
                             )}
                             {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) ||
