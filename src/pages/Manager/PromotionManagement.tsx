@@ -377,16 +377,25 @@ const PromotionManagement = () => {
                           <PencilIcon className="w-5 h-5" />
                         </Button>
                       </Tooltip>
-                      <Tooltip content="Xóa ưu đãi">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="min-w-8 h-8 text-red-600 hover:bg-red-50"
-                          onPress={() => handleDelete(promotion)}
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </Button>
+                      <Tooltip 
+                        content={
+                          promotion.status === "Active"
+                            ? "Không thể xóa ưu đãi đang áp dụng"
+                            : "Xóa ưu đãi"
+                        }
+                      >
+                        <span>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            className="min-w-8 h-8 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            onPress={() => handleDelete(promotion)}
+                            isDisabled={promotion.status === "Active"}
+                          >
+                            <TrashIcon className="w-5 h-5" />
+                          </Button>
+                        </span>
                       </Tooltip>
                     </div>
                   </TableCell>
@@ -436,7 +445,23 @@ const PromotionManagement = () => {
                   <p className="text-sm text-gray-600 mt-1">
                     {selectedPromotion.description}
                   </p>
+                  <div className="mt-2">
+                    <Chip
+                      color={getStatusColor(selectedPromotion.status)}
+                      size="sm"
+                      variant="flat"
+                    >
+                      {getStatusText(selectedPromotion.status)}
+                    </Chip>
+                  </div>
                 </div>
+                {selectedPromotion.status === "Expired" && (
+                  <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Lưu ý:</strong> Ưu đãi đã hết hạn này và các liên kết liên quan sẽ bị xóa.
+                    </p>
+                  </div>
+                )}
                 <p className="text-sm text-red-600">
                   <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác!
                 </p>

@@ -195,3 +195,4 @@ const NewsDetailPage = () => {
 
 export default NewsDetailPage;
 
+
