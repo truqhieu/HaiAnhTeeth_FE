@@ -23,11 +23,11 @@ import {
   ModalBody,
   ModalFooter,
   Textarea,
+  Tooltip,
 } from "@heroui/react";
 import { 
   MagnifyingGlassIcon,
   CalendarIcon,
-  UserGroupIcon,
   ClockIcon,
   CheckCircleIcon,
   XCircleIcon,
@@ -36,6 +36,10 @@ import {
   InformationCircleIcon,
   UserPlusIcon,
   DocumentArrowDownIcon,
+  EyeIcon,
+  CheckIcon,
+  XMarkIcon,
+  UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import { appointmentApi, leaveRequestApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -671,14 +675,15 @@ const AllAppointments = () => {
   };
 
   const getStatusColor = (status: string): "success" | "warning" | "primary" | "danger" | "default" => {
+    // Subtle colors - still use colors but with flat variant for softer look
     switch (status) {
       case "Approved":
+      case "Completed":
+      case "Refunded":
         return "success";
       case "Pending":
       case "PendingPayment":
         return "warning";
-      case "Completed":
-        return "primary";
       case "CheckedIn":
       case "InProgress":
         return "primary";
@@ -686,8 +691,6 @@ const AllAppointments = () => {
       case "No-Show":
       case "Expired":
         return "danger";
-      case "Refunded":
-        return "success";
       default:
         return "default";
     }
@@ -927,7 +930,8 @@ const AllAppointments = () => {
   }
 
   return (
-    <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
+      <div className="space-y-6 pr-6 pb-6">
       {/* Cancel Appointment Modal */}
       <Modal 
         isOpen={isCancelModalOpen} 
@@ -1118,145 +1122,114 @@ const AllAppointments = () => {
         </ModalContent>
       </Modal>
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý ca khám</h1>
-          <p className="text-gray-600 mt-1">Theo dõi và quản lý tất cả các ca khám</p>
-        </div>
+      {/* Header - Outside card */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">Quản lý ca khám</h1>
+        <p className="text-gray-600 mt-1 text-base">Theo dõi và quản lý tất cả các ca khám</p>
       </div>
 
       {/* Error Message */}
       {error && (
-        <Card className="bg-danger-50 border-danger-200">
-          <CardBody className="flex flex-row items-center gap-3">
+        <div className="mb-6 bg-danger-50 border border-danger-200 rounded-lg p-4">
+          <div className="flex items-center gap-3">
             <XCircleIcon className="w-6 h-6 text-danger-600 flex-shrink-0" />
             <p className="text-danger-700">{error}</p>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Statistics Cards (no expired/pending payment) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
-            <p className="text-sm text-blue-600 mt-1">Tổng số</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-yellow-700">{stats.pending}</p>
-            <p className="text-sm text-yellow-600 mt-1">Chờ duyệt</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-green-700">{stats.approved}</p>
-            <p className="text-sm text-green-600 mt-1">Đã xác nhận</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-indigo-700">{stats.checkedIn}</p>
-            <p className="text-sm text-indigo-600 mt-1">Đã có mặt</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-cyan-700">{stats.inProgress}</p>
-            <p className="text-sm text-cyan-600 mt-1">Đang khám</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-purple-700">{stats.completed}</p>
-            <p className="text-sm text-purple-600 mt-1">Hoàn thành</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-red-700">{stats.cancelled}</p>
-            <p className="text-sm text-red-600 mt-1">Đã hủy</p>
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              placeholder="Tìm kiếm bệnh nhân, dịch vụ..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              startContent={<MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />}
-              isClearable
-              onClear={() => setSearchText("")}
-              size="lg"
-              variant="bordered"
-            />
-
-            <Select
-              label="Bác sĩ"
-              placeholder="Chọn bác sĩ"
-              selectedKeys={selectedDoctor !== "all" ? new Set([selectedDoctor]) : new Set([])}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setSelectedDoctor(selected ? String(selected) : "all");
-              }}
-              size="lg"
-              variant="bordered"
-              startContent={<UserGroupIcon className="w-5 h-5 text-gray-400" />}
-            >
-              {[{ key: "all", label: "Tất cả bác sĩ" }, ...doctors.map(d => ({ key: d, label: d }))].map((item) => (
-                <SelectItem key={item.key}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </Select>
-
-            <DateRangePicker
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
-              placeholder="Chọn khoảng thời gian"
-              className="w-full"
-            />
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Tabs for Status Filter (no Expired tab) */}
-      <Card>
-        <CardBody className="overflow-x-auto">
-          <Tabs
-            selectedKey={activeTab}
-            onSelectionChange={(key) => setActiveTab(String(key))}
-            size="lg"
-            color="primary"
-            variant="underlined"
-          >
-            <Tab key="all" title={`Tất cả (${stats.total})`} />
-            <Tab key="Pending" title={`Chờ duyệt (${stats.pending})`} />
-            <Tab key="Approved" title={`Đã xác nhận (${stats.approved})`} />
-            <Tab key="CheckedIn" title={`Đã có mặt (${stats.checkedIn})`} />
-            <Tab key="InProgress" title={`Đang khám (${stats.inProgress})`} />
-            <Tab key="Completed" title={`Hoàn thành (${stats.completed})`} />
-            <Tab key="Cancelled" title={`Đã hủy (${stats.cancelled})`} />
-          </Tabs>
-        </CardBody>
-      </Card>
-
-      {/* Table */}
-      <Card>
+      {/* Table with Filters and Tabs */}
+      <Card className="shadow-lg border border-gray-100">
         <CardBody className="p-0">
+          {/* Filters */}
+          <div className="px-6 py-6 border-b border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <Input
+                placeholder="Tìm kiếm bệnh nhân, dịch vụ..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                startContent={<MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />}
+                isClearable
+                onClear={() => setSearchText("")}
+                size="lg"
+                variant="bordered"
+                classNames={{
+                  inputWrapper: "border-2 hover:border-[#39BDCC] data-[focus=true]:border-[#39BDCC] h-14",
+                }}
+              />
+
+              <Select
+                placeholder="Chọn bác sĩ"
+                selectedKeys={selectedDoctor !== "all" ? new Set([selectedDoctor]) : new Set([])}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0];
+                  setSelectedDoctor(selected ? String(selected) : "all");
+                }}
+                size="lg"
+                variant="bordered"
+                startContent={<UserGroupIcon className="w-5 h-5 text-gray-400" />}
+                classNames={{
+                  trigger: "border-2 hover:border-[#39BDCC] data-[focus=true]:border-[#39BDCC] h-14",
+                }}
+              >
+                {[{ key: "all", label: "Tất cả bác sĩ" }, ...doctors.map(d => ({ key: d, label: d }))].map((item) => (
+                  <SelectItem key={item.key}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </Select>
+
+              <DateRangePicker
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
+                placeholder="Chọn khoảng thời gian"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="px-6 py-6 border-b border-gray-200">
+            <Tabs
+              selectedKey={activeTab}
+              onSelectionChange={(key) => setActiveTab(String(key))}
+              size="lg"
+              variant="underlined"
+              classNames={{
+                tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
+                cursor: "w-full bg-gray-900",
+                tab: "max-w-fit px-4 h-12",
+                tabContent: "group-data-[selected=true]:text-gray-900 font-semibold"
+              }}
+            >
+              <Tab key="all" title={`Tất cả (${stats.total})`} />
+              <Tab 
+                key="Pending" 
+                title={
+                  <div className="relative flex items-center">
+                    <span>Chờ duyệt ({stats.pending})</span>
+                    {stats.pending > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                    )}
+                  </div>
+                } 
+              />
+              <Tab key="Approved" title={`Đã xác nhận (${stats.approved})`} />
+              <Tab key="CheckedIn" title={`Đã có mặt (${stats.checkedIn})`} />
+              <Tab key="InProgress" title={`Đang khám (${stats.inProgress})`} />
+              <Tab key="Completed" title={`Hoàn thành (${stats.completed})`} />
+              <Tab key="Cancelled" title={`Đã hủy (${stats.cancelled})`} />
+            </Tabs>
+          </div>
+
+          {/* Table */}
           <Table 
             aria-label="Bảng quản lý ca khám"
             removeWrapper
             classNames={{
-              th: "bg-gray-100 text-gray-700 font-semibold",
-              td: "py-4",
+              th: "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-bold text-sm uppercase tracking-wide",
+              td: "py-5 border-b border-gray-100",
             }}
           >
             <TableHeader columns={columns}>
@@ -1272,23 +1245,17 @@ const AllAppointments = () => {
               }
             >
               {(appointment: Appointment) => (
-                <TableRow key={appointment.id} className="hover:bg-gray-50">
+                <TableRow key={appointment.id} className="hover:bg-blue-50/30 transition-colors duration-200">
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="w-5 h-5 text-gray-400" />
-                      <span className="font-medium">{formatDate(appointment.startTime)}</span>
-                    </div>
+                    <span className="font-semibold text-gray-900">{formatDate(appointment.startTime)}</span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <ClockIcon className="w-5 h-5 text-gray-400" />
-                      <span>{formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}</span>
-                    </div>
+                    <span className="font-medium text-gray-700">{formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}</span>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-semibold text-gray-900">{appointment.patientName}</p>
-                      <p className="text-xs text-gray-500">Đặt lúc: {formatLocalDateTime(appointment.createdAt)}</p>
+                      <p className="font-bold text-gray-900 text-base">{appointment.patientName}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Đặt lúc: {formatLocalDateTime(appointment.createdAt)}</p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -1311,17 +1278,14 @@ const AllAppointments = () => {
                     })()}
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm text-gray-700">{appointment.serviceName}</p>
+                    <p className="text-sm font-medium text-gray-700">{appointment.serviceName}</p>
                   </TableCell>
                   <TableCell>
                     <Chip
                       color={getStatusColor(appointment.status)}
                       variant="flat"
                       size="lg"
-                      startContent={
-                        appointment.status === "Completed" ? <CheckCircleIcon className="w-4 h-4" /> :
-                        appointment.status === "Cancelled" ? <XCircleIcon className="w-4 h-4" /> : null
-                      }
+                      className="font-semibold"
                     >
                       {getStatusText(appointment.status)}
                     </Chip>
@@ -1329,10 +1293,10 @@ const AllAppointments = () => {
                   <TableCell>
                     {appointment.checkedInAt ? (
                       <div className="text-sm">
-                        <p className="font-semibold text-primary-600">{formatLocalDateTime(appointment.checkedInAt)}</p>
+                        <p className="font-bold text-gray-900">{formatLocalDateTime(appointment.checkedInAt)}</p>
                       </div>
                     ) : (
-                      <span className="text-gray-400 text-sm">-</span>
+                      <span className="text-gray-400 text-sm font-medium">-</span>
                     )}
                   </TableCell>
                   <TableCell>
@@ -1341,16 +1305,18 @@ const AllAppointments = () => {
                         const isOnLeave = isDoctorOnLeave(appointment);
                         if (isOnLeave) {
                           return shouldShowReassignButton(appointment, isOnLeave) ? (
-                            <Button
-                              size="sm"
-                              color="secondary"
-                              variant="flat"
-                              onPress={() => openReassignModal(appointment)}
-                              isDisabled={processingId === appointment.id}
-                              startContent={<UserPlusIcon className="w-4 h-4" />}
-                            >
-                              Gán BS
-                            </Button>
+                            <Tooltip content="Gán bác sĩ">
+                              <Button
+                                isIconOnly
+                                size="md"
+                                variant="light"
+                                className="text-purple-600 hover:bg-purple-50 transition-colors"
+                                onPress={() => openReassignModal(appointment)}
+                                isDisabled={processingId === appointment.id}
+                              >
+                                <UserPlusIcon className="w-5 h-5" />
+                              </Button>
+                            </Tooltip>
                           ) : null;
                         }
 
@@ -1358,95 +1324,115 @@ const AllAppointments = () => {
                           <>
                             {appointment.status === "Pending" && (
                               <>
-                                <Button
-                                  size="sm"
-                                  color="success"
-                                  variant="flat"
-                                  onPress={() => handleApprove(appointment.id)}
-                                  isDisabled={processingId === appointment.id}
-                                  isLoading={processingId === appointment.id}
-                                >
-                                  Xác nhận
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  color="danger"
-                                  variant="flat"
-                                  onPress={() => openCancelModal(appointment.id)}
-                                  isDisabled={processingId === appointment.id}
-                                >
-                                  Hủy
-                                </Button>
+                                <Tooltip content="Xác nhận">
+                                  <Button
+                                    isIconOnly
+                                    size="md"
+                                    variant="light"
+                                    className="text-green-600 hover:bg-green-50 transition-colors"
+                                    onPress={() => handleApprove(appointment.id)}
+                                    isDisabled={processingId === appointment.id}
+                                    isLoading={processingId === appointment.id}
+                                  >
+                                    <CheckCircleIcon className="w-5 h-5" />
+                                  </Button>
+                                </Tooltip>
+                                <Tooltip content="Hủy">
+                                  <Button
+                                    isIconOnly
+                                    size="md"
+                                    variant="light"
+                                    className="text-red-600 hover:bg-red-50 transition-colors"
+                                    onPress={() => openCancelModal(appointment.id)}
+                                    isDisabled={processingId === appointment.id}
+                                  >
+                                    <XCircleIcon className="w-5 h-5" />
+                                  </Button>
+                                </Tooltip>
                               </>
                             )}
                             {appointment.status === "Approved" && (
                               <>
                                 {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám */}
                                 {isAppointmentDateReached(appointment.startTime) ? (
-                                  <Button
-                                    size="sm"
-                                    color="primary"
-                                    variant="flat"
-                                    onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                                    isDisabled={processingId === appointment.id}
-                                    isLoading={processingId === appointment.id}
-                                  >
-                                    Có mặt
-                                  </Button>
+                                  <Tooltip content="Có mặt">
+                                    <Button
+                                      isIconOnly
+                                      size="md"
+                                      variant="light"
+                                      className="text-blue-600 hover:bg-blue-50 transition-colors"
+                                      onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                                      isDisabled={processingId === appointment.id}
+                                      isLoading={processingId === appointment.id}
+                                    >
+                                      <CheckIcon className="w-5 h-5" />
+                                    </Button>
+                                  </Tooltip>
                                 ) : null}
                                 {/* ⭐ Không hiển thị nút No Show khi chỉ approved - chỉ hiển thị khi đã check-in */}
                               </>
                             )}
                             {appointment.status === "CheckedIn" && (
-                              <Button
-                                size="sm"
-                                color="warning"
-                                variant="flat"
-                                onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
-                                isDisabled={processingId === appointment.id}
-                                isLoading={processingId === appointment.id}
-                              >
-                                Vắng mặt
-                              </Button>
+                              <Tooltip content="Vắng mặt">
+                                <Button
+                                  isIconOnly
+                                  size="md"
+                                  variant="light"
+                                  className="text-orange-600 hover:bg-orange-50 transition-colors"
+                                  onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
+                                  isDisabled={processingId === appointment.id}
+                                  isLoading={processingId === appointment.id}
+                                >
+                                  <XMarkIcon className="w-5 h-5" />
+                                </Button>
+                              </Tooltip>
                             )}
                             {/* ⭐ Chỉ cho phép check-in từ No-Show khi đã đến ngày và trong giờ làm việc */}
                             {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && isAppointmentDateReached(appointment.startTime) && (
-                              <Button
-                                size="sm"
-                                color="primary"
-                                variant="flat"
-                                onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                                isDisabled={processingId === appointment.id}
-                                isLoading={processingId === appointment.id}
-                              >
-                                Có mặt
-                              </Button>
+                              <Tooltip content="Có mặt">
+                                <Button
+                                  isIconOnly
+                                  size="md"
+                                  variant="light"
+                                  className="text-blue-600 hover:bg-blue-50 transition-colors"
+                                  onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                                  isDisabled={processingId === appointment.id}
+                                  isLoading={processingId === appointment.id}
+                                >
+                                  <CheckIcon className="w-5 h-5" />
+                                </Button>
+                              </Tooltip>
                             )}
                             {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) ||
                               (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
                               <div className="flex gap-2">
                                 {appointment.status === "Completed" && (
-                                  <Button
-                                    size="sm"
-                                    color="success"
-                                    variant="flat"
-                                    onPress={() => handleDownloadPDF(appointment.id)}
-                                    isDisabled={processingId === appointment.id}
-                                    isLoading={processingId === appointment.id}
-                                    startContent={<DocumentArrowDownIcon className="w-4 h-4" />}
-                                  >
-                                    Xuất PDF
-                                  </Button>
+                                  <Tooltip content="Xuất PDF">
+                                    <Button
+                                      isIconOnly
+                                      size="md"
+                                      variant="light"
+                                      className="text-green-600 hover:bg-green-50 transition-colors"
+                                      onPress={() => handleDownloadPDF(appointment.id)}
+                                      isDisabled={processingId === appointment.id}
+                                      isLoading={processingId === appointment.id}
+                                    >
+                                      <DocumentArrowDownIcon className="w-5 h-5" />
+                                    </Button>
+                                  </Tooltip>
                                 )}
                                 {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
-                                  <Button
-                                    size="sm"
-                                    color="primary"
-                                    variant="flat"
-                                    onPress={() => openDetailModal(appointment.id)}
-                                  >
-                                    Xem chi tiết
-                                  </Button>
+                                  <Tooltip content="Xem chi tiết">
+                                    <Button
+                                      isIconOnly
+                                      size="md"
+                                      variant="light"
+                                      className="text-blue-600 hover:bg-blue-50 transition-colors"
+                                      onPress={() => openDetailModal(appointment.id)}
+                                    >
+                                      <EyeIcon className="w-5 h-5" />
+                                    </Button>
+                                  </Tooltip>
                                 ) : null}
                               </div>
                             )}
@@ -1464,27 +1450,48 @@ const AllAppointments = () => {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4">
-          <Pagination
-            total={totalPages}
-            page={currentPage}
-            onChange={setCurrentPage}
-            showControls
-            color="primary"
-            size="lg"
-            classNames={{
-              wrapper: "gap-2",
-              item: "w-10 h-10 text-base",
-              cursor: "bg-primary text-white font-semibold",
-            }}
-          />
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600 mb-4 sm:mb-0">
+            Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredAppointments.length)} trong tổng số {filteredAppointments.length} ca khám
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {/* Previous button */}
+            <Button
+              isDisabled={currentPage === 1}
+              size="sm"
+              variant="bordered"
+              onPress={() => setCurrentPage(currentPage - 1)}
+            >
+              ←
+            </Button>
+
+            {/* Page numbers */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                className="min-w-8"
+                color={currentPage === page ? "primary" : "default"}
+                size="sm"
+                variant={currentPage === page ? "solid" : "bordered"}
+                onPress={() => setCurrentPage(page)}
+              >
+                {page}
+              </Button>
+            ))}
+
+            {/* Next button */}
+            <Button
+              isDisabled={currentPage === totalPages}
+              size="sm"
+              variant="bordered"
+              onPress={() => setCurrentPage(currentPage + 1)}
+            >
+              →
+            </Button>
+          </div>
         </div>
       )}
-
-      {/* Result Count */}
-      <div className="text-center text-sm text-gray-600">
-        Hiển thị <span className="font-semibold">{startIndex + 1}-{Math.min(endIndex, filteredAppointments.length)}</span> trong tổng số <span className="font-semibold">{filteredAppointments.length}</span> ca khám
-      </div>
 
       {/* Reassign Doctor Modal */}
       {reassignAppointment && (
@@ -1498,6 +1505,7 @@ const AllAppointments = () => {
           endTime={reassignAppointment.endTime}
         />
       )}
+      </div>
     </div>
   );
 };

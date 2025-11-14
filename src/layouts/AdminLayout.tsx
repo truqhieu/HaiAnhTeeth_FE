@@ -102,7 +102,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* Logout Button - Fixed at bottom */}
         <div className="px-4 py-4 border-t border-gray-200">
           <div className="mb-3 px-4">
-            <p className="text-xs text-gray-500 mb-1">Đang đăng nhập</p>
             <p className="text-sm font-medium text-gray-700 truncate">
               {user?.fullName || user?.email || "Admin"}
             </p>
