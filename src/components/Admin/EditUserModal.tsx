@@ -35,6 +35,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
     phone: "",
     role: "",
     status: "active",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const [showValidation, setShowValidation] = useState(false);
@@ -60,6 +62,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         phone: user.phone,
         role: user.role,
         status: user.status,
+        newPassword: "",
+        confirmPassword: "",
       });
       setShowValidation(false);
     }
@@ -83,6 +87,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   const isEmailInvalid =
     showValidation && (!formData.email || !validateEmail(formData.email));
   const isRoleInvalid = canChangeRole && showValidation && !formData.role;
+  
+  // Password validation
+  const isPasswordInvalid = showValidation && formData.newPassword && formData.newPassword.length < 6;
+  const isConfirmPasswordInvalid = showValidation && formData.newPassword && formData.newPassword !== formData.confirmPassword;
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -99,7 +107,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       !formData.name ||
       !formData.email ||
       !validateEmail(formData.email) ||
-      (canChangeRole && !formData.role);
+      (canChangeRole && !formData.role) ||
+      (formData.newPassword && formData.newPassword.length < 6) ||
+      (formData.newPassword && formData.newPassword !== formData.confirmPassword);
 
     if (hasErrors) {
       return;
@@ -177,9 +187,33 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         }
       }
 
+      // Handle password change if provided
+      let passwordChangeSuccess = true;
+      if (formData.newPassword && formData.newPassword.trim() !== "") {
+        try {
+          const passwordResponse = await adminApi.changePassword(user.id, {
+            password: formData.newPassword,
+          });
+          
+          if (!(passwordResponse.data?.status || passwordResponse.success)) {
+            throw new Error(passwordResponse.data?.message || "Không thể đổi mật khẩu");
+          }
+        } catch (passwordError: any) {
+          console.error("Error changing password:", passwordError);
+          toast.error(
+            passwordError.message || "Có lỗi khi đổi mật khẩu",
+          );
+          passwordChangeSuccess = false;
+        }
+      }
+
       // Hiển thị toast success duy nhất
-      if (statusChangeSuccess) {
-        toast.success("Cập nhật tài khoản thành công!");
+      if (statusChangeSuccess && passwordChangeSuccess) {
+        if (formData.newPassword) {
+          toast.success("Cập nhật tài khoản và đổi mật khẩu thành công!");
+        } else {
+          toast.success("Cập nhật tài khoản thành công!");
+        }
       }
 
       // Close modal and notify success để refresh data
@@ -378,6 +412,51 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                   <SelectItem key={option.key}>{option.label}</SelectItem>
                 ))}
               </Select>
+            </div>
+            
+            {/* Password Change Section */}
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-sm font-semibold text-gray-700 mb-4">
+                Đổi mật khẩu (không bắt buộc)
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <Input
+                  fullWidth
+                  classNames={{
+                    base: "w-full",
+                    inputWrapper: "w-full"
+                  }}
+                  autoComplete="new-password"
+                  errorMessage={isPasswordInvalid ? "Mật khẩu phải có ít nhất 6 ký tự" : ""}
+                  isInvalid={isPasswordInvalid}
+                  label="Mật khẩu mới"
+                  placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                  type="password"
+                  value={formData.newPassword}
+                  variant="bordered"
+                  onValueChange={(value) => handleInputChange("newPassword", value)}
+                />
+
+                <Input
+                  fullWidth
+                  classNames={{
+                    base: "w-full",
+                    inputWrapper: "w-full"
+                  }}
+                  autoComplete="new-password"
+                  errorMessage={isConfirmPasswordInvalid ? "Mật khẩu xác nhận không khớp" : ""}
+                  isInvalid={isConfirmPasswordInvalid}
+                  label="Xác nhận mật khẩu"
+                  placeholder="Nhập lại mật khẩu mới"
+                  type="password"
+                  value={formData.confirmPassword}
+                  variant="bordered"
+                  onValueChange={(value) => handleInputChange("confirmPassword", value)}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Để trống nếu không muốn đổi mật khẩu
+              </p>
             </div>
           </Form>
         </div>

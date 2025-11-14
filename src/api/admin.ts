@@ -198,4 +198,30 @@ export const adminApi = {
       },
     );
   },
+
+  // Bulk Lock Accounts
+  bulkLockAccounts: async (
+    userIds: string[],
+  ): Promise<ApiResponse<{ status: boolean; message: string }>> => {
+    return authenticatedApiCall<{ status: boolean; message: string }>(
+      `/admin/accounts/lock`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ selectedIds: userIds }),
+      },
+    );
+  },
+
+  // Bulk Unlock Accounts
+  bulkUnlockAccounts: async (
+    userIds: string[],
+  ): Promise<ApiResponse<{ status: boolean; message: string }>> => {
+    return authenticatedApiCall<{ status: boolean; message: string }>(
+      `/admin/accounts/unlock`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ selectedIds: userIds }),
+      },
+    );
+  },
 };

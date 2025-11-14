@@ -13,15 +13,9 @@ import {
   TableCell,
   Chip,
   Spinner,
+  Card,
+  CardBody,
 } from "@heroui/react";
-import {
-  PaperAirplaneIcon,
-  CalendarIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ExclamationCircleIcon,
-} from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 import { leaveRequestApi } from "@/api/leaveRequest";
@@ -165,18 +159,6 @@ const LeaveRequestPage = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Pending":
-        return <ClockIcon className="w-4 h-4" />;
-      case "Approved":
-        return <CheckCircleIcon className="w-4 h-4" />;
-      case "Rejected":
-        return <XCircleIcon className="w-4 h-4" />;
-      default:
-        return <ExclamationCircleIcon className="w-4 h-4" />;
-    }
-  };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
@@ -208,8 +190,8 @@ const LeaveRequestPage = () => {
   const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="p-6 bg-gray-50 min-h-full">
-      {/* Page Title */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
+      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Đơn xin nghỉ phép</h1>
         <p className="text-gray-600 mt-2">
@@ -218,223 +200,211 @@ const LeaveRequestPage = () => {
       </div>
 
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 mb-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg">
-            <CalendarIcon className="w-6 h-6 text-white" />
+      <Card className="shadow-lg mb-6 border-0">
+        <CardBody className="p-6 md:p-8">
+          <div className="mb-6 pb-4 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-800">
+              Gửi đơn xin nghỉ phép mới
+            </h2>
           </div>
-          <h2 className="text-xl font-semibold text-gray-800">
-            Gửi đơn xin nghỉ phép mới
-          </h2>
-        </div>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label
+                  className="block text-sm font-bold text-gray-700 mb-3"
+                  htmlFor="startDate"
+                >
+                  Ngày bắt đầu <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  fullWidth
+                  classNames={{
+                    input: "text-base",
+                    inputWrapper:
+                      "border-2 border-gray-300 hover:border-blue-400 data-[focus=true]:border-blue-500 h-12 transition-colors",
+                  }}
+                  id="startDate"
+                  min={today}
+                  size="lg"
+                  type="date"
+                  value={startDate}
+                  variant="bordered"
+                  onValueChange={setStartDate}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-bold text-gray-700 mb-3"
+                  htmlFor="endDate"
+                >
+                  Ngày kết thúc <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  fullWidth
+                  classNames={{
+                    input: "text-base",
+                    inputWrapper:
+                      "border-2 border-gray-300 hover:border-blue-400 data-[focus=true]:border-blue-500 h-12 transition-colors",
+                  }}
+                  id="endDate"
+                  min={startDate || today}
+                  size="lg"
+                  type="date"
+                  value={endDate}
+                  variant="bordered"
+                  onValueChange={setEndDate}
+                />
+              </div>
+            </div>
+
+            {startDate && endDate && (
+              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-blue-500 p-4 rounded-r-lg shadow-sm">
+                <p className="text-sm font-medium text-gray-600">Tổng số ngày nghỉ</p>
+                <p className="text-xl font-bold text-blue-600">
+                  {calculateDays(startDate, endDate)} ngày
+                </p>
+              </div>
+            )}
+
             <div>
               <label
-                className="block text-sm font-semibold text-gray-700 mb-2"
-                htmlFor="startDate"
+                className="block text-sm font-bold text-gray-700 mb-3"
+                htmlFor="reason"
               >
-                Ngày bắt đầu <span className="text-red-500">*</span>
+                Lý do nghỉ <span className="text-red-500">*</span>
               </label>
-              <Input
+              <Textarea
                 fullWidth
                 classNames={{
                   input: "text-base",
                   inputWrapper:
-                    "border-2 hover:border-blue-500 transition-colors h-12",
+                    "border-2 border-gray-300 hover:border-blue-400 data-[focus=true]:border-blue-500 transition-colors",
                 }}
-                id="startDate"
-                min={today}
-                size="lg"
-                type="date"
-                value={startDate}
+                id="reason"
+                minRows={4}
+                placeholder="Mô tả lý do xin nghỉ phép của bạn... Ví dụ: Nghỉ ốm, việc gia đình, du lịch, v.v."
+                value={reason}
                 variant="bordered"
-                onValueChange={setStartDate}
+                onValueChange={setReason}
               />
-            </div>
-
-            <div>
-              <label
-                className="block text-sm font-semibold text-gray-700 mb-2"
-                htmlFor="endDate"
-              >
-                Ngày kết thúc <span className="text-red-500">*</span>
-              </label>
-              <Input
-                fullWidth
-                classNames={{
-                  input: "text-base",
-                  inputWrapper:
-                    "border-2 hover:border-blue-500 transition-colors h-12",
-                }}
-                id="endDate"
-                min={startDate || today}
-                size="lg"
-                type="date"
-                value={endDate}
-                variant="bordered"
-                onValueChange={setEndDate}
-              />
-            </div>
-          </div>
-
-          {startDate && endDate && (
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
-              <p className="text-sm text-blue-800 font-medium">
-                <CalendarIcon className="w-4 h-4 inline mr-2" />
-                Tổng số ngày nghỉ: {calculateDays(startDate, endDate)} ngày
+              <p className="text-xs text-gray-700 mt-2.5 bg-amber-50 p-2 rounded border-l-2 border-amber-400">
+                Lý do rõ ràng và chi tiết sẽ giúp quản lý xem xét đơn nhanh hơn
               </p>
             </div>
-          )}
 
-          <div>
-            <label
-              className="block text-sm font-semibold text-gray-700 mb-2"
-              htmlFor="reason"
-            >
-              Lý do nghỉ <span className="text-red-500">*</span>
-            </label>
-            <Textarea
-              fullWidth
-              classNames={{
-                input: "text-base",
-                inputWrapper:
-                  "border-2 hover:border-blue-500 transition-colors",
-              }}
-              id="reason"
-              minRows={4}
-              placeholder="Mô tả lý do xin nghỉ phép của bạn..."
-              value={reason}
-              variant="bordered"
-              onValueChange={setReason}
-            />
-            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-              <ExclamationCircleIcon className="w-3 h-3" />
-              Lý do rõ ràng sẽ giúp quản lý xem xét nhanh hơn
+            <div className="flex justify-end pt-4 border-t border-gray-200">
+              <Button
+                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 font-bold px-8 shadow-md hover:shadow-lg transition-all"
+                isDisabled={submitting}
+                isLoading={submitting}
+                size="lg"
+                type="submit"
+              >
+                {submitting ? "Đang gửi..." : "Gửi đơn xin nghỉ"}
+              </Button>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
+
+      {/* Leave Requests History */}
+      <Card className="shadow-lg border-0">
+        <CardBody className="p-0">
+          <div className="p-6 border-b bg-gradient-to-r from-gray-50 to-blue-50">
+            <h2 className="text-xl font-bold text-gray-800">
+              Lịch sử đơn xin nghỉ
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Theo dõi trạng thái các đơn xin nghỉ của bạn
             </p>
           </div>
 
-          <div className="flex justify-end pt-2">
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700 font-semibold px-8"
-              isDisabled={submitting}
-              isLoading={submitting}
-              size="lg"
-              startContent={
-                !submitting && <PaperAirplaneIcon className="w-5 h-5" />
-              }
-              type="submit"
+          {loading ? (
+            <div className="flex flex-col justify-center items-center py-20">
+              <Spinner color="primary" size="lg" />
+              <p className="text-gray-500 mt-4 font-medium">Đang tải dữ liệu...</p>
+            </div>
+          ) : (
+            <Table
+              aria-label="Leave requests history table"
+              classNames={{
+                wrapper: "shadow-none rounded-none",
+                th: "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-bold text-xs uppercase tracking-wider",
+                td: "py-4",
+              }}
             >
-              {submitting ? "Đang gửi..." : "Gửi đơn xin nghỉ"}
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* Leave Requests History */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="p-6 border-b bg-gray-50">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Lịch sử đơn xin nghỉ
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Theo dõi trạng thái các đơn xin nghỉ của bạn
-          </p>
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col justify-center items-center py-20">
-            <Spinner color="primary" size="lg" />
-            <p className="text-gray-500 mt-4">Đang tải dữ liệu...</p>
-          </div>
-        ) : (
-          <Table
-            aria-label="Leave requests history table"
-            classNames={{
-              wrapper: "shadow-none rounded-none",
-            }}
-          >
-            <TableHeader columns={columns}>
-              {(column) => (
-                <TableColumn
-                  key={column.key}
-                  className="bg-gray-50 text-gray-700 font-semibold text-sm uppercase tracking-wider"
-                >
-                  {column.label}
-                </TableColumn>
-              )}
-            </TableHeader>
-            <TableBody
+              <TableHeader columns={columns}>
+                {(column) => (
+                  <TableColumn key={column.key}>
+                    {column.label}
+                  </TableColumn>
+                )}
+              </TableHeader>
+              <TableBody
               emptyContent={
                 <div className="text-center py-16">
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
-                    <CalendarIcon className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500 text-lg font-medium">
+                  <p className="text-gray-500 text-lg font-semibold">
                     Chưa có đơn xin nghỉ nào
                   </p>
-                  <p className="text-gray-400 text-sm mt-1">
-                    Đơn xin nghỉ của bạn sẽ xuất hiện ở đây
+                  <p className="text-gray-400 text-sm mt-2">
+                    Đơn xin nghỉ của bạn sẽ xuất hiện ở đây sau khi gửi
                   </p>
                 </div>
               }
-              items={leaveRequests}
-            >
-              {(request) => (
-                <TableRow
-                  key={request._id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <TableCell>
-                    <div className="py-1">
-                      <div className="flex items-center gap-2 text-gray-900 font-medium">
-                        <CalendarIcon className="w-4 h-4 text-blue-500" />
-                        <span>
-                          {formatDate(request.startDate)} -{" "}
-                          {formatDate(request.endDate)}
+                items={leaveRequests}
+              >
+                {(request) => (
+                  <TableRow
+                    key={request._id}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <TableCell>
+                      <div className="space-y-1">
+                        <span className="text-sm font-semibold text-gray-900">
+                          {formatDate(request.startDate)} → {formatDate(request.endDate)}
                         </span>
+                        <div>
+                          <Chip size="sm" variant="flat" color="primary" className="text-xs">
+                            {calculateDays(request.startDate, request.endDate)} ngày
+                          </Chip>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {calculateDays(request.startDate, request.endDate)} ngày
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm text-gray-700 max-w-md leading-relaxed">
+                        {request.reason}
                       </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm text-gray-800 max-w-md">
-                      {request.reason}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      className="font-medium"
-                      color={getStatusColor(request.status)}
-                      size="sm"
-                      startContent={getStatusIcon(request.status)}
-                      variant="flat"
-                    >
-                      {getStatusText(request.status)}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    {request.approvedByManager ? (
-                      <p className="text-sm text-gray-700">
-                        {request.approvedByManager.fullName}
-                      </p>
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">Chưa xử lý</p>
-                    )}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        className="font-semibold"
+                        color={getStatusColor(request.status)}
+                        size="md"
+                        variant="flat"
+                      >
+                        {getStatusText(request.status)}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      {request.approvedByManager ? (
+                        <p className="text-sm font-medium text-gray-700">
+                          {request.approvedByManager.fullName}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">Chưa xử lý</p>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </CardBody>
+      </Card>
     </div>
   );
 };
 
 export default LeaveRequestPage;
-
-

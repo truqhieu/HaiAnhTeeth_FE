@@ -19,7 +19,6 @@ import {
   ExclamationCircleIcon,
   ClockIcon,
   CheckCircleIcon,
-  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
@@ -154,44 +153,24 @@ const Complaints = () => {
   };
 
   const getStatusColor = (
-    status: string,
-  ): "warning" | "success" | "danger" => {
-    switch (status) {
-      case "Pending":
-        return "warning";
-      case "Approved":
-        return "success";
-      case "Rejected":
-        return "danger";
-      default:
-        return "warning";
-    }
+    hasResponse: boolean,
+  ): "warning" | "success" => {
+    // Chỉ có 2 trạng thái: Đang chờ (warning) hoặc Đã xử lý (success)
+    return hasResponse ? "success" : "warning";
   };
 
-  const getStatusText = (status: string): string => {
-    switch (status) {
-      case "Pending":
-        return "Đang chờ xử lý";
-      case "Approved":
-        return "Đã được duyệt";
-      case "Rejected":
-        return "Đã bị từ chối";
-      default:
-        return status;
-    }
+  const getStatusText = (hasResponse: boolean): string => {
+    // Chỉ hiển thị "Đã xử lý" khi có phản hồi từ manager
+    return hasResponse ? "Đã xử lý" : "Đang chờ xử lý";
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Pending":
-        return <ClockIcon className="w-4 h-4" />;
-      case "Approved":
-        return <CheckCircleIcon className="w-4 h-4" />;
-      case "Rejected":
-        return <XCircleIcon className="w-4 h-4" />;
-      default:
-        return <ExclamationCircleIcon className="w-4 h-4" />;
-    }
+  const getStatusIcon = (hasResponse: boolean) => {
+    // Khi đã xử lý: CheckCircleIcon, khi chờ: ClockIcon
+    return hasResponse ? (
+      <CheckCircleIcon className="w-4 h-4" />
+    ) : (
+      <ClockIcon className="w-4 h-4" />
+    );
   };
 
   const formatDate = (dateString?: string) => {
@@ -253,9 +232,6 @@ const Complaints = () => {
         {/* Form Section */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 mb-8 hover:shadow-xl transition-shadow">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-gradient-to-br from-[#39BDCC] to-[#2ca6b5] rounded-lg">
-              <PaperAirplaneIcon className="w-6 h-6 text-white" />
-            </div>
             <h2 className="text-2xl font-semibold text-gray-800">
               Gửi đơn khiếu nại mới
             </h2>
@@ -361,7 +337,6 @@ const Complaints = () => {
                 isDisabled={submitting || appointments.length === 0}
                 isLoading={submitting}
                 size="lg"
-                startContent={!submitting && <PaperAirplaneIcon className="w-5 h-5" />}
                 type="submit"
               >
                 {submitting ? "Đang gửi..." : "Gửi đơn khiếu nại"}
@@ -445,12 +420,21 @@ const Complaints = () => {
                     <TableCell>
                       <Chip
                         className="font-medium"
-                        color={getStatusColor(complaint.status)}
+                        color={getStatusColor(
+                          complaint.managerResponses &&
+                          complaint.managerResponses.length > 0
+                        )}
                         size="sm"
-                        startContent={getStatusIcon(complaint.status)}
+                        startContent={getStatusIcon(
+                          complaint.managerResponses &&
+                          complaint.managerResponses.length > 0
+                        )}
                         variant="flat"
                       >
-                        {getStatusText(complaint.status)}
+                        {getStatusText(
+                          complaint.managerResponses &&
+                          complaint.managerResponses.length > 0
+                        )}
                       </Chip>
                     </TableCell>
                     <TableCell>

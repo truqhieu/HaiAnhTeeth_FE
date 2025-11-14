@@ -3,6 +3,8 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   PencilIcon,
+  LockClosedIcon,
+  LockOpenIcon,
 } from "@heroicons/react/24/outline";
 import {
   Button,
@@ -17,6 +19,7 @@ import {
   TableHeader,
   TableRow,
   Chip,
+  Tooltip,
 } from "@heroui/react";
 import toast from "react-hot-toast";
 
@@ -47,6 +50,13 @@ const AccountManagement = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Selection states
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  
+  // Bulk action loading
+  const [isBulkLocking, setIsBulkLocking] = useState(false);
+  const [isBulkUnlocking, setIsBulkUnlocking] = useState(false);
 
   // Debug user info
   useEffect(() => {
@@ -107,6 +117,9 @@ const AccountManagement = () => {
         setUsers(mappedUsers);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 1);
+        
+        // Reset selections when data changes
+        setSelectedUserIds(new Set());
       } else {
         console.warn("⚠️ Response not successful or no data");
       }
@@ -136,7 +149,7 @@ const AccountManagement = () => {
   }, [searchTerm]);
 
   const statusOptions = [
-    { key: "all", label: "Tất cả trạng thái" },
+    { key: "all", label: "Tất cả trạng thái" },
     { key: "active", label: "Hoạt động" },
     { key: "inactive", label: "Bị khóa" },
   ];
@@ -190,6 +203,88 @@ const AccountManagement = () => {
     setIsEditModalOpen(false);
     setSelectedUser(null);
   };
+  
+  // Selection handler using Table's built-in selection
+  const handleSelectionChange = (keys: any) => {
+    if (keys === "all") {
+      // Select all selectable users
+      const selectableUsers = currentUsers
+        .filter(user => user.role !== "Bệnh nhân" && user.role !== "Patient")
+        .map(user => user.id);
+      setSelectedUserIds(new Set(selectableUsers));
+    } else {
+      setSelectedUserIds(new Set(keys));
+    }
+  };
+  
+  // Bulk lock/unlock handlers
+  const handleBulkLock = async () => {
+    if (selectedUserIds.size === 0) {
+      toast.error("Vui lòng chọn ít nhất một tài khoản");
+      return;
+    }
+    
+    // Filter only active users
+    const activeUserIds = users
+      .filter(user => selectedUserIds.has(user.id) && user.status === "active")
+      .map(user => user.id);
+    
+    if (activeUserIds.length === 0) {
+      toast.error("Không có tài khoản đang hoạt động nào được chọn");
+      return;
+    }
+    
+    try {
+      setIsBulkLocking(true);
+      const response = await adminApi.bulkLockAccounts(activeUserIds);
+      
+      if (response.data?.status || response.success) {
+        toast.success(`Đã khóa ${activeUserIds.length} tài khoản`);
+        setSelectedUserIds(new Set());
+        fetchAccounts();
+      } else {
+        toast.error(response.data?.message || "Không thể khóa tài khoản");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Có lỗi xảy ra khi khóa tài khoản");
+    } finally {
+      setIsBulkLocking(false);
+    }
+  };
+  
+  const handleBulkUnlock = async () => {
+    if (selectedUserIds.size === 0) {
+      toast.error("Vui lòng chọn ít nhất một tài khoản");
+      return;
+    }
+    
+    // Filter only inactive users
+    const inactiveUserIds = users
+      .filter(user => selectedUserIds.has(user.id) && user.status === "inactive")
+      .map(user => user.id);
+    
+    if (inactiveUserIds.length === 0) {
+      toast.error("Không có tài khoản bị khóa nào được chọn");
+      return;
+    }
+    
+    try {
+      setIsBulkUnlocking(true);
+      const response = await adminApi.bulkUnlockAccounts(inactiveUserIds);
+      
+      if (response.data?.status || response.success) {
+        toast.success(`Đã mở khóa ${inactiveUserIds.length} tài khoản`);
+        setSelectedUserIds(new Set());
+        fetchAccounts();
+      } else {
+        toast.error(response.data?.message || "Không thể mở khóa tài khoản");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Có lỗi xảy ra khi mở khóa tài khoản");
+    } finally {
+      setIsBulkUnlocking(false);
+    }
+  };
 
   const columns = [
     { key: "stt", label: "STT" },
@@ -198,7 +293,7 @@ const AccountManagement = () => {
     { key: "email", label: "Email" },
     { key: "phone", label: "Số điện thoại" },
     { key: "status", label: "Trạng thái" },
-    { key: "actions", label: "Chỉnh sửa" },
+    { key: "actions", label: "Thao tác" },
   ];
 
   return (
@@ -211,73 +306,146 @@ const AccountManagement = () => {
       </div>
 
       {/* Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Input
-              className="w-full"
-              placeholder="Tìm kiếm..."
-              startContent={
-                <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
-              }
-              value={searchTerm}
+      <div className="mb-6 flex flex-col gap-4">
+        {/* Top row: Filters and Add button */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+          <div className="flex flex-col sm:flex-row gap-4 flex-1">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <Input
+                className="w-full"
+                placeholder="Tìm kiếm..."
+                startContent={
+                  <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
+                }
+                value={searchTerm}
+                variant="bordered"
+                onValueChange={setSearchTerm}
+              />
+            </div>
+
+            {/* Status Filter */}
+            <Select
+              className="w-48"
+              placeholder="Chọn trạng thái"
+              selectedKeys={statusFilter ? [statusFilter] : []}
               variant="bordered"
-              onValueChange={setSearchTerm}
-            />
+              onSelectionChange={(keys) => {
+                const selectedKey = Array.from(keys)[0] as string;
+
+                setStatusFilter(selectedKey);
+                // Reset to page 1 when filter changes
+                if (currentPage !== 1) {
+                  setCurrentPage(1);
+                }
+              }}
+            >
+              {statusOptions.map((option) => (
+                <SelectItem key={option.key}>{option.label}</SelectItem>
+              ))}
+            </Select>
+
+            {/* Role Filter */}
+            <Select
+              className="w-48"
+              placeholder="Chọn vai trò"
+              selectedKeys={roleFilter ? [roleFilter] : []}
+              variant="bordered"
+              onSelectionChange={(keys) => {
+                const selectedKey = Array.from(keys)[0] as string;
+
+                setRoleFilter(selectedKey);
+                // Reset to page 1 when filter changes
+                if (currentPage !== 1) {
+                  setCurrentPage(1);
+                }
+              }}
+            >
+              {roleOptions.map((option) => (
+                <SelectItem key={option.key}>{option.label}</SelectItem>
+              ))}
+            </Select>
           </div>
 
-          {/* Status Filter */}
-          <Select
-            className="w-48"
-            placeholder="Chọn trạng thái"
-            selectedKeys={statusFilter ? [statusFilter] : []}
-            variant="bordered"
-            onSelectionChange={(keys) => {
-              const selectedKey = Array.from(keys)[0] as string;
-
-              setStatusFilter(selectedKey);
-              // Reset to page 1 when filter changes
-              if (currentPage !== 1) {
-                setCurrentPage(1);
-              }
-            }}
+          {/* Add New Button */}
+          <Button
+            className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2"
+            startContent={<PlusIcon className="w-5 h-5" />}
+            onPress={handleAddNew}
           >
-            {statusOptions.map((option) => (
-              <SelectItem key={option.key}>{option.label}</SelectItem>
-            ))}
-          </Select>
-
-          {/* Role Filter */}
-          <Select
-            className="w-48"
-            placeholder="Chọn vai trò"
-            selectedKeys={roleFilter ? [roleFilter] : []}
-            variant="bordered"
-            onSelectionChange={(keys) => {
-              const selectedKey = Array.from(keys)[0] as string;
-
-              setRoleFilter(selectedKey);
-              // Reset to page 1 when filter changes
-              if (currentPage !== 1) {
-                setCurrentPage(1);
-              }
-            }}
-          >
-            {roleOptions.map((option) => (
-              <SelectItem key={option.key}>{option.label}</SelectItem>
-            ))}
-          </Select>
+            Thêm mới tài khoản
+          </Button>
         </div>
+        
+        {/* Bulk actions - Professional floating bar */}
+        {selectedUserIds.size > 0 && (() => {
+          // Get selected users' statuses
+          const selectedUsers = users.filter(user => selectedUserIds.has(user.id));
+          const hasActiveUsers = selectedUsers.some(user => user.status === "active");
+          const hasInactiveUsers = selectedUsers.some(user => user.status === "inactive");
+          
+          return (
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300">
+              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+                <div className="flex items-center gap-6 px-6 py-4">
+                  {/* Selection count */}
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {selectedUserIds.size} tài khoản được chọn
+                      </p>
+                    </div>
+                  </div>
 
-        {/* Add New Button */}
-        <Button
-          className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2"
-          startContent={<PlusIcon className="w-5 h-5" />}
-          onPress={handleAddNew}
-        >
-          Thêm mới tài khoản
-        </Button>
+                  {/* Divider */}
+                  <div className="w-px h-12 bg-gray-200"></div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-3">
+                    {/* Show Lock button only if there are active users */}
+                    {hasActiveUsers && (
+                      <Button
+                        size="md"
+                        className="bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                        startContent={<LockClosedIcon className="w-5 h-5" />}
+                        onPress={handleBulkLock}
+                        isLoading={isBulkLocking}
+                        isDisabled={isBulkLocking || isBulkUnlocking}
+                      >
+                        Khóa tài khoản
+                      </Button>
+                    )}
+                    
+                    {/* Show Unlock button only if there are inactive users */}
+                    {hasInactiveUsers && (
+                      <Button
+                        size="md"
+                        className="bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                        startContent={<LockOpenIcon className="w-5 h-5" />}
+                        onPress={handleBulkUnlock}
+                        isLoading={isBulkUnlocking}
+                        isDisabled={isBulkLocking || isBulkUnlocking}
+                      >
+                        Mở khóa
+                      </Button>
+                    )}
+                    
+                    {/* Cancel button */}
+                    <Button
+                      size="md"
+                      variant="light"
+                      className="text-gray-600 hover:bg-gray-100"
+                      onPress={() => setSelectedUserIds(new Set())}
+                      isDisabled={isBulkLocking || isBulkUnlocking}
+                    >
+                      Hủy
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Table */}
@@ -289,6 +457,13 @@ const AccountManagement = () => {
         ) : (
           <Table
             aria-label="Bảng quản lý tài khoản"
+            selectionMode="multiple"
+            selectedKeys={selectedUserIds}
+            onSelectionChange={handleSelectionChange}
+            disabledKeys={currentUsers
+              .filter(user => user.role === "Bệnh nhân" || user.role === "Patient")
+              .map(user => user.id)
+            }
             classNames={{
               wrapper: "shadow-none",
             }}
@@ -346,22 +521,19 @@ const AccountManagement = () => {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <button
-                      className={`p-1 rounded ${
-                        user.role === "Bệnh nhân"
-                          ? "text-gray-400 cursor-not-allowed"
-                          : "text-blue-600 hover:text-blue-900 hover:bg-blue-50"
-                      }`}
-                      disabled={user.role === "Bệnh nhân"}
-                      title={
-                        user.role === "Bệnh nhân"
-                          ? "Không thể chỉnh sửa tài khoản bệnh nhân"
-                          : "Chỉnh sửa"
-                      }
-                      onClick={() => handleEdit(user.id)}
-                    >
-                      <PencilIcon className="w-4 h-4" />
-                    </button>
+                    <Tooltip content="Chỉnh sửa">
+                      <button
+                        className={`p-1 rounded ${
+                          user.role === "Bệnh nhân"
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-blue-600 hover:text-blue-900 hover:bg-blue-50"
+                        }`}
+                        disabled={user.role === "Bệnh nhân"}
+                        onClick={() => handleEdit(user.id)}
+                      >
+                        <PencilIcon className="w-5 h-5" />
+                      </button>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               )}

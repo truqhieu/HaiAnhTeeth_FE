@@ -3,7 +3,6 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   PencilIcon,
-  TrashIcon,
 } from "@heroicons/react/24/outline";
 import {
   Button,
@@ -39,8 +38,6 @@ const RoomManagement = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [roomToDelete, setRoomToDelete] = useState<{ id: string; name: string } | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [doctors, setDoctors] = useState<ManagerDoctor[]>([]);
   const [total, setTotal] = useState(0);
@@ -164,33 +161,6 @@ const RoomManagement = () => {
     }
   };
 
-  const handleDelete = (roomId: string, roomName: string) => {
-    setRoomToDelete({ id: roomId, name: roomName });
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!roomToDelete) return;
-
-    try {
-      const response = await managerApi.deleteClinic(roomToDelete.id);
-
-      if ((response as any).status || response.success) {
-        toast.success(response.message || "Xóa phòng khám thành công!");
-        // Refresh list
-        fetchClinics();
-        fetchDoctors(); // Refresh doctors list vì có thể doctor được unassign
-        setIsDeleteModalOpen(false);
-        setRoomToDelete(null);
-      } else {
-        throw new Error(response.message || "Không thể xóa phòng khám");
-      }
-    } catch (error: any) {
-      toast.error(
-        error.message || "Có lỗi xảy ra khi xóa phòng khám. Vui lòng thử lại.",
-      );
-    }
-  };
 
   const handleAddNew = () => {
     setIsAddModalOpen(true);
@@ -388,17 +358,6 @@ const RoomManagement = () => {
                           <PencilIcon className="w-5 h-5" />
                         </Button>
                       </Tooltip>
-                      <Tooltip content="Xóa phòng khám">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="min-w-8 h-8 text-red-600 hover:bg-red-50"
-                          onPress={() => handleDelete(room.id, room.name)}
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </Button>
-                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -469,30 +428,6 @@ const RoomManagement = () => {
         onSuccess={handleEditSuccess}
       />
 
-      {/* Delete Confirmation Modal */}
-      <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">Xác nhận xóa</ModalHeader>
-              <ModalBody>
-                <p>
-                  Bạn có chắc chắn muốn xóa phòng khám <strong>"{roomToDelete?.name}"</strong>?
-                </p>
-                <p className="text-sm text-gray-500 mt-2">Hành động này không thể hoàn tác.</p>
-              </ModalBody>
-              <ModalFooter>
-                <Button color="default" variant="light" onPress={onClose}>
-                  Hủy
-                </Button>
-                <Button color="danger" onPress={confirmDelete}>
-                  Xóa
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
     </div>
   );
 };

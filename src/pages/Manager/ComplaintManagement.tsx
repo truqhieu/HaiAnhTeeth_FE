@@ -166,20 +166,23 @@ const ComplaintManagement = () => {
     }
   };
 
-  const handleProcessComplaint = async () => {
-    if (!selectedComplaint || !actionType) return;
+  const handleProcessComplaint = async (action?: "Approved" | "Rejected") => {
+    // Sử dụng action parameter nếu có, nếu không thì dùng state actionType
+    const finalAction = action || actionType;
+    
+    if (!selectedComplaint || !finalAction) return;
 
     try {
       setIsProcessing(true);
 
       // Nếu không có response text, dùng message mặc định cho Rejected
       const finalResponseText = responseText.trim() || 
-        (actionType === "Rejected" ? "Khiếu nại không được chấp nhận" : "");
+        (finalAction === "Rejected" ? "Khiếu nại không được chấp nhận" : "");
 
       const response = await complaintApi.handleComplaint(
         selectedComplaint._id,
         {
-          status: actionType,
+          status: finalAction,
           responseText: finalResponseText,
         },
       );
@@ -191,11 +194,8 @@ const ComplaintManagement = () => {
       console.log("📝 response.message:", response.message);
 
       if (response.success) {
-        toast.success(
-          response.message ||
-            response.data?.message ||
-            "Đã xử lý khiếu nại thành công",
-        );
+        // Luôn hiển thị message cố định "Đã xử lý đơn khiếu nại" thay vì message từ backend
+        toast.success("Đã xử lý đơn khiếu nại");
         setIsViewModalOpen(false);
         setSelectedComplaint(null);
         setResponseText("");
@@ -557,9 +557,10 @@ const ComplaintManagement = () => {
                   startContent={<CheckCircleIcon className="w-4 h-4" />}
                   isLoading={isProcessing}
                   onPress={() => {
-                    // Logic: Nếu có text -> Approved, không có text -> Rejected (xử lý như cũ)
-                    setActionType(responseText.trim() ? "Approved" : "Rejected");
-                    handleProcessComplaint();
+                    // Logic: Nếu có text -> Approved, không có text -> Rejected
+                    // Truyền action trực tiếp vào hàm để tránh bug phải nhấn 2 lần
+                    const action = responseText.trim() ? "Approved" : "Rejected";
+                    handleProcessComplaint(action);
                   }}
                 >
                   Xử lý
