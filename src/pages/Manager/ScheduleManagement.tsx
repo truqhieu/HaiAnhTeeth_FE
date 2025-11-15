@@ -31,8 +31,8 @@ import {
   managerApi,
   ManagerSchedule,
   ManagerClinic,
-  DoctorWithWorkingHours,
 } from "@/api";
+import type { DoctorWithWorkingHours } from "@/api/manager";
 
 interface DateRange {
   startDate: string | null;
@@ -70,17 +70,15 @@ const ScheduleManagement = () => {
 
       console.log("🔍 fetchDoctors response:", response);
 
-      // Check for both possible response structures
-      if (response.data?.success && response.data.data) {
-        console.log("✅ Setting doctors (success structure):", response.data.data);
-        setDoctors(response.data.data);
-      } else if (response.data?.status && response.data.data) {
-        console.log("✅ Setting doctors (status structure):", response.data.data);
-        setDoctors(response.data.data);
-      } else if (response.data?.data) {
-        // Fallback: if neither success nor status is present but data exists
-        console.log("✅ Setting doctors (fallback):", response.data.data);
-        setDoctors(response.data.data);
+      // Backend trả về: { success: true, message: ..., data: [...] }
+      // authenticatedApiCall trả về object này trực tiếp
+      if (response.success && response.data && Array.isArray(response.data)) {
+        console.log("✅ Setting doctors:", response.data);
+        setDoctors(response.data);
+      } else if (response.data && Array.isArray(response.data)) {
+        // Fallback: nếu không có success field nhưng có data array
+        console.log("✅ Setting doctors (fallback):", response.data);
+        setDoctors(response.data);
       } else {
         console.log("❌ No doctors found or invalid response structure");
         console.log("Response structure:", response);
@@ -125,25 +123,11 @@ const ScheduleManagement = () => {
     setIsWorkingHoursModalOpen(true);
   };
 
-  // Handle working hours update
-  const handleWorkingHoursUpdate = async (workingHours: any) => {
-    if (!selectedDoctorForWorkingHours) return;
-
-    try {
-      const response = await managerApi.updateDoctorWorkingHours(
-        selectedDoctorForWorkingHours.id,
-        workingHours
-      );
-
-      if (response.data?.status) {
-        toast.success("Cập nhật giờ làm việc thành công");
-        fetchDoctors(); // Reload list
-        setIsWorkingHoursModalOpen(false);
-        setSelectedDoctorForWorkingHours(null);
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Không thể cập nhật giờ làm việc");
-    }
+  // Handle working hours update success
+  const handleWorkingHoursSuccess = () => {
+    fetchDoctors(); // Reload list
+    setIsWorkingHoursModalOpen(false);
+    setSelectedDoctorForWorkingHours(null);
   };
 
   // Handle add schedule
@@ -164,11 +148,29 @@ const ScheduleManagement = () => {
   };
 
   const columns = [
-    { key: "shift", label: "Ca làm việc" },
-    { key: "time", label: "Thời gian làm việc" },
     { key: "doctor", label: "Tên bác sĩ" },
+    { key: "morning", label: "Ca sáng" },
+    { key: "afternoon", label: "Ca chiều" },
+    { key: "updatedAt", label: "Thời gian cập nhật" },
     { key: "actions", label: "Hành động" },
   ];
+
+  // Format date for display
+  const formatDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return "Chưa cập nhật";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      return "Chưa cập nhật";
+    }
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-full">
@@ -258,53 +260,38 @@ const ScheduleManagement = () => {
               {(doctor) => (
                 <TableRow key={doctor._id}>
                   <TableCell>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Chip
-                          className="bg-orange-100 text-orange-800"
-                          size="sm"
-                          variant="flat"
-                        >
-                          Ca sáng
-                        </Chip>
-                        <span className="text-sm text-gray-600">
-                          {doctor.workingHours.morningStart} -{" "}
-                          {doctor.workingHours.morningEnd}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Chip
-                          className="bg-blue-100 text-blue-800"
-                          size="sm"
-                          variant="flat"
-                        >
-                          Ca chiều
-                        </Chip>
-                        <span className="text-sm text-gray-600">
-                          {doctor.workingHours.afternoonStart} -{" "}
-                          {doctor.workingHours.afternoonEnd}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium text-gray-800 text-sm">
-                        Sáng: {doctor.workingHours.morningStart} -{" "}
-                        {doctor.workingHours.morningEnd}
-                      </div>
-                      <div className="font-medium text-gray-800 text-sm">
-                        Chiều: {doctor.workingHours.afternoonStart} -{" "}
-                        {doctor.workingHours.afternoonEnd}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
                     <div>
-                      <p className="font-medium text-blue-600 text-sm">
+                      <p className="font-medium text-gray-900 text-sm">
                         {doctor.fullName}
                       </p>
                       <p className="text-xs text-gray-500">{doctor.email}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Chip
+                        className="bg-orange-100 text-orange-800"
+                        size="sm"
+                        variant="flat"
+                      >
+                        {doctor.workingHours.morningStart} - {doctor.workingHours.morningEnd}
+                      </Chip>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Chip
+                        className="bg-blue-100 text-blue-800"
+                        size="sm"
+                        variant="flat"
+                      >
+                        {doctor.workingHours.afternoonStart} - {doctor.workingHours.afternoonEnd}
+                      </Chip>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-gray-600">
+                      {formatDate(doctor.workingHoursUpdatedAt)}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -363,18 +350,6 @@ const ScheduleManagement = () => {
         />
       )}
 
-      {/* Working Hours Modal */}
-      {selectedDoctorForWorkingHours && (
-        <WorkingHoursModal
-          isOpen={isWorkingHoursModalOpen}
-          onClose={() => {
-            setIsWorkingHoursModalOpen(false);
-            setSelectedDoctorForWorkingHours(null);
-          }}
-          onSubmit={handleWorkingHoursUpdate}
-          initialWorkingHours={selectedDoctorForWorkingHours.workingHours}
-        />
-      )}
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -404,6 +379,20 @@ const ScheduleManagement = () => {
           )}
         </ModalContent>
       </Modal>
+
+      {/* Working Hours Modal */}
+      {selectedDoctorForWorkingHours && (
+        <WorkingHoursModal
+          isOpen={isWorkingHoursModalOpen}
+          onClose={() => {
+            setIsWorkingHoursModalOpen(false);
+            setSelectedDoctorForWorkingHours(null);
+          }}
+          doctorId={selectedDoctorForWorkingHours.id}
+          initialWorkingHours={selectedDoctorForWorkingHours.workingHours}
+          onSuccess={handleWorkingHoursSuccess}
+        />
+      )}
     </div>
   );
 };
