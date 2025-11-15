@@ -142,6 +142,23 @@ export const authApi = {
     return response;
   },
 
+  // Change password (for authenticated users)
+  changePassword: async (data: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<ApiResponse<{ status: boolean; message: string }>> => {
+    return authenticatedApiCall<{ status: boolean; message: string }>(
+      "/auth/change-password",
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      },
+    );
+  },
+
   // Logout (clear sessionStorage)
   logout: (): void => {
     sessionStorage.removeItem("authToken");

@@ -71,7 +71,7 @@ const PatientHeader: React.FC = () => {
                 onClick={() => setIsDropdownOpen((s) => !s)}
               >
                 <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors">
-                  <UserCircleIcon className="w-6 h-6 text-white" />
+                  <UserCircleIcon className="w-7 h-7 text-white" />
                 </div>
               </Button>
 
