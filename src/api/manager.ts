@@ -649,9 +649,8 @@ export const managerApi = {
         };
         appointments: {
           total: number;
-          completed: number;
-          cancelled: number;
-          other: number;
+          examination: number;
+          consultation: number;
         };
         revenue: {
           Examination: number;
@@ -671,6 +670,32 @@ export const managerApi = {
 
     const queryString = queryParams.toString();
     const endpoint = `/appointments/dashboard${queryString ? `?${queryString}` : ""}`;
+
+    return authenticatedApiCall(endpoint, {
+      method: "GET",
+    });
+  },
+
+  // Get monthly revenue comparison
+  getMonthlyRevenue: async (
+    startDate?: string,
+    endDate?: string,
+  ): Promise<
+    ApiResponse<{
+      success: boolean;
+      message: string;
+      result: {
+        year: number;
+        revenue: number[]; // Array of 12 months (index 0 = January, index 11 = December)
+      };
+    }>
+  > => {
+    const queryParams = new URLSearchParams();
+    if (startDate) queryParams.append("startDate", startDate);
+    if (endDate) queryParams.append("endDate", endDate);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/appointments/dashboard/monthly-revenue${queryString ? `?${queryString}` : ""}`;
 
     return authenticatedApiCall(endpoint, {
       method: "GET",

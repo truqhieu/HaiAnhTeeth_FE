@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Input, Button, Select, SelectItem } from "@heroui/react";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 import { authApi } from "@/api";
@@ -23,6 +24,16 @@ const AccountSettings = () => {
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRelationship, setEmergencyRelationship] = useState("");
+
+  // Password Change
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
 
   const genderOptions = [
     { key: "Male", label: "Nam" },
@@ -168,6 +179,47 @@ const AccountSettings = () => {
         return;
       }
 
+      // Handle password change if new password is provided
+      let passwordChangeSuccess = true;
+      if (newPassword.trim()) {
+        // Validate password change fields
+        if (!currentPassword.trim()) {
+          toast.error("Vui lòng nhập mật khẩu hiện tại để đổi mật khẩu");
+          setIsLoading(false);
+          return;
+        }
+
+        if (newPassword.length < 6) {
+          toast.error("Mật khẩu mới phải có ít nhất 6 ký tự");
+          setIsLoading(false);
+          return;
+        }
+
+        if (newPassword !== confirmPassword) {
+          toast.error("Mật khẩu xác nhận không khớp");
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          const passwordResponse = await authApi.changePassword({
+            currentPassword: currentPassword.trim(),
+            newPassword: newPassword.trim(),
+          });
+
+          if (!passwordResponse.success) {
+            toast.error(passwordResponse.message || "Không thể đổi mật khẩu");
+            passwordChangeSuccess = false;
+          }
+        } catch (passwordError: any) {
+          toast.error(
+            passwordError.message || "Không thể đổi mật khẩu. Vui lòng thử lại",
+          );
+          passwordChangeSuccess = false;
+        }
+      }
+
+      // Update profile
       const response = await authApi.updateProfile(updateData);
 
       if (response.success && response.data) {
@@ -182,7 +234,17 @@ const AccountSettings = () => {
 
           updateUser(updatedUser);
         }
-        toast.success(response.message || "Cập nhật thông tin thành công!");
+
+        // Show success message
+        if (newPassword.trim() && passwordChangeSuccess) {
+          toast.success("Cập nhật thông tin và đổi mật khẩu thành công!");
+          // Reset password fields
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        } else {
+          toast.success(response.message || "Cập nhật thông tin thành công!");
+        }
       } else {
         toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
@@ -328,9 +390,6 @@ const AccountSettings = () => {
                 variant="bordered"
               />
             </div>
-            <p className="text-sm text-gray-500 mt-2">
-              * Email không thể thay đổi
-            </p>
           </div>
 
           {/* Thông tin liên hệ khẩn cấp */}
@@ -402,10 +461,119 @@ const AccountSettings = () => {
             </div>
           </div>
 
+          {/* Password Change Section */}
+          <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm">
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-sm font-semibold text-gray-700 mb-4">
+                Đổi mật khẩu (không bắt buộc)
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Input
+                  classNames={{
+                    input: "bg-gray-100",
+                    inputWrapper: "bg-gray-100 border-gray-300",
+                  }}
+                  endContent={
+                    <button
+                      className="focus:outline-none"
+                      type="button"
+                      onClick={() =>
+                        setIsPasswordVisible((prev) => ({
+                          ...prev,
+                          current: !prev.current,
+                        }))
+                      }
+                    >
+                      {isPasswordVisible.current ? (
+                        <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                      ) : (
+                        <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+                  }
+                  label="Mật khẩu hiện tại"
+                  labelPlacement="outside"
+                  placeholder="Nhập mật khẩu hiện tại"
+                  type={isPasswordVisible.current ? "text" : "password"}
+                  value={currentPassword}
+                  variant="bordered"
+                  onValueChange={setCurrentPassword}
+                />
+
+                <Input
+                  classNames={{
+                    input: "bg-gray-100",
+                    inputWrapper: "bg-gray-100 border-gray-300",
+                  }}
+                  endContent={
+                    <button
+                      className="focus:outline-none"
+                      type="button"
+                      onClick={() =>
+                        setIsPasswordVisible((prev) => ({
+                          ...prev,
+                          new: !prev.new,
+                        }))
+                      }
+                    >
+                      {isPasswordVisible.new ? (
+                        <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                      ) : (
+                        <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+                  }
+                  label="Mật khẩu mới"
+                  labelPlacement="outside"
+                  placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)"
+                  type={isPasswordVisible.new ? "text" : "password"}
+                  value={newPassword}
+                  variant="bordered"
+                  onValueChange={setNewPassword}
+                />
+
+                <Input
+                  classNames={{
+                    input: "bg-gray-100",
+                    inputWrapper: "bg-gray-100 border-gray-300",
+                  }}
+                  endContent={
+                    <button
+                      className="focus:outline-none"
+                      type="button"
+                      onClick={() =>
+                        setIsPasswordVisible((prev) => ({
+                          ...prev,
+                          confirm: !prev.confirm,
+                        }))
+                      }
+                    >
+                      {isPasswordVisible.confirm ? (
+                        <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                      ) : (
+                        <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                      )}
+                    </button>
+                  }
+                  label="Xác nhận mật khẩu mới"
+                  labelPlacement="outside"
+                  placeholder="Nhập lại mật khẩu mới"
+                  type={isPasswordVisible.confirm ? "text" : "password"}
+                  value={confirmPassword}
+                  variant="bordered"
+                  onValueChange={setConfirmPassword}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Để trống nếu không muốn đổi mật khẩu
+              </p>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="flex justify-end pt-4">
             <Button
-              className="bg-blue-600 text-white px-10 py-3 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all duration-200"
+              className="bg-[#39BDCC] text-white px-10 py-3 hover:bg-[#2ca6b5] shadow-lg hover:shadow-xl transition-all duration-200"
               isLoading={isLoading}
               size="lg"
               type="submit"
