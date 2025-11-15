@@ -183,7 +183,7 @@ export type {
   ResetPasswordData,
   AuthResponse,
 } from "./auth";
-export type { AppointmentCreationData } from "./appointment";
+export type { AppointmentCreationData, Relative } from "./appointment";
 export type {
   PaymentInfo,
   AppointmentInfo,

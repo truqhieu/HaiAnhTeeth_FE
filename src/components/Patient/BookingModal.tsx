@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon, CalendarDaysIcon } from "@heroicons/react/24/solid";
 import toast from "react-hot-toast";
@@ -12,6 +12,7 @@ import {
   validateAppointmentTime,
   Service,
 } from "@/api";
+import type { Relative } from "@/api/appointment";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface BookingModalProps {
@@ -55,11 +56,16 @@ const initialFormData: FormData = {
 const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const prevUserIdRef = useRef<string | undefined>(user?.id || user?._id);
+  const isFirstMountRef = useRef(true);
 
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const prevAppointmentForRef = useRef<string | undefined>(formData.appointmentFor);
   const [services, setServices] = useState<Service[]>([]);
   const [availableDoctors, setAvailableDoctors] = useState<any[]>([]);
   const [doctorScheduleRange, setDoctorScheduleRange] = useState<any>(null);
+  const [relatives, setRelatives] = useState<Relative[]>([]);
+  const [loadingRelatives, setLoadingRelatives] = useState(false);
 
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
@@ -110,11 +116,25 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
   // === Reset form when user changes (logout/login) ===
   useEffect(() => {
-    if (isOpen) {
-      // Reset form data when user changes
+    const currentUserId = user?.id || user?._id;
+    const prevUserId = prevUserIdRef.current;
+    
+    // Skip reset on initial mount
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      prevUserIdRef.current = currentUserId;
+      return;
+    }
+    
+    // Reset if user changed (including logout: user -> null, or login: null -> user, or switch user)
+    if (prevUserId !== currentUserId) {
+      // Reset form data when user changes, regardless of modal state
       resetForm();
     }
-  }, [user?.id]); // Reset when user ID changes (logout/login)
+    
+    // Update ref for next comparison
+    prevUserIdRef.current = currentUserId;
+  }, [user?.id, user?._id]); // Reset when user ID changes (logout/login)
 
   // === KHÔNG reset form khi modal đóng - Chỉ reset khi F5 ===
   // useEffect(() => {
@@ -123,18 +143,73 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   //   }
   // }, [isOpen]);
 
-  // === Auto-fill user info ===
+  // === Auto-fill user info (chỉ khi appointmentFor thay đổi sang "self", không ghi đè dữ liệu đã nhập) ===
   useEffect(() => {
     if (!isOpen) return;
-    if (formData.appointmentFor === "self" && user) {
-      setFormData((prev) => ({
-        ...prev,
-        fullName: user.fullName || "",
-        email: user.email || "",
-        phoneNumber: user.phoneNumber || "",
-      }));
+    
+    // Chỉ auto-fill khi appointmentFor thay đổi sang "self" (không phải mỗi lần modal mở)
+    const prevAppointmentFor = prevAppointmentForRef.current;
+    const currentAppointmentFor = formData.appointmentFor;
+    
+    if (currentAppointmentFor === "self" && user) {
+      // Chỉ auto-fill nếu:
+      // 1. appointmentFor vừa thay đổi sang "self" (từ "other" hoặc lần đầu)
+      // 2. Hoặc các field đang trống
+      if (prevAppointmentFor !== "self" || !formData.fullName || !formData.email) {
+        setFormData((prev) => ({
+          ...prev,
+          // Chỉ auto-fill nếu field đang trống, không ghi đè dữ liệu đã nhập
+          fullName: prev.fullName || user.fullName || "",
+          email: prev.email || user.email || "",
+          phoneNumber: prev.phoneNumber || user.phoneNumber || "",
+        }));
+      }
     }
-  }, [isOpen, user, formData.appointmentFor]);
+    
+    // Update ref
+    prevAppointmentForRef.current = currentAppointmentFor;
+  }, [isOpen, user, formData.appointmentFor, formData.fullName, formData.email]);
+
+  // === Fetch relatives khi appointmentFor === "other" ===
+  useEffect(() => {
+    if (!isOpen || formData.appointmentFor !== "other" || !user) {
+      return;
+    }
+
+    const fetchRelatives = async () => {
+      setLoadingRelatives(true);
+      try {
+        const res = await appointmentApi.getMyRelatives();
+        if (res.success && res.data) {
+          setRelatives(res.data);
+        }
+      } catch (err) {
+        console.error("Error fetching relatives:", err);
+      } finally {
+        setLoadingRelatives(false);
+      }
+    };
+
+    fetchRelatives();
+  }, [isOpen, formData.appointmentFor, user]);
+
+  // === Handle click vào relative ===
+  const handleRelativeClick = (relative: Relative) => {
+    setFormData((prev) => ({
+      ...prev,
+      fullName: relative.fullName,
+      email: relative.email,
+      phoneNumber: relative.phoneNumber || prev.phoneNumber,
+    }));
+    
+    // Clear errors khi fill data
+    setFieldErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.fullName;
+      delete newErrors.email;
+      return newErrors;
+    });
+  };
 
   // === Fetch available doctors for selected date + service ===
   useEffect(() => {
@@ -151,12 +226,20 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       setDoctorScheduleRange(null); // ⭐ Clear schedule range cũ
       setTimeInputError(null); // ⭐ Clear time input error
       
-      // ⭐ Clear input fields khi đổi ngày/service
+      // ⭐ Clear input fields khi đổi ngày/service/appointmentFor
       setFormData((prev) => ({
         ...prev,
         userStartTimeInput: "",
         doctorUserId: "",
       }));
+      
+      // ⭐ Clear field errors khi clear doctorUserId
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.doctorUserId;
+        delete newErrors.userStartTimeInput;
+        return newErrors;
+      });
       
       try {
         const doctorRes = await availableDoctorApi.getByDate(
@@ -186,6 +269,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       startTime: utcNow,
       endTime: new Date(utcNow.getTime() + serviceDuration * 60000),
     }));
+
+    // ⭐ Clear field errors khi chọn bác sĩ mới (vì đã clear userStartTimeInput)
+    setFieldErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.userStartTimeInput;
+      return newErrors;
+    });
+    setTimeInputError(null);
 
     setLoadingSchedule(true);
     setErrorMessage(null);
@@ -277,10 +368,45 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       return;
     }
 
-    const [hours, minutes] = timeInput.split(":");
-    if (!hours || !minutes || isNaN(parseInt(hours)) || isNaN(parseInt(minutes))) {
-      setTimeInputError("Định dạng thời gian không hợp lệ. Vui lòng nhập HH:mm");
+    // ⭐ Validate format: HH:mm (basic format check)
+    const timeRegex = /^(\d{1,2}):(\d{1,2})$/;
+    if (!timeRegex.test(timeInput)) {
+      setTimeInputError("Định dạng thời gian không hợp lệ. Vui lòng nhập HH:mm (ví dụ: 08:30)");
       // Clear endTime on error
+      setFormData((prev) => ({
+        ...prev,
+        endTime: utcNow,
+      }));
+      return;
+    }
+
+    const [hours, minutes] = timeInput.split(":");
+    const hoursNum = parseInt(hours);
+    const minutesNum = parseInt(minutes);
+
+    // ⭐ Validate range với thông báo lỗi cụ thể
+    if (isNaN(hoursNum) || isNaN(minutesNum)) {
+      setTimeInputError("Thời gian không hợp lệ. Vui lòng nhập số hợp lệ");
+      setFormData((prev) => ({
+        ...prev,
+        endTime: utcNow,
+      }));
+      return;
+    }
+
+    // Kiểm tra giờ
+    if (hoursNum < 0 || hoursNum > 23) {
+      setTimeInputError("Giờ không hợp lệ. Giờ phải từ 00-23");
+      setFormData((prev) => ({
+        ...prev,
+        endTime: utcNow,
+      }));
+      return;
+    }
+
+    // Kiểm tra phút
+    if (minutesNum < 0 || minutesNum > 59) {
+      setTimeInputError("Phút không hợp lệ. Phút phải từ 00-59");
       setFormData((prev) => ({
         ...prev,
         endTime: utcNow,
@@ -302,8 +428,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     // ⭐ Convert giờ VN sang UTC: VN - 7
     // User nhập 08:00 (VN) → lưu 01:00 (UTC)
     const dateObj = new Date(formData.date + 'T00:00:00.000Z');
-    const vnHours = parseInt(hours);
-    const vnMinutes = parseInt(minutes);
+    const vnHours = hoursNum;
+    const vnMinutes = minutesNum;
     const utcHours = vnHours - 7; // Convert VN to UTC
     dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
     const startTimeISO = dateObj.toISOString();
@@ -412,64 +538,21 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Validate individual field
-  const validateField = (fieldName: string, value: any): string | null => {
-    switch (fieldName) {
-      case "fullName":
-        if (formData.appointmentFor === "other" && !value?.trim()) {
-          return "Vui lòng nhập họ và tên.";
-        }
-    return null;
-      case "email":
-        if (formData.appointmentFor === "other" && !value?.trim()) {
-          return "Vui lòng nhập email.";
-        }
-        return null;
-      case "phoneNumber":
-        if (!value?.trim()) {
-          return "Vui lòng nhập số điện thoại.";
-        }
-        return null;
-      case "date":
-        if (!value) {
-          return "Vui lòng chọn ngày.";
-        }
-        return null;
-      case "serviceId":
-        if (!value) {
-          return "Vui lòng chọn dịch vụ.";
-        }
-        return null;
-      case "doctorUserId":
-        if (!value) {
-          return "Vui lòng chọn bác sĩ.";
-        }
-        return null;
-      case "userStartTimeInput":
-        if (!value?.trim()) {
-          return "Vui lòng nhập thời gian bắt đầu.";
-        }
-        return null;
-      default:
-        return null;
-    }
-  };
-
-  // Handle field blur validation
-  const handleFieldBlur = (fieldName: string) => {
-    const value = formData[fieldName as keyof FormData];
-    const error = validateField(fieldName, value);
-    
-    if (error) {
-      setFieldErrors((prev) => ({ ...prev, [fieldName]: error }));
-    } else {
-      setFieldErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[fieldName];
-        return newErrors;
-      });
-    }
-  };
+  // ⭐ REMOVED: Validate individual field và handleFieldBlur - chỉ validate khi submit trong validateForm()
+  // const handleFieldBlur = (fieldName: string) => {
+  //   const value = formData[fieldName as keyof FormData];
+  //   const error = validateField(fieldName, value);
+  //   
+  //   if (error) {
+  //     setFieldErrors((prev) => ({ ...prev, [fieldName]: error }));
+  //   } else {
+  //     setFieldErrors((prev) => {
+  //       const newErrors = { ...prev };
+  //       delete newErrors[fieldName];
+  //       return newErrors;
+  //     });
+  //   }
+  // };
 
   const validateForm = (): boolean => {
     if (!user?._id && !user?.id) {
@@ -499,6 +582,30 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }
     if (!formData.userStartTimeInput) {
       errors.userStartTimeInput = "Vui lòng nhập thời gian bắt đầu.";
+    } else {
+      // ⭐ Validate format và range của thời gian với thông báo lỗi cụ thể
+      const timeRegex = /^(\d{1,2}):(\d{1,2})$/;
+      if (!timeRegex.test(formData.userStartTimeInput)) {
+        errors.userStartTimeInput = "Định dạng thời gian không hợp lệ. Vui lòng nhập HH:mm (ví dụ: 08:30)";
+      } else {
+        const [hours, minutes] = formData.userStartTimeInput.split(":");
+        const hoursNum = parseInt(hours);
+        const minutesNum = parseInt(minutes);
+        
+        if (isNaN(hoursNum) || isNaN(minutesNum)) {
+          errors.userStartTimeInput = "Thời gian không hợp lệ. Vui lòng nhập số hợp lệ";
+        } else if (hoursNum < 0 || hoursNum > 23) {
+          errors.userStartTimeInput = "Giờ không hợp lệ. Giờ phải từ 00-23";
+        } else if (minutesNum < 0 || minutesNum > 59) {
+          errors.userStartTimeInput = "Phút không hợp lệ. Phút phải từ 00-59";
+        } else {
+          // ⭐ Kiểm tra xem startTime và endTime đã được set chưa (từ handleTimeInputBlur)
+          // Nếu chưa được set hoặc không hợp lệ, có nghĩa là validation chưa pass
+          if (!formData.startTime || !formData.endTime || formData.startTime.getTime() === utcNow.getTime() || formData.endTime.getTime() === utcNow.getTime()) {
+            errors.userStartTimeInput = "Vui lòng nhập thời gian hợp lệ và click ra ngoài để xác nhận.";
+          }
+        }
+      }
     }
 
     setFieldErrors(errors);
@@ -660,22 +767,40 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   </label>
                 ))}
               </div>
-              
-              {/* Hiển thị thông tin người được đặt lịch */}
-              {formData.appointmentFor === "self" ? (
-                <div className="mt-3 p-3 bg-blue-50 border border-gray-200 rounded-lg">
-                  <p className="text-sm text-blue-800">
-                    <strong>Bản thân:</strong> {user?.fullName} ({user?.email})
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm text-green-800">
-                    <strong>Người thân:</strong> {formData.fullName} ({formData.email})
-                  </p>
-                </div>
-              )}
             </div>
+
+            {/* Danh sách người thân đã đặt lịch */}
+            {formData.appointmentFor === "other" && (
+              <div>
+                <label className="block mb-2 font-medium text-gray-700">
+                  Chọn người thân đã đặt lịch trước đó
+                </label>
+                {loadingRelatives ? (
+                  <div className="text-sm text-gray-500">Đang tải...</div>
+                ) : relatives.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {relatives.map((relative) => (
+                      <button
+                        key={relative._id}
+                        type="button"
+                        onClick={() => handleRelativeClick(relative)}
+                        className={`px-4 py-2 rounded-lg border text-sm transition-colors ${
+                          formData.fullName === relative.fullName && formData.email === relative.email
+                            ? "bg-[#39BDCC] text-white border-[#39BDCC]"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-[#39BDCC] hover:text-[#39BDCC]"
+                        }`}
+                      >
+                        {relative.fullName}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-gray-500 mb-4">
+                    Chưa có người thân nào đã đặt lịch. Vui lòng nhập thông tin bên dưới.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* User Info */}
             <div className="grid grid-cols-2 gap-4">
@@ -695,7 +820,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  onBlur={() => handleFieldBlur("fullName")}
                 />
                 {fieldErrors.fullName && (
                   <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>
@@ -717,7 +841,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  onBlur={() => handleFieldBlur("email")}
                 />
                 {fieldErrors.email && (
                   <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
@@ -736,7 +859,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleInputChange}
-                onBlur={() => handleFieldBlur("phoneNumber")}
               />
               {fieldErrors.phoneNumber && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.phoneNumber}</p>
@@ -757,7 +879,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 type="date"
                 value={formData.date}
                 onChange={handleInputChange}
-                onBlur={() => handleFieldBlur("date")}
               />
               {fieldErrors.date && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>
@@ -776,7 +897,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 name="serviceId"
                 value={formData.serviceId}
                 onChange={handleInputChange}
-                onBlur={() => handleFieldBlur("serviceId")}
               >
                 <option value="">-- Chọn dịch vụ --</option>
                 {services.map((s) => (
@@ -817,7 +937,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                           });
                         }
                       }}
-                      onBlur={() => handleFieldBlur("doctorUserId")}
                   >
                     <option value="">-- Chọn bác sĩ --</option>
                     {availableDoctors.map((d) => (
@@ -937,7 +1056,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                               }
                             }}
                             onBlur={() => {
-                              handleFieldBlur("userStartTimeInput");
+                              // ⭐ Chỉ validate time format và tính endTime, không set field error khi blur
                               if (formData.userStartTimeInput) {
                                 handleTimeInputBlur(formData.userStartTimeInput);
                             }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { XMarkIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
+import { XMarkIcon } from "@heroicons/react/24/solid";
 import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
 
@@ -31,9 +31,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
   });
 
   const [showValidation, setShowValidation] = useState(false);
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
-    useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const roleOptions = [
@@ -377,19 +374,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   inputWrapper: "w-full"
                 }}
                 autoComplete="new-password"
-                endContent={
-                  <button
-                    className="focus:outline-none"
-                    type="button"
-                    onClick={() => setIsPasswordVisible(!isPasswordVisible)}
-                  >
-                    {isPasswordVisible ? (
-                      <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
-                }
                 errorMessage={
                   isPasswordInvalid ? (
                     !formData.password ? (
@@ -410,7 +394,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   </>
                 }
                 placeholder="Nhập mật khẩu"
-                type={isPasswordVisible ? "text" : "password"}
+                type="password"
                 value={formData.password}
                 variant="bordered"
                 onValueChange={(value) => handleInputChange("password", value)}
@@ -423,21 +407,6 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   inputWrapper: "w-full"
                 }}
                 autoComplete="new-password"
-                endContent={
-                  <button
-                    className="focus:outline-none"
-                    type="button"
-                    onClick={() =>
-                      setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
-                    }
-                  >
-                    {isConfirmPasswordVisible ? (
-                      <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
-                }
                 errorMessage={
                   isConfirmPasswordInvalid
                     ? !formData.confirmPassword
@@ -452,7 +421,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   </>
                 }
                 placeholder="Nhập lại mật khẩu"
-                type={isConfirmPasswordVisible ? "text" : "password"}
+                type="password"
                 value={formData.confirmPassword}
                 variant="bordered"
                 onValueChange={(value) =>

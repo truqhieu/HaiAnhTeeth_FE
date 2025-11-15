@@ -33,6 +33,13 @@ export interface AppointmentResponseData {
   };
 }
 
+export interface Relative {
+  _id: string;
+  fullName: string;
+  email: string;
+  phoneNumber?: string | null;
+}
+
 export const appointmentApi = {
   create: async (
     data: AppointmentCreationData,
@@ -40,6 +47,13 @@ export const appointmentApi = {
     return authenticatedApiCall("/appointments/consultation/create", {
       method: "POST",
       body: JSON.stringify(data),
+    });
+  },
+
+  // ⭐ Lấy danh sách người thân đã đặt lịch
+  getMyRelatives: async (): Promise<ApiResponse<Relative[]>> => {
+    return authenticatedApiCall("/appointments/my-relatives", {
+      method: "GET",
     });
   },
 
