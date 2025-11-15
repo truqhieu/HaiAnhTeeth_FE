@@ -137,6 +137,7 @@ export interface DoctorWithWorkingHours {
     afternoonStart: string;
     afternoonEnd: string;
   };
+  workingHoursUpdatedAt?: string | null;
 }
 
 export interface UpdateScheduleData {
@@ -587,15 +588,15 @@ export const managerApi = {
 
   // Get all doctors with working hours
   getDoctorsWithWorkingHours: async (): Promise<
-    ApiResponse<{ status: boolean; message: string; data: DoctorWithWorkingHours[] }>
+    ApiResponse<DoctorWithWorkingHours[]>
   > => {
-    return authenticatedApiCall<{
-      status: boolean;
-      message: string;
-      data: DoctorWithWorkingHours[];
-    }>(`/manager/schedules/doctors-with-working-hours?t=${Date.now()}`, {
-      method: "GET",
-    });
+    return authenticatedApiCall<DoctorWithWorkingHours[]>(
+      `/manager/schedules/doctors-with-working-hours?t=${Date.now()}`,
+      {
+        method: "GET",
+        cache: "no-cache", // ⭐ Tránh 304 Not Modified
+      }
+    );
   },
 
   // Update doctor working hours for all schedules

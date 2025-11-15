@@ -1,25 +1,39 @@
 import React, { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/solid";
-import { Input, Button } from "@heroui/react";
+import { Input, Button, Form } from "@heroui/react";
 import toast from "react-hot-toast";
+
+import { managerApi } from "@/api";
+
+// CSS to force 24-hour format display
+const timeInputStyle = `
+  input[type="time"] {
+    font-variant-numeric: tabular-nums;
+  }
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.5);
+  }
+`;
 
 interface WorkingHoursModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (workingHours: any) => void;
+  doctorId: string | null;
   initialWorkingHours?: {
     morningStart: string;
     morningEnd: string;
     afternoonStart: string;
     afternoonEnd: string;
   };
+  onSuccess?: () => void;
 }
 
 const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
   isOpen,
   onClose,
-  onSubmit,
+  doctorId,
   initialWorkingHours,
+  onSuccess,
 }) => {
   const [formData, setFormData] = useState({
     morningStart: "08:00",
@@ -28,190 +42,436 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
     afternoonEnd: "18:00",
   });
 
+  const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Convert 12h format to 24h format if needed
+  const convertTo24Hour = (time: string | undefined): string => {
+    if (!time) return "";
+    // If already in 24h format (HH:mm), return as is
+    if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
+      return time;
+    }
+    // If in 12h format (h:mm AM/PM), convert to 24h
+    const match = time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (match) {
+      let hours = parseInt(match[1], 10);
+      const minutes = match[2];
+      const ampm = match[3].toUpperCase();
+
+      if (ampm === "PM" && hours !== 12) {
+        hours += 12;
+      } else if (ampm === "AM" && hours === 12) {
+        hours = 0;
+      }
+
+      return `${hours.toString().padStart(2, "0")}:${minutes}`;
+    }
+    return time;
+  };
 
   // Load initial working hours when modal opens
   useEffect(() => {
     if (isOpen && initialWorkingHours) {
-      setFormData(initialWorkingHours);
+      setFormData({
+        morningStart: convertTo24Hour(initialWorkingHours.morningStart) || "08:00",
+        morningEnd: convertTo24Hour(initialWorkingHours.morningEnd) || "12:00",
+        afternoonStart: convertTo24Hour(initialWorkingHours.afternoonStart) || "14:00",
+        afternoonEnd: convertTo24Hour(initialWorkingHours.afternoonEnd) || "18:00",
+      });
+      setShowValidation(false);
     }
   }, [isOpen, initialWorkingHours]);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    // Remove any non-digit and colon characters
+    let cleanedValue = value.replace(/[^\d:]/g, "");
+    
+    // Auto-format as user types (HH:MM)
+    if (cleanedValue.length <= 2) {
+      // Just hours
+      cleanedValue = cleanedValue;
+    } else if (cleanedValue.length === 3) {
+      // Add colon after 2 digits: "14" -> "14:"
+      cleanedValue = cleanedValue.slice(0, 2) + ":" + cleanedValue.slice(2);
+    } else if (cleanedValue.length > 5) {
+      // Limit to 5 characters (HH:MM)
+      cleanedValue = cleanedValue.slice(0, 5);
+    } else if (cleanedValue.length === 4 && !cleanedValue.includes(":")) {
+      // Add colon: "1400" -> "14:00"
+      cleanedValue = cleanedValue.slice(0, 2) + ":" + cleanedValue.slice(2);
+    }
+    
+    // Validate format and ensure valid hours/minutes
+    if (cleanedValue && /^\d{1,2}:\d{0,2}$/.test(cleanedValue)) {
+      const [hours, minutes = ""] = cleanedValue.split(":");
+      const hourNum = parseInt(hours, 10);
+      const minuteNum = minutes ? parseInt(minutes, 10) : 0;
+      
+      // Validate hours (0-23)
+      if (hourNum > 23) {
+        cleanedValue = "23:" + (minutes || "00");
+      }
+      
+      // Validate minutes (0-59)
+      if (minuteNum > 59) {
+        cleanedValue = hours + ":59";
+      }
+      
+      // Pad minutes to 2 digits if needed
+      if (minutes && minutes.length === 1) {
+        cleanedValue = hours + ":" + minutes;
+      } else if (minutes && minutes.length === 2) {
+        cleanedValue = hours + ":" + minutes;
+      }
+    }
+    
+    setFormData((prev) => ({ ...prev, [field]: cleanedValue }));
   };
 
+  // Validation
+  const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+  const isMorningStartInvalid =
+    showValidation && (!formData.morningStart || !timeRegex.test(formData.morningStart));
+  const isMorningEndInvalid =
+    showValidation && (!formData.morningEnd || !timeRegex.test(formData.morningEnd));
+  const isAfternoonStartInvalid =
+    showValidation && (!formData.afternoonStart || !timeRegex.test(formData.afternoonStart));
+  const isAfternoonEndInvalid =
+    showValidation && (!formData.afternoonEnd || !timeRegex.test(formData.afternoonEnd));
+
+  // Check time logic
+  const isMorningTimeInvalid =
+    showValidation &&
+    formData.morningStart &&
+    formData.morningEnd &&
+    new Date(`2000-01-01T${formData.morningStart}:00`) >=
+      new Date(`2000-01-01T${formData.morningEnd}:00`);
+
+  const isAfternoonTimeInvalid =
+    showValidation &&
+    formData.afternoonStart &&
+    formData.afternoonEnd &&
+    new Date(`2000-01-01T${formData.afternoonStart}:00`) >=
+      new Date(`2000-01-01T${formData.afternoonEnd}:00`);
+
   const handleSubmit = async () => {
+    setShowValidation(true);
+
+    // Check if there are any errors
+    const hasErrors =
+      !formData.morningStart ||
+      !formData.morningEnd ||
+      !formData.afternoonStart ||
+      !formData.afternoonEnd ||
+      !timeRegex.test(formData.morningStart) ||
+      !timeRegex.test(formData.morningEnd) ||
+      !timeRegex.test(formData.afternoonStart) ||
+      !timeRegex.test(formData.afternoonEnd) ||
+      isMorningTimeInvalid ||
+      isAfternoonTimeInvalid;
+
+    if (hasErrors) {
+      if (isMorningTimeInvalid) {
+        toast.error("Thời gian bắt đầu ca sáng phải nhỏ hơn thời gian kết thúc ca sáng");
+      } else if (isAfternoonTimeInvalid) {
+        toast.error("Thời gian bắt đầu ca chiều phải nhỏ hơn thời gian kết thúc ca chiều");
+      }
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Validate time format
-      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-
-      if (
-        !timeRegex.test(formData.morningStart) ||
-        !timeRegex.test(formData.morningEnd) ||
-        !timeRegex.test(formData.afternoonStart) ||
-        !timeRegex.test(formData.afternoonEnd)
-      ) {
-        toast.error("Thời gian phải có định dạng HH:MM (24h)");
-        return;
+      if (!doctorId) {
+        throw new Error("Không tìm thấy ID bác sĩ");
       }
 
-      // Validate time logic
-      const morningStartTime = new Date(
-        `2000-01-01T${formData.morningStart}:00`,
-      );
-      const morningEndTime = new Date(`2000-01-01T${formData.morningEnd}:00`);
-      const afternoonStartTime = new Date(
-        `2000-01-01T${formData.afternoonStart}:00`,
-      );
-      const afternoonEndTime = new Date(
-        `2000-01-01T${formData.afternoonEnd}:00`,
-      );
+      const workingHours = {
+        morningStart: formData.morningStart,
+        morningEnd: formData.morningEnd,
+        afternoonStart: formData.afternoonStart,
+        afternoonEnd: formData.afternoonEnd,
+      };
 
-      if (morningStartTime >= morningEndTime) {
-        toast.error(
-          "Thời gian bắt đầu ca sáng phải nhỏ hơn thời gian kết thúc ca sáng",
-        );
-        return;
+      console.log("📤 Sending update data:", workingHours);
+      console.log("📤 Doctor ID:", doctorId);
+
+      const response = await managerApi.updateDoctorWorkingHours(doctorId, workingHours);
+
+      console.log("📥 Response from server:", response);
+
+      if (response.success) {
+        toast.success(response.message || "Cập nhật giờ làm việc thành công!");
+        onClose();
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        throw new Error(response.message || "Không thể cập nhật giờ làm việc");
       }
-
-      if (afternoonStartTime >= afternoonEndTime) {
-        toast.error(
-          "Thời gian bắt đầu ca chiều phải nhỏ hơn thời gian kết thúc ca chiều",
-        );
-        return;
-      }
-
-      onSubmit(formData);
     } catch (error: any) {
-      console.error("Error submitting working hours:", error);
-      toast.error("Lỗi khi cập nhật giờ làm việc");
+      console.error("❌ Error updating working hours:", error);
+      toast.error(
+        error.message ||
+          "Có lỗi xảy ra khi cập nhật giờ làm việc. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    setShowValidation(false);
+    onClose();
+  };
+
+  if (!isOpen || !doctorId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+    <>
+      <style>{timeInputStyle}</style>
+      <div className="fixed inset-0 z-50 flex items-center justify-center" lang="vi-VN">
+        {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black bg-opacity-50"
-        onClick={onClose}
+        aria-label="Close modal"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         role="button"
         tabIndex={0}
+        onClick={handleClose}
         onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            onClose();
+          if (e.key === "Enter" || e.key === " ") {
+            handleClose();
           }
         }}
       />
 
-      {/* Modal */}
+      {/* Modal Content */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Cập nhật giờ làm việc
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+        <div className="flex items-center justify-between px-4 py-4 border-b border-[#39BDCC]">
+          <div className="flex items-center space-x-3">
+            <img
+              alt="Logo"
+              className="h-8 w-auto object-contain"
+              src="/logo1.png"
+            />
+            <div>
+              <h2 className="text-2xl font-bold">Cập nhật giờ làm việc</h2>
+              <p className="text-sm text-gray-600">
+                Chỉnh sửa thời gian làm việc của bác sĩ
+              </p>
+            </div>
+          </div>
+          <Button
+            isIconOnly
+            className="text-gray-500 hover:text-gray-700"
+            variant="light"
+            onPress={handleClose}
           >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
+            <XMarkIcon className="w-5 h-5" />
+          </Button>
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-4">
-          {/* Morning Shift */}
-          <div className="space-y-2">
-            <label
-              className="block text-sm font-medium text-gray-700"
-              htmlFor="morning-shift"
-            >
-              Ca sáng
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+        <div className="px-4 py-4">
+          <Form autoComplete="off" className="space-y-5">
+            {/* Morning Shift */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Ca sáng
+              </label>
+              <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="Bắt đầu"
-                  type="time"
-                  value={formData.morningStart}
-                  onChange={(e) =>
-                    handleInputChange("morningStart", e.target.value)
+                  fullWidth
+                  autoComplete="off"
+                  classNames={{
+                    base: "w-full",
+                    inputWrapper: "w-full",
+                  }}
+                  errorMessage={
+                    isMorningStartInvalid
+                      ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
+                      : isMorningTimeInvalid
+                      ? "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc"
+                      : undefined
                   }
+                  isInvalid={isMorningStartInvalid || isMorningTimeInvalid}
+                  label="Bắt đầu *"
                   placeholder="08:00"
+                  type="text"
+                  value={formData.morningStart}
+                  variant="bordered"
+                  maxLength={5}
+                  onValueChange={(value) => handleInputChange("morningStart", value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                    const keyCode = e.keyCode || e.which;
+                    // Allow: backspace, delete, tab, escape, enter, colon
+                    if ([8, 9, 27, 13, 46, 58].indexOf(keyCode) !== -1 ||
+                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                      (keyCode === 65 && e.ctrlKey === true) ||
+                      (keyCode === 67 && e.ctrlKey === true) ||
+                      (keyCode === 86 && e.ctrlKey === true) ||
+                      (keyCode === 88 && e.ctrlKey === true) ||
+                      // Allow: home, end, left, right
+                      (keyCode >= 35 && keyCode <= 39)) {
+                      return;
+                    }
+                    // Ensure that it is a number and stop the keypress
+                    if ((e.shiftKey || (keyCode < 48 || keyCode > 57)) && (keyCode < 96 || keyCode > 105)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
-              </div>
-              <div>
-                <Input
-                  label="Kết thúc"
-                  type="time"
-                  value={formData.morningEnd}
-                  onChange={(e) =>
-                    handleInputChange("morningEnd", e.target.value)
-                  }
-                  placeholder="12:00"
-                />
-              </div>
-            </div>
-          </div>
 
-          {/* Afternoon Shift */}
-          <div className="space-y-2">
-            <label
-              className="block text-sm font-medium text-gray-700"
-              htmlFor="afternoon-shift"
-            >
-              Ca chiều
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
                 <Input
-                  label="Bắt đầu"
-                  type="time"
-                  value={formData.afternoonStart}
-                  onChange={(e) =>
-                    handleInputChange("afternoonStart", e.target.value)
+                  fullWidth
+                  autoComplete="off"
+                  classNames={{
+                    base: "w-full",
+                    inputWrapper: "w-full",
+                  }}
+                  errorMessage={
+                    isMorningEndInvalid
+                      ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
+                      : undefined
                   }
-                  placeholder="14:00"
-                />
-              </div>
-              <div>
-                <Input
-                  label="Kết thúc"
-                  type="time"
-                  value={formData.afternoonEnd}
-                  onChange={(e) =>
-                    handleInputChange("afternoonEnd", e.target.value)
-                  }
-                  placeholder="18:00"
+                  isInvalid={isMorningEndInvalid}
+                  label="Kết thúc *"
+                  placeholder="12:00"
+                  type="text"
+                  value={formData.morningEnd}
+                  variant="bordered"
+                  maxLength={5}
+                  onValueChange={(value) => handleInputChange("morningEnd", value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                    const keyCode = e.keyCode || e.which;
+                    // Allow: backspace, delete, tab, escape, enter, colon
+                    if ([8, 9, 27, 13, 46, 58].indexOf(keyCode) !== -1 ||
+                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                      (keyCode === 65 && e.ctrlKey === true) ||
+                      (keyCode === 67 && e.ctrlKey === true) ||
+                      (keyCode === 86 && e.ctrlKey === true) ||
+                      (keyCode === 88 && e.ctrlKey === true) ||
+                      // Allow: home, end, left, right
+                      (keyCode >= 35 && keyCode <= 39)) {
+                      return;
+                    }
+                    // Ensure that it is a number and stop the keypress
+                    if ((e.shiftKey || (keyCode < 48 || keyCode > 57)) && (keyCode < 96 || keyCode > 105)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
             </div>
-          </div>
+
+            {/* Afternoon Shift */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Ca chiều
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  fullWidth
+                  autoComplete="off"
+                  classNames={{
+                    base: "w-full",
+                    inputWrapper: "w-full",
+                  }}
+                  errorMessage={
+                    isAfternoonStartInvalid
+                      ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
+                      : isAfternoonTimeInvalid
+                      ? "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc"
+                      : undefined
+                  }
+                  isInvalid={isAfternoonStartInvalid || isAfternoonTimeInvalid}
+                  label="Bắt đầu *"
+                  placeholder="14:00"
+                  type="text"
+                  value={formData.afternoonStart}
+                  variant="bordered"
+                  maxLength={5}
+                  onValueChange={(value) => handleInputChange("afternoonStart", value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                    const keyCode = e.keyCode || e.which;
+                    // Allow: backspace, delete, tab, escape, enter, colon
+                    if ([8, 9, 27, 13, 46, 58].indexOf(keyCode) !== -1 ||
+                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                      (keyCode === 65 && e.ctrlKey === true) ||
+                      (keyCode === 67 && e.ctrlKey === true) ||
+                      (keyCode === 86 && e.ctrlKey === true) ||
+                      (keyCode === 88 && e.ctrlKey === true) ||
+                      // Allow: home, end, left, right
+                      (keyCode >= 35 && keyCode <= 39)) {
+                      return;
+                    }
+                    // Ensure that it is a number and stop the keypress
+                    if ((e.shiftKey || (keyCode < 48 || keyCode > 57)) && (keyCode < 96 || keyCode > 105)) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+
+                <Input
+                  fullWidth
+                  autoComplete="off"
+                  classNames={{
+                    base: "w-full",
+                    inputWrapper: "w-full",
+                  }}
+                  errorMessage={
+                    isAfternoonEndInvalid
+                      ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
+                      : undefined
+                  }
+                  isInvalid={isAfternoonEndInvalid}
+                  label="Kết thúc *"
+                  placeholder="18:00"
+                  type="text"
+                  value={formData.afternoonEnd}
+                  variant="bordered"
+                  maxLength={5}
+                  onValueChange={(value) => handleInputChange("afternoonEnd", value)}
+                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                    const keyCode = e.keyCode || e.which;
+                    // Allow: backspace, delete, tab, escape, enter, colon
+                    if ([8, 9, 27, 13, 46, 58].indexOf(keyCode) !== -1 ||
+                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+                      (keyCode === 65 && e.ctrlKey === true) ||
+                      (keyCode === 67 && e.ctrlKey === true) ||
+                      (keyCode === 86 && e.ctrlKey === true) ||
+                      (keyCode === 88 && e.ctrlKey === true) ||
+                      // Allow: home, end, left, right
+                      (keyCode >= 35 && keyCode <= 39)) {
+                      return;
+                    }
+                    // Ensure that it is a number and stop the keypress
+                    if ((e.shiftKey || (keyCode < 48 || keyCode > 57)) && (keyCode < 96 || keyCode > 105)) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          </Form>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
+        {/* Buttons outside Form */}
+        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
           <Button
-            disabled={isSubmitting}
+            isDisabled={isSubmitting}
             variant="bordered"
-            onPress={onClose}
+            onPress={handleClose}
           >
             Hủy
           </Button>
           <Button
-            color="primary"
-            disabled={isSubmitting}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+            isDisabled={isSubmitting}
             isLoading={isSubmitting}
+            variant="solid"
             onPress={handleSubmit}
           >
             {isSubmitting ? "Đang cập nhật..." : "Cập nhật"}
@@ -219,6 +479,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
         </div>
       </div>
     </div>
+    </>
   );
 };
 
