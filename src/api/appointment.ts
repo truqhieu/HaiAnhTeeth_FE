@@ -50,6 +50,16 @@ export const appointmentApi = {
     });
   },
 
+  // ⭐ Staff tạo lịch hẹn khám trực tiếp (walk-in)
+  createWalkIn: async (
+    data: Omit<AppointmentCreationData, "appointmentFor">,
+  ): Promise<ApiResponse<{ success: boolean; message: string; data: any }>> => {
+    return authenticatedApiCall("/appointments/walk-in/create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
   // ⭐ Lấy danh sách người thân đã đặt lịch
   getMyRelatives: async (): Promise<ApiResponse<Relative[]>> => {
     return authenticatedApiCall("/appointments/my-relatives", {

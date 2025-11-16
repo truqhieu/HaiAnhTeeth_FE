@@ -19,8 +19,8 @@ const NurseMedicalRecord: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<Array<{ medicine: string; dosage: string; duration: string }>>([]);
   const [nurseNote, setNurseNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [currentServices, setCurrentServices] = useState<Array<{ _id: string; serviceName: string; price: number }>>([]);
-  const [allServices, setAllServices] = useState<Array<{ _id: string; serviceName: string; price: number }>>([]);
+  const [currentServices, setCurrentServices] = useState<Array<{ _id: string; serviceName: string; price: number; finalPrice?: number; discountAmount?: number }>>([]);
+  const [allServices, setAllServices] = useState<Array<{ _id: string; serviceName: string; price: number; finalPrice?: number; discountAmount?: number }>>([]);
   const [updatingServices, setUpdatingServices] = useState(false);
   const [serviceListLoading, setServiceListLoading] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -37,7 +37,9 @@ const NurseMedicalRecord: React.FC = () => {
       .map((s) => ({
         _id: s._id.toString(),
         serviceName: s.serviceName || "",
-        price: s.price || 0,
+        price: typeof s.finalPrice === 'number' ? s.finalPrice : (s.price || 0),
+        finalPrice: s.finalPrice,
+        discountAmount: s.discountAmount,
       }));
 
   const closeDropdown = () => {

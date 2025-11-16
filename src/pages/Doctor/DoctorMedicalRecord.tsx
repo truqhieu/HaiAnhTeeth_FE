@@ -23,8 +23,8 @@ const DoctorMedicalRecord: React.FC = () => {
   const [nurseNote, setNurseNote] = useState("");
 
   // Additional Services state
-  const [currentServices, setCurrentServices] = useState<Array<{ _id: string; serviceName: string; price: number }>>([]);
-  const [allServices, setAllServices] = useState<Array<{ _id: string; serviceName: string; price: number }>>([]);
+  const [currentServices, setCurrentServices] = useState<Array<{ _id: string; serviceName: string; price: number; finalPrice?: number; discountAmount?: number }>>([]);
+  const [allServices, setAllServices] = useState<Array<{ _id: string; serviceName: string; price: number; finalPrice?: number; discountAmount?: number }>>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
@@ -97,7 +97,9 @@ const DoctorMedicalRecord: React.FC = () => {
               .map((s: any) => ({
                 _id: s._id || (typeof s === 'string' ? s : s.toString()),
                 serviceName: s.serviceName || (typeof s === 'object' ? s.name || '' : ''),
-                price: s.price || 0
+                price: typeof s.finalPrice === 'number' ? s.finalPrice : (s.price || 0),
+                finalPrice: s.finalPrice,
+                discountAmount: s.discountAmount,
               }));
             console.log('🔍 [MedicalRecord] Mapped services:', mappedServices);
             setCurrentServices(mappedServices);
@@ -342,7 +344,7 @@ const DoctorMedicalRecord: React.FC = () => {
                 ? null
                 : appointmentLocked
                 ? 'Ca khám đã hoàn thành, không thể chỉnh sửa hồ sơ.'
-                : 'Hồ sơ đã được duyệt. Nếu cần chỉnh sửa, vui lòng liên hệ quản trị.'
+                : 'Hồ sơ đã được duyệt.'
             },
             nurse: {
               canEdit: nurseCanEdit,
@@ -479,6 +481,7 @@ const DoctorMedicalRecord: React.FC = () => {
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-teal-200 shadow-sm"
                   >
                     <span className="font-medium text-gray-800">{s.serviceName}</span>
+                    <span className="text-xs text-gray-500">{(s.finalPrice ?? s.price).toLocaleString('vi-VN')}đ</span>
                     <button
                       onClick={() => handleRemoveService(s._id)}
                       disabled={!canEdit}
@@ -543,7 +546,8 @@ const DoctorMedicalRecord: React.FC = () => {
                     key={service._id}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleAddService(service);
+                      // Khi thêm, sử dụng finalPrice nếu có để hiển thị ngay
+                      handleAddService({ ...service, price: typeof service.finalPrice === 'number' ? service.finalPrice : service.price } as any);
                     }}
                     onMouseDown={(e) => {
                       e.stopPropagation();
@@ -552,6 +556,9 @@ const DoctorMedicalRecord: React.FC = () => {
                     type="button"
                   >
                     <span className="font-medium text-gray-800">{service.serviceName}</span>
+                    <span className="ml-2 text-xs text-gray-500">
+                      {(typeof service.finalPrice === 'number' ? service.finalPrice : service.price).toLocaleString('vi-VN')}đ
+                    </span>
                   </button>
                 ))}
               </div>

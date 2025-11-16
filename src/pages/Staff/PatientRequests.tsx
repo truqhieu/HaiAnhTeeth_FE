@@ -24,7 +24,7 @@ import {
   Pagination,
   Tooltip,
 } from "@heroui/react";
-import { CheckCircleIcon, XCircleIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
 
 import { patientRequestApi, PatientRequest } from "../../api/patientRequest";
 import { formatDate, formatTime } from "../../utils/dateUtils";
@@ -379,11 +379,11 @@ const PatientRequests: React.FC = () => {
                 <TableRow key={request._id || Math.random().toString()}>
                   <TableCell>
                     <div>
-                      <div className="font-medium">{request.patientUserId?.fullName || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{request.patientUserId?.email || 'N/A'}</div>
+                      <div className="font-medium">{request.patientUserId?.fullName || 'Chưa có thông tin'}</div>
+                      <div className="text-sm text-gray-500">{request.patientUserId?.email || 'Chưa có thông tin'}</div>
                     </div>
                   </TableCell>
-                  <TableCell>{request.appointmentId?.serviceId?.serviceName || 'N/A'}</TableCell>
+                  <TableCell>{request.appointmentId?.serviceId?.serviceName || 'Chưa có thông tin'}</TableCell>
                   <TableCell>
                     <Chip color="primary" variant="flat">
                       {getTypeLabel(request.requestType)}
@@ -392,7 +392,7 @@ const PatientRequests: React.FC = () => {
                   <TableCell>
                     <div>
                       <div className="font-medium text-gray-900">
-                        {request.currentData?.doctorUserId?.fullName || 'N/A'}
+                        {request.currentData?.doctorUserId?.fullName || 'Chưa có thông tin'}
                       </div>
                       <div className="text-sm text-gray-500">Bác sĩ hiện tại</div>
                       {request.currentData?.timeslotId && (
@@ -409,20 +409,20 @@ const PatientRequests: React.FC = () => {
                     {request.requestType === "Reschedule" ? (
                       <div>
                         <div className="font-medium text-gray-900">
-                          {request.requestedData?.startTime ? formatDate(request.requestedData.startTime) : 'N/A'}
+                          {request.requestedData?.startTime ? formatDate(request.requestedData.startTime) : 'Chưa có thông tin'}
                         </div>
                         <div className="text-sm text-gray-500">Thời gian mới</div>
                         <div className="text-sm text-gray-600 mt-1">
                           {request.requestedData?.startTime && request.requestedData?.endTime 
                             ? `${formatTime(request.requestedData.startTime)} - ${formatTime(request.requestedData.endTime)}`
-                            : 'N/A'
+                            : 'Chưa có thông tin'
                           }
                         </div>
                       </div>
                     ) : (
                       <div>
                         <div className="font-medium text-gray-900">
-                          {request.requestedData?.doctorUserId?.fullName || 'N/A'}
+                          {request.requestedData?.doctorUserId?.fullName || 'Chưa có thông tin'}
                         </div>
                         <div className="text-sm text-gray-500">Bác sĩ mới</div>
                       </div>
@@ -437,17 +437,6 @@ const PatientRequests: React.FC = () => {
                   <TableCell>{formatDateTime(request.createdAt)}</TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Tooltip content="Xem chi tiết">
-                        <Button
-                          size="md"
-                          variant="light"
-                          className="min-w-10 h-10 text-blue-600 hover:bg-blue-50"
-                          isIconOnly
-                          onClick={() => openDetailModal(request)}
-                        >
-                          <EyeIcon className="w-6 h-6" />
-                        </Button>
-                      </Tooltip>
                       {request.status === "Pending" && (
                         <>
                           <Tooltip content="Duyệt yêu cầu">
@@ -506,17 +495,17 @@ const PatientRequests: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium">Bệnh nhân:</label>
-                    <p>{selectedRequest.patientUserId.fullName}</p>
+                    <p>{selectedRequest.patientUserId?.fullName || 'Chưa có thông tin'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Email:</label>
-                    <p>{selectedRequest.patientUserId.email}</p>
+                    <p>{selectedRequest.patientUserId?.email || 'Chưa có thông tin'}</p>
                   </div>
                 </div>
                 
                 <div>
                   <label className="text-sm font-medium">Dịch vụ:</label>
-                  <p>{selectedRequest.appointmentId.serviceId.serviceName}</p>
+                  <p>{selectedRequest.appointmentId?.serviceId?.serviceName || 'Chưa có thông tin'}</p>
                 </div>
 
                 <div>
@@ -531,29 +520,29 @@ const PatientRequests: React.FC = () => {
                     <label className="text-sm font-medium">Thông tin hiện tại:</label>
                     {selectedRequest.requestType === "Reschedule" ? (
                       <div>
-                        <p>Thời gian: {formatDate(selectedRequest.currentData.startTime)}</p>
-                        <p>{formatTime(selectedRequest.currentData.startTime)} - {formatTime(selectedRequest.currentData.endTime)}</p>
+                        <p>Thời gian: {selectedRequest.currentData?.startTime ? formatDate(selectedRequest.currentData.startTime) : 'Chưa có thông tin'}</p>
+                        <p>{selectedRequest.currentData?.startTime ? formatTime(selectedRequest.currentData.startTime) : '--:--'} - {selectedRequest.currentData?.endTime ? formatTime(selectedRequest.currentData.endTime) : '--:--'}</p>
                       </div>
                     ) : (
-                      <p>Bác sĩ: {selectedRequest.currentData.doctorUserId.fullName}</p>
+                      <p>Bác sĩ: {selectedRequest.currentData?.doctorUserId?.fullName || 'Chưa có thông tin'}</p>
                     )}
                   </div>
                   <div>
                     <label className="text-sm font-medium">Thông tin yêu cầu:</label>
                     {selectedRequest.requestType === "Reschedule" ? (
                       <div>
-                        <p>Thời gian: {formatDate(selectedRequest.requestedData.startTime!)}</p>
-                        <p>{formatTime(selectedRequest.requestedData.startTime!)} - {formatTime(selectedRequest.requestedData.endTime!)}</p>
+                        <p>Thời gian: {selectedRequest.requestedData?.startTime ? formatDate(selectedRequest.requestedData.startTime) : 'Chưa có thông tin'}</p>
+                        <p>{selectedRequest.requestedData?.startTime ? formatTime(selectedRequest.requestedData.startTime) : '--:--'} - {selectedRequest.requestedData?.endTime ? formatTime(selectedRequest.requestedData.endTime) : '--:--'}</p>
                       </div>
                     ) : (
-                      <p>Bác sĩ: {selectedRequest.requestedData.doctorUserId?.fullName}</p>
+                      <p>Bác sĩ: {selectedRequest.requestedData?.doctorUserId?.fullName || 'Chưa có thông tin'}</p>
                     )}
                   </div>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium">Lý do yêu cầu:</label>
-                  <p className="bg-gray-50 p-2 rounded">{selectedRequest.requestedData.reason}</p>
+                  <p className="bg-gray-50 p-2 rounded">{selectedRequest.requestedData?.reason || 'Chưa có thông tin'}</p>
                 </div>
 
                 <div>
@@ -568,12 +557,12 @@ const PatientRequests: React.FC = () => {
                   <div>
                     <label className="text-sm font-medium">Phản hồi của staff:</label>
                     <div className="bg-gray-50 p-2 rounded">
-                      <p><strong>Xử lý bởi:</strong> {selectedRequest.staffResponse.staffUserId.fullName}</p>
+                      <p><strong>Xử lý bởi:</strong> {selectedRequest.staffResponse?.staffUserId?.fullName || 'Chưa có thông tin'}</p>
                       <p><strong>Kết quả:</strong> {selectedRequest.staffResponse.response === "Approved" ? "Duyệt" : "Từ chối"}</p>
-                      {selectedRequest.staffResponse.reason && (
-                        <p><strong>Lý do:</strong> {selectedRequest.staffResponse.reason}</p>
+                      {selectedRequest.staffResponse?.reason && (
+                        <p><strong>Lý do:</strong> {selectedRequest.staffResponse?.reason}</p>
                       )}
-                      <p><strong>Thời gian:</strong> {formatDateTime(selectedRequest.staffResponse.respondedAt)}</p>
+                      <p><strong>Thời gian:</strong> {selectedRequest.staffResponse?.respondedAt ? formatDateTime(selectedRequest.staffResponse.respondedAt) : 'Chưa có thông tin'}</p>
                     </div>
                   </div>
                 )}

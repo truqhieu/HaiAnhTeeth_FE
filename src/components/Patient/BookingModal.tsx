@@ -2,6 +2,11 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon, CalendarDaysIcon } from "@heroicons/react/24/solid";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { registerLocale } from "react-datepicker";
+import { vi } from "date-fns/locale";
+registerLocale("vi", vi);
 import toast from "react-hot-toast";
 
 import {
@@ -54,7 +59,7 @@ const initialFormData: FormData = {
 };
 
 const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const prevUserIdRef = useRef<string | undefined>(user?.id || user?._id);
   const isFirstMountRef = useRef(true);
@@ -72,7 +77,19 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // Chỉ dùng cho server errors
   const [timeInputError, setTimeInputError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // ⭐ Suppress server error banner for cases user đã thấy trong panel (hết chỗ/qua giờ/không đủ thời gian)
+  const isNonCriticalAvailabilityMessage = (msg: string) => {
+    if (!msg) return false;
+    const lower = msg.toLowerCase();
+    return (
+      lower.includes("không đáp ứng đủ thời gian") ||
+      lower.includes("không có thời gian phù hợp") ||
+      lower.includes("đã qua thời gian làm việc") ||
+      lower.includes("đã hết chỗ")
+    );
+  };
   const [submitting, setSubmitting] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date(formData.date + "T00:00:00"));
 
   const today = new Date().toISOString().split("T")[0];
   const selectedService = services.find((s) => s._id === formData.serviceId);
@@ -260,6 +277,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     fetchDoctors();
   }, [formData.date, formData.serviceId, formData.appointmentFor]);
 
+  // Sync selectedDate when formData.date changes (external updates)
+  useEffect(() => {
+    if (formData.date) {
+      setSelectedDate(new Date(formData.date + "T00:00:00"));
+    }
+  }, [formData.date]);
+
   // === Fetch doctor schedule when doctor is selected ===
   const handleDoctorSelect = async (doctorId: string) => {
     setFormData((prev) => ({
@@ -298,9 +322,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
             doctorScheduleId: data.doctorScheduleId || null,
         }));
         
-        // ⭐ Hiển thị message nếu không có gaps khả dụng (không đủ thời gian)
+        // ⭐ Chỉ hiển thị banner nếu là lỗi quan trọng; ẩn các thông điệp “hết chỗ/qua giờ/không đủ thời gian”
           if (data.message) {
-            setErrorMessage(data.message);
+            if (isNonCriticalAvailabilityMessage(data.message)) {
+              setErrorMessage(null);
+            } else {
+              setErrorMessage(data.message);
+            }
+          } else {
+            setErrorMessage(null);
           }
         } else {
           setDoctorScheduleRange(null);
@@ -335,8 +365,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
     // Check if input time is within any available range
     for (const range of doctorScheduleRange) {
-      // Skip ranges that are fully booked
-      if (range.displayRange === 'Đã hết chỗ') {
+      // Skip ranges that are fully booked or passed working hours
+      if (range.displayRange === 'Đã hết chỗ' || range.displayRange === 'Đã qua thời gian làm việc') {
         continue;
       }
 
@@ -423,6 +453,38 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         endTime: utcNow,
       }));
       return;
+    }
+
+    // ⭐ FE validation: Kiểm tra thời lượng dịch vụ không vượt quá ca làm việc chứa thời điểm bắt đầu
+    try {
+      // Xác định ca (range) chứa thời điểm bắt đầu
+      const [hStr, mStr] = timeInput.split(":");
+      const startTotalMin = parseInt(hStr) * 60 + parseInt(mStr);
+      let containingRangeEndMin: number | null = null;
+      for (const range of doctorScheduleRange || []) {
+        if (range.displayRange === 'Đã hết chỗ' || range.displayRange === 'Đã qua thời gian làm việc') continue;
+        const rStart = new Date(range.startTime);
+        const rEnd = new Date(range.endTime);
+        const rStartMin = (rStart.getUTCHours() + 7) * 60 + rStart.getUTCMinutes();
+        const rEndMin = (rEnd.getUTCHours() + 7) * 60 + rEnd.getUTCMinutes();
+        if (startTotalMin >= rStartMin && startTotalMin < rEndMin) {
+          containingRangeEndMin = rEndMin;
+          break;
+        }
+      }
+      if (containingRangeEndMin != null) {
+        const endTotalMin = startTotalMin + serviceDuration;
+        if (endTotalMin > containingRangeEndMin) {
+          setTimeInputError(`Thời gian bạn chọn không đáp ứng đủ thời gian cho dịch vụ này (${serviceDuration} phút). Vui lòng chọn giờ khác.`);
+          setFormData((prev) => ({
+            ...prev,
+            endTime: utcNow,
+          }));
+          return;
+        }
+      }
+    } catch {
+      // Bỏ qua nếu không tính được, backend sẽ validate tiếp
     }
 
     // ⭐ Convert giờ VN sang UTC: VN - 7
@@ -538,21 +600,49 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // ⭐ REMOVED: Validate individual field và handleFieldBlur - chỉ validate khi submit trong validateForm()
-  // const handleFieldBlur = (fieldName: string) => {
-  //   const value = formData[fieldName as keyof FormData];
-  //   const error = validateField(fieldName, value);
-  //   
-  //   if (error) {
-  //     setFieldErrors((prev) => ({ ...prev, [fieldName]: error }));
-  //   } else {
-  //     setFieldErrors((prev) => {
-  //       const newErrors = { ...prev };
-  //       delete newErrors[fieldName];
-  //       return newErrors;
-  //     });
-  //   }
-  // };
+  // Validate từng trường (onBlur) và hiển thị lỗi inline
+  const handleFieldBlur = (fieldName: string) => {
+    const next: Record<string, string> = { ...fieldErrors };
+    const v: any = (formData as any)[fieldName];
+    switch (fieldName) {
+      case "fullName":
+        if (formData.appointmentFor === "other" && !String(v || "").trim()) next.fullName = "Vui lòng nhập họ và tên.";
+        else delete next.fullName;
+        break;
+      case "email":
+        if (formData.appointmentFor === "other") {
+          const ok = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(String(v || "").trim());
+          if (!ok) next.email = "Email không hợp lệ.";
+          else delete next.email;
+        }
+        break;
+      case "phoneNumber":
+        {
+          const digits = String(v || "").replace(/[^0-9]/g, "");
+          if (digits.length !== 10) next.phoneNumber = "Số điện thoại phải gồm 10 chữ số.";
+          else delete next.phoneNumber;
+        }
+        break;
+      case "serviceId":
+        if (!v) next.serviceId = "Vui lòng chọn dịch vụ.";
+        else delete next.serviceId;
+        break;
+      case "date":
+        {
+          const d = new Date(String(v || "") + "T00:00:00");
+          if (!v || isNaN(d.getTime())) next.date = "Ngày không hợp lệ.";
+          else delete next.date;
+        }
+        break;
+      case "doctorUserId":
+        if (!v) next.doctorUserId = "Vui lòng chọn bác sĩ.";
+        else delete next.doctorUserId;
+        break;
+      default:
+        break;
+    }
+    setFieldErrors(next);
+  };
 
   const validateForm = (): boolean => {
     if (!user?._id && !user?.id) {
@@ -570,6 +660,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }
     if (!formData.phoneNumber.trim()) {
       errors.phoneNumber = "Vui lòng nhập số điện thoại.";
+    } else {
+      const digits = formData.phoneNumber.replace(/[^0-9]/g, "");
+      if (digits.length !== 10) {
+        errors.phoneNumber = "Số điện thoại phải gồm 10 chữ số.";
+      }
     }
     if (!formData.serviceId) {
       errors.serviceId = "Vui lòng chọn dịch vụ.";
@@ -650,6 +745,18 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         // Reset form after successful booking
         resetForm();
         
+        // ⭐ Nếu đặt cho bản thân và có nhập phoneNumber, cập nhật ngay hồ sơ người dùng trong AuthContext
+        if (formData.appointmentFor === 'self' && formData.phoneNumber && user) {
+          try {
+            updateUser({
+              ...user,
+              phoneNumber: formData.phoneNumber,
+            } as any);
+          } catch (e) {
+            console.warn('Không thể cập nhật phoneNumber vào AuthContext:', e);
+          }
+        }
+        
         if (res.data?.requirePayment && res.data?.payment?.paymentId) {
           setErrorMessage(null);
           onClose();
@@ -683,7 +790,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
             endTime: utcNow,
           }));
         } else {
-          setErrorMessage(errorMsg);
+          // Ẩn banner với các thông điệp người dùng đã thấy ở panel “Khoảng thời gian khả dụng”
+          if (isNonCriticalAvailabilityMessage(errorMsg)) {
+            setErrorMessage(null);
+          } else {
+            setErrorMessage(errorMsg);
+          }
         }
       }
     } catch (err: any) {
@@ -706,7 +818,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           endTime: utcNow,
         }));
       } else {
-        setErrorMessage(errorMsg);
+        // Ẩn banner với các thông điệp người dùng đã thấy ở panel
+        if (isNonCriticalAvailabilityMessage(errorMsg)) {
+          setErrorMessage(null);
+        } else {
+          setErrorMessage(errorMsg);
+        }
       }
     } finally {
       setSubmitting(false);
@@ -820,6 +937,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
+                onBlur={() => handleFieldBlur("fullName")}
                 />
                 {fieldErrors.fullName && (
                   <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>
@@ -841,6 +959,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
+                onBlur={() => handleFieldBlur("email")}
                 />
                 {fieldErrors.email && (
                   <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
@@ -859,6 +978,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 name="phoneNumber"
                 value={formData.phoneNumber}
                 onChange={handleInputChange}
+                onBlur={() => handleFieldBlur("phoneNumber")}
               />
               {fieldErrors.phoneNumber && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.phoneNumber}</p>
@@ -870,15 +990,29 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
               <label className="block text-sm mb-1 font-medium text-gray-700">
                 Chọn ngày *
               </label>
-              <input
-                className={`w-full border px-3 py-2 rounded-lg ${
-                  fieldErrors.date ? "border-red-500 focus:ring-red-500" : ""
-                }`}
-                min={today}
-                name="date"
-                type="date"
-                value={formData.date}
-                onChange={handleInputChange}
+              {/* hidden input to keep formData.date for validations */}
+              <input className="hidden" name="date" value={formData.date} onChange={()=>{}} readOnly />
+              <DatePicker
+                selected={selectedDate}
+                onChange={(d) => {
+                  setSelectedDate(d);
+                  if (d) {
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, "0");
+                    const dd = String(d.getDate()).padStart(2, "0");
+                    const isoDate = `${yyyy}-${mm}-${dd}`;
+                    setFormData(prev => ({ ...prev, date: isoDate }));
+                  } else {
+                    setFormData(prev => ({ ...prev, date: "" }));
+                  }
+                  // inline validate date
+                  handleFieldBlur("date");
+                }}
+                minDate={new Date()}
+                dateFormat="dd/MM/yyyy"
+                locale="vi"
+                placeholderText="Chọn ngày"
+                className={`w-full border px-3 py-2 rounded-lg ${fieldErrors.date ? "border-red-500 focus:ring-red-500" : ""}`}
               />
               {fieldErrors.date && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.date}</p>
@@ -897,6 +1031,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 name="serviceId"
                 value={formData.serviceId}
                 onChange={handleInputChange}
+                onBlur={() => handleFieldBlur("serviceId")}
               >
                 <option value="">-- Chọn dịch vụ --</option>
                 {services.map((s) => (
@@ -984,6 +1119,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                             <p className="text-sm text-gray-700 ml-2">
                               {range.displayRange === 'Đã hết chỗ' ? (
                                 <span className="text-red-600 font-medium">Đã hết chỗ</span>
+                              ) : range.displayRange === 'Đã qua thời gian làm việc' ? (
+                                <span className="text-red-600 font-medium">Đã qua thời gian làm việc</span>
                               ) : (
                                 range.displayRange.split(', ').map((gap: string, gapIdx: number) => (
                                   <span key={gapIdx}>
@@ -999,69 +1136,117 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Input thời gian và hiển thị kết quả nằm ngang */}
+                    {doctorScheduleRange.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ? (
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">
                             Nhập giờ bắt đầu
                           </label>
-                          <input
-                            type="text"
-                            placeholder="vd: 09:30"
-                            className={`w-full border px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent ${
-                              timeInputError || fieldErrors.userStartTimeInput
-                                ? 'border-red-500 focus:ring-red-500' 
-                                : 'focus:ring-[#39BDCC] focus:border-transparent'
-                            }`}
-                            value={formData.userStartTimeInput}
-                            onChange={(e) => {
-                              const timeInput = e.target.value;
-                              // ⭐ Clear tất cả lỗi khi user nhập để tránh hiển thị lỗi cũ
-                              setTimeInputError(null);
-                              setErrorMessage(null);
-                              
-                              // Clear field error when user types
-                              if (fieldErrors.userStartTimeInput) {
-                                setFieldErrors((prev) => {
-                                  const newErrors = { ...prev };
-                                  delete newErrors.userStartTimeInput;
-                                  return newErrors;
-                                });
-                              }
-                              
-                              // ⭐ Tính endTime real-time khi đang nhập (như cũ)
-                              const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
-                              if (timeRegex.test(timeInput)) {
-                                const [hours, minutes] = timeInput.split(":");
-                                const vnHours = parseInt(hours);
-                                const vnMinutes = parseInt(minutes);
-                                const utcHours = vnHours - 7;
-                                
-                                const dateObj = new Date(formData.date + 'T00:00:00.000Z');
-                                dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
-                                
-                                const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
-                                
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  userStartTimeInput: timeInput,
-                                  startTime: dateObj,
-                                  endTime: endTimeDate,
-                                }));
-                              } else {
-                                // Nếu chưa đúng format, chỉ update input
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  userStartTimeInput: timeInput,
-                                }));
-                              }
-                            }}
-                            onBlur={() => {
-                              // ⭐ Chỉ validate time format và tính endTime, không set field error khi blur
-                              if (formData.userStartTimeInput) {
-                                handleTimeInputBlur(formData.userStartTimeInput);
-                            }
-                            }}
-                          />
+                          <div className="flex items-center gap-2">
+                            {/* Hour input */}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="Giờ"
+                              className={`w-16 text-center border px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent ${
+                                timeInputError || fieldErrors.userStartTimeInput
+                                  ? 'border-red-500 focus:ring-red-500'
+                                  : 'focus:ring-[#39BDCC] focus:border-transparent'
+                              }`}
+                              value={(formData.userStartTimeInput || '').split(':')[0] || ''}
+                              onChange={(e) => {
+                                let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                                setTimeInputError(null);
+                                setErrorMessage(null);
+                                if (fieldErrors.userStartTimeInput) {
+                                  setFieldErrors((prev) => {
+                                    const next = { ...prev };
+                                    delete next.userStartTimeInput;
+                                    return next;
+                                  });
+                                }
+                                const currentMinute = (formData.userStartTimeInput || '').split(':')[1] || '';
+                                const timeInput = v + ':' + currentMinute;
+                                const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                                if (timeRegex.test(timeInput)) {
+                                  const [hours, minutes] = timeInput.split(':');
+                                  const vnHours = parseInt(hours);
+                                  const vnMinutes = parseInt(minutes);
+                                  const utcHours = vnHours - 7;
+                                  const dateObj = new Date(formData.date + 'T00:00:00.000Z');
+                                  dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+                                  const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    userStartTimeInput: timeInput,
+                                    startTime: dateObj,
+                                    endTime: endTimeDate,
+                                  }));
+                                } else {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    userStartTimeInput: timeInput,
+                                  }));
+                                }
+                              }}
+                              onBlur={() => {
+                                const [h, m] = (formData.userStartTimeInput || '').split(':');
+                                if (h && m) handleTimeInputBlur(h + ':' + m);
+                              }}
+                            />
+                            <span className="font-semibold">:</span>
+                            {/* Minute input */}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="Phút"
+                              className={`w-16 text-center border px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent ${
+                                timeInputError || fieldErrors.userStartTimeInput
+                                  ? 'border-red-500 focus:ring-red-500'
+                                  : 'focus:ring-[#39BDCC] focus:border-transparent'
+                              }`}
+                              value={(formData.userStartTimeInput || '').split(':')[1] || ''}
+                              onChange={(e) => {
+                                let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                                setTimeInputError(null);
+                                setErrorMessage(null);
+                                if (fieldErrors.userStartTimeInput) {
+                                  setFieldErrors((prev) => {
+                                    const next = { ...prev };
+                                    delete next.userStartTimeInput;
+                                    return next;
+                                  });
+                                }
+                                const currentHour = (formData.userStartTimeInput || '').split(':')[0] || '';
+                                const timeInput = currentHour + ':' + v;
+                                const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                                if (timeRegex.test(timeInput)) {
+                                  const [hours, minutes] = timeInput.split(':');
+                                  const vnHours = parseInt(hours);
+                                  const vnMinutes = parseInt(minutes);
+                                  const utcHours = vnHours - 7;
+                                  const dateObj = new Date(formData.date + 'T00:00:00.000Z');
+                                  dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+                                  const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    userStartTimeInput: timeInput,
+                                    startTime: dateObj,
+                                    endTime: endTimeDate,
+                                  }));
+                                } else {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    userStartTimeInput: timeInput,
+                                  }));
+                                }
+                              }}
+                              onBlur={() => {
+                                const [h, m] = (formData.userStartTimeInput || '').split(':');
+                                if (h && m) handleTimeInputBlur(h + ':' + m);
+                              }}
+                            />
+                          </div>
                           {(timeInputError || fieldErrors.userStartTimeInput) && (
                             <p className="mt-1 text-xs text-red-600 font-medium">
                               {timeInputError || fieldErrors.userStartTimeInput}
@@ -1069,25 +1254,40 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                           )}
                         </div>
 
-                        {/* ⭐ Hiển thị endTime khi không có lỗi */}
-                        {formData.userStartTimeInput && 
-                         !timeInputError && 
+                        {/* ⭐ Hiển thị endTime bằng 2 ô (Giờ/Phút) như start time — chỉ hiện khi start time hợp lệ */}
+                        {formData.userStartTimeInput &&
+                         !timeInputError &&
                          !fieldErrors.userStartTimeInput &&
                          /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/.test(formData.userStartTimeInput) &&
                          formData.endTime &&
                          formData.endTime.getTime() !== utcNow.getTime() && (
-                          <div>
+                          <div className="flex flex-col items-end text-right">
                             <label className="block text-xs text-gray-600 mb-1">
                               Thời gian kết thúc dự kiến
                             </label>
-                            <div className="border px-3 py-2 rounded-lg bg-blue-50 border-gray-200">
-                              <span className="font-semibold text-[#39BDCC]">
-                                {String((formData.endTime.getUTCHours() + 7) % 24).padStart(2, '0')}:{String(formData.endTime.getUTCMinutes()).padStart(2, '0')}
-                              </span>
+                            <div className="flex items-center gap-2 justify-end">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Giờ"
+                                className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
+                                readOnly
+                                value={String((formData.endTime.getUTCHours() + 7) % 24).padStart(2, '0')}
+                              />
+                              <span className="font-semibold">:</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Phút"
+                                className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
+                                readOnly
+                                value={String(formData.endTime.getUTCMinutes()).padStart(2, '0')}
+                              />
                             </div>
                           </div>
                         )}
                     </div>
+                    ) : null}
                   </div>
               ) : (
                 <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">
