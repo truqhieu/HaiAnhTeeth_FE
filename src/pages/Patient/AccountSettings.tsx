@@ -137,10 +137,8 @@ const AccountSettings = () => {
         fullName: fullName.trim(),
       };
 
-      // Only add fields if they have values
-      if (phone.trim()) {
-        updateData.phoneNumber = phone.trim();
-      }
+      // Phone number: allow clearing to null when user removes value
+      updateData.phoneNumber = phone.trim() ? phone.trim() : null;
 
       if (address.trim()) {
         updateData.address = address.trim();
