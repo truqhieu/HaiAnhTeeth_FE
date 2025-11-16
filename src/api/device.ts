@@ -67,7 +67,7 @@ export const deviceApi = {
     if (params?.endDate) queryParams.append("endDate", params.endDate);
 
     const queryString = queryParams.toString();
-    const endpoint = `/manager/devices${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/manager/devices${queryString ? `?${queryString}` : ""}${queryString ? "&" : "?"}t=${Date.now()}`;
 
     try {
       const result = await authenticatedApiCall<any>(endpoint, {

@@ -37,7 +37,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     { key: "Doctor", label: "Bác sĩ" },
     { key: "Nurse", label: "Điều dưỡng" },
     { key: "Staff", label: "Lễ Tân" },
-    { key: "Manager", label: "Manager" },
+    { key: "Manager", label: "Quản lý" },
   ];
 
   const statusOptions = [
@@ -69,6 +69,70 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     return errors;
   };
 
+  // Calculate age from date of birth
+  const calculateAge = (dob: string): number => {
+    if (!dob) return 0;
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Validate age based on role
+  const validateAge = (dob: string, role: string): { isValid: boolean; errorMessage: string } => {
+    if (!dob || !role) {
+      return { isValid: true, errorMessage: "" };
+    }
+
+    const age = calculateAge(dob);
+    let minAge = 0;
+    let roleName = "";
+
+    switch (role) {
+      case "Doctor":
+        minAge = 27;
+        roleName = "Bác sĩ";
+        break;
+      case "Nurse":
+        minAge = 22;
+        roleName = "Điều dưỡng";
+        break;
+      case "Staff":
+        minAge = 18;
+        roleName = "Lễ tân";
+        break;
+      case "Manager":
+        minAge = 27;
+        roleName = "Quản lý";
+        break;
+      default:
+        return { isValid: true, errorMessage: "" };
+    }
+
+    if (age < minAge) {
+      return {
+        isValid: false,
+        errorMessage: `${roleName} phải từ ${minAge} tuổi trở lên.`,
+      };
+    }
+
+    return { isValid: true, errorMessage: "" };
+  };
+
+  // Format date from yyyy-mm-dd to dd/mm/yyyy
+  const formatDateToDDMMYYYY = (dateString: string): string => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   // Validation states
   const isNameInvalid = showValidation && !formData.name;
   const isEmailInvalid =
@@ -82,7 +146,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     (!formData.confirmPassword ||
       formData.password !== formData.confirmPassword);
   const isAddressInvalid = showValidation && !formData.address;
-  const isDobInvalid = showValidation && !formData.dob;
+  const ageValidation = validateAge(formData.dob, formData.role);
+  const isDobInvalid = showValidation && (!formData.dob || !ageValidation.isValid);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -93,6 +158,13 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
 
   const handleSubmit = async () => {
     setShowValidation(true);
+
+    // Validate age
+    const ageValidationResult = validateAge(formData.dob, formData.role);
+    if (!ageValidationResult.isValid) {
+      toast.error(ageValidationResult.errorMessage);
+      return;
+    }
 
     // Check validation
     const hasErrors =
@@ -115,6 +187,9 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Format date to dd/mm/yyyy before sending
+      const formattedDob = formatDateToDDMMYYYY(formData.dob);
+
       // Call API to create new user
       const response = await adminApi.createAccount({
         fullName: formData.name,
@@ -123,7 +198,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
         role: formData.role,
         phoneNumber: formData.phone,
         address: formData.address,
-        dob: formData.dob,
+        dob: formattedDob,
         specialization: formData.specialization || undefined,
         yearsOfExperience: formData.yearsOfExperience ? parseInt(formData.yearsOfExperience) : undefined,
       });
@@ -325,7 +400,11 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 }}
                 autoComplete="off"
                 errorMessage={
-                  isDobInvalid ? "Vui lòng nhập ngày sinh" : ""
+                  isDobInvalid
+                    ? !formData.dob
+                      ? "Vui lòng nhập ngày sinh"
+                      : ageValidation.errorMessage
+                    : ""
                 }
                 isInvalid={isDobInvalid}
                 label={

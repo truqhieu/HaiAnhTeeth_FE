@@ -169,6 +169,7 @@ export { chatApi } from "./chat";
 
 // Export notification API
 export { notificationApi } from "./notification";
+export { consultationInfoApi } from "./consultationInfo";
 
 // Export types
 
@@ -237,6 +238,7 @@ export type {
   ComplaintDetailResponse,
   HandleComplaintRequest,
 } from "./complaint";
+export type { ConsultationForm } from "./consultationInfo";
 export type {
   LeaveRequest,
   LeaveRequestListResponse,

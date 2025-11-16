@@ -19,13 +19,12 @@ import {
   ModalHeader,
   Tooltip,
 } from "@heroui/react";
-import {
+  import {
   MagnifyingGlassIcon,
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
   CalendarIcon,
-  UserIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
@@ -193,14 +192,7 @@ const LeaveRequestManagement = () => {
     });
   };
 
-  const calculateDays = (start: string, end: string) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays + 1;
-  };
+  // Bỏ hiển thị tổng số ngày theo yêu cầu
 
   const columns = [
     { key: "stt", label: "STT" },
@@ -295,18 +287,13 @@ const LeaveRequestManagement = () => {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <UserIcon className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {request.userId?.fullName || "N/A"}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {request.userId?.role || "N/A"}
-                        </p>
-                      </div>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {request.userId?.fullName || "N/A"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {request.userId?.role || "N/A"}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -318,9 +305,7 @@ const LeaveRequestManagement = () => {
                           {formatDate(request.endDate)}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {calculateDays(request.startDate, request.endDate)} ngày
-                      </p>
+                      {/* Bỏ tổng số ngày nghỉ */}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -408,12 +393,7 @@ const LeaveRequestManagement = () => {
                       <p className="text-gray-500">Thời gian nghỉ</p>
                       <p className="font-medium text-gray-900">
                         {formatDate(selectedRequest.startDate)} -{" "}
-                        {formatDate(selectedRequest.endDate)} (
-                        {calculateDays(
-                          selectedRequest.startDate,
-                          selectedRequest.endDate,
-                        )}{" "}
-                        ngày)
+                        {formatDate(selectedRequest.endDate)}
                       </p>
                     </div>
                     <div className="col-span-2">

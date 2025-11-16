@@ -127,7 +127,7 @@ export const promotionApi = {
     if (params?.sort) queryParams.append("sort", params.sort);
 
     const queryString = queryParams.toString();
-    const endpoint = `/manager/promotions${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/manager/promotions${queryString ? `?${queryString}` : ""}${queryString ? "&" : "?"}t=${Date.now()}`;
 
     try {
       const result = await authenticatedApiCall<any>(endpoint, {

@@ -30,6 +30,7 @@ import { registerLocale, setDefaultLocale } from "react-datepicker";
 import { vi } from "date-fns/locale";
 import toast from "react-hot-toast";
 import { managerApi } from "../../api/manager";
+import { Tabs, Tab } from "@heroui/react";
 
 // Custom Vietnamese locale
 // - Months: T1, T2, T3... (Tháng 1, Tháng 2, Tháng 3...)
@@ -237,8 +238,21 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Section 1: Doanh thu tháng cụ thể */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
+      {/* Revenue sections in tabs - tab headers fill width, each 1/2 */}
+      <Tabs
+        aria-label="Phân hệ doanh thu"
+        color="default"
+        variant="underlined"
+        className="mb-6"
+        classNames={{
+          tabList: "w-full grid grid-cols-2 gap-0",
+          tab: "w-full",
+          tabContent: "w-full text-center font-semibold group-data-[selected=true]:text-gray-900",
+          cursor: "w-full bg-gray-900",
+        }}
+      >
+        <Tab key="specific" title="Doanh thu tháng cụ thể">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-1">
@@ -536,10 +550,10 @@ const Dashboard = () => {
             </div>
           </>
         )}
-      </div>
-
-      {/* Section 2: So sánh doanh thu giữa các tháng */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        </div>
+        </Tab>
+        <Tab key="compare" title="So sánh doanh thu giữa các tháng">
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-1">
             So sánh doanh thu giữa các tháng
@@ -605,7 +619,9 @@ const Dashboard = () => {
             </LineChart>
           </ResponsiveContainer>
         )}
-      </div>
+        </div>
+        </Tab>
+      </Tabs>
     </div>
   );
 };

@@ -68,7 +68,7 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
       // Gọi API tạo mới
       const response = await managerApi.createClinic(createData);
 
-      if (response.status) {
+      if ((response as any).success) {
         toast.success(response.message || "Thêm phòng khám mới thành công!");
         // Reset form
         handleClose();

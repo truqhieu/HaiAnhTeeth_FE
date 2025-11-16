@@ -266,7 +266,7 @@ export const managerApi = {
     if (params?.search) queryParams.append("search", params.search);
 
     const queryString = queryParams.toString();
-    const endpoint = `/manager/clinics${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/manager/clinics${queryString ? `?${queryString}&` : "?"}t=${Date.now()}`;
 
     try {
       const result = await authenticatedApiCall<any>(endpoint, {
