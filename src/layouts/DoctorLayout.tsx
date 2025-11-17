@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarIcon,
@@ -13,6 +13,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { chatApi } from "@/api/chat";
 
 interface DoctorLayoutProps {
   children: React.ReactNode;
@@ -25,8 +26,34 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
 
-  // Mock unread chat count - sẽ thay thế bằng API call sau
-  const unreadChatCount = 3;
+  // Unread chat count for doctor
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUnread = async () => {
+      try {
+        const res = await chatApi.getConversations();
+        // BE may return either { success, data } or { data: [...] }
+        const convs = (res as any)?.data || [];
+        if (isMounted && Array.isArray(convs)) {
+          const totalUnread = convs.reduce((sum: number, c: any) => sum + (c.unreadCount || 0), 0);
+          setUnreadChatCount(totalUnread);
+        }
+      } catch {
+        // ignore
+        if (isMounted) setUnreadChatCount(0);
+      }
+    };
+
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();

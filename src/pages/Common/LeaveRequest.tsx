@@ -170,14 +170,7 @@ const LeaveRequestPage = () => {
     });
   };
 
-  const calculateDays = (start: string, end: string) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays + 1; // +1 để bao gồm cả ngày bắt đầu
-  };
+  // Bỏ tính và hiển thị tổng số ngày nghỉ theo yêu cầu
 
   const columns = [
     { key: "dates", label: "Thời gian nghỉ" },
@@ -259,14 +252,7 @@ const LeaveRequestPage = () => {
               </div>
             </div>
 
-            {startDate && endDate && (
-              <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-blue-500 p-4 rounded-r-lg shadow-sm">
-                <p className="text-sm font-medium text-gray-600">Tổng số ngày nghỉ</p>
-                <p className="text-xl font-bold text-blue-600">
-                  {calculateDays(startDate, endDate)} ngày
-                </p>
-              </div>
-            )}
+            {/* Bỏ hiển thị tổng số ngày nghỉ */}
 
             <div>
               <label
@@ -365,11 +351,7 @@ const LeaveRequestPage = () => {
                         <span className="text-sm font-semibold text-gray-900">
                           {formatDate(request.startDate)} → {formatDate(request.endDate)}
                         </span>
-                        <div>
-                          <Chip size="sm" variant="flat" color="primary" className="text-xs">
-                            {calculateDays(request.startDate, request.endDate)} ngày
-                          </Chip>
-                        </div>
+                        {/* Bỏ chip hiển thị số ngày */}
                       </div>
                     </TableCell>
                     <TableCell>

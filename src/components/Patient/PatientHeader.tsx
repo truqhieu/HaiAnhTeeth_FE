@@ -17,12 +17,14 @@ import {
 } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import NotificationBell from "@/components/Common/NotificationBell";
+import ConsultationFormModal from "@/components/Common/ConsultationFormModal";
 
 const PatientHeader: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [isConsultOpen, setIsConsultOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -36,6 +38,7 @@ const PatientHeader: React.FC = () => {
   }, []);
 
   return (
+    <>
     <header className="w-full shadow bg-white text-base md:text-lg">
       {/* Top bar - Cleaner patient header with better spacing */}
       <div className="bg-[#39BDCC] text-white text-base md:text-lg font-semibold tracking-wide py-3">
@@ -183,7 +186,7 @@ const PatientHeader: React.FC = () => {
             <Button 
               className="bg-[#39BDCC] text-white font-semibold text-base lg:text-lg hover:bg-[#2ca6b5] px-5 lg:px-6 py-2 shadow-md hover:shadow-lg transition-all" 
               size="lg"
-              onClick={() => navigate("/patient/consultation")}
+              onClick={() => setIsConsultOpen(true)}
             >
               Để lại thông tin tư vấn
             </Button>
@@ -191,7 +194,12 @@ const PatientHeader: React.FC = () => {
         </div>
       </div>
     </header>
+    <ConsultationFormModal isOpen={isConsultOpen} onClose={() => setIsConsultOpen(false)} />
+    </>
   );
 };
 
 export default PatientHeader;
+// Render modal at root of header
+// Note: Keeping outside header markup ensures portal modal overlays correctly
+// We'll append modal component at the bottom

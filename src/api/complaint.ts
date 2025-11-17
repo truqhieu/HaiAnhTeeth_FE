@@ -66,7 +66,7 @@ export const complaintApi = {
   // Lấy danh sách khiếu nại của tôi (Patient only)
   // Note: Backend cần thêm filter theo patientUserId khi role là Patient
   getMyComplaints: async (): Promise<ApiResponse<ComplaintListResponse>> => {
-    return authenticatedApiCall("/complaints?limit=100", {
+    return authenticatedApiCall(`/complaints?limit=100&t=${Date.now()}`, {
       method: "GET",
     });
   },
@@ -86,7 +86,7 @@ export const complaintApi = {
     if (params?.search) queryParams.append("search", params.search);
 
     const queryString = queryParams.toString();
-    const url = `/complaints${queryString ? `?${queryString}` : ""}`;
+    const url = `/complaints${queryString ? `?${queryString}` : ""}${queryString ? "&" : "?"}t=${Date.now()}`;
 
     return authenticatedApiCall(url, {
       method: "GET",
@@ -97,7 +97,7 @@ export const complaintApi = {
   viewDetailComplaint: async (
     complaintId: string,
   ): Promise<ApiResponse<ComplaintDetailResponse>> => {
-    return authenticatedApiCall(`/complaints/${complaintId}`, {
+    return authenticatedApiCall(`/complaints/${complaintId}?t=${Date.now()}`, {
       method: "GET",
     });
   },
