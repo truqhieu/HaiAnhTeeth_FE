@@ -62,7 +62,8 @@ interface Appointment {
   doctorName: string;
   doctorUserId?: string; // Thêm doctorUserId để check leave
   doctorStatus?: string | null; // ⭐ Status của doctor: 'Available', 'Busy', 'On Leave', 'Inactive'
-  hasReplacementDoctor?: boolean;
+  hasReplacementDoctor?: boolean; // ⭐ Đã có bác sĩ thay thế được confirm (replacedDoctorUserId = null)
+  hasPendingReplacement?: boolean; // ⭐ Có bác sĩ thay thế đang chờ patient confirm (replacedDoctorUserId != null)
   serviceName: string;
   startTime: string;
   endTime: string;
@@ -433,10 +434,11 @@ const AllAppointments = () => {
             patientName = apt.patientUserId.fullName;
           }
 
-          // Ưu tiên hiển thị bác sĩ mới (replacedDoctorUserId) nếu đã được gán
-          const doctorName = apt.replacedDoctorUserId?.fullName 
-            || apt.doctorUserId?.fullName 
-            || "N/A";
+          // ⭐ QUAN TRỌNG: Logic hiển thị bác sĩ
+          // - Nếu có replacedDoctorUserId → chưa confirm → hiển thị bác sĩ cũ (doctorUserId)
+          // - Nếu không có replacedDoctorUserId → đã confirm hoặc chưa gán → hiển thị doctorUserId
+          // Chỉ hiển thị bác sĩ mới sau khi patient confirm (khi replacedDoctorUserId = null)
+          const doctorName = apt.doctorUserId?.fullName || "N/A";
           
           // ⭐ QUAN TRỌNG: Để check leave, chúng ta cần check BÁC SĨ GỐC (doctorUserId)
           // vì đó là bác sĩ có leave request. Nếu đã gán bác sĩ mới (replacedDoctorUserId),
@@ -454,17 +456,22 @@ const AllAppointments = () => {
             }
           }
 
-          // Debug log cho appointments có doctor "Huy"
-          if (doctorName.toLowerCase().includes('huy')) {
-            console.log('🔍 [AllAppointments] Doctor Huy appointment:', {
+          // ⭐ hasReplacementDoctor chỉ = true khi đã confirm (replacedDoctorUserId = null)
+          // Nếu có replacedDoctorUserId → chưa confirm → hasReplacementDoctor = false
+          const hasReplacementDoctor = false; // Chỉ hiển thị bác sĩ mới sau khi confirm
+          
+          // ⭐ hasPendingReplacement = true nếu có replacedDoctorUserId (chưa confirm)
+          const hasPendingReplacement = Boolean(apt.replacedDoctorUserId);
+          
+          // Debug log nếu có replacedDoctorUserId (chưa confirm)
+          if (apt.replacedDoctorUserId) {
+            console.log('🔍 [AllAppointments] Appointment with pending replacement (waiting for patient confirm):', {
               appointmentId: apt._id,
-              doctorName: doctorName,
-              doctorUserId: doctorUserId,
-              startTime: apt.timeslotId?.startTime,
-              replacedDoctorUserId: apt.replacedDoctorUserId,
-              originalDoctorUserId: apt.doctorUserId,
-              originalDoctorUserIdType: typeof apt.doctorUserId,
-              originalDoctorUserId_id: apt.doctorUserId?._id,
+              currentDoctor: apt.doctorUserId?.fullName || apt.doctorUserId,
+              pendingReplacementDoctor: apt.replacedDoctorUserId?.fullName || apt.replacedDoctorUserId,
+              displayedDoctor: doctorName,
+              hasReplacementDoctor: hasReplacementDoctor,
+              hasPendingReplacement: hasPendingReplacement
             });
           }
 
@@ -475,10 +482,19 @@ const AllAppointments = () => {
             doctorName: doctorName,
             doctorUserId: doctorUserId, // Thêm doctorUserId
             doctorStatus: apt.doctorStatus || null, // ⭐ Thêm doctorStatus từ backend
-            hasReplacementDoctor: Boolean(apt.replacedDoctorUserId),
+            hasReplacementDoctor: hasReplacementDoctor,
+            hasPendingReplacement: hasPendingReplacement,
             serviceName: apt.serviceId?.serviceName || "Chưa có",
-            startTime: apt.timeslotId?.startTime || "",
-            endTime: apt.timeslotId?.endTime || "",
+            startTime: apt.timeslotId?.startTime 
+              ? (apt.timeslotId.startTime instanceof Date 
+                  ? apt.timeslotId.startTime.toISOString() 
+                  : String(apt.timeslotId.startTime))
+              : "",
+            endTime: apt.timeslotId?.endTime 
+              ? (apt.timeslotId.endTime instanceof Date 
+                  ? apt.timeslotId.endTime.toISOString() 
+                  : String(apt.timeslotId.endTime))
+              : "",
             checkedInAt: apt.checkedInAt || "",
             createdAt: apt.createdAt || "",
           };
@@ -637,6 +653,16 @@ const AllAppointments = () => {
     appointment: Appointment,
     isOnLeaveOverride?: boolean
   ): boolean => {
+    // ⭐ Nếu đã có bác sĩ thay thế được confirm, không hiển thị nút "Gán bác sĩ"
+    if (appointment.hasReplacementDoctor) {
+      return false;
+    }
+
+    // ⭐ Nếu có bác sĩ thay thế đang chờ patient confirm, không hiển thị nút "Gán bác sĩ"
+    if (appointment.hasPendingReplacement) {
+      return false;
+    }
+
     const doctorOnLeave =
       typeof isOnLeaveOverride === "boolean"
         ? isOnLeaveOverride
@@ -653,7 +679,7 @@ const AllAppointments = () => {
       return false;
     }
 
-    if (hasAppointmentDayEnded(appointment.startTime) && !appointment.hasReplacementDoctor) {
+    if (hasAppointmentDayEnded(appointment.startTime)) {
       return false;
     }
 
@@ -1863,6 +1889,16 @@ const AllAppointments = () => {
                   </TableCell>
                   <TableCell>
                     {(() => {
+                      // ⭐ Nếu đã có bác sĩ thay thế, hiển thị tên bác sĩ thay thế (không hiển thị "Vắng mặt")
+                      if (appointment.hasReplacementDoctor) {
+                        return (
+                          <Chip variant="flat" color="default">
+                            {appointment.doctorName}
+                          </Chip>
+                        );
+                      }
+                      
+                      // ⭐ Nếu chưa có bác sĩ thay thế, kiểm tra xem bác sĩ gốc có on leave không
                       const isOnLeave = isDoctorOnLeave(appointment);
                       // ⭐ Chỉ hiển thị vắng mặt cho các ca đang chờ duyệt, đã approved, hoặc đã check-in
                       // KHÔNG hiển thị cho các ca đã hoàn thành (Completed) hoặc đang tiến hành (InProgress)
