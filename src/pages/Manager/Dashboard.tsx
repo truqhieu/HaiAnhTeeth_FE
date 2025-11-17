@@ -410,7 +410,7 @@ const Dashboard = () => {
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Thống kê trạng thái ca khám
+                  Thống kê hình thức khám
                 </h3>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold text-gray-900">
