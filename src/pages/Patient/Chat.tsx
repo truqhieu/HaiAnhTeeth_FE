@@ -57,16 +57,20 @@ interface MedicalRecord {
     specialization?: string;
   };
   medicalInfo: {
-    symptoms: string;
     diagnosis: string;
     conclusion: string;
     nurseNote: string;
   };
-  prescription: {
-    medicine: string;
+  prescription: Array<{
+    medicineName: string;
     dosage: string;
     duration: string;
-  };
+  }>;
+  additionalServices?: Array<{
+    _id: string;
+    serviceName?: string;
+    price?: number;
+  }>;
   followUp: {
     date: string | null;
   };
@@ -437,12 +441,6 @@ const Chat = () => {
                     >
                       <div className="space-y-3 text-sm">
                         <div>
-                          <span className="font-medium text-gray-600">Triệu chứng:</span>
-                          <p className="text-gray-900 mt-1 whitespace-pre-wrap">
-                            {medicalRecord.medicalInfo.symptoms}
-                          </p>
-                        </div>
-                        <div>
                           <span className="font-medium text-gray-600">Chẩn đoán:</span>
                           <p className="text-gray-900 mt-1 whitespace-pre-wrap">
                             {medicalRecord.medicalInfo.diagnosis}
@@ -462,29 +460,37 @@ const Chat = () => {
                       key="3"
                       title={
                         <span className="font-semibold text-gray-800">
-                          Đơn thuốc
+                          Đơn thuốc {medicalRecord.prescription && medicalRecord.prescription.length > 0 && `(${medicalRecord.prescription.length})`}
                         </span>
                       }
                     >
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="font-medium text-gray-600">Thuốc:</span>
-                          <p className="text-gray-900 mt-1 whitespace-pre-wrap">
-                            {medicalRecord.prescription.medicine}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-600">Liều lượng:</span>
-                          <p className="text-gray-900 mt-1">
-                            {medicalRecord.prescription.dosage}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="font-medium text-gray-600">Thời gian:</span>
-                          <p className="text-gray-900 mt-1">
-                            {medicalRecord.prescription.duration}
-                          </p>
-                        </div>
+                      <div className="space-y-4 text-sm">
+                        {medicalRecord.prescription && medicalRecord.prescription.length > 0 ? (
+                          medicalRecord.prescription.map((prescription, index) => (
+                            <div key={index} className="border-b border-gray-200 pb-3 last:border-b-0 last:pb-0">
+                              <div className="mb-2">
+                                <span className="font-medium text-gray-600">Thuốc:</span>
+                                <p className="text-gray-900 mt-1 whitespace-pre-wrap">
+                                  {prescription.medicineName || 'Chưa có'}
+                                </p>
+                              </div>
+                              <div className="mb-2">
+                                <span className="font-medium text-gray-600">Liều lượng:</span>
+                                <p className="text-gray-900 mt-1">
+                                  {prescription.dosage || 'Chưa có'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-600">Thời gian:</span>
+                                <p className="text-gray-900 mt-1">
+                                  {prescription.duration || 'Chưa có'}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-gray-600">Chưa có đơn thuốc</div>
+                        )}
                       </div>
                     </AccordionItem>
                   </Accordion>

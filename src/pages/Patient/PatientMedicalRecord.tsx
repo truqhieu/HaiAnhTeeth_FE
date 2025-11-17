@@ -211,38 +211,53 @@ const PatientMedicalRecord: React.FC = () => {
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
-          {record?.prescription ? (
-            (() => {
-              const prescriptionObj = record.prescription;
-              const hasPrescription = prescriptionObj.medicine || prescriptionObj.dosage || prescriptionObj.duration;
-              return hasPrescription ? (
-                <div className="space-y-3">
-                  {prescriptionObj.medicine && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium mb-1">Thuốc</p>
-                      <p className="text-gray-900">{prescriptionObj.medicine}</p>
+          {(() => {
+            // ⭐ Ưu tiên prescriptions (array), fallback về prescription (object) nếu không có
+            const prescriptionsList = record?.prescriptions && record.prescriptions.length > 0
+              ? record.prescriptions
+              : (record?.prescription ? [record.prescription] : []);
+            
+            if (prescriptionsList.length === 0) {
+              return <div className="text-gray-600">Chưa có đơn thuốc</div>;
+            }
+            
+            return (
+              <div className="space-y-4">
+                {prescriptionsList.map((prescription, index) => {
+                  const hasPrescription = prescription.medicine || prescription.dosage || prescription.duration;
+                  if (!hasPrescription) return null;
+                  
+                  return (
+                    <div key={index} className={index > 0 ? "border-t border-gray-200 pt-4" : ""}>
+                      {prescriptionsList.length > 1 && (
+                        <p className="text-sm font-semibold text-gray-700 mb-3">Đơn thuốc {index + 1}</p>
+                      )}
+                      <div className="space-y-3">
+                        {prescription.medicine && (
+                          <div>
+                            <p className="text-sm text-gray-600 font-medium mb-1">Thuốc</p>
+                            <p className="text-gray-900">{prescription.medicine}</p>
+                          </div>
+                        )}
+                        {prescription.dosage && (
+                          <div>
+                            <p className="text-sm text-gray-600 font-medium mb-1">Liều dùng</p>
+                            <p className="text-gray-900">{prescription.dosage}</p>
+                          </div>
+                        )}
+                        {prescription.duration && (
+                          <div>
+                            <p className="text-sm text-gray-600 font-medium mb-1">Thời gian sử dụng</p>
+                            <p className="text-gray-900">{prescription.duration}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  {prescriptionObj.dosage && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium mb-1">Liều dùng</p>
-                      <p className="text-gray-900">{prescriptionObj.dosage}</p>
-                    </div>
-                  )}
-                  {prescriptionObj.duration && (
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium mb-1">Thời gian sử dụng</p>
-                      <p className="text-gray-900">{prescriptionObj.duration}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-gray-600">Chưa có đơn thuốc</div>
-              );
-            })()
-          ) : (
-            <div className="text-gray-600">Chưa có đơn thuốc</div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </CardBody>
       </Card>
 

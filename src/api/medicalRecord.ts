@@ -29,6 +29,11 @@ export interface MedicalRecord {
     dosage?: string;
     duration?: string;
   };
+  prescriptions?: Array<{
+    medicine?: string;
+    dosage?: string;
+    duration?: string;
+  }>;
   additionalServiceIds?: Array<{ _id: string; serviceName?: string; price?: number; finalPrice?: number; discountAmount?: number }>;
   status: "Draft" | "Finalized";
   createdAt: string;

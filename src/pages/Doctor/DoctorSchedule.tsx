@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Table,
   TableHeader,
@@ -32,13 +32,14 @@ import {
 import { doctorApi, type DoctorAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import AppointmentDetailModal from "./AppointmentDetailModal";
 import PatientDetailModal from "./PatientDetailModal";
 
 const DoctorSchedule = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,6 +69,9 @@ const DoctorSchedule = () => {
 
   // Danh sách dates
   const [dates, setDates] = useState<string[]>([]);
+  
+  // ⭐ Track previous location để detect khi quay lại từ trang edit
+  const prevLocationRef = useRef<string>(location.pathname);
 
   const fetchAppointments = useCallback(async (startDate?: string | null, endDate?: string | null, silent: boolean = false) => {
     try {
@@ -127,6 +131,23 @@ const DoctorSchedule = () => {
       fetchAppointments();
     }
   }, [dateRange.startDate, dateRange.endDate, isAuthenticated, fetchAppointments]);
+
+  // ⭐ Refetch appointments khi quay lại từ trang edit medical record
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    const currentPath = location.pathname;
+    const prevPath = prevLocationRef.current;
+    
+    // Nếu quay lại từ trang edit medical record (/doctor/medical-record/:id) về schedule
+    if (prevPath.startsWith('/doctor/medical-record/') && currentPath === '/doctor/schedule') {
+      // Refetch appointments để cập nhật medicalRecordStatus
+      fetchAppointments(dateRange.startDate || undefined, dateRange.endDate || undefined, true);
+    }
+    
+    // Update previous location
+    prevLocationRef.current = currentPath;
+  }, [location.pathname, isAuthenticated, fetchAppointments, dateRange.startDate, dateRange.endDate]);
 
   // ⭐ Helper: Lấy ngày hôm nay theo timezone Việt Nam (UTC+7) dưới dạng YYYY-MM-DD
   const getTodayInVietnam = (): string => {
