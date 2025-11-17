@@ -9,7 +9,15 @@ import {
   TableCell,
   Spinner,
 } from "@heroui/react";
-import { ClipboardDocumentListIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
+import { 
+  ClipboardDocumentListIcon, 
+  ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ArrowPathIcon,
+  UserPlusIcon,
+  XMarkIcon
+} from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 import { appointmentApi } from "@/api";
@@ -387,14 +395,19 @@ const Appointments = () => {
     }
   };
 
-  // Từ chối đổi bác sĩ (giữ bác sĩ cũ)
+  // Từ chối đổi bác sĩ (giữ bác sĩ cũ, không hủy lịch hẹn)
   const handleCancelChangeDoctor = async (appointmentId: string) => {
     try {
       const response = await appointmentApi.cancelChangeDoctor(appointmentId);
       
       if (response.success) {
-        toast.success("Đã từ chối đổi bác sĩ. Giữ nguyên bác sĩ ban đầu.");
-        refetchAppointments();
+        toast.success("Đã từ chối đổi bác sĩ. Lịch hẹn vẫn giữ nguyên với bác sĩ ban đầu.");
+        // ⭐ Chỉ clear replacedDoctorName trong local state, không refetch để tránh hiển thị status 'Cancelled'
+        setAppointments(prev => prev.map(apt => 
+          apt.id === appointmentId 
+            ? { ...apt, replacedDoctorName: undefined, confirmDeadline: undefined }
+            : apt
+        ));
       } else {
         toast.error(response.message || "Không thể từ chối đổi bác sĩ");
       }
@@ -832,18 +845,18 @@ const Appointments = () => {
                         {appointment.replacedDoctorName && appointment.confirmDeadline && (
                           <>
                             <button
-                              className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-xs font-semibold hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+                              className="p-2.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
                               title="Xác nhận đổi bác sĩ"
                               onClick={() => handleConfirmChangeDoctor(appointment.id)}
                             >
-                              ✓ Xác nhận
+                              <CheckCircleIcon className="w-5 h-5" />
                             </button>
                             <button
-                              className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-medium hover:bg-red-200 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+                              className="p-2.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                               title="Từ chối đổi bác sĩ"
                               onClick={() => handleCancelChangeDoctor(appointment.id)}
                             >
-                              ✗ Từ chối
+                              <XCircleIcon className="w-5 h-5" />
                             </button>
                           </>
                         )}
@@ -851,38 +864,38 @@ const Appointments = () => {
                         {/* Đổi lịch hẹn - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
                         {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
                         <button
-                            className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-xs font-medium hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="p-2.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                             title="Đổi lịch hẹn"
                           onClick={() => {
                               setRescheduleFor(appointment);
                           }}
                         >
-                            Đổi lịch
+                            <ArrowPathIcon className="w-5 h-5" />
                         </button>
                         )}
 
                         {/* Đổi bác sĩ - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
                         {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
                           <button
-                            className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-xs font-medium hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className="p-2.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
                             title="Đổi bác sĩ"
                             onClick={() => {
                               setChangeDoctorFor(appointment);
                             }}
                           >
-                            Đổi bác sĩ
+                            <UserPlusIcon className="w-5 h-5" />
                           </button>
                         )}
 
-                        {/* Hủy cuộc hẹn - chỉ hiển thị khi có thể hủy */}
-                        {(appointment.status === "Pending" || appointment.status === "Approved" || appointment.status === "PendingPayment") && (
+                        {/* Hủy cuộc hẹn - chỉ hiển thị khi có thể hủy và KHÔNG có yêu cầu đổi bác sĩ đang chờ confirm */}
+                        {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved" || appointment.status === "PendingPayment") && (
                           <button
-                            className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-medium hover:bg-red-200 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+                            className="p-2.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Hủy cuộc hẹn"
                             onClick={() => handleCancelAppointment(appointment)}
                             disabled={loading}
                           >
-                            Hủy lịch hẹn
+                            <XMarkIcon className="w-5 h-5" />
                           </button>
                         )}
 
