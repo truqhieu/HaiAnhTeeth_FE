@@ -251,7 +251,7 @@ const ComplaintManagement = () => {
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return "Chưa có";
 
     return new Date(dateString).toLocaleDateString("vi-VN", {
       year: "numeric",
@@ -361,7 +361,7 @@ const ComplaintManagement = () => {
                   </TableCell>
                   <TableCell>
                     <p className="font-medium text-gray-900">
-                      {complaint.patientUserId?.fullName || "N/A"}
+                      {complaint.patientUserId?.fullName || "Chưa có"}
                     </p>
                   </TableCell>
                   <TableCell>
@@ -421,7 +421,7 @@ const ComplaintManagement = () => {
                       Bệnh nhân
                     </p>
                     <p className="text-base text-gray-900">
-                      {selectedComplaint.patientUserId?.fullName || "N/A"}
+                      {selectedComplaint.patientUserId?.fullName || "Chưa có"}
                     </p>
                   </div>
                   {selectedComplaint.patientUserId?.phone && (

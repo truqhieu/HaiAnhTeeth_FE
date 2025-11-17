@@ -57,9 +57,14 @@ export const useBookingModal = () => {
   const context = useContext(BookingModalContext);
 
   if (!context) {
-    throw new Error(
-      "useBookingModal phải được dùng bên trong BookingModalProvider",
-    );
+    // Fallback mềm để tránh crash UI nếu thiếu Provider ở một nhánh.
+    console.warn("useBookingModal: Provider is missing. Using fallback no-op.");
+    return {
+      openBookingModal: () => {
+        // Không hiển thị lỗi gây hiểu nhầm cho người dùng; ghi log nhẹ nhàng
+        console.warn("openBookingModal called without BookingModalProvider. No-op.");
+      },
+    };
   }
 
   return context;

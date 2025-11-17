@@ -6,7 +6,7 @@ export interface MedicalRecordDisplay {
   patientDob?: string | null;
   address: string;
   doctorName: string;
-  additionalServices?: Array<{ _id: string; serviceName?: string; price?: number }>;
+  additionalServices?: Array<{ _id: string; serviceName?: string; price?: number; finalPrice?: number; discountAmount?: number }>;
   email?: string;
   phoneNumber?: string;
   gender?: string;
@@ -29,7 +29,7 @@ export interface MedicalRecord {
     dosage?: string;
     duration?: string;
   };
-  additionalServiceIds?: Array<{ _id: string; serviceName?: string; price?: number }>;
+  additionalServiceIds?: Array<{ _id: string; serviceName?: string; price?: number; finalPrice?: number; discountAmount?: number }>;
   status: "Draft" | "Finalized";
   createdAt: string;
   updatedAt: string;
@@ -127,13 +127,13 @@ export const medicalRecordApi = {
     });
   },
 
-  getActiveServicesForDoctor: async (): Promise<ApiResponse<Array<{ _id: string; serviceName: string; price: number; category?: string }>>> => {
+  getActiveServicesForDoctor: async (): Promise<ApiResponse<Array<{ _id: string; serviceName: string; price: number; finalPrice?: number; discountAmount?: number; category?: string }>>> => {
     return authenticatedApiCall(`/doctor/services`, {
       method: "GET",
     });
   },
 
-  getActiveServicesForNurse: async (): Promise<ApiResponse<Array<{ _id: string; serviceName: string; price: number; category?: string }>>> => {
+  getActiveServicesForNurse: async (): Promise<ApiResponse<Array<{ _id: string; serviceName: string; price: number; finalPrice?: number; discountAmount?: number; category?: string }>>> => {
     return authenticatedApiCall(`/nurse/services`, {
       method: "GET",
     });

@@ -64,7 +64,7 @@ const PatientDetailModal = ({
       const patientId = appointmentRes.data.patientId;
       setCurrentPatientId(patientId); // Lưu patientId
 
-      if (!patientId || patientId === "N/A" || patientId === "Trống") {
+      if (!patientId || patientId === "Chưa có" || patientId === "Trống") {
         throw new Error("Không tìm thấy thông tin bệnh nhân");
       }
 
@@ -116,7 +116,7 @@ const PatientDetailModal = ({
   };
 
   const formatDate = (dateString: string): string => {
-    if (!dateString || dateString === "N/A" || dateString === "Trống") return "Chưa có thông tin";
+    if (!dateString || dateString === "Chưa có" || dateString === "Trống") return "Chưa có thông tin";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN", {
       year: "numeric",
@@ -126,7 +126,7 @@ const PatientDetailModal = ({
   };
 
   const calculateAge = (dateString: string): number | null => {
-    if (!dateString || dateString === "N/A" || dateString === "Trống") return null;
+    if (!dateString || dateString === "Chưa có" || dateString === "Trống") return null;
     const birthDate = new Date(dateString);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -264,7 +264,7 @@ const PatientDetailModal = ({
 
                   {/* Emergency Contact */}
                   {patient.emergencyContact && 
-                   patient.emergencyContact !== "N/A" && 
+                   patient.emergencyContact !== "Chưa có" && 
                    patient.emergencyContact !== "Trống" && 
                    typeof patient.emergencyContact === "object" && (
                     <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 shadow-sm">

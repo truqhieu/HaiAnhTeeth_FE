@@ -107,7 +107,7 @@ const AppointmentDetailModal = ({
   };
 
   const formatDate = (dateString: string): string => {
-    if (!dateString || dateString === "N/A") return "N/A";
+    if (!dateString || dateString === "Chưa có") return "Chưa có";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN", {
       weekday: "long",

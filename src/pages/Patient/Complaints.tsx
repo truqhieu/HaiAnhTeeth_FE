@@ -174,7 +174,7 @@ const Complaints = () => {
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
+    if (!dateString) return "Chưa có";
 
     return new Date(dateString).toLocaleDateString("vi-VN", {
       year: "numeric",
@@ -207,8 +207,8 @@ const Complaints = () => {
       }
     }
     
-    const service = apt.serviceId?.serviceName || "N/A";
-    const doctor = apt.doctorUserId?.fullName || "N/A";
+    const service = apt.serviceId?.serviceName || "Chưa có";
+    const doctor = apt.doctorUserId?.fullName || "Chưa có";
   
     return `${date} ${time} - ${service} - BS. ${doctor}`;
   };

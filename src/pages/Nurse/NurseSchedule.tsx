@@ -217,14 +217,14 @@ const NurseSchedule = () => {
         
         // Extract unique dates từ appointments (sử dụng formatDate inline để tránh dependency)
         const uniqueDates = [...new Set(appointmentsData.map(apt => {
-          if (!apt.appointmentDate || apt.appointmentDate === "N/A") return "N/A";
+          if (!apt.appointmentDate || apt.appointmentDate === "Chưa có") return "Chưa có";
           try {
             return new Date(apt.appointmentDate).toLocaleDateString("vi-VN");
           } catch (e) {
             console.warn("Invalid date format:", apt.appointmentDate);
-            return "N/A";
+            return "Chưa có";
           }
-        }))].filter(d => d !== "N/A");
+        }))].filter(d => d !== "Chưa có");
         setDates(uniqueDates);
       } else {
         setError(res?.message || "Lỗi lấy danh sách lịch khám");
@@ -364,7 +364,7 @@ const NurseSchedule = () => {
 
   // ⭐ SỬA: Hàm này giờ nhận patientId
   const handleViewPatient = (patientId: string | null) => {
-    if (patientId && patientId !== "N/A" && patientId !== "Trống") {
+    if (patientId && patientId !== "Chưa có" && patientId !== "Trống") {
       setSelectedPatientId(patientId);
       setIsPatientModalOpen(true);
     } else {
@@ -429,20 +429,15 @@ const NurseSchedule = () => {
   };
 
   const formatDate = (dateString: string): string => {
-    if (!dateString || dateString === "N/A") return "N/A";
+    if (!dateString || dateString === "Chưa có") return "Chưa có";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN");
   };
 
   const formatDateTime = (dateString: string): string => {
-    if (!dateString || dateString === "N/A") return "N/A";
+    if (!dateString || dateString === "Chưa có") return "Chưa có";
     const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    return date.toLocaleString("vi-VN");
   };
 
   // Removed duplicate stats calculation - now using useMemo below
@@ -875,7 +870,7 @@ const NurseSchedule = () => {
                         variant="flat"
                         color="success"
                         onPress={() => navigate(`/nurse/medical-record/${appointment.appointmentId}`)}
-                        isDisabled={!appointment.patientId || appointment.patientId === "N/A" || appointment.patientId === "Trống"}
+                        isDisabled={!appointment.patientId || appointment.patientId === "Chưa có" || appointment.patientId === "Trống"}
                         title="Xem hồ sơ bệnh án"
                       >
                         <ClipboardDocumentListIcon className="w-5 h-5" />

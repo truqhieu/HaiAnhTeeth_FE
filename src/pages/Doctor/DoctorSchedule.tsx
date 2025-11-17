@@ -87,9 +87,13 @@ const DoctorSchedule = () => {
         
         // Extract unique dates (sử dụng formatDate inline để tránh dependency)
         const uniqueDates = [...new Set(res.data.map(apt => {
-          if (!apt.appointmentDate || apt.appointmentDate === "N/A") return "N/A";
-          return new Date(apt.appointmentDate).toLocaleDateString("vi-VN");
-        }))].filter(d => d !== "N/A");
+          if (!apt.appointmentDate || apt.appointmentDate === "Chưa có") return "Chưa có";
+          try {
+            return new Date(apt.appointmentDate).toLocaleDateString("vi-VN");
+          } catch (e) {
+            return "Chưa có";
+          }
+        }))].filter(d => d !== "Chưa có");
         setDates(uniqueDates);
       } else {
         setError(res.message || "Lỗi lấy danh sách lịch khám");
@@ -291,20 +295,15 @@ const DoctorSchedule = () => {
   };
   // Memoize format functions để tránh tạo lại mỗi lần render
   const formatDate = useCallback((dateString: string): string => {
-    if (!dateString || dateString === "N/A") return "N/A";
+    if (!dateString || dateString === "Chưa có" || dateString === "Chưa có thông tin") return "Chưa có thông tin";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN");
   }, []);
 
   const formatDateTime = useCallback((dateString: string): string => {
-    if (!dateString || dateString === "N/A") return "N/A";
+    if (!dateString || dateString === "Chưa có" || dateString === "Chưa có thông tin") return "Chưa có thông tin";
     const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    return date.toLocaleString("vi-VN");
   }, []);
 
   // Stats calculation - sử dụng useMemo để tránh tính toán lại
@@ -658,26 +657,21 @@ const DoctorSchedule = () => {
                         <UserIcon className="w-5 h-5" />
                       </Button>
                     </div>
-                    <div className="relative">
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="flat"
-                        color="success"
-                        onPress={() => handleViewMedicalRecord(appointment.appointmentId)}
-                        title="Xem hồ sơ khám bệnh"
-                      >
-                        <DocumentTextIcon className="w-5 h-5" />
-                      </Button>
-                      {/* Badge indicator trên button */}
-                      {(appointment.status === "InProgress" || appointment.status === "Completed") && (
-                        appointment.medicalRecordStatus === "Finalized" ? (
-                          <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
-                        ) : appointment.medicalRecordStatus === "Draft" ? (
-                          <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full border-2 border-white"></span>
-                        ) : null
-                      )}
-                    </div>
+                    {/* Hiển thị nút hồ sơ khi InProgress hoặc Completed; ẩn khi CheckedIn */}
+                    {(appointment.status === "InProgress" || appointment.status === "Completed") && (
+                      <div className="relative">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="flat"
+                          color="success"
+                          onPress={() => handleViewMedicalRecord(appointment.appointmentId)}
+                          title="Xem hồ sơ khám bệnh"
+                        >
+                          <DocumentTextIcon className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </TableCell>
                 </TableRow>
