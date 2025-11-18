@@ -266,7 +266,7 @@ export const managerApi = {
     if (params?.search) queryParams.append("search", params.search);
 
     const queryString = queryParams.toString();
-    const endpoint = `/manager/clinics${queryString ? `?${queryString}&` : "?"}t=${Date.now()}`;
+    const endpoint = `/manager/clinic-rooms${queryString ? `?${queryString}&` : "?"}t=${Date.now()}`;
 
     try {
       const result = await authenticatedApiCall<any>(endpoint, {
@@ -290,7 +290,7 @@ export const managerApi = {
       status: boolean;
       message: string;
       data: ManagerClinic;
-    }>(`/manager/clinics/${id}`, {
+    }>(`/manager/clinic-rooms/${id}`, {
       method: "GET",
     });
   },
@@ -305,7 +305,7 @@ export const managerApi = {
       status: boolean;
       message: string;
       data: ManagerClinic;
-    }>("/manager/clinics", {
+    }>("/manager/clinic-rooms", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -325,7 +325,7 @@ export const managerApi = {
       status: boolean;
       message: string;
       data: ManagerClinic;
-    }>(`/manager/clinics/${id}`, {
+    }>(`/manager/clinic-rooms/${id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -339,7 +339,7 @@ export const managerApi = {
     id: string,
   ): Promise<ApiResponse<{ status: boolean; message: string }>> => {
     return authenticatedApiCall<{ status: boolean; message: string }>(
-      `/manager/clinics/${id}`,
+      `/manager/clinic-rooms/${id}`,
       {
         method: "DELETE",
       },
@@ -354,7 +354,7 @@ export const managerApi = {
       status: boolean;
       message: string;
       data: ManagerDoctor[];
-    }>("/manager/clinics/doctor", {
+    }>("/manager/clinic-rooms/doctor", {
       method: "GET",
     });
   },
@@ -370,7 +370,7 @@ export const managerApi = {
       status: boolean;
       message: string;
       data: ManagerClinic;
-    }>(`/manager/clinics/assign-doctor/${clinicId}`, {
+    }>(`/manager/clinic-rooms/assign-doctor/${clinicId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -389,7 +389,7 @@ export const managerApi = {
       status: boolean;
       message: string;
       data: ManagerClinic;
-    }>(`/manager/clinics/unssign-doctor/${clinicId}`, {
+    }>(`/manager/clinic-rooms/unssign-doctor/${clinicId}`, {
       method: "PATCH",
     });
   },

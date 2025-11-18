@@ -134,9 +134,9 @@ export const authApi = {
       },
     );
 
-    // Update user in sessionStorage if successful
+    // Update user in localStorage if successful
     if (response.success && response.data) {
-      sessionStorage.setItem("user", JSON.stringify(response.data.user));
+      localStorage.setItem("user", JSON.stringify(response.data.user));
     }
 
     return response;
@@ -159,27 +159,47 @@ export const authApi = {
     );
   },
 
-  // Logout (clear sessionStorage)
+  // Logout (clear localStorage)
   logout: (): void => {
-    sessionStorage.removeItem("authToken");
-    sessionStorage.removeItem("user");
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("user");
+    localStorage.removeItem("authTimestamp");
   },
 
-  // Get current user from sessionStorage
+  // Get current user from localStorage
   getCurrentUser: (): User | null => {
-    const userStr = sessionStorage.getItem("user");
+    const userStr = localStorage.getItem("user");
 
     return userStr ? JSON.parse(userStr) : null;
   },
 
-  // Get token from sessionStorage
+  // Get token from localStorage
   getToken: (): string | null => {
-    return sessionStorage.getItem("authToken");
+    return localStorage.getItem("authToken");
   },
 
-  // Check if user is authenticated
+  // Check if user is authenticated and token is not expired
   isAuthenticated: (): boolean => {
-    return !!sessionStorage.getItem("authToken");
+    const token = localStorage.getItem("authToken");
+    const timestamp = localStorage.getItem("authTimestamp");
+    
+    if (!token || !timestamp) {
+      return false;
+    }
+    
+    // Check if token is expired (24 hours = 86400000 ms)
+    const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const isExpired = (Date.now() - parseInt(timestamp)) > TOKEN_EXPIRY_MS;
+    
+    if (isExpired) {
+      // Clear expired token
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("authTimestamp");
+      return false;
+    }
+    
+    return true;
   },
 
   // getProfile: async (): Promise<ApiResponse<User>> => {

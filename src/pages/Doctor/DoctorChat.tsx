@@ -15,6 +15,10 @@ import {
   ChatBubbleLeftRightIcon,
   MagnifyingGlassIcon,
   ClipboardDocumentListIcon,
+  CalendarIcon,
+  ClockIcon,
+  VideoCameraIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { chatApi, type DoctorConversation } from "@/api/chat";
@@ -105,6 +109,7 @@ const DoctorChat = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [appointmentInfo, setAppointmentInfo] = useState<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -270,6 +275,14 @@ const DoctorChat = () => {
           } else {
             console.log("⚠️ [DoctorChat] No medical record");
             setMedicalRecord(null);
+          }
+
+          // Lấy appointment info
+          const appointmentData = responseData.appointment || responseData.data?.appointment;
+          if (appointmentData) {
+            setAppointmentInfo(appointmentData);
+          } else {
+            setAppointmentInfo(null);
           }
           
           // Update unread count
@@ -505,6 +518,41 @@ const DoctorChat = () => {
 
                     {/* Messages */}
                     <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
+                      {/* Appointment Info Card */}
+                      {appointmentInfo && (
+                        <Card className="mb-4 border border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm">
+                          <CardBody className="p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <ClipboardDocumentListIcon className="w-5 h-5 text-[#39BDCC]" />
+                              <h3 className="font-semibold text-gray-800">Thông tin ca khám</h3>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                              {appointmentInfo.appointmentDate && (
+                                <div className="flex items-start gap-2">
+                                  <CalendarIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                                  <span className="text-gray-900">
+                                    {new Date(appointmentInfo.appointmentDate).toLocaleDateString("vi-VN", {
+                                      weekday: "long",
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                    })}
+                                  </span>
+                                </div>
+                              )}
+                              {medicalRecord?.appointment?.date && (
+                                <div className="flex items-start gap-2">
+                                  <ClockIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                                  <span className="text-gray-900">
+                                    {new Date(medicalRecord.appointment.date).toLocaleDateString("vi-VN")}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </CardBody>
+                        </Card>
+                      )}
+
                       {messages.length === 0 ? (
                         <div className="text-center mt-16">
                           <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">

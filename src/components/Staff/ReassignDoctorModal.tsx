@@ -23,6 +23,7 @@ interface ReassignDoctorModalProps {
   currentDoctorName: string;
   startTime: string;
   endTime: string;
+  prefetchedDoctors?: Array<{_id: string; fullName: string}>;
 }
 
 const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
@@ -33,6 +34,7 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
   currentDoctorName,
   startTime,
   endTime,
+  prefetchedDoctors = [],
 }) => {
   const [availableDoctors, setAvailableDoctors] = useState<Doctor[]>([]);
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>("");
@@ -40,11 +42,47 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
   const [isLoadingDoctors, setIsLoadingDoctors] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
+  // Update doctors khi prefetchedDoctors thay đổi (từ parent)
+  useEffect(() => {
+    if (isOpen) {
+      // Khi prefetchedDoctors thay đổi (từ parent), update ngay
+      setAvailableDoctors(prefetchedDoctors);
+      setIsLoadingDoctors(false);
+    } else {
+      // Khi modal đóng, reset
+      setAvailableDoctors([]);
+    }
+  }, [prefetchedDoctors, isOpen]);
 
-  // Fetch available doctors when modal opens
+  // Set loading state khi modal mở lần đầu (trước khi có prefetched data)
+  useEffect(() => {
+    if (isOpen && prefetchedDoctors.length === 0) {
+      setIsLoadingDoctors(true);
+    }
+  }, [isOpen]);
+
+  // Reset khi modal đóng
+  useEffect(() => {
+    if (!isOpen) {
+      setAvailableDoctors([]);
+      setSelectedDoctorId("");
+      setReason("");
+      setIsLoadingDoctors(false);
+    }
+  }, [isOpen]);
+
+  // Fetch available doctors khi modal opens (fallback nếu không có prefetched data sau 500ms)
   useEffect(() => {
     if (isOpen && appointmentId && startTime && endTime) {
-      fetchAvailableDoctors();
+      // Đợi một chút để prefetch từ parent hoàn thành
+      const timer = setTimeout(() => {
+        // Nếu vẫn chưa có data (prefetchedDoctors vẫn empty), fetch như fallback
+        if (prefetchedDoctors.length === 0 && availableDoctors.length === 0) {
+          fetchAvailableDoctors();
+        }
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
   }, [isOpen, appointmentId, startTime, endTime]);
 
@@ -200,49 +238,57 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
             </p>
           </div>
 
-          {/* Select New Doctor - Chỉ hiển thị khi có bác sĩ khả dụng */}
-          {availableDoctors.length > 0 && (
-            <div>
-              <Select
-                label="Chọn bác sĩ mới *"
-                placeholder="Chọn bác sĩ khả dụng"
-                selectedKeys={selectedDoctorId ? new Set([selectedDoctorId]) : new Set([])}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0];
-                  setSelectedDoctorId(selected ? String(selected) : "");
-                }}
-                isRequired
-                isInvalid={isDoctorInvalid}
-                errorMessage={isDoctorInvalid ? "Vui lòng chọn bác sĩ" : ""}
-                isDisabled={isLoadingDoctors || isSubmitting}
-                variant="bordered"
-                size="lg"
-                classNames={{
-                  trigger: "border-2",
-                }}
-              >
-                {isLoadingDoctors ? (
-                  <SelectItem key="loading" isDisabled>
-                    <div className="flex items-center gap-2">
-                      <Spinner size="sm" />
-                      <span>Đang tải...</span>
-                    </div>
+          {/* Select New Doctor - Luôn hiển thị, không cần đợi */}
+          <div>
+            <Select
+              label="Chọn bác sĩ mới "
+              placeholder={
+                isLoadingDoctors 
+                  ? "Đang tải danh sách bác sĩ..." 
+                  : availableDoctors.length === 0
+                  ? "Không có bác sĩ khả dụng"
+                  : "Chọn bác sĩ khả dụng"
+              }
+              selectedKeys={selectedDoctorId ? new Set([selectedDoctorId]) : new Set([])}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setSelectedDoctorId(selected ? String(selected) : "");
+              }}
+              isRequired
+              isInvalid={isDoctorInvalid}
+              errorMessage={isDoctorInvalid ? "Vui lòng chọn bác sĩ" : ""}
+              isDisabled={isLoadingDoctors || isSubmitting}
+              variant="bordered"
+              size="lg"
+              classNames={{
+                trigger: "border-2",
+              }}
+            >
+              {isLoadingDoctors ? (
+                <SelectItem key="loading" isDisabled>
+                  <div className="flex items-center gap-2">
+                    <Spinner size="sm" />
+                    <span>Đang tải danh sách bác sĩ...</span>
+                  </div>
+                </SelectItem>
+              ) : availableDoctors.length === 0 ? (
+                <SelectItem key="no-doctors" isDisabled>
+                  <span className="text-gray-500">Không có bác sĩ khả dụng</span>
+                </SelectItem>
+              ) : (
+                availableDoctors.map((doctor) => (
+                  <SelectItem key={doctor._id}>
+                    {doctor.fullName}
                   </SelectItem>
-                ) : (
-                  availableDoctors.map((doctor) => (
-                    <SelectItem key={doctor._id}>
-                      {doctor.fullName}
-                    </SelectItem>
-                  ))
-                )}
-              </Select>
-            </div>
-          )}
+                ))
+              )}
+            </Select>
+          </div>
 
           {/* Reason - Label thay đổi dựa trên có bác sĩ hay không */}
           <div>
             <Textarea
-              label={availableDoctors.length === 0 ? "Lý do hủy lịch *" : "Lý do gán lại bác sĩ *"}
+              label={availableDoctors.length === 0 ? "Lý do hủy lịch " : "Lý do gán lại bác sĩ "}
               placeholder={
                 availableDoctors.length === 0 
                   ? "Nhập lý do hủy lịch (vd: Không có bác sĩ khả dụng trong khung giờ này...)"

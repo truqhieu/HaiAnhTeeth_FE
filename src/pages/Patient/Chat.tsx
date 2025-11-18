@@ -15,6 +15,10 @@ import {
   ChatBubbleLeftRightIcon,
   ArrowLeftIcon,
   ClipboardDocumentListIcon,
+  CalendarIcon,
+  ClockIcon,
+  VideoCameraIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { chatApi, appointmentApi } from "@/api";
@@ -533,6 +537,67 @@ const Chat = () => {
                 ref={chatContainerRef}
                 className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white"
               >
+                {/* Appointment Info Card */}
+                {appointmentInfo && (
+                  <Card className="mb-4 border border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm">
+                    <CardBody className="p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <ClipboardDocumentListIcon className="w-5 h-5 text-[#39BDCC]" />
+                        <h3 className="font-semibold text-gray-800">Thông tin ca khám</h3>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        {appointmentInfo.serviceId?.serviceName && (
+                          <div className="flex items-start gap-2">
+                            <span className="font-medium text-gray-600">Dịch vụ:</span>
+                            <span className="text-gray-900">{appointmentInfo.serviceId.serviceName}</span>
+                          </div>
+                        )}
+                        {appointmentInfo.timeslotId?.startTime && (
+                          <div className="flex items-start gap-2">
+                            <CalendarIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-gray-900">
+                              {new Date(appointmentInfo.timeslotId.startTime).toLocaleDateString("vi-VN", {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {appointmentInfo.timeslotId?.startTime && appointmentInfo.timeslotId?.endTime && (
+                          <div className="flex items-start gap-2">
+                            <ClockIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-gray-900">
+                              {new Date(appointmentInfo.timeslotId.startTime).toLocaleTimeString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}{" "}
+                              -{" "}
+                              {new Date(appointmentInfo.timeslotId.endTime).toLocaleTimeString("vi-VN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {appointmentInfo.mode && (
+                          <div className="flex items-start gap-2">
+                            {appointmentInfo.mode === "Online" ? (
+                              <VideoCameraIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                            ) : (
+                              <BuildingOfficeIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                            )}
+                            <span className="text-gray-900">
+                              {appointmentInfo.mode === "Online" ? "Trực tuyến" : "Tại phòng khám"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardBody>
+                  </Card>
+                )}
+
                 {messages.length === 0 ? (
                   <div className="text-center mt-16">
                     <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">

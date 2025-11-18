@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
   });
 
-  // Initialize auth state from sessionStorage on mount
+  // Initialize auth state from localStorage on mount
   useEffect(() => {
     let isMounted = true;
 
@@ -48,14 +48,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         dispatch(setLoading(true));
 
-        // Try to restore from sessionStorage
-        const storedUser = sessionStorage.getItem("user");
-        const storedToken = sessionStorage.getItem("authToken");
+        // Try to restore from localStorage
+        const storedUser = localStorage.getItem("user");
+        const storedToken = localStorage.getItem("authToken");
+        const storedTimestamp = localStorage.getItem("authTimestamp");
 
         console.log(
-          "🔍 [AuthContext] Restoring from sessionStorage:",
+          "🔍 [AuthContext] Restoring from localStorage:",
           storedUser,
         );
+
+        // Check if token is expired (24 hours = 86400000 ms)
+        const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+        const isExpired = storedTimestamp 
+          ? (Date.now() - parseInt(storedTimestamp)) > TOKEN_EXPIRY_MS
+          : false;
+
+        if (isExpired) {
+          console.log("🔍 [AuthContext] Token expired, clearing auth");
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("user");
+          localStorage.removeItem("authTimestamp");
+          if (isMounted) {
+            dispatch(clearAuth());
+          }
+          return;
+        }
 
         if (storedUser && storedToken && isMounted) {
           const parsedUser = JSON.parse(storedUser) as AuthUser;
@@ -118,13 +136,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     console.log("🔍 [AuthContext] Login called with user:", normalizedUser);
 
-    // Save to sessionStorage
-    sessionStorage.setItem("authToken", token);
-    sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+    // Save to localStorage with timestamp (24h expiry)
+    const timestamp = Date.now().toString();
+    localStorage.setItem("authToken", token);
+    localStorage.setItem("user", JSON.stringify(normalizedUser));
+    localStorage.setItem("authTimestamp", timestamp);
 
-    console.log("🔍 [AuthContext] Saved to sessionStorage:", {
-      token: !!sessionStorage.getItem("authToken"),
-      user: !!sessionStorage.getItem("user"),
+    console.log("🔍 [AuthContext] Saved to localStorage:", {
+      token: !!localStorage.getItem("authToken"),
+      user: !!localStorage.getItem("user"),
+      timestamp: localStorage.getItem("authTimestamp"),
     });
 
     // Dispatch Redux action
@@ -136,11 +157,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const logout = () => {
     console.log("🔍 [AuthContext] Logout called");
     
-    // Clear sessionStorage
-    sessionStorage.removeItem("authToken");
-    sessionStorage.removeItem("user");
+    // Clear localStorage
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("user");
+    localStorage.removeItem("authTimestamp");
 
-    console.log("🔍 [AuthContext] Cleared sessionStorage");
+    console.log("🔍 [AuthContext] Cleared localStorage");
 
     // Dispatch Redux action
     dispatch(clearAuth());
@@ -162,11 +184,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       (normalizedUser as any).emergencyContact,
     );
 
-    // Update sessionStorage
-    sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+    // Update localStorage
+    localStorage.setItem("user", JSON.stringify(normalizedUser));
     console.log(
-      "🔍 [AuthContext] Saved to sessionStorage:",
-      sessionStorage.getItem("user"),
+      "🔍 [AuthContext] Saved to localStorage:",
+      localStorage.getItem("user"),
     );
 
     // Dispatch Redux action
@@ -189,24 +211,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     user: user ? { id: user._id, role: user.role, email: user.email, fullName: user.fullName } : null,
     isAuthenticated,
     isLoading,
-    hasToken: !!sessionStorage.getItem("authToken"),
-    hasUser: !!sessionStorage.getItem("user"),
+    hasToken: !!localStorage.getItem("authToken"),
+    hasUser: !!localStorage.getItem("user"),
   });
 
-  // Debug sessionStorage content
-  const sessionUser = sessionStorage.getItem("user");
-  const sessionToken = sessionStorage.getItem("authToken");
-  console.log("🔍 [AuthContext] SessionStorage content:", {
-    hasToken: !!sessionToken,
-    hasUser: !!sessionUser,
-    userData: sessionUser ? JSON.parse(sessionUser) : null,
+  // Debug localStorage content
+  const localUser = localStorage.getItem("user");
+  const localToken = localStorage.getItem("authToken");
+  console.log("🔍 [AuthContext] LocalStorage content:", {
+    hasToken: !!localToken,
+    hasUser: !!localUser,
+    userData: localUser ? JSON.parse(localUser) : null,
   });
 
-  // Force re-render when sessionStorage changes
+  // Force re-render when localStorage changes
   React.useEffect(() => {
     const handleStorageChange = () => {
-      const storedUser = sessionStorage.getItem("user");
-      const storedToken = sessionStorage.getItem("authToken");
+      const storedUser = localStorage.getItem("user");
+      const storedToken = localStorage.getItem("authToken");
+      const storedTimestamp = localStorage.getItem("authTimestamp");
+      
+      // Check if token is expired
+      const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+      const isExpired = storedTimestamp 
+        ? (Date.now() - parseInt(storedTimestamp)) > TOKEN_EXPIRY_MS
+        : false;
+
+      if (isExpired) {
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("user");
+        localStorage.removeItem("authTimestamp");
+        dispatch(clearAuth());
+        return;
+      }
       
       if (storedUser && storedToken && !user) {
         console.log("🔍 [AuthContext] Storage changed, restoring auth");
@@ -227,8 +264,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Additional effect to check and restore auth immediately
   React.useEffect(() => {
-    const storedUser = sessionStorage.getItem("user");
-    const storedToken = sessionStorage.getItem("authToken");
+    const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("authToken");
+    const storedTimestamp = localStorage.getItem("authTimestamp");
+    
+    // Check if token is expired
+    const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const isExpired = storedTimestamp 
+      ? (Date.now() - parseInt(storedTimestamp)) > TOKEN_EXPIRY_MS
+      : false;
+
+    if (isExpired) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("authTimestamp");
+      dispatch(clearAuth());
+      return;
+    }
     
     if (storedUser && storedToken && !user) {
       console.log("🔍 [AuthContext] Found stored auth but no user in state, restoring immediately");

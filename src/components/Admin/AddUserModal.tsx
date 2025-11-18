@@ -32,6 +32,9 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
 
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Track which fields have been touched (blurred)
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
 
   const roleOptions = [
     { key: "Doctor", label: "Bác sĩ" },
@@ -48,6 +51,53 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
   // Validation functions
   const validateEmail = (value: string): boolean =>
     value.match(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i) !== null;
+
+  // Validate name: only letters and spaces (no numbers)
+  const validateName = (value: string): { isValid: boolean; errorMessage: string } => {
+    if (!value) {
+      return { isValid: false, errorMessage: "Vui lòng nhập họ và tên" };
+    }
+    // Only allow letters, spaces, and Vietnamese characters
+    const nameRegex = /^[a-zA-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐđ\s]+$/;
+    if (!nameRegex.test(value)) {
+      return { isValid: false, errorMessage: "Họ và tên chỉ được chứa chữ cái, không được có số" };
+    }
+    return { isValid: true, errorMessage: "" };
+  };
+
+  // Validate phone: only positive numbers
+  const validatePhone = (value: string): { isValid: boolean; errorMessage: string } => {
+    if (!value) {
+      return { isValid: false, errorMessage: "Vui lòng nhập số điện thoại" };
+    }
+    // Only allow digits
+    const phoneRegex = /^\d+$/;
+    if (!phoneRegex.test(value)) {
+      return { isValid: false, errorMessage: "Số điện thoại chỉ được chứa số dương" };
+    }
+    // Check if it's a valid phone number length (typically 10-11 digits for Vietnam)
+    if (value.length < 10 || value.length > 11) {
+      return { isValid: false, errorMessage: "Số điện thoại phải có từ 10 đến 11 chữ số" };
+    }
+    return { isValid: true, errorMessage: "" };
+  };
+
+  // Validate date of birth: not in the future
+  const validateDateOfBirth = (dob: string): { isValid: boolean; errorMessage: string } => {
+    if (!dob) {
+      return { isValid: false, errorMessage: "Vui lòng nhập ngày sinh" };
+    }
+    const birthDate = new Date(dob);
+    const today = new Date();
+    // Set time to 00:00:00 for accurate comparison
+    today.setHours(0, 0, 0, 0);
+    birthDate.setHours(0, 0, 0, 0);
+    
+    if (birthDate > today) {
+      return { isValid: false, errorMessage: "Ngày sinh không được ở tương lai" };
+    }
+    return { isValid: true, errorMessage: "" };
+  };
 
   const getPasswordErrors = (): string[] => {
     const errors: string[] = [];
@@ -86,6 +136,12 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
   const validateAge = (dob: string, role: string): { isValid: boolean; errorMessage: string } => {
     if (!dob || !role) {
       return { isValid: true, errorMessage: "" };
+    }
+
+    // First check if date is in the future
+    const dateValidation = validateDateOfBirth(dob);
+    if (!dateValidation.isValid) {
+      return dateValidation;
     }
 
     const age = calculateAge(dob);
@@ -133,21 +189,42 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     return `${day}/${month}/${year}`;
   };
 
-  // Validation states
-  const isNameInvalid = showValidation && !formData.name;
-  const isEmailInvalid =
-    showValidation && (!formData.email || !validateEmail(formData.email));
-  const isPhoneInvalid = showValidation && !formData.phone;
-  const isRoleInvalid = showValidation && !formData.role;
-  const isPasswordInvalid =
-    showValidation && (!formData.password || getPasswordErrors().length > 0);
-  const isConfirmPasswordInvalid =
-    showValidation &&
-    (!formData.confirmPassword ||
-      formData.password !== formData.confirmPassword);
-  const isAddressInvalid = showValidation && !formData.address;
+  // Validation states - show error if field is touched OR showValidation is true
+  const nameValidation = validateName(formData.name);
+  const shouldShowNameError = touchedFields.name || showValidation;
+  const isNameInvalid = shouldShowNameError && (!formData.name || !nameValidation.isValid);
+  
+  const shouldShowEmailError = touchedFields.email || showValidation;
+  const isEmailInvalid = shouldShowEmailError && (!formData.email || !validateEmail(formData.email));
+  
+  const phoneValidation = validatePhone(formData.phone);
+  const shouldShowPhoneError = touchedFields.phone || showValidation;
+  const isPhoneInvalid = shouldShowPhoneError && (!formData.phone || !phoneValidation.isValid);
+  
+  const shouldShowRoleError = touchedFields.role || showValidation;
+  const isRoleInvalid = shouldShowRoleError && !formData.role;
+  
+  const shouldShowPasswordError = touchedFields.password || showValidation;
+  const isPasswordInvalid = shouldShowPasswordError && (!formData.password || getPasswordErrors().length > 0);
+  
+  const shouldShowConfirmPasswordError = touchedFields.confirmPassword || showValidation;
+  const isConfirmPasswordInvalid = shouldShowConfirmPasswordError &&
+    (!formData.confirmPassword || formData.password !== formData.confirmPassword);
+  
+  const shouldShowAddressError = touchedFields.address || showValidation;
+  const isAddressInvalid = shouldShowAddressError && !formData.address;
+  
   const ageValidation = validateAge(formData.dob, formData.role);
-  const isDobInvalid = showValidation && (!formData.dob || !ageValidation.isValid);
+  const shouldShowDobError = touchedFields.dob || showValidation;
+  const isDobInvalid = shouldShowDobError && (!formData.dob || !ageValidation.isValid);
+  
+  // Helper function to mark field as touched
+  const handleBlur = (fieldName: string) => {
+    setTouchedFields((prev) => ({
+      ...prev,
+      [fieldName]: true,
+    }));
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -159,22 +236,19 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
   const handleSubmit = async () => {
     setShowValidation(true);
 
-    // Validate age
-    const ageValidationResult = validateAge(formData.dob, formData.role);
-    if (!ageValidationResult.isValid) {
-      toast.error(ageValidationResult.errorMessage);
-      return;
-    }
-
     // Check validation
+    const nameValidationResult = validateName(formData.name);
+    const phoneValidationResult = validatePhone(formData.phone);
+    const ageValidationResult = validateAge(formData.dob, formData.role);
+    
     const hasErrors =
-      !formData.name ||
+      !nameValidationResult.isValid ||
       !formData.email ||
       !validateEmail(formData.email) ||
-      !formData.phone ||
+      !phoneValidationResult.isValid ||
       !formData.role ||
       !formData.address ||
-      !formData.dob ||
+      !ageValidationResult.isValid ||
       !formData.password ||
       getPasswordErrors().length > 0 ||
       !formData.confirmPassword ||
@@ -224,6 +298,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
           yearsOfExperience: "",
         });
         setShowValidation(false);
+        setTouchedFields({});
 
         // Close modal and notify success
         if (onSuccess) {
@@ -305,7 +380,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   inputWrapper: "w-full"
                 }}
                 autoComplete="off"
-                errorMessage={isNameInvalid ? "Vui lòng nhập họ và tên" : ""}
+                errorMessage={isNameInvalid ? nameValidation.errorMessage : ""}
                 isInvalid={isNameInvalid}
                 label={
                   <>
@@ -317,6 +392,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={formData.name}
                 variant="bordered"
                 onValueChange={(value) => handleInputChange("name", value)}
+                onBlur={() => handleBlur("name")}
               />
 
               <Input
@@ -344,6 +420,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={formData.email}
                 variant="bordered"
                 onValueChange={(value) => handleInputChange("email", value)}
+                onBlur={() => handleBlur("email")}
               />
 
               <Input
@@ -354,7 +431,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 }}
                 autoComplete="off"
                 errorMessage={
-                  isPhoneInvalid ? "Vui lòng nhập số điện thoại" : ""
+                  isPhoneInvalid ? phoneValidation.errorMessage : ""
                 }
                 isInvalid={isPhoneInvalid}
                 label={
@@ -367,6 +444,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={formData.phone}
                 variant="bordered"
                 onValueChange={(value) => handleInputChange("phone", value)}
+                onBlur={() => handleBlur("phone")}
               />
 
               <Input
@@ -390,6 +468,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={formData.address}
                 variant="bordered"
                 onValueChange={(value) => handleInputChange("address", value)}
+                onBlur={() => handleBlur("address")}
               />
 
               <Input
@@ -407,6 +486,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                     : ""
                 }
                 isInvalid={isDobInvalid}
+                max={new Date().toISOString().split('T')[0]}
                 label={
                   <>
                     Ngày sinh <span className="text-red-500">*</span>
@@ -417,6 +497,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={formData.dob}
                 variant="bordered"
                 onValueChange={(value) => handleInputChange("dob", value)}
+                onBlur={() => handleBlur("dob")}
               />
 
               <Select
@@ -437,9 +518,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 variant="bordered"
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
-
                   handleInputChange("role", selectedKey);
+                  handleBlur("role");
                 }}
+                onClose={() => handleBlur("role")}
               >
                 {roleOptions.map((option) => (
                   <SelectItem key={option.key}>{option.label}</SelectItem>
@@ -477,6 +559,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 value={formData.password}
                 variant="bordered"
                 onValueChange={(value) => handleInputChange("password", value)}
+                onBlur={() => handleBlur("password")}
               />
 
               <Input
@@ -506,6 +589,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 onValueChange={(value) =>
                   handleInputChange("confirmPassword", value)
                 }
+                onBlur={() => handleBlur("confirmPassword")}
               />
 
               <Select

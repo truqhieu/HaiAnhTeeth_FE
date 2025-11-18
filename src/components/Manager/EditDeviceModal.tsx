@@ -172,7 +172,7 @@ const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
       {/* Modal Content */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
