@@ -1111,7 +1111,7 @@ const AllAppointments = () => {
       toast.loading("Đang tạo file PDF...", { id: "pdf-download" });
 
       // Call API với authentication header
-      const token = localStorage.getItem("authToken");
+      const token = sessionStorage.getItem("authToken");
       
       if (!token) {
         toast.error("Token không tồn tại. Vui lòng đăng nhập lại.", { id: "pdf-download" });
