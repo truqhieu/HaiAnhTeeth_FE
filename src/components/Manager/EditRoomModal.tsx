@@ -173,7 +173,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
       {/* Modal Content */}
       <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-[#39BDCC]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <img
               alt="Logo"
@@ -252,11 +252,16 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                 fullWidth
                 classNames={{
                   base: "w-full",
-                  trigger: "w-full"
+                  trigger: "w-full",
+                  description: "pl-2"
                 }}
                 description="Chọn 'Không có bác sĩ' để gỡ bác sĩ hiện tại"
                 label="Phân công bác sĩ"
-                placeholder="Chọn bác sĩ"
+                placeholder={
+                  room.assignedDoctorName
+                    ? `${room.assignedDoctorName}`
+                    : "Chọn bác sĩ"
+                }
                 selectedKeys={
                   formData.assignedDoctorId ? [formData.assignedDoctorId] : []
                 }

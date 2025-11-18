@@ -10,21 +10,16 @@ import {
 } from "@heroicons/react/24/outline";
 import {
   Button,
-  Navbar,
-  NavbarContent,
-  NavbarItem,
   Link,
 } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import NotificationBell from "@/components/Common/NotificationBell";
-import ConsultationFormModal from "@/components/Common/ConsultationFormModal";
 
 const PatientHeader: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const [isConsultOpen, setIsConsultOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -163,8 +158,8 @@ const PatientHeader: React.FC = () => {
             </Link>
           </div>
 
-          {/* Navigation Items - Center */}
-          <nav className="hidden md:flex items-center space-x-8 lg:space-x-12">
+          {/* Navigation Items - Center, expanded to fill space */}
+          <nav className="hidden md:flex items-center justify-center flex-1 space-x-8 lg:space-x-12">
             {[
               { label: "Giới thiệu", href: "/about" },
               { label: "Dịch vụ", href: "/services" },
@@ -181,20 +176,11 @@ const PatientHeader: React.FC = () => {
             ))}
           </nav>
 
-          {/* CTA Button */}
-          <div className="flex-shrink-0">
-            <Button 
-              className="bg-[#39BDCC] text-white font-semibold text-base lg:text-lg hover:bg-[#2ca6b5] px-5 lg:px-6 py-2 shadow-md hover:shadow-lg transition-all" 
-              size="lg"
-              onClick={() => setIsConsultOpen(true)}
-            >
-              Để lại thông tin tư vấn
-            </Button>
-          </div>
+          {/* Empty space to balance layout (replaces removed CTA button) */}
+          <div className="flex-shrink-0 w-0 md:w-auto"></div>
         </div>
       </div>
     </header>
-    <ConsultationFormModal isOpen={isConsultOpen} onClose={() => setIsConsultOpen(false)} />
     </>
   );
 };

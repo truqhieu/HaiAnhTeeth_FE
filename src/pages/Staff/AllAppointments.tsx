@@ -136,6 +136,8 @@ const AllAppointments = () => {
   // Reassign Doctor Modal states
   const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [reassignAppointment, setReassignAppointment] = useState<Appointment | null>(null);
+  const [prefetchedDoctors, setPrefetchedDoctors] = useState<Array<{_id: string; fullName: string}>>([]);
+  const [isPrefetchingDoctors, setIsPrefetchingDoctors] = useState(false);
 
   // Leave requests state - để check doctor có leave không
   const [approvedLeaves, setApprovedLeaves] = useState<Array<{
@@ -933,15 +935,38 @@ const AllAppointments = () => {
   };
 
   // ===== Open Reassign Modal =====
-  const openReassignModal = (appointment: Appointment) => {
+  const openReassignModal = async (appointment: Appointment) => {
+    // Mở modal ngay lập tức
     setReassignAppointment(appointment);
     setIsReassignModalOpen(true);
+    
+    // Pre-fetch danh sách bác sĩ trong background (modal đã mở)
+    setIsPrefetchingDoctors(true);
+    try {
+      const response = await appointmentApi.getAvailableDoctors(
+        appointment.id,
+        appointment.startTime,
+        appointment.endTime
+      );
+      
+      if (response.success && response.data) {
+        setPrefetchedDoctors(response.data.availableDoctors || []);
+      } else {
+        setPrefetchedDoctors([]);
+      }
+    } catch (error: any) {
+      console.error("Error prefetching doctors:", error);
+      setPrefetchedDoctors([]);
+    } finally {
+      setIsPrefetchingDoctors(false);
+    }
   };
 
   // ===== Close Reassign Modal =====
   const closeReassignModal = () => {
     setIsReassignModalOpen(false);
     setReassignAppointment(null);
+    setPrefetchedDoctors([]); // Clear cache khi đóng modal
   };
 
   // ===== Handle Reassign Success =====
@@ -1086,7 +1111,7 @@ const AllAppointments = () => {
       toast.loading("Đang tạo file PDF...", { id: "pdf-download" });
 
       // Call API với authentication header
-      const token = sessionStorage.getItem("authToken");
+      const token = localStorage.getItem("authToken");
       
       if (!token) {
         toast.error("Token không tồn tại. Vui lòng đăng nhập lại.", { id: "pdf-download" });
@@ -2142,6 +2167,7 @@ const AllAppointments = () => {
           currentDoctorName={reassignAppointment.doctorName}
           startTime={reassignAppointment.startTime}
           endTime={reassignAppointment.endTime}
+          prefetchedDoctors={prefetchedDoctors}
         />
       )}
       </div>
