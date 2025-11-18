@@ -30,12 +30,17 @@ import {
 import toast from "react-hot-toast";
 
 import { complaintApi } from "@/api/complaint";
+import DateRangePicker from "@/components/Common/DateRangePicker";
 
 const ComplaintManagement = () => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<{ startDate: string | null; endDate: string | null }>({
+    startDate: null,
+    endDate: null,
+  });
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,7 +61,7 @@ const ComplaintManagement = () => {
 
   useEffect(() => {
     fetchComplaints();
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, currentPage, dateFilter.startDate, dateFilter.endDate]);
 
   // Debounce search term
   useEffect(() => {
@@ -88,6 +93,14 @@ const ComplaintManagement = () => {
 
       if (searchTerm.trim()) {
         params.search = searchTerm.trim();
+      }
+
+      if (dateFilter.startDate) {
+        params.startDate = dateFilter.startDate;
+      }
+
+      if (dateFilter.endDate) {
+        params.endDate = dateFilter.endDate;
       }
 
       const response = await complaintApi.getAllComplaints(params);
@@ -297,6 +310,14 @@ const ComplaintManagement = () => {
     { key: "actions", label: "Hành động" },
   ];
 
+  const handleDateRangeChange = (start: string | null, end: string | null) => {
+    setDateFilter({
+      startDate: start,
+      endDate: end,
+    });
+    setCurrentPage(1);
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-full">
       {/* Header */}
@@ -308,9 +329,9 @@ const ComplaintManagement = () => {
       </div>
 
       {/* Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative w-full min-w-[240px] lg:flex-[1.5] lg:max-w-3xl">
           <Input
             className="w-full"
             placeholder="Tìm kiếm theo tiêu đề, mô tả..."
@@ -325,7 +346,7 @@ const ComplaintManagement = () => {
 
         {/* Status Filter */}
         <Select
-          className="w-48"
+          className="w-full sm:w-56 min-w-[220px] lg:flex-[0.5]"
           placeholder="Trạng thái"
           selectedKeys={[statusFilter]}
           variant="bordered"
@@ -340,6 +361,15 @@ const ComplaintManagement = () => {
           <SelectItem key="Pending">Đang chờ</SelectItem>
           <SelectItem key="Processed">Đã xử lý</SelectItem>
         </Select>
+
+        <div className="w-full sm:w-64 min-w-[260px] lg:flex-[0.8]">
+          <DateRangePicker
+            startDate={dateFilter.startDate}
+            endDate={dateFilter.endDate}
+            onDateChange={handleDateRangeChange}
+            placeholder="Chọn khoảng thời gian gửi"
+          />
+        </div>
       </div>
 
       {/* Table */}

@@ -134,9 +134,9 @@ export const authApi = {
       },
     );
 
-    // Update user in localStorage if successful
+    // Update user in sessionStorage if successful
     if (response.success && response.data) {
-      localStorage.setItem("user", JSON.stringify(response.data.user));
+      sessionStorage.setItem("user", JSON.stringify(response.data.user));
     }
 
     return response;
@@ -159,47 +159,27 @@ export const authApi = {
     );
   },
 
-  // Logout (clear localStorage)
+  // Logout (clear sessionStorage)
   logout: (): void => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("authTimestamp");
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("user");
   },
 
-  // Get current user from localStorage
+  // Get current user from sessionStorage
   getCurrentUser: (): User | null => {
-    const userStr = localStorage.getItem("user");
+    const userStr = sessionStorage.getItem("user");
 
     return userStr ? JSON.parse(userStr) : null;
   },
 
-  // Get token from localStorage
+  // Get token from sessionStorage
   getToken: (): string | null => {
-    return localStorage.getItem("authToken");
+    return sessionStorage.getItem("authToken");
   },
 
-  // Check if user is authenticated and token is not expired
+  // Check if user is authenticated
   isAuthenticated: (): boolean => {
-    const token = localStorage.getItem("authToken");
-    const timestamp = localStorage.getItem("authTimestamp");
-    
-    if (!token || !timestamp) {
-      return false;
-    }
-    
-    // Check if token is expired (24 hours = 86400000 ms)
-    const TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
-    const isExpired = (Date.now() - parseInt(timestamp)) > TOKEN_EXPIRY_MS;
-    
-    if (isExpired) {
-      // Clear expired token
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      localStorage.removeItem("authTimestamp");
-      return false;
-    }
-    
-    return true;
+    return !!sessionStorage.getItem("authToken");
   },
 
   // getProfile: async (): Promise<ApiResponse<User>> => {
