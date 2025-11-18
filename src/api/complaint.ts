@@ -77,6 +77,8 @@ export const complaintApi = {
     limit?: number;
     status?: string;
     search?: string;
+    startDate?: string;
+    endDate?: string;
   }): Promise<ApiResponse<ComplaintListResponse>> => {
     const queryParams = new URLSearchParams();
 
@@ -84,6 +86,8 @@ export const complaintApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
     if (params?.search) queryParams.append("search", params.search);
+    if (params?.startDate) queryParams.append("startDate", params.startDate);
+    if (params?.endDate) queryParams.append("endDate", params.endDate);
 
     const queryString = queryParams.toString();
     const url = `/complaints${queryString ? `?${queryString}` : ""}${queryString ? "&" : "?"}t=${Date.now()}`;

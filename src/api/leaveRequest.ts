@@ -56,6 +56,8 @@ export const leaveRequestApi = {
     limit?: number;
     status?: string;
     search?: string;
+    startDate?: string;
+    endDate?: string;
   }): Promise<ApiResponse<LeaveRequestListResponse>> => {
     const queryParams = new URLSearchParams();
 
@@ -63,6 +65,8 @@ export const leaveRequestApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
     if (params?.search) queryParams.append("search", params.search);
+    if (params?.startDate) queryParams.append("startDate", params.startDate);
+    if (params?.endDate) queryParams.append("endDate", params.endDate);
     
     // ⭐ Thêm cache-busting timestamp để tránh 304 response
     queryParams.append("_t", Date.now().toString());
