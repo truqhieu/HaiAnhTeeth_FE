@@ -217,13 +217,13 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
                 className="block text-sm font-semibold text-gray-700 mb-2"
                 htmlFor="summary"
               >
-                Tóm tắt <span className="text-red-500">*</span>
+                Nội dung <span className="text-red-500">*</span>
               </label>
               <Textarea
                 fullWidth
                 id="summary"
                 minRows={3}
-                placeholder="Viết tóm tắt ngắn gọn về nội dung blog..."
+                placeholder="Viết nội dung chi tiết về blog..."
                 value={formData.summary}
                 variant="bordered"
                 isInvalid={isSummaryInvalid}

@@ -177,7 +177,7 @@ const ScheduleManagement = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Quản lý lịch làm việc
+          Quản lý lịch làm việc bác sĩ
         </h1>
         <p className="text-gray-600">
           Quản lý ca khám và phân công bác sĩ theo từng ca
@@ -199,7 +199,7 @@ const ScheduleManagement = () => {
           </div>
 
           {/* Date Range Picker */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-[260px]">
             <DateRangePicker
               value={dateRange}
               onChange={({ startDate, endDate }) =>

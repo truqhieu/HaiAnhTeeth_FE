@@ -1,7 +1,15 @@
+import type { LeaveRequest } from "@/api/leaveRequest";
+
 import { useEffect, useState } from "react";
 import {
   Button,
+  Chip,
   Input,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
   Select,
   SelectItem,
   Spinner,
@@ -11,31 +19,32 @@ import {
   TableColumn,
   TableHeader,
   TableRow,
-  Chip,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
   Tooltip,
 } from "@heroui/react";
-  import {
-  MagnifyingGlassIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  ClockIcon,
+import {
   CalendarIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  MagnifyingGlassIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 import { leaveRequestApi } from "@/api/leaveRequest";
-import type { LeaveRequest } from "@/api/leaveRequest";
+import DateRangePicker from "@/components/Common/DateRangePicker";
 
 const LeaveRequestManagement = () => {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<{
+    startDate: string | null;
+    endDate: string | null;
+  }>({
+    startDate: null,
+    endDate: null,
+  });
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,7 +63,7 @@ const LeaveRequestManagement = () => {
 
   useEffect(() => {
     fetchLeaveRequests();
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, currentPage, dateFilter.startDate, dateFilter.endDate]);
 
   // Debounce search term
   useEffect(() => {
@@ -86,13 +95,23 @@ const LeaveRequestManagement = () => {
         params.search = searchTerm.trim();
       }
 
+      if (dateFilter.startDate) {
+        params.startDate = dateFilter.startDate;
+      }
+
+      if (dateFilter.endDate) {
+        params.endDate = dateFilter.endDate;
+      }
+
       const response = await leaveRequestApi.getAllLeaveRequests(params);
 
       // ✅ Check cả success và status
       if ((response.success || (response as any).status) && response.data) {
         // Backend trả về: { status: true, total, totalPages, data: [...] }
         // Hoặc wrapper: { success: true, data: { status: true, total, totalPages, data: [...] } }
-        const responseData = response.data.data ? response.data : (response as any);
+        const responseData = response.data.data
+          ? response.data
+          : (response as any);
         const requestsData = responseData.data || [];
 
         setLeaveRequests(requestsData);
@@ -135,7 +154,7 @@ const LeaveRequestManagement = () => {
         actionType,
       );
 
-      if (response.status || response.success) {
+      if ((response as any).status || response.success) {
         toast.success(
           response.message ||
             `Đã ${actionType === "Approved" ? "duyệt" : "từ chối"} đơn xin nghỉ`,
@@ -155,7 +174,7 @@ const LeaveRequestManagement = () => {
   };
 
   const getStatusColor = (
-    status: string
+    status: string,
   ): "warning" | "success" | "danger" => {
     switch (status) {
       case "Pending":
@@ -192,7 +211,43 @@ const LeaveRequestManagement = () => {
     });
   };
 
-  // Bỏ hiển thị tổng số ngày theo yêu cầu
+  const handleDateRangeChange = (start: string | null, end: string | null) => {
+    setDateFilter({
+      startDate: start,
+      endDate: end,
+    });
+    setCurrentPage(1);
+  };
+
+  const normalizeDate = (dateString?: string | null) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString().split("T")[0];
+  };
+
+  const formatDateRange = (start?: string | null, end?: string | null) => {
+    const normalizedStart = normalizeDate(start);
+    const normalizedEnd = normalizeDate(end);
+
+    if (!normalizedStart && !normalizedEnd) return "N/A";
+
+    if (normalizedStart && normalizedEnd && normalizedStart === normalizedEnd) {
+      return formatDate(start || end || undefined);
+    }
+
+    if (normalizedStart && !normalizedEnd) {
+      return formatDate(start || undefined);
+    }
+
+    if (!normalizedStart && normalizedEnd) {
+      return formatDate(end || undefined);
+    }
+
+    return `${formatDate(start || undefined)} - ${formatDate(
+      end || undefined,
+    )}`;
+  };
 
   const columns = [
     { key: "stt", label: "STT" },
@@ -216,9 +271,9 @@ const LeaveRequestManagement = () => {
       </div>
 
       {/* Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative w-full min-w-[220px] lg:flex-1">
           <Input
             className="w-full"
             placeholder="Tìm kiếm theo lý do..."
@@ -233,7 +288,7 @@ const LeaveRequestManagement = () => {
 
         {/* Status Filter */}
         <Select
-          className="w-48"
+          className="w-full sm:w-56 min-w-[220px] lg:flex-1"
           placeholder="Trạng thái"
           selectedKeys={[statusFilter]}
           variant="bordered"
@@ -248,6 +303,15 @@ const LeaveRequestManagement = () => {
           <SelectItem key="Approved">Đã duyệt</SelectItem>
           <SelectItem key="Rejected">Đã từ chối</SelectItem>
         </Select>
+
+        <div className="w-full sm:w-56 min-w-[220px] lg:flex-1">
+          <DateRangePicker
+            startDate={dateFilter.startDate}
+            endDate={dateFilter.endDate}
+            onDateChange={handleDateRangeChange}
+            placeholder="Chọn khoảng thời gian"
+          />
+        </div>
       </div>
 
       {/* Table */}
@@ -301,8 +365,7 @@ const LeaveRequestManagement = () => {
                       <div className="flex items-center gap-2 text-gray-900 font-medium">
                         <CalendarIcon className="w-4 h-4 text-blue-500" />
                         <span>
-                          {formatDate(request.startDate)} -{" "}
-                          {formatDate(request.endDate)}
+                          {formatDateRange(request.startDate, request.endDate)}
                         </span>
                       </div>
                       {/* Bỏ tổng số ngày nghỉ */}
@@ -327,10 +390,10 @@ const LeaveRequestManagement = () => {
                       <div className="flex items-center gap-3">
                         <Tooltip content="Duyệt đơn">
                           <Button
+                            className="min-w-8 h-8 text-green-600 hover:bg-green-50"
                             isIconOnly
                             size="sm"
                             variant="light"
-                            className="min-w-8 h-8 text-green-600 hover:bg-green-50"
                             onPress={() => handleAction(request, "Approved")}
                           >
                             <CheckCircleIcon className="w-5 h-5" />
@@ -338,10 +401,10 @@ const LeaveRequestManagement = () => {
                         </Tooltip>
                         <Tooltip content="Từ chối đơn">
                           <Button
+                            className="min-w-8 h-8 text-red-600 hover:bg-red-50"
                             isIconOnly
                             size="sm"
                             variant="light"
-                            className="min-w-8 h-8 text-red-600 hover:bg-red-50"
                             onPress={() => handleAction(request, "Rejected")}
                           >
                             <XCircleIcon className="w-5 h-5" />

@@ -11,6 +11,13 @@ interface DateRangePickerProps {
   disabled?: boolean;
 }
 
+const formatDateValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const DateRangePicker: React.FC<DateRangePickerProps> = ({
   startDate,
   endDate,
@@ -108,7 +115,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   };
 
   const handleDateSelect = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatDateValue(date);
     
     if (viewMode === 'start') {
       setTempStartDate(dateStr);
@@ -173,7 +180,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     // Add days of the month
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const currentDate = new Date(year, month, day);
-      const dateStr = currentDate.toISOString().split('T')[0];
+      const dateStr = formatDateValue(currentDate);
       const isToday = currentDate.toDateString() === new Date().toDateString();
       const isSelected = (startDateObj && dateStr === tempStartDate) || (endDateObj && dateStr === tempEndDate);
       const isInRange = startDateObj && endDateObj && dateStr > tempStartDate! && dateStr < tempEndDate!;

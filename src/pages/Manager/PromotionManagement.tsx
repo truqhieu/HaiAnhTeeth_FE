@@ -29,12 +29,17 @@ import {
 import toast from "react-hot-toast";
 import { promotionApi, type Promotion } from "@/api/promotion";
 import { AddPromotionModal, EditPromotionModal } from "@/components";
+import DateRangePicker from "@/components/Common/DateRangePicker";
 
 const PromotionManagement = () => {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<{ startDate: string | null; endDate: string | null }>({
+    startDate: null,
+    endDate: null,
+  });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -51,7 +56,7 @@ const PromotionManagement = () => {
 
   useEffect(() => {
     fetchPromotions();
-  }, [statusFilter, currentPage]);
+  }, [statusFilter, currentPage, dateFilter.startDate, dateFilter.endDate]);
 
   // Debounce search term
   useEffect(() => {
@@ -82,6 +87,14 @@ const PromotionManagement = () => {
 
       if (searchTerm.trim()) {
         params.search = searchTerm.trim();
+      }
+
+      if (dateFilter.startDate) {
+        params.startDate = dateFilter.startDate;
+      }
+
+      if (dateFilter.endDate) {
+        params.endDate = dateFilter.endDate;
       }
 
       const response = await promotionApi.getAllPromotions(params);
@@ -182,6 +195,14 @@ const PromotionManagement = () => {
     return type === "Percent" ? `${value}%` : `${value.toLocaleString()}đ`;
   };
 
+  const handleDateRangeChange = (start: string | null, end: string | null) => {
+    setDateFilter({
+      startDate: start,
+      endDate: end,
+    });
+    setCurrentPage(1);
+  };
+
   const columns = [
     { key: "stt", label: "STT" },
     { key: "title", label: "Tiêu đề" },
@@ -206,10 +227,10 @@ const PromotionManagement = () => {
       </div>
 
       {/* Controls */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end">
+        <div className="flex flex-col gap-4 lg:flex-row lg:flex-1 lg:items-end">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative w-full min-w-[240px] lg:flex-[1.4]">
             <Input
               className="w-full"
               placeholder="Tìm kiếm theo tiêu đề..."
@@ -224,7 +245,7 @@ const PromotionManagement = () => {
 
           {/* Status Filter */}
           <Select
-            className="w-48"
+            className="w-full sm:w-56 min-w-[220px] lg:flex-[0.6]"
             placeholder="Trạng thái"
             selectedKeys={[statusFilter]}
             variant="bordered"
@@ -232,6 +253,7 @@ const PromotionManagement = () => {
               const selected = Array.from(keys)[0] as string;
 
               setStatusFilter(selected);
+              setCurrentPage(1);
             }}
           >
             <SelectItem key="all">Tất cả trạng thái</SelectItem>
@@ -239,15 +261,26 @@ const PromotionManagement = () => {
             <SelectItem key="Upcoming">Sắp diễn ra</SelectItem>
             <SelectItem key="Expired">Đã hết hạn</SelectItem>
           </Select>
+
+          <div className="w-full sm:w-56 min-w-[220px] lg:flex-[0.7]">
+            <DateRangePicker
+              startDate={dateFilter.startDate}
+              endDate={dateFilter.endDate}
+              onDateChange={handleDateRangeChange}
+              placeholder="Chọn khoảng thời gian áp dụng"
+            />
+          </div>
         </div>
 
-        <Button
-          className="bg-blue-600 text-white hover:bg-blue-700"
-          startContent={<PlusIcon className="w-5 h-5" />}
-          onPress={handleAdd}
-        >
-          Thêm ưu đãi
-        </Button>
+        <div className="flex w-full justify-end lg:w-auto">
+          <Button
+            className="w-full sm:w-auto bg-blue-600 text-white hover:bg-blue-700"
+            startContent={<PlusIcon className="w-5 h-5" />}
+            onPress={handleAdd}
+          >
+            Thêm ưu đãi
+          </Button>
+        </div>
       </div>
 
       {/* Table */}

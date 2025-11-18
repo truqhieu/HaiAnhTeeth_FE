@@ -121,7 +121,7 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       current: location.pathname === "/manager/rooms",
     },
     {
-      name: "Quản lý lịch làm việc",
+      name: "Quản lý lịch làm việc bác sĩ",
       href: "/manager/schedules",
       icon: CalendarDaysIcon,
       current: location.pathname === "/manager/schedules",
@@ -187,7 +187,7 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -213,20 +213,22 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
               return (
                 <button
                   key={item.name}
-                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors duration-200 ${
                     item.current
                       ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   }`}
                   onClick={() => handleNavigation(item.href)}
                 >
-                  <div className="relative mr-3">
+                  <div className="relative flex-shrink-0">
                     <Icon className="w-5 h-5" />
                     {(item as any).badge && (
                       <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                     )}
                   </div>
-                  {item.name}
+                  <span className="flex-1 text-left whitespace-nowrap">
+                    {item.name}
+                  </span>
                 </button>
               );
             })}
