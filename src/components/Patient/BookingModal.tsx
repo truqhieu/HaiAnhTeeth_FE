@@ -153,12 +153,34 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     prevUserIdRef.current = currentUserId;
   }, [user?.id, user?._id]); // Reset when user ID changes (logout/login)
 
-  // === KHÔNG reset form khi modal đóng - Chỉ reset khi F5 ===
-  // useEffect(() => {
-  //   if (!isOpen) {
-  //     resetForm();
-  //   }
-  // }, [isOpen]);
+  // Clear service/doctor fields mỗi khi modal đóng để tránh dữ liệu cũ
+  useEffect(() => {
+    if (!isOpen) {
+      setAvailableDoctors([]);
+      setDoctorScheduleRange(null);
+      setTimeInputError(null);
+      setErrorMessage(null);
+      setFieldErrors((prev) => {
+        if (!prev.serviceId && !prev.doctorUserId && !prev.userStartTimeInput) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next.serviceId;
+        delete next.doctorUserId;
+        delete next.userStartTimeInput;
+        return next;
+      });
+      setFormData((prev) => ({
+        ...prev,
+        serviceId: "",
+        doctorUserId: "",
+        doctorScheduleId: null,
+        userStartTimeInput: "",
+        startTime: utcNow,
+        endTime: new Date(utcNow.getTime() + 30 * 60000),
+      }));
+    }
+  }, [isOpen]);
 
   // === Auto-fill user info (chỉ khi appointmentFor thay đổi sang "self", không ghi đè dữ liệu đã nhập) ===
   useEffect(() => {
@@ -349,14 +371,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   };
 
   // === Helper: Check if time is within available ranges ===
-  const isTimeInAvailableRanges = (timeInput: string): boolean => {
+  const isTimeInAvailableRanges = (timeInput: string) => {
     if (!doctorScheduleRange || !Array.isArray(doctorScheduleRange) || doctorScheduleRange.length === 0) {
-      return false;
+      return { isValid: false };
     }
 
     const [hours, minutes] = timeInput.split(":");
     if (!hours || !minutes || isNaN(parseInt(hours)) || isNaN(parseInt(minutes))) {
-      return false;
+      return { isValid: false };
     }
 
     const vnHours = parseInt(hours);
@@ -380,19 +402,28 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
       // Check if input time is within this range
       if (inputMinutes >= rangeStartVNMinutes && inputMinutes < rangeEndVNMinutes) {
-        return true;
+        return {
+          isValid: true,
+          overrideHours: vnHours,
+          overrideMinutes: vnMinutes
+        };
       }
     }
 
-    return false;
+    return { isValid: false };
   };
 
   // === Handle time input blur ===
   const handleTimeInputBlur = async (timeInput: string) => {
+    if (!isOpen) {
+      return;
+    }
+
     if (!timeInput || !formData.doctorUserId) {
       // Clear endTime if no input
       setFormData((prev) => ({
         ...prev,
+        userStartTimeInput: "",
         endTime: utcNow,
       }));
       return;
@@ -419,6 +450,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       setTimeInputError("Thời gian không hợp lệ. Vui lòng nhập số hợp lệ");
       setFormData((prev) => ({
         ...prev,
+        userStartTimeInput: "",
         endTime: utcNow,
       }));
       return;
@@ -429,6 +461,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       setTimeInputError("Giờ không hợp lệ. Giờ phải từ 00-23");
       setFormData((prev) => ({
         ...prev,
+        userStartTimeInput: "",
         endTime: utcNow,
       }));
       return;
@@ -439,21 +472,27 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       setTimeInputError("Phút không hợp lệ. Phút phải từ 00-59");
       setFormData((prev) => ({
         ...prev,
+        userStartTimeInput: "",
         endTime: utcNow,
       }));
       return;
     }
 
     // ⭐ FE validation: Kiểm tra thời gian có trong khoảng khả dụng không
-    if (!isTimeInAvailableRanges(timeInput)) {
+    const rangeResult = isTimeInAvailableRanges(timeInput);
+    if (!rangeResult.isValid) {
       setTimeInputError("Khung giờ này không khả dụng. Vui lòng chọn thời gian trong khoảng thời gian khả dụng.");
       // Clear endTime on error
       setFormData((prev) => ({
         ...prev,
+        userStartTimeInput: "",
         endTime: utcNow,
       }));
       return;
     }
+
+    const vnHours = rangeResult.overrideHours ?? hoursNum;
+    const vnMinutes = rangeResult.overrideMinutes ?? minutesNum;
 
     // ⭐ FE validation: Kiểm tra thời lượng dịch vụ không vượt quá ca làm việc chứa thời điểm bắt đầu
     try {
@@ -478,6 +517,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           setTimeInputError(`Thời gian bạn chọn không đáp ứng đủ thời gian cho dịch vụ này (${serviceDuration} phút). Vui lòng chọn giờ khác.`);
           setFormData((prev) => ({
             ...prev,
+            userStartTimeInput: "",
             endTime: utcNow,
           }));
           return;
@@ -489,9 +529,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
     // ⭐ Convert giờ VN sang UTC: VN - 7
     // User nhập 08:00 (VN) → lưu 01:00 (UTC)
-    const dateObj = new Date(formData.date + 'T00:00:00.000Z');
-    const vnHours = hoursNum;
-    const vnMinutes = minutesNum;
+    const dateObj = new Date(formData.date + "T00:00:00.000Z");
     const utcHours = vnHours - 7; // Convert VN to UTC
     dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
     const startTimeISO = dateObj.toISOString();
@@ -502,16 +540,25 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     setErrorMessage(null);
     
     const nowUtc = new Date();
-    if (dateObj.getTime() < nowUtc.getTime()) {
+    if (doctorScheduleRange && doctorScheduleRange.length > 0) {
+      const earliestFutureSlot = doctorScheduleRange.some((range: any) => {
+        const rangeStart = new Date(range.startTime);
+        return rangeStart.getTime() > nowUtc.getTime();
+      });
+
+      if (!earliestFutureSlot && !isTimeInAvailableRanges(timeInput).isValid) {
       // ⭐ Chỉ hiển thị lỗi quá khứ, không gọi backend validation
-      setTimeInputError("Không thể đặt thời gian ở quá khứ");
-      setErrorMessage(null);
-      // Clear endTime on error
-      setFormData((prev) => ({
-        ...prev,
-        endTime: utcNow,
-      }));
-      return;
+            if (isOpen) {
+              setTimeInputError("Không thể đặt thời gian ở quá khứ");
+              setErrorMessage(null);
+            }
+            setFormData((prev) => ({
+              ...prev,
+              userStartTimeInput: "",
+              endTime: utcNow,
+            }));
+        return;
+      }
     }
 
     // ⭐ Chỉ gọi backend validation sau khi đã pass FE validation quá khứ
@@ -531,6 +578,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         // Clear endTime on error
         setFormData((prev) => ({
           ...prev,
+          userStartTimeInput: "",
           endTime: utcNow,
         }));
         return;
