@@ -1012,6 +1012,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 dateFormat="dd/MM/yyyy"
                 locale="vi"
                 placeholderText="Chọn ngày"
+                wrapperClassName="w-full"
                 className={`w-full border px-3 py-2 rounded-lg ${fieldErrors.date ? "border-red-500 focus:ring-red-500" : ""}`}
               />
               {fieldErrors.date && (

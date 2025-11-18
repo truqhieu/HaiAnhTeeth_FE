@@ -78,7 +78,13 @@ const PatientRequests: React.FC = () => {
       const response = await patientRequestApi.getAllRequests(params);
 
       if (response.success) {
-        setRequests(response.data.requests);
+        // Sort by createdAt descending (mới nhất lên đầu)
+        const sortedRequests = [...(response.data.requests || [])].sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA; // Descending: mới nhất lên đầu
+        });
+        setRequests(sortedRequests);
         setTotalPages(response.data.pagination.totalPages);
         setTotalItems(response.data.pagination.totalItems);
       }
@@ -322,40 +328,9 @@ const PatientRequests: React.FC = () => {
                 </SelectItem>
               </Select>
             </div>
-            <Button color="primary" onClick={loadRequests}>
-              Lọc
-            </Button>
           </div>
         </CardBody>
       </Card>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardBody className="text-center">
-            <div className="text-2xl font-bold text-orange-500">
-              {requests.filter((r) => r.status === "Pending").length}
-            </div>
-            <div className="text-sm text-gray-600">Chờ xử lý</div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="text-center">
-            <div className="text-2xl font-bold text-green-500">
-              {requests.filter((r) => r.status === "Approved").length}
-            </div>
-            <div className="text-sm text-gray-600">Đã duyệt</div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody className="text-center">
-            <div className="text-2xl font-bold text-red-500">
-              {requests.filter((r) => r.status === "Rejected").length}
-            </div>
-            <div className="text-sm text-gray-600">Đã từ chối</div>
-          </CardBody>
-        </Card>
-      </div>
 
       {/* Table */}
       <Card>

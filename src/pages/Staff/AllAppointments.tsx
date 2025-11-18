@@ -747,10 +747,22 @@ const AllAppointments = () => {
 
     // Filter by search text
     if (searchText) {
-      filtered = filtered.filter(apt => 
-        apt.patientName.toLowerCase().includes(searchText.toLowerCase()) ||
-        apt.serviceName.toLowerCase().includes(searchText.toLowerCase())
-      );
+      const searchLower = searchText.toLowerCase();
+      filtered = filtered.filter(apt => {
+        const matchesBasic =
+          apt.patientName.toLowerCase().includes(searchLower) ||
+          apt.serviceName.toLowerCase().includes(searchLower);
+
+        const appointmentDateVi = apt.startTime
+          ? new Date(apt.startTime).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+          : "";
+        const appointmentDateTimeVi = apt.startTime
+          ? new Date(apt.startTime).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+          : "";
+        const matchesDate = appointmentDateVi.includes(searchLower) || appointmentDateTimeVi.includes(searchLower);
+
+        return matchesBasic || matchesDate;
+      });
     }
 
     // Filter by doctor
@@ -788,6 +800,13 @@ const AllAppointments = () => {
         return aptDate <= endDate;
       });
     }
+
+    // Sort by startTime descending (mới nhất lên đầu)
+    filtered.sort((a, b) => {
+      const timeA = a.startTime ? new Date(a.startTime).getTime() : 0;
+      const timeB = b.startTime ? new Date(b.startTime).getTime() : 0;
+      return timeB - timeA; // Descending: mới nhất lên đầu
+    });
 
     setFilteredAppointments(filtered);
     setCurrentPage(1);

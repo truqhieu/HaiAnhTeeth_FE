@@ -95,9 +95,49 @@ const LeaveRequestManagement = () => {
         const responseData = response.data.data ? response.data : (response as any);
         const requestsData = responseData.data || [];
 
-        setLeaveRequests(requestsData);
-        setTotal(responseData.total || 0);
-        setTotalPages(responseData.totalPages || 1);
+        // Sort by createdAt descending (mới nhất lên đầu)
+        const sortedRequests = [...requestsData].sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA; // Descending: mới nhất lên đầu
+        });
+        let finalRequests = sortedRequests;
+
+        const isVietnameseDateSearch = (term: string) =>
+          /\d{1,2}\/\d{1,2}(\/\d{2,4})?/.test(term.trim());
+        const isDateSearch = Boolean(searchTerm.trim()) && isVietnameseDateSearch(searchTerm);
+
+        if (isDateSearch) {
+          const searchLower = searchTerm.trim().toLowerCase();
+          finalRequests = sortedRequests.filter((request: LeaveRequest) => {
+            const startDateVi = request.startDate
+              ? new Date(request.startDate).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+              : "";
+            const endDateVi = request.endDate
+              ? new Date(request.endDate).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+              : "";
+            const createdAtVi = request.createdAt
+              ? new Date(request.createdAt).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+              : "";
+            return (
+              startDateVi.includes(searchLower) ||
+              endDateVi.includes(searchLower) ||
+              createdAtVi.includes(searchLower)
+            );
+          });
+        }
+
+        setLeaveRequests(finalRequests);
+        if (isDateSearch) {
+          setTotal(finalRequests.length || 0);
+          setTotalPages(Math.max(1, Math.ceil((finalRequests.length || 1) / itemsPerPage)));
+        } else {
+          setTotal(responseData.total || finalRequests.length || 0);
+          setTotalPages(
+            responseData.totalPages ||
+              Math.max(1, Math.ceil((finalRequests.length || 1) / itemsPerPage))
+          );
+        }
       } else {
         toast.error("Không thể tải danh sách đơn xin nghỉ");
       }

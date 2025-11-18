@@ -104,18 +104,44 @@ const ComplaintManagement = () => {
           complaintsData = complaintsData.filter(
             (complaint: any) => complaint.status === "Approved" || complaint.status === "Rejected"
           );
+        }
+
+        const isVietnameseDateSearch = (term: string) =>
+          /\d{1,2}\/\d{1,2}(\/\d{2,4})?/.test(term.trim());
+
+        if (searchTerm.trim() && isVietnameseDateSearch(searchTerm)) {
+          const searchLower = searchTerm.trim().toLowerCase();
+          complaintsData = complaintsData.filter((complaint: any) => {
+            const createdAtVi = complaint.createdAt
+              ? new Date(complaint.createdAt).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+              : "";
+            const updatedAtVi = complaint.updatedAt
+              ? new Date(complaint.updatedAt).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+              : "";
+            return createdAtVi.includes(searchLower) || updatedAtVi.includes(searchLower);
+          });
+        }
+        
+        // Sort by createdAt descending (mới nhất lên đầu)
+        const sortedComplaints = [...complaintsData].sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return timeB - timeA; // Descending: mới nhất lên đầu
+        });
+        
+        if (statusFilter === "Processed") {
           // Paginate client-side
           const startIndex = (currentPage - 1) * itemsPerPage;
           const endIndex = startIndex + itemsPerPage;
-          const paginatedData = complaintsData.slice(startIndex, endIndex);
+          const paginatedData = sortedComplaints.slice(startIndex, endIndex);
           
           setComplaints(paginatedData);
-          setTotal(complaintsData.length);
-          setTotalPages(Math.ceil(complaintsData.length / itemsPerPage));
+          setTotal(sortedComplaints.length);
+          setTotalPages(Math.ceil(sortedComplaints.length / itemsPerPage));
         } else {
-          setComplaints(complaintsData);
-          setTotal(responseData.total || complaintsData.length);
-          setTotalPages(responseData.totalPages || Math.ceil(complaintsData.length / itemsPerPage));
+          setComplaints(sortedComplaints);
+          setTotal(responseData.total || sortedComplaints.length);
+          setTotalPages(responseData.totalPages || Math.ceil(sortedComplaints.length / itemsPerPage));
         }
       } else {
         toast.error("Không thể tải danh sách khiếu nại");

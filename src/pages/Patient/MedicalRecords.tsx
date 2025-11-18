@@ -97,10 +97,16 @@ const MedicalRecords = () => {
     // Filter theo search text (tên bác sĩ hoặc tên dịch vụ)
     if (searchText.trim()) {
       const searchLower = searchText.toLowerCase().trim();
-      filtered = filtered.filter((record) =>
-        record.doctorName.toLowerCase().includes(searchLower) ||
-        record.serviceName.toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter((record) => {
+        const matchesBasic =
+          record.doctorName.toLowerCase().includes(searchLower) ||
+          record.serviceName.toLowerCase().includes(searchLower);
+        const dateVi = record.date
+          ? new Date(record.date).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+          : "";
+        const matchesDate = dateVi.includes(searchLower);
+        return matchesBasic || matchesDate;
+      });
     }
 
     // Filter theo date range
@@ -114,6 +120,13 @@ const MedicalRecords = () => {
         return recordDate >= startDate && recordDate <= endDate;
       });
     }
+
+    // Sort by date descending (mới nhất lên đầu)
+    filtered.sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      return dateB - dateA; // Descending: mới nhất lên đầu
+    });
 
     return filtered;
   }, [records, searchText, dateRange]);

@@ -528,8 +528,17 @@ const Appointments = () => {
         const doctorMatch = apt.doctorName && partialSearch(apt.doctorName, searchLower);
         const serviceMatch = apt.serviceName && partialSearch(apt.serviceName, searchLower);
         const notesMatch = apt.notes && partialSearch(apt.notes, searchLower);
+        const appointmentDateVi = apt.startTime
+          ? new Date(apt.startTime).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+          : "";
+        const appointmentDateTimeVi = apt.startTime
+          ? new Date(apt.startTime).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })
+          : "";
+        const dateMatch =
+          (appointmentDateVi && partialSearch(appointmentDateVi, searchLower)) ||
+          (appointmentDateTimeVi && partialSearch(appointmentDateTimeVi, searchLower));
         
-        if (!doctorMatch && !serviceMatch && !notesMatch) {
+        if (!doctorMatch && !serviceMatch && !notesMatch && !dateMatch) {
           return false;
         }
       }
@@ -538,6 +547,13 @@ const Appointments = () => {
     } catch (_err) {
       return false;
     }
+  });
+
+  // Sort by startTime descending (mới nhất lên đầu)
+  const sortedAppointments = [...currentAppointments].sort((a, b) => {
+    const timeA = a.startTime ? new Date(a.startTime).getTime() : 0;
+    const timeB = b.startTime ? new Date(b.startTime).getTime() : 0;
+    return timeB - timeA; // Descending: mới nhất lên đầu
   });
 
   const columns = [
@@ -732,7 +748,7 @@ const Appointments = () => {
                   <p className="mt-1 text-sm text-gray-500">Bạn chưa có cuộc hẹn nào trong danh mục này.</p>
                 </div>
               }
-              items={currentAppointments}
+              items={sortedAppointments}
             >
               {(appointment) => (
                   <TableRow key={appointment.id} className="hover:bg-gray-50 transition-colors">
@@ -953,13 +969,13 @@ const Appointments = () => {
           </div>
 
           {/* Results info */}
-          {currentAppointments.length > 0 && (
+          {sortedAppointments.length > 0 && (
             <div className="px-6 py-6 border-t border-gray-200 bg-gray-50 rounded-b-xl w-full">
               <div className="flex items-center justify-between">
               <p className="text-base text-gray-600">
                   Hiển thị <span className="font-medium">1</span> đến{" "}
-                  <span className="font-medium">{currentAppointments.length}</span> trong{" "}
-                  <span className="font-medium">{currentAppointments.length}</span> kết quả
+                  <span className="font-medium">{sortedAppointments.length}</span> trong{" "}
+                  <span className="font-medium">{sortedAppointments.length}</span> kết quả
                 </p>
                 <div className="flex items-center space-x-2 text-base text-gray-500">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

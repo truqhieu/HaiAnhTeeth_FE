@@ -28,6 +28,7 @@ import {
   VideoCameraIcon,
   BuildingOfficeIcon,
   DocumentTextIcon,
+  ArrowRightIcon,
 } from "@heroicons/react/24/outline";
 import { doctorApi, type DoctorAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -173,19 +174,47 @@ const DoctorSchedule = () => {
     return aptDateStr === today;
   };
 
+  // ⭐ Helper: Kiểm tra xem appointment có phải là sắp tới (từ ngày mai trở đi) không
+  const isFutureAppointment = (appointmentDate: string): boolean => {
+    if (!appointmentDate) return false;
+    
+    const aptDate = new Date(appointmentDate);
+    if (isNaN(aptDate.getTime())) return false;
+    
+    // Lấy ngày của appointment theo timezone Việt Nam
+    const aptDateStr = aptDate.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // Format: YYYY-MM-DD
+    
+    const today = getTodayInVietnam();
+    const todayDate = new Date(today);
+    const tomorrowDate = new Date(todayDate);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrowStr = tomorrowDate.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+    
+    // So sánh: appointment date >= tomorrow
+    return aptDateStr >= tomorrowStr;
+  };
+
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
     let filtered = [...appointments];
 
     // Tab logic:
-    // - Các ca khám hôm nay: hiển thị các ca có trạng thái CheckedIn hoặc InProgress VÀ là của ngày hôm nay
+    // - Các ca khám hôm nay: hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là của ngày hôm nay
+    // - Các ca khám sắp tới: hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là từ ngày mai trở đi
     // - History: hiển thị Completed, Expired, No-Show
     if (activeTab === "upcoming") {
       filtered = filtered.filter(apt => {
-        // Chỉ hiển thị các ca có trạng thái CheckedIn hoặc InProgress VÀ là của ngày hôm nay
+        // Chỉ hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là của ngày hôm nay
         const isToday = isTodayAppointment(apt.appointmentDate);
-        const isValidStatus = apt.status === "CheckedIn" || apt.status === "InProgress";
+        const isValidStatus = apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress";
         return isValidStatus && isToday;
+      });
+    } else if (activeTab === "future") {
+      filtered = filtered.filter(apt => {
+        // Chỉ hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là từ ngày mai trở đi
+        const isFuture = isFutureAppointment(apt.appointmentDate);
+        const isValidStatus = apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress";
+        return isValidStatus && isFuture;
       });
     } else if (activeTab === "history") {
       filtered = filtered.filter(apt => apt.status === "Completed" || apt.status === "Expired" || apt.status === "No-Show");
@@ -203,6 +232,15 @@ const DoctorSchedule = () => {
         // Tìm theo trạng thái (text search)
         const statusText = getStatusText(apt.status).toLowerCase();
         const matchesStatus = statusText.includes(searchLower);
+
+        // Tìm theo ngày/giờ hiển thị tiếng Việt
+        const appointmentDateVi = apt.appointmentDate
+          ? new Date(apt.appointmentDate).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+          : "";
+        const startTimeVi = apt.startTime
+          ? new Date(apt.startTime).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+          : "";
+        const matchesDate = appointmentDateVi.includes(searchLower) || startTimeVi.includes(searchLower);
         
         // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
         if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
@@ -215,7 +253,7 @@ const DoctorSchedule = () => {
         }
         
         // Nếu không có keyword đặc biệt, tìm theo basic search hoặc status text
-        return matchesBasic || matchesStatus;
+        return matchesBasic || matchesStatus || matchesDate;
       });
     }
 
@@ -229,23 +267,23 @@ const DoctorSchedule = () => {
       filtered = filtered.filter(apt => apt.status === selectedStatus);
     }
 
-    // Sort by appointmentDate ascending (ngày cũ nhất lên đầu, ngày mới nhất xuống dưới) sau đó sort by startTime ascending
+    // Sort by appointmentDate descending (ngày mới nhất lên đầu) sau đó sort by startTime descending
     filtered.sort((a, b) => {
-      // So sánh theo appointmentDate trước (ngày cũ nhất lên đầu)
+      // So sánh theo appointmentDate trước (ngày mới nhất lên đầu)
       const dateA = a.appointmentDate || '';
       const dateB = b.appointmentDate || '';
       if (dateA !== dateB) {
-        return dateA.localeCompare(dateB); // Ascending: ngày cũ nhất lên đầu
+        return dateB.localeCompare(dateA); // Descending: ngày mới nhất lên đầu
       }
       
-      // Nếu cùng ngày, sort theo startTime (giờ sớm nhất lên đầu trong cùng ngày)
+      // Nếu cùng ngày, sort theo startTime (giờ muộn nhất lên đầu trong cùng ngày)
       const timeA = a.startTime || '';
       const timeB = b.startTime || '';
-      return timeA.localeCompare(timeB); // Ascending: giờ sớm nhất lên đầu
+      return timeB.localeCompare(timeA); // Descending: giờ muộn nhất lên đầu
     });
 
     return filtered;
-  }, [appointments, activeTab, debouncedSearchText, selectedMode, selectedStatus]);
+  }, [appointments, activeTab, debouncedSearchText, selectedMode, selectedStatus, isTodayAppointment, isFutureAppointment]);
 
   // Reset page khi filtered appointments thay đổi
   useEffect(() => {
@@ -330,15 +368,22 @@ const DoctorSchedule = () => {
   // Stats calculation - sử dụng useMemo để tránh tính toán lại
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const now = new Date();
+    const historyStatuses = ["Completed", "Expired", "No-Show"];
     return {
       total: appointments.length,
-      // ⭐ Đếm số ca khám hôm nay (CheckedIn hoặc InProgress và là của ngày hôm nay)
+      // ⭐ Đếm số ca khám hôm nay (Approved, CheckedIn hoặc InProgress và là của ngày hôm nay)
       upcoming: appointments.filter(a => {
         const isToday = isTodayAppointment(a.appointmentDate);
-        const isValidStatus = a.status === "CheckedIn" || a.status === "InProgress";
+        const isValidStatus = a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress";
         return isValidStatus && isToday;
       }).length,
+      // ⭐ Đếm số ca khám sắp tới (Approved, CheckedIn hoặc InProgress và là từ ngày mai trở đi)
+      future: appointments.filter(a => {
+        const isFuture = isFutureAppointment(a.appointmentDate);
+        const isValidStatus = a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress";
+        return isValidStatus && isFuture;
+      }).length,
+      history: appointments.filter(a => historyStatuses.includes(a.status)).length,
       today: appointments.filter(a => {
         if (!a.appointmentDate) return false;
         const aptDate = new Date(a.appointmentDate).toISOString().split('T')[0];
@@ -348,7 +393,7 @@ const DoctorSchedule = () => {
       offline: appointments.filter(a => a.mode === "Offline").length,
       completed: appointments.filter(a => a.status === "Completed" || a.status === "Finalized").length,
     };
-  }, [appointments]);
+  }, [appointments, isTodayAppointment, isFutureAppointment]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
@@ -529,11 +574,20 @@ const DoctorSchedule = () => {
               } 
             />
             <Tab 
+              key="future" 
+              title={
+                <div className="flex items-center gap-2">
+                  <ArrowRightIcon className="w-5 h-5" />
+                  <span>Các ca khám sắp tới ({stats.future})</span>
+                </div>
+              } 
+            />
+            <Tab 
               key="history" 
               title={
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5" />
-                  <span>Lịch sử khám ({appointments.length - stats.upcoming})</span>
+                  <span>Lịch sử khám ({stats.history})</span>
                 </div>
               } 
             />
