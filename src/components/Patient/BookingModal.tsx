@@ -107,6 +107,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const reservationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scheduleRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeReservationRef = useRef<ReservationInfo | null>(null);
+  const prevScheduleKeyRef = useRef<string | null>(null); // Track previous schedule key để tránh gọi API không cần thiết
+  const prevReservationIdRef = useRef<string | null>(null); // Track previous reservation ID để tránh refresh không cần thiết
+  // Refs để lưu giá trị mới nhất cho interval callback (tránh stale closure)
+  const formDataRef = useRef<FormData>(formData);
+  const isOpenRef = useRef<boolean>(isOpen);
 
   const clearScheduleRefreshInterval = useCallback(() => {
     if (scheduleRefreshTimerRef.current) {
@@ -429,7 +434,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     };
 
     fetchDoctors();
-  }, [formData.date, formData.serviceId, formData.appointmentFor, releaseReservation]);
+    // ⭐ Loại bỏ releaseReservation khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.date, formData.serviceId, formData.appointmentFor]);
 
   // Sync selectedDate when formData.date changes (external updates)
   useEffect(() => {
@@ -520,31 +527,58 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     await loadDoctorSchedule(doctorId);
   };
 
+  // ⭐ Cập nhật refs mỗi khi giá trị thay đổi
+  useEffect(() => {
+    formDataRef.current = formData;
+    isOpenRef.current = isOpen;
+  }, [formData, isOpen]);
+
+  // === Auto-refresh doctor schedule (tối ưu để tránh gọi API quá nhiều) ===
   useEffect(() => {
     if (!isOpen || !formData.doctorUserId || !formData.serviceId || !formData.date) {
       clearScheduleRefreshInterval();
+      prevScheduleKeyRef.current = null; // Reset key khi không có đủ điều kiện
       return;
     }
 
-    const refresh = () => {
+    // ⭐ Tạo key từ các giá trị quan trọng để so sánh
+    const currentKey = `${formData.doctorUserId}-${formData.serviceId}-${formData.date}-${formData.appointmentFor}`;
+    
+    // ⭐ Chỉ gọi API khi key thay đổi (các giá trị thực sự thay đổi)
+    // Tránh gọi API mỗi lần component re-render
+    if (prevScheduleKeyRef.current !== currentKey) {
+      prevScheduleKeyRef.current = currentKey;
+      
+      // Clear interval cũ trước khi set mới
+      clearScheduleRefreshInterval();
+      
+      // Gọi API ngay lập tức khi có thay đổi thực sự
       loadDoctorSchedule(formData.doctorUserId, { silent: true });
-    };
-
-    refresh();
-    clearScheduleRefreshInterval();
-    scheduleRefreshTimerRef.current = setInterval(refresh, 45000);
+      
+      // ⭐ Set interval mới với thời gian dài hơn (90 giây thay vì 45 giây) để giảm tần suất
+      scheduleRefreshTimerRef.current = setInterval(() => {
+        // ⭐ Sử dụng refs để lấy giá trị mới nhất (tránh stale closure)
+        const currentFormData = formDataRef.current;
+        const currentIsOpen = isOpenRef.current;
+        
+        if (currentIsOpen && currentFormData.doctorUserId && currentFormData.serviceId && currentFormData.date) {
+          loadDoctorSchedule(currentFormData.doctorUserId, { silent: true });
+        }
+      }, 90000); // Tăng từ 45s lên 90s để giảm tần suất gọi API
+    }
 
     return () => {
       clearScheduleRefreshInterval();
     };
+    // ⭐ Loại bỏ loadDoctorSchedule và clearScheduleRefreshInterval khỏi dependencies
+    // để tránh re-run không cần thiết khi các function này được tạo lại
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isOpen,
     formData.doctorUserId,
     formData.serviceId,
     formData.date,
     formData.appointmentFor,
-    loadDoctorSchedule,
-    clearScheduleRefreshInterval,
   ]);
 
   // === Helper: Check if time is within available ranges ===
@@ -761,6 +795,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
       handleReservationSuccess(reserveRes.data as ReservationInfo);
 
+      // ⭐ Refresh doctor schedule ngay sau khi giữ chỗ thành công
+      // để cập nhật khoảng thời gian khả dụng (slot đã giữ chỗ sẽ không còn khả dụng)
+      if (formData.doctorUserId) {
+        await loadDoctorSchedule(formData.doctorUserId, { silent: true });
+      }
+
       // Parse endTime từ BE (UTC) và tạo Date object
       const endTimeDate = new Date(validateRes.data!.endTime);
       
@@ -789,6 +829,32 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       }));
     }
   };
+
+  // ⭐ Refresh schedule khi reservation thay đổi (tạo mới hoặc bị clear)
+  useEffect(() => {
+    if (!formData.doctorUserId || !formData.serviceId || !formData.date) {
+      return;
+    }
+
+    const currentReservationId = activeReservation?.timeslotId || null;
+    
+    // ⭐ Chỉ refresh khi reservation ID thay đổi (tạo mới hoặc bị clear)
+    if (prevReservationIdRef.current !== currentReservationId) {
+      prevReservationIdRef.current = currentReservationId;
+      
+      // Refresh schedule khi reservation thay đổi để cập nhật khoảng thời gian khả dụng
+      // Delay một chút để đảm bảo state đã được cập nhật
+      const timeoutId = setTimeout(() => {
+        loadDoctorSchedule(formData.doctorUserId, { silent: true });
+      }, 200);
+
+      return () => {
+        clearTimeout(timeoutId);
+      };
+    }
+    // ⭐ Chỉ refresh khi activeReservation thay đổi hoặc khi các điều kiện cần thiết thay đổi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeReservation, formData.doctorUserId, formData.serviceId, formData.date]);
 
   useEffect(() => {
     if (!activeReservation) {
@@ -1446,6 +1512,58 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                 const currentMinute = (formData.userStartTimeInput || '').split(':')[1] || '';
                                 const timeInput = v + ':' + currentMinute;
                                 const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                                
+                                // ⭐ Nếu xóa hết cả giờ và phút → clear tất cả, không hiển thị lỗi
+                                if ((!v || v === '') && (!currentMinute || currentMinute === '')) {
+                                  if (activeReservation) {
+                                    releaseReservation({ silent: true });
+                                  }
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    userStartTimeInput: timeInput,
+                                    // ⭐ Reset startTime/endTime khi xóa hết
+                                    startTime: utcNow,
+                                    endTime: new Date(utcNow.getTime() + serviceDuration * 60000),
+                                  }));
+                                  // ⭐ Clear error khi xóa hết
+                                  setTimeInputError(null);
+                                  setErrorMessage(null);
+                                  if (fieldErrors.userStartTimeInput) {
+                                    setFieldErrors((prev) => {
+                                      const next = { ...prev };
+                                      delete next.userStartTimeInput;
+                                      return next;
+                                    });
+                                  }
+                                  return; // ⭐ Dừng lại, không validate
+                                }
+                                
+                                // ⭐ Release reservation nếu đã xóa hết giờ và phút
+                                if (activeReservation && (!v || v === '') && (!currentMinute || currentMinute === '')) {
+                                  releaseReservation({ silent: true });
+                                }
+                                
+                                // ⭐ Nếu xóa giờ hoặc phút (chưa đầy đủ) → chỉ update input, không set startTime/endTime, không validate
+                                if (!v || v === '' || !currentMinute || currentMinute === '' || currentMinute.length < 2) {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    userStartTimeInput: timeInput,
+                                    // ⭐ Không set startTime/endTime khi chưa nhập đầy đủ
+                                  }));
+                                  // ⭐ Clear error khi xóa
+                                  setTimeInputError(null);
+                                  setErrorMessage(null);
+                                  if (fieldErrors.userStartTimeInput) {
+                                    setFieldErrors((prev) => {
+                                      const next = { ...prev };
+                                      delete next.userStartTimeInput;
+                                      return next;
+                                    });
+                                  }
+                                  return; // ⭐ Dừng lại, không validate
+                                }
+                                
+                                // ⭐ Chỉ xử lý khi đã nhập đầy đủ cả giờ và phút
                                 if (timeRegex.test(timeInput)) {
                                   const [hours, minutes] = timeInput.split(':');
                                   const vnHours = parseInt(hours);
@@ -1454,12 +1572,25 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                   const dateObj = new Date(formData.date + 'T00:00:00.000Z');
                                   dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
                                   const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
+                                  
+                                  // ⭐ Release reservation cũ nếu thời gian thay đổi
+                                  if (activeReservation) {
+                                    const newStartTimeISO = dateObj.toISOString();
+                                    const currentReservationStart = activeReservation.startTime;
+                                    if (currentReservationStart !== newStartTimeISO) {
+                                      // Thời gian đã thay đổi → release reservation cũ ngay lập tức
+                                      releaseReservation({ silent: true });
+                                    }
+                                  }
+                                  
                                   setFormData((prev) => ({
                                     ...prev,
                                     userStartTimeInput: timeInput,
                                     startTime: dateObj,
-                                    endTime: endTimeDate,
+                                    endTime: endTimeDate, 
                                   }));
+                                  
+                                  // ⭐ KHÔNG tự động validate - chỉ validate khi blur
                                 } else {
                                   setFormData((prev) => ({
                                     ...prev,
@@ -1469,7 +1600,20 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                               }}
                               onBlur={() => {
                                 const [h, m] = (formData.userStartTimeInput || '').split(':');
-                                if (h && m) handleTimeInputBlur(h + ':' + m);
+                                // ⭐ Chỉ validate khi đã nhập đầy đủ cả giờ và phút (phút phải có 2 chữ số)
+                                if (h && h !== '' && m && m !== '' && m.length >= 2) {
+                                  handleTimeInputBlur(h + ':' + m);
+                                } else {
+                                  // ⭐ Clear error khi blur mà chưa nhập đầy đủ
+                                  setTimeInputError(null);
+                                  if (fieldErrors.userStartTimeInput) {
+                                    setFieldErrors((prev) => {
+                                      const next = { ...prev };
+                                      delete next.userStartTimeInput;
+                                      return next;
+                                    });
+                                  }
+                                }
                               }}
                             />
                             <span className="font-semibold">:</span>
@@ -1498,6 +1642,58 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                 const currentHour = (formData.userStartTimeInput || '').split(':')[0] || '';
                                 const timeInput = currentHour + ':' + v;
                                 const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                                
+                                // ⭐ Nếu xóa hết cả giờ và phút → clear tất cả, không hiển thị lỗi
+                                if ((!currentHour || currentHour === '') && (!v || v === '')) {
+                                  if (activeReservation) {
+                                    releaseReservation({ silent: true });
+                                  }
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    userStartTimeInput: timeInput,
+                                    // ⭐ Reset startTime/endTime khi xóa hết
+                                    startTime: utcNow,
+                                    endTime: new Date(utcNow.getTime() + serviceDuration * 60000),
+                                  }));
+                                  // ⭐ Clear error khi xóa hết
+                                  setTimeInputError(null);
+                                  setErrorMessage(null);
+                                  if (fieldErrors.userStartTimeInput) {
+                                    setFieldErrors((prev) => {
+                                      const next = { ...prev };
+                                      delete next.userStartTimeInput;
+                                      return next;
+                                    });
+                                  }
+                                  return; // ⭐ Dừng lại, không validate
+                                }
+                                
+                                // ⭐ Release reservation nếu đã xóa hết giờ và phút
+                                if (activeReservation && (!currentHour || currentHour === '') && (!v || v === '')) {
+                                  releaseReservation({ silent: true });
+                                }
+                                
+                                // ⭐ Nếu xóa giờ hoặc phút (chưa đầy đủ) → chỉ update input, không set startTime/endTime, không validate
+                                if (!currentHour || currentHour === '' || !v || v === '' || v.length < 2) {
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    userStartTimeInput: timeInput,
+                                    // ⭐ Không set startTime/endTime khi chưa nhập đầy đủ
+                                  }));
+                                  // ⭐ Clear error khi xóa
+                                  setTimeInputError(null);
+                                  setErrorMessage(null);
+                                  if (fieldErrors.userStartTimeInput) {
+                                    setFieldErrors((prev) => {
+                                      const next = { ...prev };
+                                      delete next.userStartTimeInput;
+                                      return next;
+                                    });
+                                  }
+                                  return; // ⭐ Dừng lại, không validate
+                                }
+                                
+                                // ⭐ Chỉ xử lý khi đã nhập đầy đủ cả giờ và phút
                                 if (timeRegex.test(timeInput)) {
                                   const [hours, minutes] = timeInput.split(':');
                                   const vnHours = parseInt(hours);
@@ -1506,12 +1702,25 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                   const dateObj = new Date(formData.date + 'T00:00:00.000Z');
                                   dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
                                   const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
+                                  
+                                  // ⭐ Release reservation cũ nếu thời gian thay đổi
+                                  if (activeReservation) {
+                                    const newStartTimeISO = dateObj.toISOString();
+                                    const currentReservationStart = activeReservation.startTime;
+                                    if (currentReservationStart !== newStartTimeISO) {
+                                      // Thời gian đã thay đổi → release reservation cũ ngay lập tức
+                                      releaseReservation({ silent: true });
+                                    }
+                                  }
+                                  
                                   setFormData((prev) => ({
                                     ...prev,
                                     userStartTimeInput: timeInput,
                                     startTime: dateObj,
                                     endTime: endTimeDate,
                                   }));
+                                  
+                                  // ⭐ KHÔNG tự động validate - chỉ validate khi blur
                                 } else {
                                   setFormData((prev) => ({
                                     ...prev,
@@ -1521,7 +1730,20 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                               }}
                               onBlur={() => {
                                 const [h, m] = (formData.userStartTimeInput || '').split(':');
-                                if (h && m) handleTimeInputBlur(h + ':' + m);
+                                // ⭐ Chỉ validate khi đã nhập đầy đủ cả giờ và phút (phút phải có 2 chữ số)
+                                if (h && h !== '' && m && m !== '' && m.length >= 2) {
+                                  handleTimeInputBlur(h + ':' + m);
+                                } else {
+                                  // ⭐ Clear error khi blur mà chưa nhập đầy đủ
+                                  setTimeInputError(null);
+                                  if (fieldErrors.userStartTimeInput) {
+                                    setFieldErrors((prev) => {
+                                      const next = { ...prev };
+                                      delete next.userStartTimeInput;
+                                      return next;
+                                    });
+                                  }
+                                }
                               }}
                             />
                           </div>

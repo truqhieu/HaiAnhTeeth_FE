@@ -25,8 +25,10 @@ export interface AppointmentDetail {
   status: string;
   mode: string;
   appointmentDate: string;
-  startTime: string;
-  endTime: string;
+  startTime: string | null; // ISO string
+  startTimeFormatted?: string; // Formatted time string (HH:mm) for display
+  endTime: string | null; // ISO string
+  endTimeFormatted?: string; // Formatted time string (HH:mm) for display
 }
 
 export interface PatientDetail {

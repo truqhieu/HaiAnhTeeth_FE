@@ -73,6 +73,11 @@ const DoctorSchedule = () => {
   
   // ⭐ Track previous location để detect khi quay lại từ trang edit
   const prevLocationRef = useRef<string>(location.pathname);
+  // ⭐ Track previous values để tránh gọi API không cần thiết
+  const prevTabRef = useRef<string>(activeTab);
+  const prevDateRangeRef = useRef<{startDate: string | null, endDate: string | null}>(dateRange);
+  // ⭐ Ref để lưu dateRange mới nhất cho location change effect
+  const dateRangeRef = useRef<{startDate: string | null, endDate: string | null}>(dateRange);
 
   const fetchAppointments = useCallback(async (startDate?: string | null, endDate?: string | null, silent: boolean = false) => {
     try {
@@ -118,20 +123,81 @@ const DoctorSchedule = () => {
     if (isAuthenticated) {
       fetchAppointments(); // Fetch mặc định (2 tuần)
     }
-  }, [isAuthenticated, fetchAppointments]);
+    // ⭐ Loại bỏ fetchAppointments khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
-  // Refetch appointments khi dateRange thay đổi
+  // ⭐ Helper: Lấy ngày hôm nay theo timezone Việt Nam (memoize để tránh tạo lại function)
+  const getTodayInVietnam = useCallback((): string => {
+    const now = new Date();
+    // Lấy ngày hôm nay theo timezone Việt Nam
+    const vietnamDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // Format: YYYY-MM-DD
+    return vietnamDateStr;
+  }, []);
+
+  // ⭐ Tối ưu: Gộp 2 useEffect thành 1 và chỉ fetch khi các giá trị thực sự thay đổi
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    if (dateRange.startDate && dateRange.endDate) {
+    // ⭐ Chỉ fetch khi các giá trị thực sự thay đổi
+    const currentTab = activeTab;
+    const currentStartDate = dateRange.startDate;
+    const currentEndDate = dateRange.endDate;
+    const prevTab = prevTabRef.current;
+    const prevDateRange = prevDateRangeRef.current;
+    
+    // Kiểm tra xem có thay đổi thực sự không
+    const tabChanged = prevTab !== currentTab;
+    const dateRangeChanged = prevDateRange.startDate !== currentStartDate || prevDateRange.endDate !== currentEndDate;
+    
+    if (!tabChanged && !dateRangeChanged) {
+      return; // Không có thay đổi, không cần fetch
+    }
+    
+    // Cập nhật refs
+    prevTabRef.current = currentTab;
+    prevDateRangeRef.current = { startDate: currentStartDate, endDate: currentEndDate };
+    dateRangeRef.current = { startDate: currentStartDate, endDate: currentEndDate };
+    
+    if (currentTab === "history") {
+      // Khi chọn tab "history", fetch tất cả lịch sử (không giới hạn date range)
+      // Truyền null để BE lấy tất cả appointments không filter theo date
+      fetchAppointments(null, null);
+    } else if (currentTab === "future") {
+      // Khi chọn tab "future", fetch từ ngày mai đến chủ nhật tuần sau
+      const today = getTodayInVietnam();
+      const todayDate = new Date(today);
+      
+      // Ngày mai
+      const tomorrowDate = new Date(todayDate);
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      const tomorrowStr = tomorrowDate.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+      
+      // Chủ nhật tuần sau
+      const currentDayOfWeek = todayDate.getDay();
+      const daysUntilThisSunday = currentDayOfWeek === 0 ? 0 : 7 - currentDayOfWeek;
+      const thisSunday = new Date(todayDate);
+      thisSunday.setDate(thisSunday.getDate() + daysUntilThisSunday);
+      const nextSunday = new Date(thisSunday);
+      nextSunday.setDate(nextSunday.getDate() + 7);
+      const nextSundayStr = nextSunday.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+      
+      fetchAppointments(tomorrowStr, nextSundayStr);
+    } else if (currentStartDate && currentEndDate) {
       // Chỉ fetch khi cả startDate và endDate đều có giá trị
-      fetchAppointments(dateRange.startDate, dateRange.endDate);
-    } else if (!dateRange.startDate && !dateRange.endDate) {
+      fetchAppointments(currentStartDate, currentEndDate);
+    } else if (!currentStartDate && !currentEndDate) {
       // Khi clear date range, fetch lại mặc định (2 tuần)
       fetchAppointments();
     }
-  }, [dateRange.startDate, dateRange.endDate, isAuthenticated, fetchAppointments]);
+    // ⭐ Loại bỏ fetchAppointments và getTodayInVietnam khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, dateRange.startDate, dateRange.endDate, isAuthenticated]);
+
+  // ⭐ Cập nhật dateRangeRef khi dateRange thay đổi
+  useEffect(() => {
+    dateRangeRef.current = dateRange;
+  }, [dateRange]);
 
   // ⭐ Refetch appointments khi quay lại từ trang edit medical record
   useEffect(() => {
@@ -142,24 +208,21 @@ const DoctorSchedule = () => {
     
     // Nếu quay lại từ trang edit medical record (/doctor/medical-record/:id) về schedule
     if (prevPath.startsWith('/doctor/medical-record/') && currentPath === '/doctor/schedule') {
-      // Refetch appointments để cập nhật medicalRecordStatus
-      fetchAppointments(dateRange.startDate || undefined, dateRange.endDate || undefined, true);
+      // Refetch appointments để cập nhật medicalRecordStatus (silent để không hiển thị loading)
+      // Sử dụng ref để lấy giá trị mới nhất
+      const currentDateRange = dateRangeRef.current;
+      fetchAppointments(currentDateRange.startDate || undefined, currentDateRange.endDate || undefined, true);
     }
     
     // Update previous location
     prevLocationRef.current = currentPath;
-  }, [location.pathname, isAuthenticated, fetchAppointments, dateRange.startDate, dateRange.endDate]);
-
-  // ⭐ Helper: Lấy ngày hôm nay theo timezone Việt Nam (UTC+7) dưới dạng YYYY-MM-DD
-  const getTodayInVietnam = (): string => {
-    const now = new Date();
-    // Lấy ngày hôm nay theo timezone Việt Nam
-    const vietnamDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // Format: YYYY-MM-DD
-    return vietnamDateStr;
-  };
+    // ⭐ Loại bỏ fetchAppointments khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, isAuthenticated]);
 
   // ⭐ Helper: Kiểm tra xem appointment có phải là của ngày hôm nay không (theo timezone Việt Nam)
-  const isTodayAppointment = (appointmentDate: string): boolean => {
+  // Memoize để tránh tạo lại function mỗi lần render
+  const isTodayAppointment = useCallback((appointmentDate: string): boolean => {
     if (!appointmentDate) return false;
     
     const aptDate = new Date(appointmentDate);
@@ -172,10 +235,11 @@ const DoctorSchedule = () => {
     
     // So sánh chuỗi ngày (YYYY-MM-DD)
     return aptDateStr === today;
-  };
+  }, [getTodayInVietnam]);
 
-  // ⭐ Helper: Kiểm tra xem appointment có phải là sắp tới (từ ngày mai trở đi) không
-  const isFutureAppointment = (appointmentDate: string): boolean => {
+  // ⭐ Helper: Kiểm tra xem appointment có phải là sắp tới (từ ngày mai đến chủ nhật tuần sau) không
+  // Memoize để tránh tạo lại function mỗi lần render
+  const isFutureAppointment = useCallback((appointmentDate: string): boolean => {
     if (!appointmentDate) return false;
     
     const aptDate = new Date(appointmentDate);
@@ -186,13 +250,27 @@ const DoctorSchedule = () => {
     
     const today = getTodayInVietnam();
     const todayDate = new Date(today);
+    
+    // Ngày mai
     const tomorrowDate = new Date(todayDate);
     tomorrowDate.setDate(tomorrowDate.getDate() + 1);
     const tomorrowStr = tomorrowDate.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
     
-    // So sánh: appointment date >= tomorrow
-    return aptDateStr >= tomorrowStr;
-  };
+    // Chủ nhật tuần sau (chủ nhật của tuần tiếp theo)
+    // Tính toán: tìm chủ nhật của tuần hiện tại, sau đó cộng thêm 7 ngày để được chủ nhật tuần sau
+    const currentDayOfWeek = todayDate.getDay(); // 0 = Chủ nhật, 1 = Thứ 2, ..., 6 = Thứ 7
+    const daysUntilThisSunday = currentDayOfWeek === 0 ? 0 : 7 - currentDayOfWeek; // Số ngày đến chủ nhật tuần này
+    const thisSunday = new Date(todayDate);
+    thisSunday.setDate(thisSunday.getDate() + daysUntilThisSunday);
+    
+    // Chủ nhật tuần sau = chủ nhật tuần này + 7 ngày
+    const nextSunday = new Date(thisSunday);
+    nextSunday.setDate(nextSunday.getDate() + 7);
+    const nextSundayStr = nextSunday.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+    
+    // So sánh: appointment date >= tomorrow && appointment date <= chủ nhật tuần sau
+    return aptDateStr >= tomorrowStr && aptDateStr <= nextSundayStr;
+  }, [getTodayInVietnam]);
 
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
@@ -743,8 +821,11 @@ const DoctorSchedule = () => {
                         <UserIcon className="w-5 h-5" />
                       </Button>
                     </div>
-                    {/* Hiển thị nút hồ sơ khi InProgress hoặc Completed; ẩn khi CheckedIn */}
-                    {(appointment.status === "InProgress" || appointment.status === "Completed") && !appointment.noTreatment && (
+                    {/* Ẩn nút hồ sơ khi status là Approved hoặc CheckedIn; chỉ hiển thị khi InProgress hoặc Completed */}
+                    {appointment.status !== "Approved" && 
+                     appointment.status !== "CheckedIn" && 
+                     (appointment.status === "InProgress" || appointment.status === "Completed") &&
+                     !appointment.noTreatment && (
                       <div className="relative">
                         <Button
                           isIconOnly

@@ -118,27 +118,28 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  // Load notifications from API when user changes
+  // ⭐ Tối ưu: Gộp 2 useEffect thành 1 để tránh gọi API 2 lần khi user thay đổi
+  // Load notifications from API when user changes và auto-refresh
   useEffect(() => {
-    if (user) {
-      console.log('🔄 User detected, fetching notifications from API...');
-      refreshNotifications();
-    } else {
+    if (!user) {
       console.log('⚠️ No user, clearing notifications');
       setNotifications([]);
+      return;
     }
-  }, [user]);
 
-  // Auto-refresh notifications every 30 seconds
-  useEffect(() => {
-    if (!user) return;
+    // Gọi API ngay lập tức khi user thay đổi
+    console.log('🔄 User detected, fetching notifications from API...');
+    refreshNotifications();
 
+    // ⭐ Tăng interval từ 30s lên 60s để giảm tần suất gọi API
     const interval = setInterval(() => {
       console.log('🔄 Auto-refreshing notifications...');
       refreshNotifications();
-    }, 30000); // 30 seconds
+    }, 60000); // Tăng từ 30s lên 60s để giảm tần suất
 
     return () => clearInterval(interval);
+    // ⭐ Loại bỏ refreshNotifications khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const addNotification = (notificationData: Omit<Notification, 'id' | 'isRead' | 'createdAt'>) => {

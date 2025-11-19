@@ -270,7 +270,9 @@ const NurseSchedule = () => {
       fetchApprovedLeaves(); // ⭐ Lấy approved leaves
       fetchAppointments(); // Fetch mặc định (2 tuần)
     }
-  }, [isAuthenticated, authLoading]); // ⭐ FIX: Thêm authLoading vào dependency
+    // ⭐ Loại bỏ các function khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, authLoading]);
 
   // Debounce search text để tránh filter quá nhiều lần
   useEffect(() => {
@@ -292,6 +294,8 @@ const NurseSchedule = () => {
       // Khi clear date range, fetch lại mặc định (2 tuần)
       fetchAppointments();
     }
+    // ⭐ Loại bỏ fetchAppointments khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange.startDate, dateRange.endDate, isAuthenticated]); 
 
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết

@@ -198,6 +198,8 @@ const Appointments = () => {
 
     console.log("✅ Authenticated, fetching appointments");
     refetchAppointments();
+    // ⭐ Loại bỏ refetchAppointments khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
   const getStatusText = (appointment: Appointment): string => {
@@ -802,8 +804,13 @@ const Appointments = () => {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-48">
-                      <div className="text-sm text-gray-900">
-                        {appointment.serviceName}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-900">{appointment.serviceName}</span>
+                        {appointment.type === "FollowUp" && (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                            Tái khám
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-48">

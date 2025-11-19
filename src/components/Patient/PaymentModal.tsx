@@ -197,7 +197,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         console.log("🧹 Cleanup: Interval cleared");
       }
     };
-  }, [isOpen, paymentId, onClose]); // ⭐ BỎ status ra khỏi dependency
+    // ⭐ Loại bỏ onClose khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, paymentId]);
   // Không render gì nếu modal không mở
   if (!isOpen) {
     return null;

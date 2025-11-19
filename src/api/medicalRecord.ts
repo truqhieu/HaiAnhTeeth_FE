@@ -34,6 +34,10 @@ export interface MedicalRecord {
     dosage?: string;
     duration?: string;
   }>;
+  followUpRequired?: boolean;
+  followUpDate?: string | null;
+  followUpAppointmentId?: string | null;
+  followUpNote?: string | null;
   additionalServiceIds?: Array<{ _id: string; serviceName?: string; price?: number; finalPrice?: number; discountAmount?: number }>;
   status: "Draft" | "Finalized";
   createdAt: string;
@@ -116,6 +120,9 @@ export const medicalRecordApi = {
       };
       nurseNote?: string;
       approve?: boolean;
+      followUpRequired?: boolean;
+      followUpDate?: string | null;
+      followUpNote?: string;
     }
   ): Promise<ApiResponse<MedicalRecord>> => {
     return authenticatedApiCall(`/doctor/medical-records/${appointmentId}`, {

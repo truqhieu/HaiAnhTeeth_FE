@@ -44,12 +44,14 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
   useEffect(() => {
     fetchPendingCounts();
     
-    // Refresh mỗi 30 giây
+    // ⭐ Tăng interval từ 30s lên 60s để giảm tần suất gọi API
     const interval = setInterval(() => {
       fetchPendingCounts();
-    }, 30000);
+    }, 60000); // Tăng từ 30s lên 60s
 
     return () => clearInterval(interval);
+    // ⭐ Loại bỏ fetchPendingCounts khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPendingCounts = async () => {

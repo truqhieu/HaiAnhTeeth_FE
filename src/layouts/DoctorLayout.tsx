@@ -48,7 +48,8 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
     };
 
     fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
+    // ⭐ Tăng interval từ 30s lên 60s để giảm tần suất gọi API
+    const interval = setInterval(fetchUnread, 60000); // Tăng từ 30s lên 60s
     return () => {
       isMounted = false;
       clearInterval(interval);

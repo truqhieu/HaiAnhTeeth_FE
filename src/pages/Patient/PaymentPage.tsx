@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   CheckCircleIcon,
@@ -81,14 +81,25 @@ const PaymentPage = () => {
     fetchPaymentInfo();
   }, [paymentId, navigate]);
 
+  // ⭐ Tối ưu: Sử dụng ref để track polling count và tránh tạo interval mới mỗi lần count thay đổi
+  const pollingCountRef = useRef(0);
+  const paymentDataRef = useRef(paymentData);
+
+  // Cập nhật ref khi paymentData thay đổi
+  useEffect(() => {
+    paymentDataRef.current = paymentData;
+  }, [paymentData]);
+
   // Polling để check status thanh toán mỗi 5 giây
   useEffect(() => {
     if (!paymentId) return;
+    
     // ⭐ Chỉ polling nếu thanh toán chưa thành công, chưa hết hạn và chưa bị hủy
+    const currentPaymentData = paymentDataRef.current;
     if (
-      !paymentData?.confirmed &&
-      !paymentData?.expired &&
-      paymentData?.payment?.status === "Pending"
+      !currentPaymentData?.confirmed &&
+      !currentPaymentData?.expired &&
+      currentPaymentData?.payment?.status === "Pending"
     ) {
       const interval = setInterval(async () => {
         try {
@@ -96,12 +107,15 @@ const PaymentPage = () => {
           const res = await paymentApi.checkPaymentStatus(paymentId);
 
           if (res.data) {
-          setPaymentData(res.data);
+            setPaymentData(res.data);
+            paymentDataRef.current = res.data;
           }
-          setPollingCount((prev) => prev + 1);
+          
+          pollingCountRef.current += 1;
+          setPollingCount(pollingCountRef.current);
 
           console.log(
-            "🔄 Check #" + (pollingCount + 1) + " - Status:",
+            "🔄 Check #" + pollingCountRef.current + " - Status:",
             res.data?.payment?.status,
           );
 
@@ -132,7 +146,9 @@ const PaymentPage = () => {
 
       return () => clearInterval(interval);
     }
-  }, [paymentId, paymentData?.confirmed, paymentData?.payment?.status, navigate, pollingCount]);
+    // ⭐ Loại bỏ pollingCount khỏi dependencies để tránh tạo interval mới mỗi lần count thay đổi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentId, paymentData?.confirmed, paymentData?.expired, paymentData?.payment?.status, navigate]);
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString("vi-VN");
