@@ -18,6 +18,7 @@ import {
   ModalFooter,
   ModalHeader,
   Tooltip,
+  Pagination,
 } from "@heroui/react";
 import {
   MagnifyingGlassIcon,
@@ -436,6 +437,26 @@ const PromotionManagement = () => {
               )}
             </TableBody>
           </Table>
+        )}
+
+        {!loading && total > 0 && (
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 px-4 py-3 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
+              Hiển thị{" "}
+              {promotions.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} đến{" "}
+              {promotions.length === 0
+                ? 0
+                : Math.min((currentPage - 1) * itemsPerPage + promotions.length, total)}{" "}
+              trong tổng số {total} ưu đãi
+            </p>
+            <Pagination
+              page={currentPage}
+              total={totalPages}
+              onChange={setCurrentPage}
+              showControls
+              color="primary"
+            />
+          </div>
         )}
       </div>
 

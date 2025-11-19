@@ -227,7 +227,7 @@ const NewsPage = () => {
 
                     {/* Summary */}
                     <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                      {blog.summary}
+                      {blog.content}
                     </p>
 
                     {/* Meta Info */}

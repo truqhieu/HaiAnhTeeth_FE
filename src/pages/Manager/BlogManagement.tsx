@@ -19,6 +19,7 @@ import {
   ModalHeader,
   Tooltip,
   Image,
+  Pagination,
 } from "@heroui/react";
 import {
   MagnifyingGlassIcon,
@@ -306,7 +307,7 @@ const BlogManagement = () => {
                         {blog.title}
                       </p>
                       <p className="text-sm text-gray-500 line-clamp-1 mt-1">
-                        {blog.summary}
+                        {blog.content}
                       </p>
                     </div>
                   </TableCell>
@@ -372,6 +373,26 @@ const BlogManagement = () => {
         )}
       </div>
 
+      {!loading && total > 0 && (
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mt-4">
+          <p className="text-sm text-gray-500">
+            Hiển thị{" "}
+            {total === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} đến{" "}
+            {total === 0
+              ? 0
+              : Math.min((currentPage - 1) * itemsPerPage + blogs.length, total)}{" "}
+            trong tổng số {total} blog
+          </p>
+          <Pagination
+            page={currentPage}
+            total={totalPages}
+            onChange={setCurrentPage}
+            showControls
+            color="primary"
+          />
+        </div>
+      )}
+
       {/* Add Blog Modal */}
       <AddBlogModal
         isOpen={isAddModalOpen}
@@ -409,7 +430,7 @@ const BlogManagement = () => {
                     {selectedBlog.title}
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
-                    {selectedBlog.summary}
+                    {selectedBlog.content}
                   </p>
                 </div>
                 <p className="text-sm text-red-600">
