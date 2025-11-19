@@ -78,6 +78,17 @@ const formatVNTimeFromISO = (iso: string) => {
   });
 };
 
+const formatVNDateFromISO = (iso: string) => {
+  if (!iso) return "";
+  const dateObj = new Date(iso);
+  if (Number.isNaN(dateObj.getTime())) return "";
+  return dateObj.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
 const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -1521,7 +1532,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                           )}
                           {activeReservation && reservationCountdown > 0 && !timeInputError && (
                             <p className="mt-1 text-xs text-[#39BDCC]">
-                              Đang giữ chỗ đến {formatVNTimeFromISO(activeReservation.expiresAt)} ({reservationCountdown}s)
+                              Đang giữ chỗ {formatVNTimeFromISO(activeReservation.startTime)} -{" "}
+                              {formatVNTimeFromISO(activeReservation.endTime)} ngày{" "}
+                              {formatVNDateFromISO(activeReservation.startTime)} · Hết hạn giữ chỗ sau{" "}
+                              {reservationCountdown}s
                             </p>
                           )}
                         </div>
