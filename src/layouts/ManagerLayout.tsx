@@ -15,6 +15,7 @@ import {
   NewspaperIcon,
   ChartBarIcon,
   ClipboardDocumentListIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -159,6 +160,12 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       href: "/manager/blogs",
       icon: NewspaperIcon,
       current: location.pathname === "/manager/blogs",
+    },
+    {
+      name: "Quản lý giới thiệu",
+      href: "/manager/introductions",
+      icon: InformationCircleIcon,
+      current: location.pathname === "/manager/introductions",
     },
     {
       name: "Quản lý chính sách",

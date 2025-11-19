@@ -121,20 +121,42 @@ export const authApi = {
 
   // Update user profile
   updateProfile: async (
-    data: UpdateProfileData,
+    data: UpdateProfileData | FormData,
+    isFormData = false,
   ): Promise<ApiResponse<{ user: User }>> => {
-    const response = await authenticatedApiCall<{ user: User }>(
-      "/auth/profile",
-      {
+    if (isFormData && data instanceof FormData) {
+      const token = sessionStorage.getItem("authToken");
+      if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}/auth/profile`, {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(data),
-      },
-    );
+        body: data,
+        credentials: "include",
+      });
 
-    // Update user in sessionStorage if successful
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Không thể cập nhật hồ sơ");
+      }
+
+      const result = (await response.json()) as ApiResponse<{ user: User }>;
+      if (result.success && result.data) {
+        sessionStorage.setItem("user", JSON.stringify(result.data.user));
+      }
+      return result;
+    }
+
+    const response = await authenticatedApiCall<{ user: User }>("/auth/profile", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
     if (response.success && response.data) {
       sessionStorage.setItem("user", JSON.stringify(response.data.user));
     }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PhoneIcon } from "@heroicons/react/24/outline";
 import {
@@ -9,11 +10,13 @@ import {
 } from "@heroui/react";
 
 import PatientHeader from "../Patient/PatientHeader";
+import ConsultationFormModal from "./ConsultationFormModal";
 
 import { useAuth } from "@/contexts/AuthContext";
 
 const AppNavbar = () => {
   const { isAuthenticated, user } = useAuth();
+  const [isConsultationOpen, setIsConsultationOpen] = useState(false);
   const navigate = useNavigate();
 
   // Ensure role check is case-insensitive because BE returns lowercase (e.g., "patient")
@@ -99,13 +102,18 @@ const AppNavbar = () => {
             <Button
               className="bg-[#39BDCC] text-white font-semibold text-base lg:text-lg hover:bg-[#2ca6b5] px-5 lg:px-6 py-2 shadow-md hover:shadow-lg transition-all"
               size="lg"
-              onClick={() => navigate("/consultation")}
+              onClick={() => setIsConsultationOpen(true)}
             >
               Để lại thông tin tư vấn
             </Button>
           </div>
         </div>
       </div>
+
+      <ConsultationFormModal
+        isOpen={isConsultationOpen}
+        onClose={() => setIsConsultationOpen(false)}
+      />
     </header>
   );
 };

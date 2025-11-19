@@ -417,7 +417,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
             {/* Password Change Section */}
             <div className="pt-4 border-t border-gray-200">
               <p className="text-sm font-semibold text-gray-700 mb-4">
-                Đổi mật khẩu (không bắt buộc)
+                Đổi mật khẩu
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <Input
@@ -454,9 +454,6 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                   onValueChange={(value) => handleInputChange("confirmPassword", value)}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Để trống nếu không muốn đổi mật khẩu
-              </p>
             </div>
           </Form>
         </div>

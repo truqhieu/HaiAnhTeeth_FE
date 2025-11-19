@@ -164,14 +164,14 @@ const NewsDetailPage = () => {
             {/* Summary */}
             <div className="mb-8 p-6 bg-blue-50 border-l-4 border-[#39BDCC] rounded-r-lg">
               <p className="text-lg text-gray-800 font-medium leading-relaxed">
-                {blog.summary}
+                {blog.content}
               </p>
             </div>
 
             {/* TODO: Add full content when available from backend */}
             <div className="prose prose-lg max-w-none">
               <p className="text-gray-600 leading-relaxed">
-                {blog.summary}
+                {blog.content}
               </p>
             </div>
           </CardBody>

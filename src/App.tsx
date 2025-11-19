@@ -31,6 +31,7 @@ import ScheduleManagement from "@/pages/Manager/ScheduleManagement";
 import ComplaintManagement from "@/pages/Manager/ComplaintManagement";
 import LeaveRequestManagement from "@/pages/Manager/LeaveRequestManagement";
 import PromotionManagement from "@/pages/Manager/PromotionManagement";
+import IntroductionManagement from "@/pages/Manager/IntroductionManagement";
 import DeviceManagement from "@/pages/Manager/DeviceManagement";
 import BlogManagement from "@/pages/Manager/BlogManagement";
 import PolicyManagement from "@/pages/Manager/PolicyManagement";
@@ -39,10 +40,12 @@ import ManagerLayout from "@/layouts/ManagerLayout";
 import StaffLayout from "@/layouts/StaffLayout";
 import StaffDashboard from "@/pages/Staff/Dashboard";
 import PatientRequests from "@/pages/Staff/PatientRequests";
+import StaffProfileSettings from "@/pages/Staff/ProfileSettings";
 import DoctorLayout from "@/layouts/DoctorLayout";
-import { DoctorSchedule, DoctorChat } from "@/pages/Doctor";
+import { DoctorSchedule, DoctorChat, DoctorProfileSettings } from "@/pages/Doctor";
 import NurseLayout from "@/layouts/NurseLayout";
 import NurseSchedule from "@/pages/Nurse/NurseSchedule";
+import NurseProfileSettings from "@/pages/Nurse/ProfileSettings";
 import LeaveRequest from "@/pages/Common/LeaveRequest";
 import NotificationsPage from "@/pages/Common/Notifications";
 import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
@@ -112,6 +115,7 @@ function App() {
                   <Route element={<DeviceManagement />} path="devices" />
                   <Route element={<BlogManagement />} path="blogs" />
                   <Route element={<PolicyManagement />} path="policies" />
+                  <Route element={<IntroductionManagement />} path="introductions" />
                   <Route element={<NotificationsPage />} path="notifications" />
                 </Routes>
               </ManagerLayout>
@@ -128,6 +132,7 @@ function App() {
                   <Route element={<LeaveRequest />} path="leave-requests" />
                   <Route element={<PatientRequests />} path="patient-requests" />
                   <Route element={<NotificationsPage />} path="notifications" />
+                  <Route element={<StaffProfileSettings />} path="profile" />
                 </Routes>
               </StaffLayout>
             }
@@ -142,6 +147,7 @@ function App() {
                   <Route element={<DoctorSchedule />} path="schedule" />
                   <Route element={<DoctorChat />} path="chat" />
                   <Route element={<LeaveRequest />} path="leave-requests" />
+                  <Route element={<DoctorProfileSettings />} path="profile" />
                   <Route
                     element={<DoctorMedicalRecord />}
                     path="medical-record/:appointmentId"
@@ -166,6 +172,7 @@ function App() {
                   />
                   <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
                   <Route element={<NotificationsPage />} path="notifications" />
+                  <Route element={<NurseProfileSettings />} path="profile" />
                 </Routes>
               </NurseLayout>
             }

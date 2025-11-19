@@ -5,7 +5,7 @@ export interface Blog {
   _id: string;
   title: string;
   category: "News" | "Health Tips" | "Medical Services" | "Promotions" | "Patient Stories" | "Recruitment";
-  summary: string;
+  content: string;
   thumbnailUrl: string;
   authorUserId?: {
     _id: string;
@@ -21,7 +21,7 @@ export interface Blog {
 export interface CreateBlogData {
   title: string;
   category: string;
-  summary: string;
+  content: string;
   status: string;
   thumbnailFile?: File;
 }
@@ -30,7 +30,7 @@ export interface CreateBlogData {
 export interface UpdateBlogData {
   title?: string;
   category?: string;
-  summary?: string;
+  content?: string;
   status?: string;
   thumbnailFile?: File;
 }
@@ -72,7 +72,7 @@ export const blogApi = {
     if (params?.sort) queryParams.append("sort", params.sort);
 
     const queryString = queryParams.toString();
-    const endpoint = `/blogs${queryString ? `?${queryString}` : ""}`;
+    const endpoint = `/manager/blogs${queryString ? `?${queryString}` : ""}`;
 
     try {
       const result = await apiCall<any>(endpoint, {
@@ -94,7 +94,7 @@ export const blogApi = {
       success: boolean;
       message: string;
       data: Blog;
-    }>(`/blogs/${id}`, {
+    }>(`/manager/blogs/${id}`, {
       method: "GET",
     });
   },
@@ -149,7 +149,7 @@ export const blogApi = {
     const formData = new FormData();
     formData.append("title", data.title);
     formData.append("category", data.category);
-    formData.append("summary", data.summary);
+    formData.append("content", data.content);
     formData.append("status", data.status);
     
     if (data.thumbnailFile) {
@@ -189,7 +189,7 @@ export const blogApi = {
     
     if (data.title !== undefined) formData.append("title", data.title);
     if (data.category !== undefined) formData.append("category", data.category);
-    if (data.summary !== undefined) formData.append("summary", data.summary);
+    if (data.content !== undefined) formData.append("content", data.content);
     if (data.status !== undefined) formData.append("status", data.status);
     
     if (data.thumbnailFile) {

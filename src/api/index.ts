@@ -206,6 +206,8 @@ export { doctorApi } from './doctor';
 export type { DoctorAppointment, AppointmentDetail, PatientDetail } from './doctor';
 export { nurseApi } from './nurse';
 export type { NurseAppointment, NurseAppointmentDetail, NursePatientDetail } from './nurse';
+export { introductionApi } from "./introduction";
+export type { Introduction } from "./introduction";
 export type {
   AdminUser,
   CreateUserData,

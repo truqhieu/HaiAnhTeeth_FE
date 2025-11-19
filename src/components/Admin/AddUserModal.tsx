@@ -57,9 +57,15 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     if (!value) {
       return { isValid: false, errorMessage: "Vui lòng nhập họ và tên" };
     }
-    // Only allow letters, spaces, and Vietnamese characters
-    const nameRegex = /^[a-zA-ZÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐđ\s]+$/;
-    if (!nameRegex.test(value)) {
+    // Remove Vietnamese diacritics before validation so names with dấu are accepted
+    const normalizedValue = value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D");
+
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(normalizedValue)) {
       return { isValid: false, errorMessage: "Họ và tên chỉ được chứa chữ cái, không được có số" };
     }
     return { isValid: true, errorMessage: "" };

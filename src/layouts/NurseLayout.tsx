@@ -9,6 +9,7 @@ import {
   DocumentTextIcon,
   BellIcon,
 } from "@heroicons/react/24/outline";
+import { Avatar } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 
@@ -34,6 +35,12 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
       href: "/nurse/schedule",
       icon: CalendarIcon,
       current: location.pathname === "/nurse/schedule",
+    },
+    {
+      name: "Hồ sơ cá nhân",
+      href: "/nurse/profile",
+      icon: UserIcon,
+      current: location.pathname === "/nurse/profile",
     },
     {
       name: "Đơn xin nghỉ phép",
@@ -78,10 +85,17 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-pink-100 rounded-full">
-              <UserIcon className="w-5 h-5 text-pink-600" />
+            <Avatar
+              className="w-10 h-10 border border-pink-100"
+              name={user?.fullName || "Nurse"}
+              src={user?.avatar}
+            />
+            <div>
+              <p className="text-sm text-gray-500">Điều dưỡng</p>
+              <span className="text-lg font-semibold text-gray-800">
+                {user?.fullName || "Chưa xác định"}
+              </span>
             </div>
-            <span className="text-lg font-semibold text-gray-800">Điều dưỡng</span>
           </div>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <XMarkIcon className="w-6 h-6 text-gray-500" />
@@ -144,10 +158,14 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-pink-100 rounded-full">
-              <UserIcon className="w-5 h-5 text-pink-600" />
-            </div>
-            <span className="text-lg font-semibold text-gray-800">Điều dưỡng</span>
+            <Avatar
+              className="w-10 h-10 border border-pink-100"
+              name={user?.fullName || "Nurse"}
+              src={user?.avatar}
+            />
+            <span className="text-lg font-semibold text-gray-800">
+              {user?.fullName || "Điều dưỡng"}
+            </span>
           </div>
         </div>
 
