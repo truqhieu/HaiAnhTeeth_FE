@@ -573,44 +573,49 @@ const AllAppointments = () => {
 
   // ===== Helper: Check doctor có leave trong thời gian appointment không =====
   const isDoctorOnLeave = (appointment: Appointment): boolean => {
-    // ⭐ Cách 1: Check doctorStatus từ backend (nhanh và chính xác nhất)
+    // ⭐ Ưu tiên kiểm tra theo ngày của appointment (chính xác nhất)
+    if (appointment.doctorUserId && appointment.startTime && approvedLeaves.length > 0) {
+      const appointmentDate = new Date(appointment.startTime);
+      if (!isNaN(appointmentDate.getTime())) {
+        appointmentDate.setHours(0, 0, 0, 0);
+
+        const doctorId = appointment.doctorUserId.toString().trim();
+
+        // Check xem có leave nào cover appointmentDate không
+        const isOnLeaveByDate = approvedLeaves.some((leave) => {
+          const leaveUserId = (leave.userId?.toString() || leave.userId || "").trim();
+          
+          if (leaveUserId !== doctorId) {
+            return false;
+          }
+
+          const leaveStart = new Date(leave.startDate);
+          const leaveEnd = new Date(leave.endDate);
+          
+          if (isNaN(leaveStart.getTime()) || isNaN(leaveEnd.getTime())) {
+            return false;
+          }
+          
+          leaveStart.setHours(0, 0, 0, 0);
+          leaveEnd.setHours(23, 59, 59, 999);
+
+          return appointmentDate >= leaveStart && appointmentDate <= leaveEnd;
+        });
+        
+        // Nếu kiểm tra theo ngày cho kết quả, trả về ngay
+        if (isOnLeaveByDate) {
+          return true;
+        }
+      }
+    }
+
+    // ⭐ Fallback: Check doctorStatus từ backend (chỉ dùng khi không có approvedLeaves hoặc không có startTime)
+    // Backend đã được sửa để chỉ set doctorStatus = 'On Leave' khi appointment thực sự nằm trong khoảng nghỉ phép
     if (appointment.doctorStatus === 'On Leave') {
       return true;
     }
 
-    // ⭐ Cách 2: Fallback - check approved leaves (nếu doctorStatus chưa được update)
-    if (!appointment.doctorUserId || !appointment.startTime || approvedLeaves.length === 0) {
-      return false;
-    }
-
-    const appointmentDate = new Date(appointment.startTime);
-    if (isNaN(appointmentDate.getTime())) {
-      return false;
-    }
-    appointmentDate.setHours(0, 0, 0, 0);
-
-    const doctorId = appointment.doctorUserId.toString().trim();
-
-    // Check xem có leave nào cover appointmentDate không
-    return approvedLeaves.some((leave) => {
-      const leaveUserId = (leave.userId?.toString() || leave.userId || "").trim();
-      
-      if (leaveUserId !== doctorId) {
-        return false;
-      }
-
-      const leaveStart = new Date(leave.startDate);
-      const leaveEnd = new Date(leave.endDate);
-      
-      if (isNaN(leaveStart.getTime()) || isNaN(leaveEnd.getTime())) {
-        return false;
-      }
-      
-      leaveStart.setHours(0, 0, 0, 0);
-      leaveEnd.setHours(23, 59, 59, 999);
-
-      return appointmentDate >= leaveStart && appointmentDate <= leaveEnd;
-    });
+    return false;
   };
 
   const hasAppointmentDayEnded = (startTime: string): boolean => {

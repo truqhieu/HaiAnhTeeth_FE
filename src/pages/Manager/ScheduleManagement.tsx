@@ -224,7 +224,7 @@ const ScheduleManagement = () => {
               startContent={<PlusIcon className="h-4 w-4" />}
               onPress={handleAddSchedule}
             >
-              Thêm ca khám mới
+              Thêm lịch làm việc
             </Button>
           </div>
         </div>
@@ -269,24 +269,32 @@ const ScheduleManagement = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Chip
-                        className="bg-orange-100 text-orange-800"
-                        size="sm"
-                        variant="flat"
-                      >
-                        {doctor.workingHours.morningStart} - {doctor.workingHours.morningEnd}
-                      </Chip>
+                      {doctor.workingHours?.morningStart && doctor.workingHours?.morningEnd ? (
+                        <Chip
+                          className="bg-orange-100 text-orange-800"
+                          size="sm"
+                          variant="flat"
+                        >
+                          {doctor.workingHours.morningStart} - {doctor.workingHours.morningEnd}
+                        </Chip>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Chưa có lịch làm việc</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Chip
-                        className="bg-blue-100 text-blue-800"
-                        size="sm"
-                        variant="flat"
-                      >
-                        {doctor.workingHours.afternoonStart} - {doctor.workingHours.afternoonEnd}
-                      </Chip>
+                      {doctor.workingHours?.afternoonStart && doctor.workingHours?.afternoonEnd ? (
+                        <Chip
+                          className="bg-blue-100 text-blue-800"
+                          size="sm"
+                          variant="flat"
+                        >
+                          {doctor.workingHours.afternoonStart} - {doctor.workingHours.afternoonEnd}
+                        </Chip>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Chưa có lịch làm việc</span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>

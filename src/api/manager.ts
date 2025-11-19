@@ -116,9 +116,7 @@ export interface ManagerSchedule {
 export interface CreateScheduleData {
   doctorId: string;
   date: string;
-  shift: "Morning" | "Afternoon";
   roomId?: string;
-  maxSlots: number;
   workingHours: {
     morningStart: string;
     morningEnd: string;
@@ -595,6 +593,19 @@ export const managerApi = {
       {
         method: "GET",
         cache: "no-cache", // ⭐ Tránh 304 Not Modified
+      }
+    );
+  },
+
+  // ⭐ Get all doctors without working hours (chưa được manager tạo lịch làm việc)
+  getDoctorsWithoutWorkingHours: async (): Promise<
+    ApiResponse<{ _id: string; fullName: string; email: string }[]>
+  > => {
+    return authenticatedApiCall<{ _id: string; fullName: string; email: string }[]>(
+      `/manager/schedules/doctors-without-working-hours?t=${Date.now()}`,
+      {
+        method: "GET",
+        cache: "no-cache",
       }
     );
   },

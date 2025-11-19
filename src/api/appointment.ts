@@ -10,6 +10,24 @@ export interface AppointmentCreationData {
   doctorScheduleId: string;
   selectedSlot: { startTime: string; endTime: string };
   notes?: string;
+  reservedTimeslotId?: string | null;
+}
+
+export interface ReserveSlotPayload {
+  doctorUserId: string;
+  serviceId: string;
+  doctorScheduleId?: string | null;
+  date: string;
+  startTime: string;
+  appointmentFor: "self" | "other";
+}
+
+export interface ReserveSlotResponse {
+  timeslotId: string;
+  doctorScheduleId?: string | null;
+  startTime: string;
+  endTime: string;
+  expiresAt: string;
 }
 
 // The actual response data from the backend controller
@@ -45,6 +63,24 @@ export const appointmentApi = {
     data: AppointmentCreationData,
   ): Promise<ApiResponse<AppointmentResponseData>> => {
     return authenticatedApiCall("/appointments/consultation/create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  reserveSlot: async (
+    data: ReserveSlotPayload,
+  ): Promise<ApiResponse<ReserveSlotResponse>> => {
+    return authenticatedApiCall("/appointments/reserve-slot", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  releaseSlot: async (
+    data: { timeslotId: string },
+  ): Promise<ApiResponse<{ released: boolean }>> => {
+    return authenticatedApiCall("/appointments/release-slot", {
       method: "POST",
       body: JSON.stringify(data),
     });

@@ -17,15 +17,12 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  doctors,
+  doctors: _doctors, // ⭐ Không sử dụng nữa, dùng doctorsWithoutWorkingHours thay thế
   rooms,
 }) => {
   const [formData, setFormData] = useState({
     date: "",
-    shift: "",
     doctorId: "",
-    roomId: "",
-    maxSlots: "",
     workingHours: {
       morningStart: "08:00",
       morningEnd: "12:00",
@@ -36,19 +33,11 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // ⭐ State để lưu danh sách bác sĩ chưa có workingHours
+  const [doctorsWithoutWorkingHours, setDoctorsWithoutWorkingHours] = useState<Array<{ _id: string; fullName: string; email: string }>>([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
 
-  const shiftOptions = [
-    {
-      key: "Morning",
-      label: "Ca Sáng",
-    },
-    {
-      key: "Afternoon",
-      label: "Ca Chiều",
-    },
-  ];
-
-  // Reset form when modal opens
+  // ⭐ Fetch danh sách bác sĩ chưa có workingHours khi mở modal
   useEffect(() => {
     if (isOpen) {
       // Set default date to today
@@ -56,10 +45,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
 
       setFormData({
         date: today,
-        shift: "",
         doctorId: "",
-        roomId: "",
-        maxSlots: "10", // Default
         workingHours: {
           morningStart: "08:00",
           morningEnd: "12:00",
@@ -68,26 +54,32 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
         },
       });
       setShowValidation(false);
+      
+      // ⭐ Fetch danh sách bác sĩ chưa có workingHours
+      const fetchDoctorsWithoutWorkingHours = async () => {
+        try {
+          setLoadingDoctors(true);
+          const response = await managerApi.getDoctorsWithoutWorkingHours();
+          if (response.success && response.data && Array.isArray(response.data)) {
+            setDoctorsWithoutWorkingHours(response.data);
+          } else {
+            setDoctorsWithoutWorkingHours([]);
+          }
+        } catch (error: any) {
+          console.error("Error fetching doctors without working hours:", error);
+          setDoctorsWithoutWorkingHours([]);
+        } finally {
+          setLoadingDoctors(false);
+        }
+      };
+      
+      fetchDoctorsWithoutWorkingHours();
     }
   }, [isOpen]);
 
-  // Auto-fill time when shift is selected
-  const handleShiftChange = (shift: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      shift: shift,
-    }));
-  };
-
   // Validation states
   const isDateInvalid = showValidation && !formData.date;
-  const isShiftInvalid = showValidation && !formData.shift;
   const isDoctorInvalid = showValidation && !formData.doctorId;
-  const isMaxSlotsInvalid =
-    showValidation &&
-    (!formData.maxSlots ||
-      isNaN(Number(formData.maxSlots)) ||
-      Number(formData.maxSlots) <= 0);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
@@ -102,11 +94,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
     // Check validation
     const hasErrors =
       !formData.date ||
-      !formData.shift ||
-      !formData.doctorId ||
-      !formData.maxSlots ||
-      isNaN(Number(formData.maxSlots)) ||
-      Number(formData.maxSlots) <= 0;
+      !formData.doctorId;
 
     if (hasErrors) {
       return;
@@ -118,23 +106,21 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
       const scheduleData = {
         doctorId: formData.doctorId,
         date: formData.date,
-        shift: formData.shift as "Morning" | "Afternoon",
-        roomId: formData.roomId || undefined,
-        maxSlots: Number(formData.maxSlots),
         workingHours: formData.workingHours,
       };
 
       const response = await managerApi.createSchedule(scheduleData);
 
-      if (response.data?.status) {
-        toast.success(response.data.message || "Tạo ca khám thành công");
+      if (response.success) {
+        toast.success(response.message || "Tạo lịch làm việc thành công");
         if (onSuccess) {
           onSuccess();
         }
+        handleClose();
       }
     } catch (error: any) {
       toast.error(
-        error.message || "Có lỗi xảy ra khi tạo ca khám. Vui lòng thử lại.",
+        error.message || "Có lỗi xảy ra khi tạo lịch làm việc. Vui lòng thử lại.",
       );
     } finally {
       setIsSubmitting(false);
@@ -165,7 +151,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -174,7 +160,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
               className="h-8 w-auto object-contain"
               src="/logo1.png"
             />
-            <h2 className="text-2xl font-bold">Thêm ca khám mới</h2>
+            <h2 className="text-2xl font-bold">Thêm lịch làm việc mới</h2>
           </div>
           <Button
             isIconOnly
@@ -187,13 +173,14 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="px-4 py-4 pb-0">
+        <div className="px-4 py-4 pb-4">
           <Form
             autoComplete="off"
-            className="space-y-5"
+            className="space-y-4"
             onSubmit={handleSubmit}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
+            {/* Row 1: Ngày và Bác sĩ */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
               <Input
                 fullWidth
                 classNames={{
@@ -220,190 +207,241 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
                   base: "w-full",
                   trigger: "w-full"
                 }}
-                errorMessage={isShiftInvalid ? "Vui lòng chọn ca làm việc" : ""}
-                isInvalid={isShiftInvalid}
-                label={
-                  <>
-                    Ca làm việc <span className="text-red-500">*</span>
-                  </>
-                }
-                placeholder="Chọn ca"
-                selectedKeys={formData.shift ? [formData.shift] : []}
-                variant="bordered"
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
-
-                  handleShiftChange(selectedKey);
-                }}
-              >
-                {shiftOptions.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
-                ))}
-              </Select>
-
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                label="Giờ bắt đầu ca sáng"
-                type="time"
-                value={formData.workingHours.morningStart}
-                variant="bordered"
-                onValueChange={(value) => 
-                  setFormData(prev => ({
-                    ...prev,
-                    workingHours: {
-                      ...prev.workingHours,
-                      morningStart: value
-                    }
-                  }))
-                }
-              />
-
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                label="Giờ kết thúc ca sáng"
-                type="time"
-                value={formData.workingHours.morningEnd}
-                variant="bordered"
-                onValueChange={(value) => 
-                  setFormData(prev => ({
-                    ...prev,
-                    workingHours: {
-                      ...prev.workingHours,
-                      morningEnd: value
-                    }
-                  }))
-                }
-              />
-
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                label="Giờ bắt đầu ca chiều"
-                type="time"
-                value={formData.workingHours.afternoonStart}
-                variant="bordered"
-                onValueChange={(value) => 
-                  setFormData(prev => ({
-                    ...prev,
-                    workingHours: {
-                      ...prev.workingHours,
-                      afternoonStart: value
-                    }
-                  }))
-                }
-              />
-
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                label="Giờ kết thúc ca chiều"
-                type="time"
-                value={formData.workingHours.afternoonEnd}
-                variant="bordered"
-                onValueChange={(value) => 
-                  setFormData(prev => ({
-                    ...prev,
-                    workingHours: {
-                      ...prev.workingHours,
-                      afternoonEnd: value
-                    }
-                  }))
-                }
-              />
-
-              <Select
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  trigger: "w-full"
-                }}
                 errorMessage={isDoctorInvalid ? "Vui lòng chọn bác sĩ" : ""}
                 isInvalid={isDoctorInvalid}
+                isLoading={loadingDoctors}
                 label={
                   <>
                     Bác sĩ <span className="text-red-500">*</span>
                   </>
                 }
-                placeholder="Chọn bác sĩ"
+                placeholder={loadingDoctors ? "Đang tải..." : doctorsWithoutWorkingHours.length === 0 ? "Không có bác sĩ nào chưa có lịch làm việc" : "Chọn bác sĩ"}
                 selectedKeys={formData.doctorId ? [formData.doctorId] : []}
                 variant="bordered"
+                isDisabled={loadingDoctors || doctorsWithoutWorkingHours.length === 0}
                 onSelectionChange={(keys) => {
                   const selectedKey = Array.from(keys)[0] as string;
-
                   handleInputChange("doctorId", selectedKey);
                 }}
               >
-                {doctors.map((doctor) => (
+                {doctorsWithoutWorkingHours.map((doctor) => (
                   <SelectItem key={doctor._id} textValue={doctor.fullName}>
                     <div className="font-medium">{doctor.fullName}</div>
+                    <div className="text-xs text-gray-500">{doctor.email}</div>
                   </SelectItem>
                 ))}
               </Select>
+            </div>
 
-              <Select
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  trigger: "w-full"
-                }}
-                label="Phòng khám (Tùy chọn)"
-                placeholder="Chọn phòng"
-                selectedKeys={formData.roomId ? [formData.roomId] : []}
-                variant="bordered"
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
+            {/* Row 2: Ca sáng và Ca chiều */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full mb-4">
+              {/* ⭐ Ca sáng */}
+              <div className="pr-4 md:pr-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ca sáng
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Bắt đầu ca sáng */}
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1.5">
+                      Giờ bắt đầu
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.morningStart.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.workingHours.morningStart.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              morningStart: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.morningStart.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.workingHours.morningStart.split(':')[0] || '08';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              morningStart: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Kết thúc ca sáng */}
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1.5">
+                      Giờ kết thúc
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.morningEnd.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.workingHours.morningEnd.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              morningEnd: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.morningEnd.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.workingHours.morningEnd.split(':')[0] || '12';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              morningEnd: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                  handleInputChange("roomId", selectedKey);
-                }}
-              >
-                {rooms.map((room) => (
-                  <SelectItem key={room._id}>Phòng {room.name}</SelectItem>
-                ))}
-              </Select>
-
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                endContent={<span className="text-gray-500 text-sm">slot</span>}
-                errorMessage={
-                  isMaxSlotsInvalid
-                    ? "Vui lòng nhập số slot tối đa (lớn hơn 0)"
-                    : ""
-                }
-                isInvalid={isMaxSlotsInvalid}
-                label={
-                  <>
-                    Số slot tối đa <span className="text-red-500">*</span>
-                  </>
-                }
-                placeholder="Ví dụ: 10"
-                type="number"
-                value={formData.maxSlots}
-                variant="bordered"
-                onValueChange={(value) => handleInputChange("maxSlots", value)}
+              {/* ⭐ Ca chiều */}
+              <div className="pl-4 md:pl-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ca chiều
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Bắt đầu ca chiều */}
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1.5">
+                      Giờ bắt đầu
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.afternoonStart.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.workingHours.afternoonStart.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              afternoonStart: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.afternoonStart.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.workingHours.afternoonStart.split(':')[0] || '14';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              afternoonStart: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Kết thúc ca chiều */}
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1.5">
+                      Giờ kết thúc
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.afternoonEnd.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.workingHours.afternoonEnd.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              afternoonEnd: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.afternoonEnd.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.workingHours.afternoonEnd.split(':')[0] || '18';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              afternoonEnd: timeInput
+                            }
+                          }));
+                        }}
               />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </Form>
         </div>
@@ -424,7 +462,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
             variant="solid"
             onPress={handleSubmit}
           >
-            {isSubmitting ? "Đang thêm..." : "Thêm ca khám"}
+            {isSubmitting ? "Đang thêm..." : "Thêm lịch làm việc"}
           </Button>
         </div>
       </div>

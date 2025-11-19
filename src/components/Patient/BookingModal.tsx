@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { XMarkIcon, CalendarDaysIcon } from "@heroicons/react/24/solid";
 import DatePicker from "react-datepicker";
@@ -15,6 +15,7 @@ import {
   availableDoctorApi,
   getDoctorScheduleRange,
   validateAppointmentTime,
+  authApi,
   Service,
 } from "@/api";
 import type { Relative } from "@/api/appointment";
@@ -40,6 +41,14 @@ interface FormData {
   notes: string;
 }
 
+interface ReservationInfo {
+  timeslotId: string;
+  startTime: string;
+  endTime: string;
+  expiresAt: string;
+  doctorScheduleId?: string | null;
+}
+
 const now = new Date();
 const utcNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
 
@@ -58,6 +67,17 @@ const initialFormData: FormData = {
   notes: "",
 };
 
+const formatVNTimeFromISO = (iso: string) => {
+  if (!iso) return "";
+  const dateObj = new Date(iso);
+  if (Number.isNaN(dateObj.getTime())) return "";
+  return dateObj.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+};
+
 const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -71,6 +91,70 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const [doctorScheduleRange, setDoctorScheduleRange] = useState<any>(null);
   const [relatives, setRelatives] = useState<Relative[]>([]);
   const [loadingRelatives, setLoadingRelatives] = useState(false);
+  const [activeReservation, setActiveReservation] = useState<ReservationInfo | null>(null);
+  const [reservationCountdown, setReservationCountdown] = useState(0);
+  const reservationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scheduleRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeReservationRef = useRef<ReservationInfo | null>(null);
+
+  const clearScheduleRefreshInterval = useCallback(() => {
+    if (scheduleRefreshTimerRef.current) {
+      clearInterval(scheduleRefreshTimerRef.current);
+      scheduleRefreshTimerRef.current = null;
+    }
+  }, []);
+
+  const clearReservationTimer = useCallback(() => {
+    if (reservationTimerRef.current) {
+      clearInterval(reservationTimerRef.current);
+      reservationTimerRef.current = null;
+    }
+  }, []);
+
+  const releaseReservation = useCallback(
+    async ({ skipApi = false, silent = false }: { skipApi?: boolean; silent?: boolean } = {}) => {
+      const currentReservation = activeReservationRef.current;
+      if (!currentReservation) {
+        setReservationCountdown(0);
+        clearReservationTimer();
+        return;
+      }
+
+      clearReservationTimer();
+      setReservationCountdown(0);
+
+      if (!skipApi) {
+        try {
+          await appointmentApi.releaseSlot({
+            timeslotId: currentReservation.timeslotId,
+          });
+        } catch (error) {
+          if (!silent) {
+            console.error("Error releasing reservation:", error);
+          }
+        }
+      }
+
+      activeReservationRef.current = null;
+      setActiveReservation(null);
+    },
+    [clearReservationTimer],
+  );
+
+  const handleReservationSuccess = useCallback((reservation: ReservationInfo) => {
+    setActiveReservation(reservation);
+  }, []);
+
+  useEffect(() => {
+    activeReservationRef.current = activeReservation;
+  }, [activeReservation]);
+
+  useEffect(() => {
+    return () => {
+      clearScheduleRefreshInterval();
+      clearReservationTimer();
+    };
+  }, [clearReservationTimer, clearScheduleRefreshInterval]);
 
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [loadingSchedule, setLoadingSchedule] = useState(false);
@@ -96,7 +180,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const serviceDuration = selectedService?.durationMinutes || 30;
 
   // Function to reset form data completely
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setFormData(initialFormData);
     setAvailableDoctors([]);
     setDoctorScheduleRange(null);
@@ -106,7 +190,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     setLoadingDoctors(false);
     setLoadingSchedule(false);
     setSubmitting(false);
-  };
+    releaseReservation({ skipApi: true, silent: true });
+  }, [releaseReservation]);
 
   // === KHÔNG reset form khi modal mở - Chỉ reset sau khi submit thành công hoặc F5 ===
   // useEffect(() => {
@@ -151,7 +236,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     
     // Update ref for next comparison
     prevUserIdRef.current = currentUserId;
-  }, [user?.id, user?._id]); // Reset when user ID changes (logout/login)
+  }, [user?.id, user?._id, resetForm]); // Reset when user ID changes (logout/login)
 
   // Clear service/doctor fields mỗi khi modal đóng để tránh dữ liệu cũ
   useEffect(() => {
@@ -179,8 +264,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         startTime: utcNow,
         endTime: new Date(utcNow.getTime() + 30 * 60000),
       }));
+      releaseReservation({ silent: true });
+      clearScheduleRefreshInterval();
     }
-  }, [isOpen]);
+  }, [isOpen, releaseReservation, clearScheduleRefreshInterval]);
 
   // === Auto-fill user info (chỉ khi appointmentFor thay đổi sang "self", không ghi đè dữ liệu đã nhập) ===
   useEffect(() => {
@@ -190,24 +277,57 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     const prevAppointmentFor = prevAppointmentForRef.current;
     const currentAppointmentFor = formData.appointmentFor;
     
-    if (currentAppointmentFor === "self" && user) {
-      // Chỉ auto-fill nếu:
-      // 1. appointmentFor vừa thay đổi sang "self" (từ "other" hoặc lần đầu)
-      // 2. Hoặc các field đang trống
-      if (prevAppointmentFor !== "self" || !formData.fullName || !formData.email) {
+    // ⭐ Khi chuyển giữa "self" và "other", clear tất cả các lỗi vì dữ liệu sẽ khác nhau
+    if (
+      (currentAppointmentFor === "other" && prevAppointmentFor === "self") ||
+      (currentAppointmentFor === "self" && prevAppointmentFor === "other")
+    ) {
+      releaseReservation({ silent: true });
+      setFieldErrors({});
+      setTimeInputError(null);
+      setErrorMessage(null);
+
+      if (currentAppointmentFor === "other" && prevAppointmentFor === "self") {
         setFormData((prev) => ({
           ...prev,
-          // Chỉ auto-fill nếu field đang trống, không ghi đè dữ liệu đã nhập
+          phoneNumber: "",
+        }));
+      }
+    }
+    
+    if (currentAppointmentFor === "self" && user) {
+      const shouldAutoFillProfile =
+        prevAppointmentFor !== "self" ||
+        !formData.fullName ||
+        !formData.email;
+
+      if (shouldAutoFillProfile) {
+        const userPhone =
+          user.phoneNumber || (user as any).phone || "";
+        const forceProfilePhone = prevAppointmentFor !== "self";
+
+        setFormData((prev) => ({
+          ...prev,
           fullName: prev.fullName || user.fullName || "",
           email: prev.email || user.email || "",
-          phoneNumber: prev.phoneNumber || user.phoneNumber || "",
+          phoneNumber: forceProfilePhone
+            ? userPhone || prev.phoneNumber || ""
+            : prev.phoneNumber || userPhone || "",
         }));
+
+        // Clear error cho phoneNumber nếu được auto-fill
+        setFieldErrors((prev) => {
+          if (!prev.phoneNumber) return prev;
+          const next = { ...prev };
+          delete next.phoneNumber;
+          return next;
+        });
       }
     }
     
     // Update ref
     prevAppointmentForRef.current = currentAppointmentFor;
-  }, [isOpen, user, formData.appointmentFor, formData.fullName, formData.email]);
+  }, [isOpen, user, formData.appointmentFor, formData.fullName, formData.email, formData.phoneNumber, releaseReservation]);
 
   // === Fetch relatives khi appointmentFor === "other" ===
   useEffect(() => {
@@ -264,6 +384,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       setErrorMessage(null); // ⭐ Clear error khi fetch doctors mới
       setDoctorScheduleRange(null); // ⭐ Clear schedule range cũ
       setTimeInputError(null); // ⭐ Clear time input error
+      releaseReservation({ silent: true });
       
       // ⭐ Clear input fields khi đổi ngày/service/appointmentFor
       setFormData((prev) => ({
@@ -297,7 +418,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     };
 
     fetchDoctors();
-  }, [formData.date, formData.serviceId, formData.appointmentFor]);
+  }, [formData.date, formData.serviceId, formData.appointmentFor, releaseReservation]);
 
   // Sync selectedDate when formData.date changes (external updates)
   useEffect(() => {
@@ -306,8 +427,69 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }
   }, [formData.date]);
 
+  const loadDoctorSchedule = useCallback(
+    async (doctorId: string, options: { silent?: boolean } = {}) => {
+      if (!doctorId || !formData.serviceId || !formData.date) return;
+      const { silent = false } = options;
+
+      if (!silent) {
+        setLoadingSchedule(true);
+      }
+      if (!silent) {
+        setErrorMessage(null);
+      }
+
+      try {
+        const scheduleRes = await getDoctorScheduleRange(
+          doctorId,
+          formData.serviceId,
+          formData.date,
+          formData.appointmentFor,
+        );
+
+        if (scheduleRes.success && scheduleRes.data) {
+          const data = scheduleRes.data as any;
+          if (data.scheduleRanges && Array.isArray(data.scheduleRanges)) {
+            setDoctorScheduleRange(data.scheduleRanges);
+            setFormData((prev) => ({
+              ...prev,
+              doctorScheduleId: data.doctorScheduleId || prev.doctorScheduleId || null,
+            }));
+
+            if (data.message) {
+              if (isNonCriticalAvailabilityMessage(data.message)) {
+                if (!silent) setErrorMessage(null);
+              } else if (!silent) {
+                setErrorMessage(data.message);
+              }
+            } else if (!silent) {
+              setErrorMessage(null);
+            }
+          } else if (!silent) {
+            setDoctorScheduleRange(null);
+          }
+        } else if (!silent) {
+          setErrorMessage(scheduleRes.message || "Không thể tải lịch bác sĩ");
+          setDoctorScheduleRange(null);
+        }
+      } catch (err) {
+        console.error("Error fetching doctor schedule:", err);
+        if (!silent) {
+          setErrorMessage("Lỗi tải lịch bác sĩ");
+        }
+        setDoctorScheduleRange(null);
+      } finally {
+        if (!silent) {
+          setLoadingSchedule(false);
+        }
+      }
+    },
+    [formData.serviceId, formData.date, formData.appointmentFor, isNonCriticalAvailabilityMessage],
+  );
+
   // === Fetch doctor schedule when doctor is selected ===
   const handleDoctorSelect = async (doctorId: string) => {
+    await releaseReservation({ silent: true });
     setFormData((prev) => ({
       ...prev,
       doctorUserId: doctorId,
@@ -324,51 +506,35 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     });
     setTimeInputError(null);
 
-    setLoadingSchedule(true);
-    setErrorMessage(null);
-    try {
-      const scheduleRes = await getDoctorScheduleRange(
-        doctorId,
-        formData.serviceId,
-        formData.date,
-        formData.appointmentFor
-      );
-
-      if (scheduleRes.success && scheduleRes.data) {
-        const data = scheduleRes.data as any; // Type assertion để handle cả AvailableTimeRangeData và AvailableStartTimesData
-        if (data.scheduleRanges && Array.isArray(data.scheduleRanges)) {
-          setDoctorScheduleRange(data.scheduleRanges);
-        // ⭐ Lưu doctorScheduleId từ response
-        setFormData((prev) => ({
-          ...prev,
-            doctorScheduleId: data.doctorScheduleId || null,
-        }));
-        
-        // ⭐ Chỉ hiển thị banner nếu là lỗi quan trọng; ẩn các thông điệp “hết chỗ/qua giờ/không đủ thời gian”
-          if (data.message) {
-            if (isNonCriticalAvailabilityMessage(data.message)) {
-              setErrorMessage(null);
-            } else {
-              setErrorMessage(data.message);
-            }
-          } else {
-            setErrorMessage(null);
-          }
-        } else {
-          setDoctorScheduleRange(null);
-        }
-      } else {
-        setErrorMessage(scheduleRes.message || "Không thể tải lịch bác sĩ");
-        setDoctorScheduleRange(null);
-      }
-    } catch (err) {
-      console.error("Error fetching doctor schedule:", err);
-      setErrorMessage("Lỗi tải lịch bác sĩ");
-      setDoctorScheduleRange(null);
-      } finally {
-      setLoadingSchedule(false);
-    }
+    await loadDoctorSchedule(doctorId);
   };
+
+  useEffect(() => {
+    if (!isOpen || !formData.doctorUserId || !formData.serviceId || !formData.date) {
+      clearScheduleRefreshInterval();
+      return;
+    }
+
+    const refresh = () => {
+      loadDoctorSchedule(formData.doctorUserId, { silent: true });
+    };
+
+    refresh();
+    clearScheduleRefreshInterval();
+    scheduleRefreshTimerRef.current = setInterval(refresh, 45000);
+
+    return () => {
+      clearScheduleRefreshInterval();
+    };
+  }, [
+    isOpen,
+    formData.doctorUserId,
+    formData.serviceId,
+    formData.date,
+    formData.appointmentFor,
+    loadDoctorSchedule,
+    clearScheduleRefreshInterval,
+  ]);
 
   // === Helper: Check if time is within available ranges ===
   const isTimeInAvailableRanges = (timeInput: string) => {
@@ -534,35 +700,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
     const startTimeISO = dateObj.toISOString();
 
-    // ⭐ FE validation: không cho đặt thời gian ở quá khứ
-    // ⭐ Clear tất cả lỗi cũ trước khi validate
+    // ⭐ Clear tất cả lỗi cũ trước khi gọi BE validate
     setTimeInputError(null);
     setErrorMessage(null);
-    
-    const nowUtc = new Date();
-    if (doctorScheduleRange && doctorScheduleRange.length > 0) {
-      const earliestFutureSlot = doctorScheduleRange.some((range: any) => {
-        const rangeStart = new Date(range.startTime);
-        return rangeStart.getTime() > nowUtc.getTime();
-      });
 
-      if (!earliestFutureSlot && !isTimeInAvailableRanges(timeInput).isValid) {
-      // ⭐ Chỉ hiển thị lỗi quá khứ, không gọi backend validation
-            if (isOpen) {
-              setTimeInputError("Không thể đặt thời gian ở quá khứ");
-              setErrorMessage(null);
-            }
-            setFormData((prev) => ({
-              ...prev,
-              userStartTimeInput: "",
-              endTime: utcNow,
-            }));
-        return;
-      }
-    }
-
-    // ⭐ Chỉ gọi backend validation sau khi đã pass FE validation quá khứ
+    // ⭐ Chỉ gọi backend validation, để BE quyết định trường hợp quá khứ
     try {
+      await releaseReservation({ silent: true });
       const validateRes = await validateAppointmentTime(
         formData.doctorUserId,
         formData.serviceId,
@@ -584,6 +728,28 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         return;
       }
 
+      const reserveRes = await appointmentApi.reserveSlot({
+        doctorUserId: formData.doctorUserId,
+        serviceId: formData.serviceId,
+        doctorScheduleId: formData.doctorScheduleId,
+        date: formData.date,
+        startTime: startTimeISO,
+        appointmentFor: formData.appointmentFor,
+      });
+
+      if (!reserveRes.success || !reserveRes.data) {
+        const reserveError = reserveRes.message || "Không thể giữ chỗ cho khung giờ này.";
+        setTimeInputError(reserveError);
+        setFormData((prev) => ({
+          ...prev,
+          userStartTimeInput: "",
+          endTime: utcNow,
+        }));
+        return;
+      }
+
+      handleReservationSuccess(reserveRes.data as ReservationInfo);
+
       // Parse endTime từ BE (UTC) và tạo Date object
       const endTimeDate = new Date(validateRes.data!.endTime);
       
@@ -591,8 +757,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       // ⭐ Clear error khi validation thành công
       setTimeInputError(null);
       setErrorMessage(null);
-    setFormData((prev) => ({
-      ...prev,
+      setFormData((prev) => ({
+        ...prev,
         userStartTimeInput: timeInput,
         startTime: dateObj,
         endTime: endTimeDate,
@@ -605,12 +771,46 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       setTimeInputError(errorMsg);
       setErrorMessage(null);
       // Clear endTime on error
+      await releaseReservation({ silent: true });
       setFormData((prev) => ({
         ...prev,
         endTime: utcNow,
       }));
     }
   };
+
+  useEffect(() => {
+    if (!activeReservation) {
+      clearReservationTimer();
+      setReservationCountdown(0);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const expiresAt = new Date(activeReservation.expiresAt).getTime();
+      const diff = expiresAt - Date.now();
+      if (diff <= 0) {
+        clearReservationTimer();
+        releaseReservation({ silent: true });
+        setTimeInputError("Giữ chỗ đã hết hạn. Vui lòng chọn lại khung giờ.");
+        setFormData((prev) => ({
+          ...prev,
+          userStartTimeInput: "",
+          endTime: utcNow,
+        }));
+        return;
+      }
+      setReservationCountdown(Math.ceil(diff / 1000));
+    };
+
+    updateCountdown();
+    clearReservationTimer();
+    reservationTimerRef.current = setInterval(updateCountdown, 1000);
+
+    return () => {
+      clearReservationTimer();
+    };
+  }, [activeReservation, clearReservationTimer, releaseReservation]);
 
   // === Handlers ===
   const handleInputChange = (
@@ -785,6 +985,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           endTime: formData.endTime.toISOString(),
         },
         notes: formData.notes,
+        reservedTimeslotId: activeReservation?.timeslotId || null,
       };
 
       const res = await appointmentApi.create(payload);
@@ -793,15 +994,28 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         // Reset form after successful booking
         resetForm();
         
-        // ⭐ Nếu đặt cho bản thân và có nhập phoneNumber, cập nhật ngay hồ sơ người dùng trong AuthContext
-        if (formData.appointmentFor === 'self' && formData.phoneNumber && user) {
-          try {
-            updateUser({
-              ...user,
-              phoneNumber: formData.phoneNumber,
-            } as any);
-          } catch (e) {
-            console.warn('Không thể cập nhật phoneNumber vào AuthContext:', e);
+        // ⭐ Nếu đặt cho bản thân và có nhập phoneNumber, cập nhật hồ sơ người dùng (BE + AuthContext)
+        if (formData.appointmentFor === "self" && formData.phoneNumber && user) {
+          const currentPhone =
+            (user as any).phoneNumber || (user as any).phone || "";
+
+          if (formData.phoneNumber !== currentPhone) {
+            try {
+              const updateProfileRes = await authApi.updateProfile({
+                phoneNumber: formData.phoneNumber,
+              });
+
+              if (updateProfileRes.success && updateProfileRes.data?.user) {
+                updateUser(updateProfileRes.data.user as any);
+              } else {
+                console.warn(
+                  "Không thể cập nhật phoneNumber lên server:",
+                  updateProfileRes.message,
+                );
+              }
+            } catch (e) {
+              console.warn("Không thể cập nhật phoneNumber lên server:", e);
+            }
           }
         }
         
@@ -837,6 +1051,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
             ...prev,
             endTime: utcNow,
           }));
+          await releaseReservation({ silent: true });
         } else {
           // Ẩn banner với các thông điệp người dùng đã thấy ở panel “Khoảng thời gian khả dụng”
           if (isNonCriticalAvailabilityMessage(errorMsg)) {
@@ -845,6 +1060,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
             setErrorMessage(errorMsg);
           }
         }
+        await releaseReservation({ silent: true });
       }
     } catch (err: any) {
       console.error("Error booking:", err);
@@ -865,6 +1081,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           ...prev,
           endTime: utcNow,
         }));
+        await releaseReservation({ silent: true });
       } else {
         // Ẩn banner với các thông điệp người dùng đã thấy ở panel
         if (isNonCriticalAvailabilityMessage(errorMsg)) {
@@ -873,6 +1090,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           setErrorMessage(errorMsg);
         }
       }
+      await releaseReservation({ silent: true });
     } finally {
       setSubmitting(false);
     }
@@ -1299,6 +1517,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                           {(timeInputError || fieldErrors.userStartTimeInput) && (
                             <p className="mt-1 text-xs text-red-600 font-medium">
                               {timeInputError || fieldErrors.userStartTimeInput}
+                            </p>
+                          )}
+                          {activeReservation && reservationCountdown > 0 && !timeInputError && (
+                            <p className="mt-1 text-xs text-[#39BDCC]">
+                              Đang giữ chỗ đến {formatVNTimeFromISO(activeReservation.expiresAt)} ({reservationCountdown}s)
                             </p>
                           )}
                         </div>

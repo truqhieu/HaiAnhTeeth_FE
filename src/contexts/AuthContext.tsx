@@ -12,6 +12,29 @@ import {
   restoreAuth,
 } from "@/store/slices/authSlice";
 
+const normalizeUserData = (userData: AuthUser): AuthUser => {
+  const normalizedRole = userData.role ? userData.role.toLowerCase() : userData.role;
+
+  const normalizedUser = {
+    ...userData,
+    _id: userData._id || userData.id || "",
+    id: userData.id || userData._id || "",
+    role: normalizedRole,
+  };
+
+  const phoneValue =
+    (normalizedUser as AuthUser).phone ??
+    (normalizedUser as AuthUser).phoneNumber ??
+    "";
+
+  return {
+    ...(normalizedUser as AuthUser),
+    phone: phoneValue || undefined,
+    phoneNumber:
+      (normalizedUser as AuthUser).phoneNumber ?? phoneValue ?? undefined,
+  };
+};
+
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -65,12 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             (parsedUser as any).emergencyContact,
           );
           // Normalize user data: ensure _id is set
-          const normalizedUser = {
-            ...parsedUser,
-            _id: parsedUser._id || parsedUser.id || "",
-            id: parsedUser.id || parsedUser._id || "",
-            role: parsedUser.role?.toLowerCase(),
-          };
+          const normalizedUser = normalizeUserData(parsedUser as AuthUser);
 
           console.log("🔍 [AuthContext] Restoring auth with user:", normalizedUser);
           console.log("🔍 [AuthContext] Restoring auth with token:", storedToken);
@@ -109,12 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const login = (userData: AuthUser, token: string) => {
     // Normalize user data: ensure _id is set from either id or _id
-    const normalizedUser = {
-      ...userData,
-      _id: userData._id || userData.id || "",
-      id: userData.id || userData._id || "",
-      role: userData.role?.toLowerCase(),
-    };
+    const normalizedUser = normalizeUserData(userData);
 
     console.log("🔍 [AuthContext] Login called with user:", normalizedUser);
 
@@ -150,12 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const updateUserInfo = (userData: AuthUser) => {
     // Normalize user data: ensure _id is set
-    const normalizedUser = {
-      ...userData,
-      _id: userData._id || userData.id || "",
-      id: userData.id || userData._id || "",
-      role: userData.role?.toLowerCase(),
-    };
+    const normalizedUser = normalizeUserData(userData);
 
     console.log(
       "🔍 [AuthContext] updateUserInfo called with emergencyContact:",
@@ -211,12 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (storedUser && storedToken && !user) {
         console.log("🔍 [AuthContext] Storage changed, restoring auth");
         const parsedUser = JSON.parse(storedUser) as AuthUser;
-        const normalizedUser = {
-          ...parsedUser,
-          _id: parsedUser._id || parsedUser.id || "",
-          id: parsedUser.id || parsedUser._id || "",
-          role: parsedUser.role?.toLowerCase(),
-        };
+        const normalizedUser = normalizeUserData(parsedUser as AuthUser);
         dispatch(setAuth({ user: normalizedUser, token: storedToken }));
       }
     };
@@ -233,12 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (storedUser && storedToken && !user) {
       console.log("🔍 [AuthContext] Found stored auth but no user in state, restoring immediately");
       const parsedUser = JSON.parse(storedUser) as AuthUser;
-      const normalizedUser = {
-        ...parsedUser,
-        _id: parsedUser._id || parsedUser.id || "",
-        id: parsedUser.id || parsedUser._id || "",
-        role: parsedUser.role?.toLowerCase(),
-      };
+      const normalizedUser = normalizeUserData(parsedUser as AuthUser);
       dispatch(setAuth({ user: normalizedUser, token: storedToken }));
     }
   }, [dispatch, user]);
