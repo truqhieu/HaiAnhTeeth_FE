@@ -11,7 +11,7 @@ import {
   BellIcon,
   ChatBubbleOvalLeftIcon,
 } from "@heroicons/react/24/outline";
-
+import { Avatar } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
 
@@ -37,6 +37,12 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
       href: "/staff/dashboard",
       icon: HomeIcon,
       current: location.pathname === "/staff/dashboard",
+    },
+    {
+      name: "Hồ sơ cá nhân",
+      href: "/staff/profile",
+      icon: UserIcon,
+      current: location.pathname === "/staff/profile",
     },
     {
       name: "Đơn xin nghỉ phép",
@@ -87,10 +93,17 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-              <UserIcon className="w-5 h-5 text-blue-600" />
+            <Avatar
+              className="w-10 h-10 border border-blue-100"
+              name={user?.fullName || "Staff"}
+              src={user?.avatar}
+            />
+            <div>
+              <p className="text-sm text-gray-500">Xin chào</p>
+              <span className="text-lg font-semibold text-gray-800">
+                {user?.fullName || "Lễ tân"}
+              </span>
             </div>
-            <span className="text-lg font-semibold text-gray-800">Lễ tân</span>
           </div>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <XMarkIcon className="w-6 h-6 text-gray-500" />
@@ -155,10 +168,14 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-              <UserIcon className="w-5 h-5 text-blue-600" />
-            </div>
-            <span className="text-lg font-semibold text-gray-800">Lễ tân</span>
+            <Avatar
+              className="w-10 h-10 border border-blue-100"
+              name={user?.fullName || "Staff"}
+              src={user?.avatar}
+            />
+            <span className="text-lg font-semibold text-gray-800">
+              {user?.fullName || "Lễ tân"}
+            </span>
           </div>
         </div>
 

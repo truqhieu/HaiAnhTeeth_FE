@@ -26,6 +26,7 @@ import {
   TableRow,
   TableCell,
   Spinner,
+  Pagination,
 } from "@heroui/react";
 import toast from "react-hot-toast";
 import { policyApi, Policy, CreatePolicyData } from "@/api/policy";
@@ -43,6 +44,10 @@ const PolicyManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   // Only use status (Active/Inactive/Draft) per BE model
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   // Form state
   const [formData, setFormData] = useState<CreatePolicyData>({
@@ -70,6 +75,10 @@ const PolicyManagement = () => {
   useEffect(() => {
     fetchPolicies();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   // Handle open modal for create
   const handleOpenCreate = () => {
@@ -179,6 +188,14 @@ const PolicyManagement = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const totalPolicies = filteredPolicies.length;
+  const totalPages = Math.max(1, Math.ceil(totalPolicies / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPolicies = filteredPolicies.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
   const columns = [
     { key: "stt", label: "STT" },
     { key: "title", label: "Tiêu đề" },
@@ -192,24 +209,12 @@ const PolicyManagement = () => {
     <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
-              Quản lý chính sách
-            </h1>
-            <p className="text-sm text-gray-600">
-              Quản lý các chính sách và điều khoản của phòng khám
-            </p>
-          </div>
-
-          <Button
-            className="bg-blue-600 text-white hover:bg-blue-700"
-            startContent={<PlusIcon className="w-5 h-5" />}
-            onPress={handleOpenCreate}
-          >
-            Thêm chính sách
-          </Button>
-        </div>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+          Quản lý chính sách
+        </h1>
+        <p className="text-sm text-gray-600">
+          Quản lý các chính sách và điều khoản của phòng khám
+        </p>
       </div>
 
       {/* Controls */}
@@ -237,6 +242,13 @@ const PolicyManagement = () => {
             <SelectItem key="Inactive">Không hoạt động</SelectItem>
           </Select>
         </div>
+        <Button
+          className="w-full md:w-auto bg-blue-600 text-white hover:bg-blue-700"
+          startContent={<PlusIcon className="w-5 h-5" />}
+          onPress={handleOpenCreate}
+        >
+          Thêm chính sách
+        </Button>
       </div>
 
       {/* Table */}
@@ -262,13 +274,13 @@ const PolicyManagement = () => {
             </TableHeader>
             <TableBody
               emptyContent="Không có chính sách nào"
-              items={filteredPolicies}
+              items={paginatedPolicies}
             >
               {(policy) => (
                 <TableRow key={policy._id}>
                   <TableCell>
                     <span className="text-sm font-medium">
-                      {filteredPolicies.indexOf(policy) + 1}
+                      {startIndex + paginatedPolicies.indexOf(policy) + 1}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -320,6 +332,26 @@ const PolicyManagement = () => {
           </Table>
         )}
       </div>
+
+      {!isLoading && totalPolicies > 0 && (
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mt-4">
+          <p className="text-sm text-gray-500">
+            Hiển thị{" "}
+            {totalPolicies === 0 ? 0 : startIndex + 1} đến{" "}
+            {totalPolicies === 0
+              ? 0
+              : Math.min(startIndex + paginatedPolicies.length, totalPolicies)}{" "}
+            trong tổng số {totalPolicies} chính sách
+          </p>
+          <Pagination
+            page={currentPage}
+            total={totalPages}
+            onChange={setCurrentPage}
+            showControls
+            color="primary"
+          />
+        </div>
+      )}
 
       {/* Create/Edit Modal */}
       <Modal
@@ -373,13 +405,13 @@ const PolicyManagement = () => {
                     }
                     size="lg"
                   >
-                    <SelectItem key="Active" value="Active">
+                    <SelectItem key="Active">
                       Hoạt động
                     </SelectItem>
-                    <SelectItem key="Draft" value="Draft">
+                    <SelectItem key="Draft">
                       Nháp
                     </SelectItem>
-                    <SelectItem key="Inactive" value="Inactive">
+                    <SelectItem key="Inactive">
                       Không hoạt động
                     </SelectItem>
                   </Select>

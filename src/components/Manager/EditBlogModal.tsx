@@ -28,7 +28,7 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     title: "",
-    summary: "",
+    content: "",
     category: "News",
     status: "Published",
   });
@@ -45,7 +45,7 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
     if (blog) {
       setFormData({
         title: blog.title,
-        summary: blog.summary,
+        content: blog.content,
         category: blog.category,
         status: blog.status,
       });
@@ -96,9 +96,9 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
   // Validation
   const isTitleInvalid =
     showValidation && (!formData.title || formData.title.trim().length === 0);
-  const isSummaryInvalid =
+  const isContentInvalid =
     showValidation &&
-    (!formData.summary || formData.summary.trim().length === 0);
+    (!formData.content || formData.content.trim().length === 0);
 
   const handleSubmit = async () => {
     if (!blog) return;
@@ -108,7 +108,7 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
     // Check if there are any errors
     const hasErrors =
       !formData.title.trim() ||
-      !formData.summary.trim();
+      !formData.content.trim();
 
     if (hasErrors) {
       return;
@@ -119,7 +119,7 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
     try {
       const updateData: any = {
         title: formData.title.trim(),
-        summary: formData.summary.trim(),
+        content: formData.content.trim(),
         category: formData.category,
         status: formData.status,
       };
@@ -225,20 +225,20 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
             <div>
               <label
                 className="block text-sm font-semibold text-gray-700 mb-2"
-                htmlFor="summary"
+                htmlFor="content"
               >
-                Tóm tắt <span className="text-red-500">*</span>
+                Nội dung <span className="text-red-500">*</span>
               </label>
               <Textarea
                 fullWidth
-                id="summary"
+                id="content"
                 minRows={3}
-                placeholder="Viết tóm tắt ngắn gọn về nội dung blog..."
-                value={formData.summary}
+                placeholder="Viết nội dung chi tiết về blog..."
+                value={formData.content}
                 variant="bordered"
-                isInvalid={isSummaryInvalid}
-                errorMessage={isSummaryInvalid ? "Vui lòng nhập tóm tắt" : ""}
-                onValueChange={(value) => handleInputChange("summary", value)}
+                isInvalid={isContentInvalid}
+                errorMessage={isContentInvalid ? "Vui lòng nhập nội dung" : ""}
+                onValueChange={(value) => handleInputChange("content", value)}
               />
             </div>
 

@@ -1,14 +1,17 @@
-import { useState, SyntheticEvent } from "react";
+import { useState, useEffect, SyntheticEvent } from "react";
 import {
   CalendarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
+import { useNavigate } from "react-router-dom";
 import { useBookingModal } from "@/contexts/BookingModalContext";
+import { blogApi, type Blog } from "@/api/blog";
 type ImageErrorType = 'banner' | 'service';
 
 const Home = () => {
   const { openBookingModal } = useBookingModal();
+  const navigate = useNavigate();
 
   // Khôi phục URL ảnh gốc của bạn
   const images = [
@@ -45,6 +48,9 @@ const Home = () => {
   ];
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [latestBlogs, setLatestBlogs] = useState<Blog[]>([]);
+  const [isBlogLoading, setIsBlogLoading] = useState(false);
+  const [blogError, setBlogError] = useState<string | null>(null);
 
   const handlePrev = () =>
     setCurrentImageIndex((prevIndex) =>
@@ -55,6 +61,35 @@ const Home = () => {
     setCurrentImageIndex((prevIndex) =>
       prevIndex === images.length - 1 ? 0 : prevIndex + 1,
     );
+
+  useEffect(() => {
+    const fetchLatestBlogs = async () => {
+      try {
+        setIsBlogLoading(true);
+        setBlogError(null);
+
+        const response = await blogApi.getPublicBlogs({
+          page: 1,
+          limit: 3,
+          status: "Published",
+          sort: "desc",
+        });
+
+        if (response.status && Array.isArray(response.data)) {
+          setLatestBlogs(response.data.slice(0, 3));
+        } else {
+          setLatestBlogs([]);
+        }
+      } catch (error: any) {
+        console.error("❌ Error fetching latest blogs:", error);
+        setBlogError(error.message || "Không thể tải tin tức");
+      } finally {
+        setIsBlogLoading(false);
+      }
+    };
+
+    fetchLatestBlogs();
+  }, []);
 
   // Hàm xử lý lỗi ảnh với placeholder mới cho từng loại
   const handleImageError = (
@@ -206,6 +241,96 @@ const Home = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Latest Blogs Section */}
+        <div className="max-w-7xl mx-auto pb-24 px-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-10 gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[#39BDCC] uppercase tracking-widest">
+                Tin tức
+              </p>
+              <h2 className="text-4xl font-bold text-gray-900 mt-2">
+                Chia sẻ từ Hải Anh Teeth
+              </h2>
+              <p className="text-lg text-gray-600 mt-4 max-w-2xl">
+                Những bài viết mới nhất về sức khỏe răng miệng, dịch vụ nổi bật và câu chuyện khách hàng.
+              </p>
+            </div>
+            <button
+              className="self-start md:self-auto bg-[#39BDCC] text-white font-semibold px-6 py-3 rounded-full shadow-md hover:bg-[#2ca6b5] transition-all"
+              onClick={() => navigate("/news")}
+            >
+              Xem tất cả tin tức
+            </button>
+          </div>
+
+          <div className="min-h-[220px]">
+            {isBlogLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="w-12 h-12 border-4 border-[#39BDCC]/30 border-t-[#39BDCC] rounded-full animate-spin" />
+              </div>
+            ) : blogError ? (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl">
+                {blogError}
+              </div>
+            ) : latestBlogs.length === 0 ? (
+              <div className="text-center text-gray-500 py-12">
+                Hiện chưa có bài viết nào.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {latestBlogs.map((blog) => (
+                  <div
+                    key={blog._id}
+                    className="bg-white rounded-3xl shadow-lg overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-300 cursor-pointer"
+                    onClick={() => navigate(`/news/${blog._id}`)}
+                  >
+                    {blog.thumbnailUrl ? (
+                      <div className="h-56 w-full overflow-hidden">
+                        <img
+                          src={blog.thumbnailUrl}
+                          alt={blog.title}
+                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-56 w-full bg-gradient-to-r from-[#39BDCC]/20 to-[#2ca6b5]/20 flex items-center justify-center text-[#39BDCC] font-semibold">
+                        Hải Anh Teeth
+                      </div>
+                    )}
+
+                    <div className="p-6 space-y-4">
+                      <span className="inline-flex px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-[#39BDCC]/10 text-[#39BDCC] rounded-full">
+                        {blog.category}
+                      </span>
+                      <h3 className="text-xl font-semibold text-gray-900 line-clamp-2">
+                        {blog.title}
+                      </h3>
+                      <p className="text-gray-600 text-sm line-clamp-3">
+                        {blog.content}
+                      </p>
+                      <div className="flex items-center justify-between text-sm text-gray-500 pt-4 border-t border-gray-100">
+                        <span className="flex items-center gap-2">
+                          <CalendarIcon className="w-4 h-4" />
+                          {new Date(blog.createdAt).toLocaleDateString("vi-VN", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </span>
+                        {blog.authorUserId?.name && (
+                          <span className="font-semibold text-gray-700">
+                            {blog.authorUserId.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
