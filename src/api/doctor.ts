@@ -11,6 +11,7 @@ export interface DoctorAppointment {
   status: string;
   mode: string;
   medicalRecordStatus?: "Draft" | "Finalized" | null; // Status của medical record: Draft = chưa duyệt, Finalized = đã duyệt, null = chưa có hồ sơ
+  noTreatment?: boolean;
 }
 
 export interface AppointmentDetail {

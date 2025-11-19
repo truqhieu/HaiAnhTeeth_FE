@@ -1,17 +1,15 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
-import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from "@heroui/react";
-import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon, PlusIcon, TrashIcon, ArrowLeftIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import { medicalRecordApi, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
+import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
+import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon, PlusIcon, TrashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
-import { appointmentApi } from "@/api/appointment";
 
 const DoctorMedicalRecord: React.FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [display, setDisplay] = useState<MedicalRecordDisplay | null>(null);
   const [saving, setSaving] = useState(false);
   const [permissions, setPermissions] = useState<MedicalRecordPermissions | null>(null);
@@ -32,10 +30,6 @@ const DoctorMedicalRecord: React.FC = () => {
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   
-  // Modal state cho "Không cần khám"
-  const { isOpen: isNoTreatmentModalOpen, onOpen: onNoTreatmentModalOpen, onClose: onNoTreatmentModalClose } = useDisclosure();
-  const [noTreatmentReason, setNoTreatmentReason] = useState("");
-
   const canEdit = permissions?.doctor?.canEdit ?? true;
   const isFinalized = permissions?.recordStatus === "Finalized";
   const lockReason = !canEdit ? permissions?.doctor?.reason || null : null;
@@ -70,7 +64,6 @@ const DoctorMedicalRecord: React.FC = () => {
           console.log('🔍 [MedicalRecord] additionalServices from display:', res.data.display?.additionalServices);
           console.log('🔍 [MedicalRecord] additionalServiceIds from record:', res.data.record?.additionalServiceIds);
           
-          setRecord(res.data.record);
           setDisplay(res.data.display);
           setPermissions(res.data.permissions || null);
           setDiagnosis(res.data.record.diagnosis || "");
@@ -331,7 +324,6 @@ const DoctorMedicalRecord: React.FC = () => {
         approve: approve,
       });
       if (res.success && res.data) {
-        setRecord(res.data);
         setPermissions((prev) => {
           if (!prev) return prev;
           const nextRecordStatus = res.data.status || prev.recordStatus;
@@ -383,59 +375,6 @@ const DoctorMedicalRecord: React.FC = () => {
       return;
     }
     await onSave(true);
-  };
-
-  // ⭐ Xử lý khi bác sĩ chọn "Không cần khám"
-  const handleNoTreatment = async () => {
-    if (!appointmentId) return;
-    if (!canEdit) {
-      toast.error(lockReason || "Hồ sơ đã được khóa, không thể chỉnh sửa.");
-      return;
-    }
-    if (!canApprove) {
-      toast.error("Hồ sơ đã được khóa, không thể xử lý.");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      // 1. Finalize medical record với conclusion = "Không cần khám" (hoặc lý do bác sĩ nhập)
-      const conclusionText = noTreatmentReason.trim() 
-        ? `Không cần khám. Lý do: ${noTreatmentReason.trim()}`
-        : "Không cần khám";
-      
-      const res = await medicalRecordApi.updateMedicalRecordForDoctor(appointmentId, {
-        diagnosis: "", // Để trống
-        conclusion: conclusionText,
-        prescription: [], // Để trống
-        nurseNote: nurseNote, // Giữ nguyên nurse note nếu có
-        approve: true, // Finalize medical record
-      });
-
-      if (res.success && res.data) {
-        // 2. Update appointment status thành "Completed" (bệnh nhân đã đến nhưng không cần khám)
-        try {
-          await appointmentApi.updateAppointmentStatus(appointmentId, "Completed");
-        } catch (statusError: any) {
-          console.warn("⚠️ Không thể cập nhật appointment status:", statusError);
-          // Không throw error vì medical record đã được finalize thành công
-        }
-
-        setRecord(res.data);
-        toast.success("Đã đánh dấu ca khám là 'Không cần khám'");
-        onNoTreatmentModalClose();
-        setNoTreatmentReason("");
-        navigate(-1);
-      } else {
-        setError(res.message || "Xử lý thất bại");
-        toast.error(res.message || "Xử lý thất bại");
-      }
-    } catch (e: any) {
-      setError(e.message || "Xử lý thất bại");
-      toast.error(e.message || "Xử lý thất bại");
-    } finally {
-      setSaving(false);
-    }
   };
 
   // Filter services that are not yet added
@@ -899,19 +838,6 @@ const DoctorMedicalRecord: React.FC = () => {
             >
               {saving ? "Đang lưu..." : "Lưu"}
             </Button>
-            {/* ⭐ Nút "Không cần khám" - chỉ hiển thị khi có thể approve */}
-            {canApprove && (
-              <Button 
-                color="warning" 
-                variant="flat"
-                onPress={onNoTreatmentModalOpen} 
-                isLoading={saving} 
-                isDisabled={saving}
-                startContent={!saving && <XCircleIcon className="w-5 h-5" />}
-              >
-                Không cần khám
-              </Button>
-            )}
             <Button 
               color="success" 
               onPress={onApprove} 
@@ -925,66 +851,6 @@ const DoctorMedicalRecord: React.FC = () => {
         </CardBody>
       </Card>
 
-      {/* ⭐ Modal xác nhận "Không cần khám" */}
-      <Modal 
-        isOpen={isNoTreatmentModalOpen} 
-        onClose={onNoTreatmentModalClose}
-        size="md"
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <XCircleIcon className="w-6 h-6 text-warning-600" />
-                  <span>Xác nhận không cần khám</span>
-                </div>
-              </ModalHeader>
-              <ModalBody>
-                <p className="text-gray-700">
-                  Bạn có chắc chắn rằng bệnh nhân này không cần khám và có thể về luôn không?
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Hành động này sẽ:
-                </p>
-                <ul className="text-sm text-gray-600 list-disc list-inside mt-1 space-y-1">
-                  <li>Hoàn tất hồ sơ khám bệnh với kết luận "Không cần khám"</li>
-                  <li>Cập nhật trạng thái ca khám thành "Đã hoàn thành"</li>
-                  <li>Không lưu chẩn đoán và đơn thuốc</li>
-                </ul>
-                <div className="mt-4">
-                  <Textarea
-                    label="Lý do (tùy chọn)"
-                    placeholder="Nhập lý do tại sao không cần khám..."
-                    value={noTreatmentReason}
-                    onValueChange={setNoTreatmentReason}
-                    minRows={3}
-                    variant="bordered"
-                  />
-                </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button 
-                  color="default" 
-                  variant="light" 
-                  onPress={onClose}
-                  isDisabled={saving}
-                >
-                  Hủy
-                </Button>
-                <Button 
-                  color="warning" 
-                  onPress={handleNoTreatment}
-                  isLoading={saving}
-                  startContent={!saving && <XCircleIcon className="w-5 h-5" />}
-                >
-                  {saving ? "Đang xử lý..." : "Xác nhận không cần khám"}
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
     </div>
   );
 };

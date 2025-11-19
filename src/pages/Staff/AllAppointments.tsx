@@ -69,6 +69,7 @@ interface Appointment {
   endTime: string;
   checkedInAt: string;
   createdAt: string;
+  noTreatment?: boolean;
 }
 
 interface ApiResponse<T> {
@@ -499,6 +500,7 @@ const AllAppointments = () => {
               : "",
             checkedInAt: apt.checkedInAt || "",
             createdAt: apt.createdAt || "",
+            noTreatment: !!apt.noTreatment,
           };
         });
 
@@ -2094,7 +2096,7 @@ const AllAppointments = () => {
                             {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) ||
                               (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
                               <div className="flex gap-2">
-                                {appointment.status === "Completed" && (
+                                {appointment.status === "Completed" && !appointment.noTreatment && (
                                   <Tooltip content="Xuất PDF">
                                     <Button
                                       isIconOnly

@@ -4,6 +4,7 @@ import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay, type M
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
 import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, ChevronDownIcon, XMarkIcon, ArrowLeftIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
+import { appointmentApi } from "@/api/appointment";
 
 const NurseMedicalRecord: React.FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
@@ -287,6 +288,30 @@ const NurseMedicalRecord: React.FC = () => {
       }
     } catch (e: any) {
       setError(e.message || "Lưu thất bại");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleNoTreatment = async () => {
+    if (!appointmentId) return;
+    if (!canEdit) {
+      toast.error(lockReason || "Hồ sơ đã được khóa, không thể chỉnh sửa.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await appointmentApi.markNoTreatmentForNurse(appointmentId);
+      if (!res.success) {
+        throw new Error(res.message || "Không thể đánh dấu 'Không cần khám'");
+      }
+      toast.success("Đã đánh dấu ca khám là 'Không cần khám'");
+      navigate(-1);
+    } catch (error: any) {
+      const message = error?.response?.data?.message || error.message || "Không thể xử lý";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -740,7 +765,16 @@ const NurseMedicalRecord: React.FC = () => {
             }}
           />
 
-          <div className="flex justify-end mt-4">
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              color="warning"
+              variant="flat"
+              onPress={handleNoTreatment}
+              isLoading={saving}
+              isDisabled={saving || !canEdit}
+            >
+              Không cần khám
+            </Button>
             <Button 
               color="success" 
               onPress={onSave} 

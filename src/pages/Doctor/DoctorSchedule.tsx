@@ -676,36 +676,47 @@ const DoctorSchedule = () => {
                         {getStatusText(appointment.status)}
                       </Chip>
                       {/* Indicator cho medical record status */}
-                      {appointment.status === "InProgress" || appointment.status === "Completed" ? (
-                        appointment.medicalRecordStatus === "Finalized" ? (
-                          <Chip
-                            size="sm"
-                            color="success"
-                            variant="flat"
-                            className="text-xs"
-                          >
-                            ✓ Đã duyệt hồ sơ
-                          </Chip>
-                        ) : appointment.medicalRecordStatus === "Draft" ? (
-                          <Chip
-                            size="sm"
-                            color="warning"
-                            variant="flat"
-                            className="text-xs"
-                          >
-                            ⚠ Chưa duyệt hồ sơ
-                          </Chip>
-                        ) : (
-                          <Chip
-                            size="sm"
-                            color="default"
-                            variant="flat"
-                            className="text-xs"
-                          >
-                            📝 Chưa có hồ sơ
-                          </Chip>
+                      {appointment.noTreatment ? (
+                        <Chip
+                          size="sm"
+                          color="default"
+                          variant="flat"
+                          className="text-xs"
+                        >
+                          Không cần khám
+                        </Chip>
+                      ) : (
+                        (appointment.status === "InProgress" || appointment.status === "Completed") && (
+                          appointment.medicalRecordStatus === "Finalized" ? (
+                            <Chip
+                              size="sm"
+                              color="success"
+                              variant="flat"
+                              className="text-xs"
+                            >
+                              ✓ Đã duyệt hồ sơ
+                            </Chip>
+                          ) : appointment.medicalRecordStatus === "Draft" ? (
+                            <Chip
+                              size="sm"
+                              color="warning"
+                              variant="flat"
+                              className="text-xs"
+                            >
+                              ⚠ Chưa duyệt hồ sơ
+                            </Chip>
+                          ) : (
+                            <Chip
+                              size="sm"
+                              color="default"
+                              variant="flat"
+                              className="text-xs"
+                            >
+                              📝 Chưa có hồ sơ
+                            </Chip>
+                          )
                         )
-                      ) : null}
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -733,7 +744,7 @@ const DoctorSchedule = () => {
                       </Button>
                     </div>
                     {/* Hiển thị nút hồ sơ khi InProgress hoặc Completed; ẩn khi CheckedIn */}
-                    {(appointment.status === "InProgress" || appointment.status === "Completed") && (
+                    {(appointment.status === "InProgress" || appointment.status === "Completed") && !appointment.noTreatment && (
                       <div className="relative">
                         <Button
                           isIconOnly

@@ -86,6 +86,22 @@ export const appointmentApi = {
     });
   },
 
+  markNoTreatment: async (
+    appointmentId: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/doctor/appointments/${appointmentId}/no-treatment`, {
+      method: "POST",
+    });
+  },
+
+  markNoTreatmentForNurse: async (
+    appointmentId: string,
+  ): Promise<ApiResponse<any>> => {
+    return authenticatedApiCall(`/nurse/appointments/${appointmentId}/no-treatment`, {
+      method: "POST",
+    });
+  },
+
   // ⭐ Staff tạo lịch hẹn khám trực tiếp (walk-in)
   createWalkIn: async (
     data: Omit<AppointmentCreationData, "appointmentFor">,

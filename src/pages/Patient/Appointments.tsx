@@ -50,6 +50,7 @@ interface Appointment {
   };
   replacedDoctorName?: string; // ⭐ THÊM: Bác sĩ mới
   confirmDeadline?: string; // ⭐ THÊM: Deadline xác nhận (24h)
+  noTreatment?: boolean;
 }
 
 const Appointments = () => {
@@ -155,6 +156,7 @@ const Appointments = () => {
             } : undefined,
             replacedDoctorName: apt.replacedDoctorUserId?.fullName || undefined,
             confirmDeadline: apt.confirmDeadline || undefined,
+            noTreatment: !!apt.noTreatment,
           };
         },
       );
@@ -826,8 +828,9 @@ const Appointments = () => {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-32">
-                    <span
-                        className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${
                         appointment.status === "Approved"
                           ? "bg-green-100 text-green-800"
                           : appointment.status === "Pending"
@@ -851,10 +854,16 @@ const Appointments = () => {
                                       ? "bg-orange-100 text-orange-800"
                               : "bg-gray-100 text-gray-800"
                       }`}
-                    >
-                      {getStatusText(appointment)}
-                    </span>
-                  </TableCell>
+                        >
+                          {getStatusText(appointment)}
+                        </span>
+                        {appointment.noTreatment && (
+                          <span className="text-xs text-gray-500 italic">
+                            Không cần khám
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="px-4 py-4 w-64">
                       <div className="flex items-center justify-center gap-2">
                         {/* Xác nhận đổi bác sĩ - Ưu tiên hiển thị */}
@@ -927,7 +936,7 @@ const Appointments = () => {
                         )}
 
                         {/* Xem hồ sơ khám bệnh - chỉ hiển thị khi đã hoàn thành */}
-                        {appointment.status === "Completed" && (
+                        {appointment.status === "Completed" && !appointment.noTreatment && (
                           <button
                             className="p-2.5 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                             title="Xem hồ sơ khám bệnh"
