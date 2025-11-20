@@ -2,8 +2,6 @@ import React from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   LockClosedIcon,
-  EyeIcon,
-  EyeSlashIcon,
   CheckCircleIcon,
   XCircleIcon,
   ArrowLeftIcon,
@@ -21,9 +19,6 @@ const ResetPassword = () => {
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showValidation, setShowValidation] = React.useState(false);
-  const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
-    React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitStatus, setSubmitStatus] = React.useState<
     "idle" | "success" | "error"
@@ -234,19 +229,6 @@ const ResetPassword = () => {
           <Input
             fullWidth
             autoComplete="new-password"
-            endContent={
-              <button
-                className="focus:outline-none"
-                type="button"
-                onClick={() => setIsPasswordVisible(!isPasswordVisible)}
-              >
-                {isPasswordVisible ? (
-                  <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                ) : (
-                  <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                )}
-              </button>
-            }
             errorMessage={
               isPasswordInvalid ? (
                 !password ? (
@@ -269,7 +251,7 @@ const ResetPassword = () => {
             name="password"
             placeholder="Nhập mật khẩu mới"
             size="lg"
-            type={isPasswordVisible ? "text" : "password"}
+            type="password"
             value={password}
             onValueChange={setPassword}
           />
@@ -277,21 +259,6 @@ const ResetPassword = () => {
           <Input
             fullWidth
             autoComplete="new-password"
-            endContent={
-              <button
-                className="focus:outline-none"
-                type="button"
-                onClick={() =>
-                  setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
-                }
-              >
-                {isConfirmPasswordVisible ? (
-                  <EyeSlashIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                ) : (
-                  <EyeIcon className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-                )}
-              </button>
-            }
             errorMessage={
               isConfirmPasswordInvalid
                 ? !confirmPassword
@@ -308,7 +275,7 @@ const ResetPassword = () => {
             name="confirm-password"
             placeholder="Nhập lại mật khẩu mới"
             size="lg"
-            type={isConfirmPasswordVisible ? "text" : "password"}
+            type="password"
             value={confirmPassword}
             onValueChange={setConfirmPassword}
           />

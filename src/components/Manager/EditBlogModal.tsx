@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { XMarkIcon, PhotoIcon } from "@heroicons/react/24/solid";
-import { Input, Button, Textarea, Select, SelectItem } from "@heroui/react";
+import { Input, Button, Textarea, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import toast from "react-hot-toast";
 import { blogApi, type Blog } from "@/api/blog";
+import VietnameseDateInput from "@/components/Common/VietnameseDateInput";
 
 interface EditBlogModalProps {
   isOpen: boolean;
@@ -31,6 +32,8 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
     content: "",
     category: "News",
     status: "Published",
+    startDate: "",
+    endDate: "",
   });
 
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -48,6 +51,8 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
         content: blog.content,
         category: blog.category,
         status: blog.status,
+        startDate: blog.startDate || "",
+        endDate: blog.endDate || "",
       });
       setExistingThumbnail(blog.thumbnailUrl);
       setThumbnailPreview(null);
@@ -129,6 +134,24 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
         updateData.thumbnailFile = thumbnailFile;
       }
 
+      // Chỉ thêm startDate và endDate nếu category là "Promotions"
+      if (formData.category === "Promotions") {
+        if (formData.startDate) {
+          updateData.startDate = formData.startDate;
+        } else {
+          updateData.startDate = null; // Xóa nếu không có giá trị
+        }
+        if (formData.endDate) {
+          updateData.endDate = formData.endDate;
+        } else {
+          updateData.endDate = null; // Xóa nếu không có giá trị
+        }
+      } else {
+        // Xóa dates nếu đổi category khác "Promotions"
+        updateData.startDate = null;
+        updateData.endDate = null;
+      }
+
       const response = await blogApi.updateBlog(blog._id, updateData);
 
       if (response.success) {
@@ -157,147 +180,145 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
   const displayImage = thumbnailPreview || existingThumbnail;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        aria-label="Close modal"
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        role="button"
-        tabIndex={0}
-        onClick={!isSubmitting ? handleClose : undefined}
-        onKeyDown={(e) => {
-          if (!isSubmitting && (e.key === "Enter" || e.key === " ")) {
-            handleClose();
-          }
-        }}
-      />
-
-      {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <img
-              alt="Logo"
-              className="h-8 w-auto object-contain"
-              src="/logo1.png"
-            />
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Chỉnh sửa blog</h2>
-              <p className="text-sm text-gray-600">Cập nhật thông tin blog</p>
-            </div>
-          </div>
-          <Button
-            isIconOnly
-            className="text-gray-500 hover:text-gray-700"
-            variant="light"
-            onPress={handleClose}
-            isDisabled={isSubmitting}
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </Button>
-        </div>
-
-        {/* Body */}
-        <div className="px-6 py-4 overflow-y-auto flex-1">
-          <div className="space-y-4">
-            {/* Title */}
-            <div>
-              <label
-                className="block text-sm font-semibold text-gray-700 mb-2"
-                htmlFor="title"
-              >
-                Tiêu đề <span className="text-red-500">*</span>
-              </label>
-              <Input
-                fullWidth
-                id="title"
-                placeholder="Ví dụ: 5 mẹo chăm sóc răng miệng hiệu quả"
-                value={formData.title}
-                variant="bordered"
-                isInvalid={isTitleInvalid}
-                errorMessage={isTitleInvalid ? "Vui lòng nhập tiêu đề" : ""}
-                onValueChange={(value) => handleInputChange("title", value)}
+    <Modal
+      isOpen={isOpen}
+      isDismissable={false}
+      onOpenChange={(open) => {
+        if (!open) {
+          handleClose();
+        }
+      }}
+      size="3xl"
+      scrollBehavior="outside"
+      classNames={{ base: "max-h-[90vh] rounded-2xl" }}
+    >
+      <ModalContent>
+        <>
+          <ModalHeader className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center space-x-3">
+              <img
+                alt="Logo"
+                className="h-8 w-auto object-contain"
+                src="/logo1.png"
               />
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Chỉnh sửa blog</h2>
+                <p className="text-sm text-gray-600">{blog?.title}</p>
+              </div>
             </div>
+          </ModalHeader>
+
+          <ModalBody className="px-6 py-4 space-y-4">
+            {/* Title */}
+            <Input
+              fullWidth
+              id="title"
+              label={
+                <>
+                  Tiêu đề <span className="text-red-500">*</span>
+                </>
+              }
+              placeholder="Ví dụ: 5 mẹo chăm sóc răng miệng hiệu quả"
+              value={formData.title}
+              variant="bordered"
+              isInvalid={isTitleInvalid}
+              errorMessage={isTitleInvalid ? "Vui lòng nhập tiêu đề" : ""}
+              onValueChange={(value) => handleInputChange("title", value)}
+            />
 
             {/* Summary */}
-            <div>
-              <label
-                className="block text-sm font-semibold text-gray-700 mb-2"
-                htmlFor="content"
-              >
-                Nội dung <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                fullWidth
-                id="content"
-                minRows={3}
-                placeholder="Viết nội dung chi tiết về blog..."
-                value={formData.content}
-                variant="bordered"
-                isInvalid={isContentInvalid}
-                errorMessage={isContentInvalid ? "Vui lòng nhập nội dung" : ""}
-                onValueChange={(value) => handleInputChange("content", value)}
-              />
-            </div>
+            <Textarea
+              fullWidth
+              id="content"
+              label={
+                <>
+                  Nội dung <span className="text-red-500">*</span>
+                </>
+              }
+              minRows={3}
+              placeholder="Viết nội dung chi tiết về blog..."
+              value={formData.content}
+              variant="bordered"
+              isInvalid={isContentInvalid}
+              errorMessage={isContentInvalid ? "Vui lòng nhập nội dung" : ""}
+              onValueChange={(value) => handleInputChange("content", value)}
+            />
 
             <div className="grid grid-cols-2 gap-4">
               {/* Category */}
-              <div>
-                <label
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                  htmlFor="category"
-                >
-                  Thể loại <span className="text-red-500">*</span>
-                </label>
-                <Select
-                  className="w-full"
-                  id="category"
-                  selectedKeys={[formData.category]}
-                  variant="bordered"
-                  disallowEmptySelection
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0] as string;
-                    handleInputChange("category", selected);
-                  }}
-                >
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value}>{cat.label}</SelectItem>
-                  ))}
-                </Select>
-              </div>
+              <Select
+                className="w-full"
+                id="category"
+                label={
+                  <>
+                    Thể loại <span className="text-red-500">*</span>
+                  </>
+                }
+                selectedKeys={[formData.category]}
+                variant="bordered"
+                disallowEmptySelection
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  handleInputChange("category", selected);
+                  if (selected !== "Promotions") {
+                    handleInputChange("startDate", "");
+                    handleInputChange("endDate", "");
+                  }
+                }}
+              >
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value}>{cat.label}</SelectItem>
+                ))}
+              </Select>
 
               {/* Status */}
-              <div>
-                <label
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                  htmlFor="status"
-                >
-                  Trạng thái <span className="text-red-500">*</span>
-                </label>
-                <Select
-                  className="w-full"
-                  id="status"
-                  selectedKeys={[formData.status]}
-                  variant="bordered"
-                  disallowEmptySelection
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0] as string;
-                    handleInputChange("status", selected);
-                  }}
-                >
-                  <SelectItem key="Published">Xuất bản</SelectItem>
-                  <SelectItem key="Hidden">Ẩn</SelectItem>
-                </Select>
-              </div>
+              <Select
+                className="w-full"
+                id="status"
+                label={
+                  <>
+                    Trạng thái <span className="text-red-500">*</span>
+                  </>
+                }
+                selectedKeys={[formData.status]}
+                variant="bordered"
+                disallowEmptySelection
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  handleInputChange("status", selected);
+                }}
+              >
+                <SelectItem key="Published">Xuất bản</SelectItem>
+                <SelectItem key="Hidden">Ẩn</SelectItem>
+              </Select>
             </div>
+
+            {/* Date Range - Chỉ hiển thị khi category là "Promotions" */}
+            {formData.category === "Promotions" && (
+              <div className="grid grid-cols-2 gap-4">
+                <VietnameseDateInput
+                  id="startDate"
+                  label="Ngày bắt đầu"
+                  value={formData.startDate}
+                  placeholder="dd/mm/yyyy"
+                  onChange={(value) => handleInputChange("startDate", value)}
+                />
+                <VietnameseDateInput
+                  id="endDate"
+                  label="Ngày kết thúc"
+                  value={formData.endDate}
+                  minDate={formData.startDate || undefined}
+                  placeholder="dd/mm/yyyy"
+                  onChange={(value) => handleInputChange("endDate", value)}
+                />
+              </div>
+            )}
 
             {/* Thumbnail Upload */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <p className="text-sm font-semibold text-gray-700 mb-2">
                 Ảnh đại diện {thumbnailPreview && <span className="text-xs text-gray-500">(Ảnh mới sẽ thay thế ảnh hiện tại)</span>}
-              </label>
+              </p>
               
               <input
                 ref={fileInputRef}
@@ -351,30 +372,29 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
                 </div>
               )}
             </div>
-          </div>
-        </div>
+          </ModalBody>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex justify-end gap-4">
-            <Button
-              variant="bordered"
-              onPress={handleClose}
-              isDisabled={isSubmitting}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              isLoading={isSubmitting}
-              onPress={handleSubmit}
-            >
-              Cập nhật
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+          <ModalFooter className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex justify-end gap-4 w-full">
+              <Button
+                variant="bordered"
+                onPress={handleClose}
+                isDisabled={isSubmitting}
+              >
+                Hủy
+              </Button>
+              <Button
+                className="bg-blue-600 text-white hover:bg-blue-700"
+                isLoading={isSubmitting}
+                onPress={handleSubmit}
+              >
+                Cập nhật
+              </Button>
+            </div>
+          </ModalFooter>
+        </>
+      </ModalContent>
+    </Modal>
   );
 };
 

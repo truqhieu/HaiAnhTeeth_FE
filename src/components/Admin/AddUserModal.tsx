@@ -4,6 +4,7 @@ import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { adminApi } from "@/api";
+import VietnameseDateInput from "@/components/Common/VietnameseDateInput";
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -477,13 +478,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                 onBlur={() => handleBlur("address")}
               />
 
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
+              <VietnameseDateInput
+                className="w-full"
                 errorMessage={
                   isDobInvalid
                     ? !formData.dob
@@ -491,19 +487,21 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                       : ageValidation.errorMessage
                     : ""
                 }
+                id="add-user-dob"
+                inputWrapperClassName="w-full"
                 isInvalid={isDobInvalid}
-                max={new Date().toISOString().split('T')[0]}
                 label={
                   <>
                     Ngày sinh <span className="text-red-500">*</span>
                   </>
                 }
-                placeholder="Chọn ngày sinh"
-                type="date"
+                maxDate={new Date()}
+                placeholder="dd/mm/yyyy"
                 value={formData.dob}
-                variant="bordered"
-                onValueChange={(value) => handleInputChange("dob", value)}
-                onBlur={() => handleBlur("dob")}
+                onChange={(value) => {
+                  handleInputChange("dob", value);
+                  handleBlur("dob");
+                }}
               />
 
               <Select

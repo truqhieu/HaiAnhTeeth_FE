@@ -76,7 +76,11 @@ const Home = () => {
         });
 
         if (response.status && Array.isArray(response.data)) {
-          setLatestBlogs(response.data.slice(0, 3));
+          // Loại bỏ blog có category "Promotions"
+          const filteredBlogs = response.data.filter(
+            (blog: any) => blog.category !== "Promotions"
+          );
+          setLatestBlogs(filteredBlogs.slice(0, 3));
         } else {
           setLatestBlogs([]);
         }

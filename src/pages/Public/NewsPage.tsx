@@ -36,7 +36,6 @@ const NewsPage = () => {
     { value: "News", label: "Tin tức" },
     { value: "Health Tips", label: "Mẹo sức khỏe" },
     { value: "Medical Services", label: "Dịch vụ y tế" },
-    { value: "Promotions", label: "Ưu đãi" },
     { value: "Patient Stories", label: "Câu chuyện bệnh nhân" },
     { value: "Recruitment", label: "Tuyển dụng" },
   ];
@@ -80,7 +79,11 @@ const NewsPage = () => {
       const response = await blogApi.getPublicBlogs(params);
 
       if (response.status && response.data) {
-        setBlogs(response.data);
+        // Loại bỏ blog có category "Promotions"
+        const filteredBlogs = response.data.filter(
+          (blog) => blog.category !== "Promotions"
+        );
+        setBlogs(filteredBlogs);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 1);
       }
@@ -96,7 +99,6 @@ const NewsPage = () => {
       "News": "primary",
       "Health Tips": "success",
       "Medical Services": "secondary",
-      "Promotions": "danger",
       "Patient Stories": "warning",
       "Recruitment": "primary",
     };
@@ -114,14 +116,16 @@ const NewsPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white py-16">
+      <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white py-16 md:py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Tin tức
-          </h1>
-          <p className="text-xl text-white/90">
-            Cập nhật những thông tin mới nhất về dịch vụ, sức khỏe răng miệng
-          </p>
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              Tin tức
+            </h1>
+            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
+              Cập nhật những thông tin mới nhất về dịch vụ, sức khỏe răng miệng
+            </p>
+          </div>
         </div>
       </div>
 

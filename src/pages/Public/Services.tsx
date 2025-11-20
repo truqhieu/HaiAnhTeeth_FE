@@ -95,7 +95,7 @@ export default function ServicesPage() {
       <div className="max-w-7xl mx-auto px-6 -mt-8">
         <Card className="shadow-xl border-0">
           <CardBody className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Search Input */}
               <Input
                 placeholder="Tìm kiếm dịch vụ..."

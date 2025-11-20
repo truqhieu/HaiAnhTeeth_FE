@@ -13,6 +13,8 @@ export interface Blog {
     email: string;
   };
   status: "Published" | "Hidden";
+  startDate?: string; // Ngày bắt đầu (cho blog category "Promotions")
+  endDate?: string; // Ngày kết thúc (cho blog category "Promotions")
   createdAt: string;
   updatedAt: string;
 }
@@ -24,6 +26,8 @@ export interface CreateBlogData {
   content: string;
   status: string;
   thumbnailFile?: File;
+  startDate?: string; // Ngày bắt đầu (cho blog category "Promotions")
+  endDate?: string; // Ngày kết thúc (cho blog category "Promotions")
 }
 
 // Update Blog Data
@@ -33,6 +37,8 @@ export interface UpdateBlogData {
   content?: string;
   status?: string;
   thumbnailFile?: File;
+  startDate?: string; // Ngày bắt đầu (cho blog category "Promotions")
+  endDate?: string; // Ngày kết thúc (cho blog category "Promotions")
 }
 
 // Get Blogs Params
@@ -156,6 +162,14 @@ export const blogApi = {
       formData.append("thumbnailUrl", data.thumbnailFile);
     }
 
+    // Thêm startDate và endDate nếu có
+    if (data.startDate) {
+      formData.append("startDate", data.startDate);
+    }
+    if (data.endDate) {
+      formData.append("endDate", data.endDate);
+    }
+
     // For FormData, we need to manually handle the request
     const token = sessionStorage.getItem("authToken");
     if (!token) {
@@ -194,6 +208,14 @@ export const blogApi = {
     
     if (data.thumbnailFile) {
       formData.append("thumbnailUrl", data.thumbnailFile);
+    }
+
+    // Thêm startDate và endDate nếu có (hoặc null để xóa)
+    if (data.startDate !== undefined) {
+      formData.append("startDate", data.startDate || "");
+    }
+    if (data.endDate !== undefined) {
+      formData.append("endDate", data.endDate || "");
     }
 
     // For FormData, we need to manually handle the request
