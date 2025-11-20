@@ -1,8 +1,6 @@
 import { forwardRef, useState, useEffect, useRef } from "react";
 import { Input, Button, Select, SelectItem, Avatar } from "@heroui/react";
 import {
-  EyeIcon,
-  EyeSlashIcon,
   CameraIcon,
   CalendarIcon,
   XMarkIcon,
@@ -132,12 +130,6 @@ const UserProfileForm = ({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isPasswordVisible, setIsPasswordVisible] = useState({
-    current: false,
-    new: false,
-    confirm: false,
-  });
-
   useEffect(() => {
     ensureProfileDatePickerPortal();
   }, []);
@@ -303,34 +295,19 @@ const UserProfileForm = ({
     setValue: (val: string) => void,
     field: "current" | "new" | "confirm",
   ) => (
-    <Input
-      classNames={{
-        input: "bg-gray-100",
-        inputWrapper: "bg-gray-100 border-gray-300",
-      }}
-      label={label}
-      labelPlacement="outside"
-      placeholder="••••••"
-      type={isPasswordVisible[field] ? "text" : "password"}
-      value={value}
-      variant="bordered"
-      onValueChange={setValue}
-      endContent={
-        <button
-          type="button"
-          className="focus:outline-none"
-          onClick={() =>
-            setIsPasswordVisible((prev) => ({ ...prev, [field]: !prev[field] }))
-          }
-        >
-          {isPasswordVisible[field] ? (
-            <EyeSlashIcon className="w-4 h-4 text-gray-500" />
-          ) : (
-            <EyeIcon className="w-4 h-4 text-gray-500" />
-          )}
-        </button>
-      }
-    />
+        <Input
+          classNames={{
+            input: "bg-gray-100",
+            inputWrapper: "bg-gray-100 border-gray-300",
+          }}
+          label={label}
+          labelPlacement="outside"
+          placeholder="••••••"
+          type="password"
+          value={value}
+          variant="bordered"
+          onValueChange={setValue}
+        />
   );
 
   return (
