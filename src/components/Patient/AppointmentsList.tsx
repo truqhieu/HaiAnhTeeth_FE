@@ -116,8 +116,8 @@ export const AppointmentsList = () => {
   const formatPaymentInfo = (
     appointment: Appointment,
   ): { text: string; color: string } => {
-    // Nếu là Examination (khám) - Thanh toán tại phòng khám
-    if (appointment.type === "Examination") {
+    // ⭐ Nếu là Examination (khám) hoặc FollowUp (tái khám) - Thanh toán tại phòng khám
+    if (appointment.type === "Examination" || appointment.type === "FollowUp") {
       return {
         text: "Thanh toán tại phòng khám",
         color: "text-gray-500",

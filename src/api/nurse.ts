@@ -7,6 +7,7 @@ export interface NurseAppointment {
   doctorUserId?: string | null; // ⭐ Thêm doctorUserId để check leave
   doctorStatus?: string | null; // ⭐ Status của doctor: 'Available', 'Busy', 'On Leave', 'Inactive'
   serviceName: string;
+  additionalServiceNames?: string[]; // ⭐ THÊM: Danh sách tên các dịch vụ bổ sung (cho follow-up với nhiều services)
   patientName: string;
   appointmentDate: string;
   startTime: string;
@@ -15,6 +16,8 @@ export interface NurseAppointment {
   status: string;
   mode: string;
   doctorApproved?: boolean;
+  createdAt?: string; // ⭐ Thời gian tạo để sắp xếp
+  updatedAt?: string; // ⭐ Thời gian cập nhật để sắp xếp
 }
 
 export interface NurseAppointmentDetail {

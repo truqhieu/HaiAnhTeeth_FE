@@ -104,6 +104,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const [loadingRelatives, setLoadingRelatives] = useState(false);
   const [activeReservation, setActiveReservation] = useState<ReservationInfo | null>(null);
   const [reservationCountdown, setReservationCountdown] = useState(0);
+  const [hasReservedAfterBlur, setHasReservedAfterBlur] = useState(false); // ⭐ Track xem đã blur và reserve thành công chưa
   const reservationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scheduleRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeReservationRef = useRef<ReservationInfo | null>(null);
@@ -284,6 +285,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       clearScheduleRefreshInterval();
     }
   }, [isOpen, releaseReservation, clearScheduleRefreshInterval]);
+
+  // ⭐ Clear hasReservedAfterBlur khi thay đổi input hoặc clear reservation
+  useEffect(() => {
+    if (!formData.userStartTimeInput || !activeReservation) {
+      setHasReservedAfterBlur(false);
+    }
+  }, [formData.userStartTimeInput, activeReservation]);
 
   // === Auto-fill user info (chỉ khi appointmentFor thay đổi sang "self", không ghi đè dữ liệu đã nhập) ===
   useEffect(() => {
@@ -764,6 +772,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         // ⭐ Chỉ set vào timeInputError, clear errorMessage để tránh hiển thị chồng chéo
         setTimeInputError(errorMsg);
         setErrorMessage(null);
+        setHasReservedAfterBlur(false); // ⭐ Clear flag khi có lỗi
         // Clear endTime on error
         setFormData((prev) => ({
           ...prev,
@@ -785,6 +794,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       if (!reserveRes.success || !reserveRes.data) {
         const reserveError = reserveRes.message || "Không thể giữ chỗ cho khung giờ này.";
         setTimeInputError(reserveError);
+        setHasReservedAfterBlur(false); // ⭐ Clear flag khi reserve thất bại
         setFormData((prev) => ({
           ...prev,
           userStartTimeInput: "",
@@ -794,6 +804,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       }
 
       handleReservationSuccess(reserveRes.data as ReservationInfo);
+      
+      // ⭐ Đánh dấu đã blur và reserve thành công để hiển thị message
+      setHasReservedAfterBlur(true);
 
       // ⭐ Refresh doctor schedule ngay sau khi giữ chỗ thành công
       // để cập nhật khoảng thời gian khả dụng (slot đã giữ chỗ sẽ không còn khả dụng)
@@ -821,6 +834,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       // ⭐ Chỉ set vào timeInputError, clear errorMessage để tránh hiển thị chồng chéo
       setTimeInputError(errorMsg);
       setErrorMessage(null);
+      setHasReservedAfterBlur(false); // ⭐ Clear flag khi có lỗi
       // Clear endTime on error
       await releaseReservation({ silent: true });
       setFormData((prev) => ({
@@ -1104,10 +1118,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           setErrorMessage(null);
           onClose();
           toast.success(res.message || "Đặt lịch thành công!");
-          navigate("/patient/appointments");
-          setTimeout(() => {
-            window.location.reload();
-          }, 100);
+          // ⭐ Navigate với state để trigger refetch mà không cần reload trang
+          navigate("/patient/appointments", { 
+            state: { shouldRefetch: true },
+            replace: false 
+          });
         }
       } else {
         // ⭐ Nếu lỗi liên quan đến thời gian, hiển thị dưới ô input thay vì trên cùng form
@@ -1500,6 +1515,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                               value={(formData.userStartTimeInput || '').split(':')[0] || ''}
                               onChange={(e) => {
                                 let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                                // ⭐ Clear flag ngay khi bắt đầu onChange để ẩn message khi đang nhập
+                                setHasReservedAfterBlur(false);
                                 setTimeInputError(null);
                                 setErrorMessage(null);
                                 if (fieldErrors.userStartTimeInput) {
@@ -1517,6 +1534,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                 if ((!v || v === '') && (!currentMinute || currentMinute === '')) {
                                   if (activeReservation) {
                                     releaseReservation({ silent: true });
+                                    setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa hết
                                   }
                                   setFormData((prev) => ({
                                     ...prev,
@@ -1541,6 +1559,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                 // ⭐ Release reservation nếu đã xóa hết giờ và phút
                                 if (activeReservation && (!v || v === '') && (!currentMinute || currentMinute === '')) {
                                   releaseReservation({ silent: true });
+                                  setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa hết
                                 }
                                 
                                 // ⭐ Nếu xóa giờ hoặc phút (chưa đầy đủ) → chỉ update input, không set startTime/endTime, không validate
@@ -1580,6 +1599,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                     if (currentReservationStart !== newStartTimeISO) {
                                       // Thời gian đã thay đổi → release reservation cũ ngay lập tức
                                       releaseReservation({ silent: true });
+                                      setHasReservedAfterBlur(false); // ⭐ Clear flag khi thời gian thay đổi
                                     }
                                   }
                                   
@@ -1630,6 +1650,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                               value={(formData.userStartTimeInput || '').split(':')[1] || ''}
                               onChange={(e) => {
                                 let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                                // ⭐ Clear flag ngay khi bắt đầu onChange để ẩn message khi đang nhập
+                                setHasReservedAfterBlur(false);
                                 setTimeInputError(null);
                                 setErrorMessage(null);
                                 if (fieldErrors.userStartTimeInput) {
@@ -1647,6 +1669,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                 if ((!currentHour || currentHour === '') && (!v || v === '')) {
                                   if (activeReservation) {
                                     releaseReservation({ silent: true });
+                                    setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa hết
                                   }
                                   setFormData((prev) => ({
                                     ...prev,
@@ -1671,6 +1694,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                 // ⭐ Release reservation nếu đã xóa hết giờ và phút
                                 if (activeReservation && (!currentHour || currentHour === '') && (!v || v === '')) {
                                   releaseReservation({ silent: true });
+                                  setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa hết
                                 }
                                 
                                 // ⭐ Nếu xóa giờ hoặc phút (chưa đầy đủ) → chỉ update input, không set startTime/endTime, không validate
@@ -1710,6 +1734,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                                     if (currentReservationStart !== newStartTimeISO) {
                                       // Thời gian đã thay đổi → release reservation cũ ngay lập tức
                                       releaseReservation({ silent: true });
+                                      setHasReservedAfterBlur(false); // ⭐ Clear flag khi thời gian thay đổi
                                     }
                                   }
                                   
@@ -1752,7 +1777,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                               {timeInputError || fieldErrors.userStartTimeInput}
                             </p>
                           )}
-                          {activeReservation && reservationCountdown > 0 && !timeInputError && (
+                          {/* ⭐ Chỉ hiển thị message giữ chỗ sau khi blur và reserve thành công */}
+                          {activeReservation && reservationCountdown > 0 && !timeInputError && hasReservedAfterBlur && (
                             <p className="mt-1 text-xs text-[#39BDCC]">
                               Đang giữ chỗ {formatVNTimeFromISO(activeReservation.startTime)} -{" "}
                               {formatVNTimeFromISO(activeReservation.endTime)} ngày{" "}

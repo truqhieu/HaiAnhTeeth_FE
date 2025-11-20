@@ -3,6 +3,7 @@ import { authenticatedApiCall, ApiResponse } from "./index";
 export interface DoctorAppointment {
   appointmentId: string;
   serviceName: string;
+  additionalServiceNames?: string[]; // ⭐ THÊM: Danh sách tên các dịch vụ bổ sung (cho follow-up với nhiều services)
   patientName: string;
   appointmentDate: string;
   startTime: string;
@@ -12,6 +13,8 @@ export interface DoctorAppointment {
   mode: string;
   medicalRecordStatus?: "Draft" | "Finalized" | null; // Status của medical record: Draft = chưa duyệt, Finalized = đã duyệt, null = chưa có hồ sơ
   noTreatment?: boolean;
+  createdAt?: string; // ⭐ Thời gian tạo để sắp xếp
+  updatedAt?: string; // ⭐ Thời gian cập nhật để sắp xếp
 }
 
 export interface AppointmentDetail {

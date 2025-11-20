@@ -69,6 +69,7 @@ interface Appointment {
   endTime: string;
   checkedInAt: string;
   createdAt: string;
+  updatedAt?: string; // ⭐ THÊM: Thời gian cập nhật để sắp xếp
   noTreatment?: boolean;
 }
 
@@ -500,6 +501,7 @@ const AllAppointments = () => {
               : "",
             checkedInAt: apt.checkedInAt || "",
             createdAt: apt.createdAt || "",
+            updatedAt: apt.updatedAt || apt.createdAt || "", // ⭐ Thêm updatedAt để sắp xếp
             noTreatment: !!apt.noTreatment,
           };
         });
@@ -808,11 +810,18 @@ const AllAppointments = () => {
       });
     }
 
-    // Sort by startTime descending (mới nhất lên đầu)
+    // ⭐ Sort by updatedAt/createdAt descending (mới nhất/vừa đặt/vừa cập nhật lên đầu)
+    // Nếu không có updatedAt/createdAt thì dùng startTime
     filtered.sort((a, b) => {
-      const timeA = a.startTime ? new Date(a.startTime).getTime() : 0;
-      const timeB = b.startTime ? new Date(b.startTime).getTime() : 0;
-      return timeB - timeA; // Descending: mới nhất lên đầu
+      // Ưu tiên updatedAt, nếu không có thì dùng createdAt, nếu không có thì dùng startTime
+      const timeA = a.updatedAt 
+        ? new Date(a.updatedAt).getTime() 
+        : (a.createdAt ? new Date(a.createdAt).getTime() : (a.startTime ? new Date(a.startTime).getTime() : 0));
+      const timeB = b.updatedAt 
+        ? new Date(b.updatedAt).getTime() 
+        : (b.createdAt ? new Date(b.createdAt).getTime() : (b.startTime ? new Date(b.startTime).getTime() : 0));
+      // ⭐ Descending: mới nhất lên đầu (thời gian lớn hơn lên trước)
+      return timeB - timeA;
     });
 
     setFilteredAppointments(filtered);

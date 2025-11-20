@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Table,
   TableHeader,
@@ -35,6 +35,7 @@ interface Appointment {
   doctorId?: string; // ⭐ THÊM: ID của doctor để navigate sang chat
   doctorStatus?: string | null; // ⭐ Status của doctor: 'Available', 'Busy', 'On Leave', 'Inactive'
   serviceName: string;
+  additionalServiceNames?: string[]; // ⭐ THÊM: Danh sách tên các dịch vụ bổ sung (cho follow-up với nhiều services)
   startTime: string;
   endTime: string;
   notes?: string;
@@ -51,11 +52,15 @@ interface Appointment {
   replacedDoctorName?: string; // ⭐ THÊM: Bác sĩ mới
   confirmDeadline?: string; // ⭐ THÊM: Deadline xác nhận (24h)
   noTreatment?: boolean;
+  createdAt?: string; // ⭐ THÊM: Thời gian tạo để sắp xếp
+  updatedAt?: string; // ⭐ THÊM: Thời gian cập nhật để sắp xếp
 }
 
 const Appointments = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const hasRefetchedRef = useRef(false); // ⭐ Track xem đã refetch sau khi booking chưa
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   // ⭐ Tránh nháy “Không có ca khám” khi vừa điều hướng: bật loading mặc định
   const [loading, setLoading] = useState(true);
@@ -141,6 +146,7 @@ const Appointments = () => {
             doctorId: apt.replacedDoctorUserId?._id || apt.doctorUserId?._id || undefined, // ⭐ Thêm doctorId (ưu tiên replaced)
             doctorStatus: apt.doctorStatus || null, // ⭐ Thêm doctorStatus từ backend
             serviceName: apt.serviceId?.serviceName || "",
+            additionalServiceNames: apt.additionalServiceIds?.map((s: any) => s?.serviceName || "").filter(Boolean) || [],
             startTime: apt.timeslotId?.startTime || "",
             endTime: apt.timeslotId?.endTime || "",
             notes: apt.notes || "",
@@ -157,6 +163,8 @@ const Appointments = () => {
             replacedDoctorName: apt.replacedDoctorUserId?.fullName || undefined,
             confirmDeadline: apt.confirmDeadline || undefined,
             noTreatment: !!apt.noTreatment,
+            createdAt: apt.createdAt || apt.startTime || "", // ⭐ Thêm createdAt để sắp xếp (fallback về startTime)
+            updatedAt: apt.updatedAt || apt.createdAt || apt.startTime || "", // ⭐ Thêm updatedAt để sắp xếp
           };
         },
       );
@@ -201,6 +209,23 @@ const Appointments = () => {
     // ⭐ Loại bỏ refetchAppointments khỏi dependencies để tránh re-run không cần thiết
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
+
+  // ⭐ Refetch khi navigate từ BookingModal (không cần reload trang)
+  useEffect(() => {
+    if (location.state?.shouldRefetch && isAuthenticated && !hasRefetchedRef.current) {
+      console.log("🔄 Refetching appointments after booking...");
+      hasRefetchedRef.current = true;
+      refetchAppointments();
+      // Clear state để tránh refetch lại khi component re-render
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // Reset ref khi location thay đổi (navigate đi chỗ khác rồi quay lại)
+    if (!location.state?.shouldRefetch) {
+      hasRefetchedRef.current = false;
+    }
+    // ⭐ Loại bỏ refetchAppointments khỏi dependencies để tránh re-run không cần thiết
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.shouldRefetch, isAuthenticated, navigate]);
 
   const getStatusText = (appointment: Appointment): string => {
     // ⭐ Nếu appointment đang PendingPayment nhưng payment đã cancelled/expired → hiển thị theo status thực tế
@@ -255,7 +280,8 @@ const Appointments = () => {
       };
     }
 
-    if (appointment.type === "Examination") {
+    // ⭐ Nếu là Examination hoặc FollowUp (tái khám) → hiển thị "Thanh toán tại phòng khám"
+    if (appointment.type === "Examination" || appointment.type === "FollowUp") {
       return {
         text: "Thanh toán tại phòng khám",
         color: "text-gray-500",
@@ -553,11 +579,18 @@ const Appointments = () => {
     }
   });
 
-  // Sort by startTime descending (mới nhất lên đầu)
+  // ⭐ Sort by updatedAt/createdAt descending (mới nhất/vừa đặt/vừa cập nhật lên đầu)
+  // Nếu không có updatedAt/createdAt thì dùng startTime
   const sortedAppointments = [...currentAppointments].sort((a, b) => {
-    const timeA = a.startTime ? new Date(a.startTime).getTime() : 0;
-    const timeB = b.startTime ? new Date(b.startTime).getTime() : 0;
-    return timeB - timeA; // Descending: mới nhất lên đầu
+    // Ưu tiên updatedAt, nếu không có thì dùng createdAt, nếu không có thì dùng startTime
+    const timeA = a.updatedAt 
+      ? new Date(a.updatedAt).getTime() 
+      : (a.createdAt ? new Date(a.createdAt).getTime() : (a.startTime ? new Date(a.startTime).getTime() : 0));
+    const timeB = b.updatedAt 
+      ? new Date(b.updatedAt).getTime() 
+      : (b.createdAt ? new Date(b.createdAt).getTime() : (b.startTime ? new Date(b.startTime).getTime() : 0));
+    // ⭐ Descending: mới nhất lên đầu (thời gian lớn hơn lên trước)
+    return timeB - timeA;
   });
 
   const columns = [
@@ -804,13 +837,24 @@ const Appointments = () => {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-48">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-900">{appointment.serviceName}</span>
-                        {appointment.type === "FollowUp" && (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
-                            Tái khám
-                          </span>
-                        )}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* ⭐ Hiển thị tất cả services nếu có additionalServiceNames (follow-up với nhiều services) */}
+                          {appointment.type === "FollowUp" && appointment.additionalServiceNames && appointment.additionalServiceNames.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {appointment.additionalServiceNames.map((serviceName, idx) => (
+                                <span key={idx} className="text-sm text-gray-900">{serviceName}</span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-900">{appointment.serviceName}</span>
+                          )}
+                          {appointment.type === "FollowUp" && (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 whitespace-nowrap">
+                              Tái khám
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-4 whitespace-nowrap w-48">

@@ -283,20 +283,45 @@ const NurseSchedule = () => {
     return () => clearTimeout(timer);
   }, [searchText]);
 
-  // Refetch appointments khi dateRange thay đổi
+  // ⭐ FIX: Fetch appointments khi switch tab hoặc dateRange thay đổi
   useEffect(() => {
     if (!isAuthenticated) return;
     
-    if (dateRange.startDate && dateRange.endDate) {
-      // Chỉ fetch khi cả startDate và endDate đều có giá trị
+    // ⭐ FIX: Khi switch tab, cần fetch lại appointments với date range phù hợp
+    if (activeTab === "upcoming") {
+      // Tab "Các ca khám hôm nay": Fetch appointments của ngày hôm nay
+      const today = getTodayInVietnam();
+      fetchAppointments(today, today);
+    } else if (activeTab === "future") {
+      // Tab "Các ca khám sắp tới": Fetch từ ngày mai đến chủ nhật tuần sau
+      const today = getTodayInVietnam();
+      const todayDate = new Date(today);
+      const tomorrowDate = new Date(todayDate);
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      const tomorrowStr = tomorrowDate.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+      
+      const currentDayOfWeek = todayDate.getDay();
+      const daysUntilThisSunday = currentDayOfWeek === 0 ? 0 : 7 - currentDayOfWeek;
+      const thisSunday = new Date(todayDate);
+      thisSunday.setDate(thisSunday.getDate() + daysUntilThisSunday);
+      const nextSunday = new Date(thisSunday);
+      nextSunday.setDate(nextSunday.getDate() + 7);
+      const nextSundayStr = nextSunday.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+      
+      fetchAppointments(tomorrowStr, nextSundayStr);
+    } else if (activeTab === "history") {
+      // Tab "Lịch sử": Fetch tất cả (không filter date)
+      fetchAppointments(null, null);
+    } else if (dateRange.startDate && dateRange.endDate) {
+      // Nếu có dateRange, fetch theo dateRange
       fetchAppointments(dateRange.startDate, dateRange.endDate);
     } else if (!dateRange.startDate && !dateRange.endDate) {
       // Khi clear date range, fetch lại mặc định (2 tuần)
       fetchAppointments();
     }
-    // ⭐ Loại bỏ fetchAppointments khỏi dependencies để tránh re-run không cần thiết
+    // ⭐ Loại bỏ fetchAppointments và getTodayInVietnam khỏi dependencies để tránh re-run không cần thiết
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange.startDate, dateRange.endDate, isAuthenticated]); 
+  }, [activeTab, dateRange.startDate, dateRange.endDate, isAuthenticated]); 
 
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
@@ -336,6 +361,7 @@ const NurseSchedule = () => {
         const matchesBasic = 
           apt.patientName.toLowerCase().includes(searchLower) ||
           apt.serviceName.toLowerCase().includes(searchLower) ||
+          (apt.additionalServiceNames && apt.additionalServiceNames.some(s => s.toLowerCase().includes(searchLower))) ||
           apt.doctorName.toLowerCase().includes(searchLower);
         
         // Tìm theo trạng thái (text search)
@@ -376,16 +402,33 @@ const NurseSchedule = () => {
       filtered = filtered.filter(apt => apt.doctorName === selectedDoctor);
     }
 
-    // Sort by appointmentDate descending (ngày mới nhất lên đầu) sau đó sort by startTime descending
+    // ⭐ Sort logic: Ưu tiên updatedAt (mới nhất lên đầu), sau đó createdAt, sau đó startTime
+    // Đặc biệt cho tab "today": ca khám được update sớm nhất (checkin, status change) sẽ lên đầu
     filtered.sort((a, b) => {
-      // So sánh theo appointmentDate trước (ngày mới nhất lên đầu)
+      // ⭐ Ưu tiên 1: updatedAt (mới nhất lên đầu) - chỉ áp dụng cho tab "today"
+      if (activeTab === "upcoming") {
+        const updatedAtA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const updatedAtB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        if (updatedAtA !== updatedAtB) {
+          return updatedAtB - updatedAtA; // Descending: mới nhất lên đầu
+        }
+        
+        // ⭐ Ưu tiên 2: createdAt (mới nhất lên đầu) nếu updatedAt giống nhau
+        const createdAtA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const createdAtB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (createdAtA !== createdAtB) {
+          return createdAtB - createdAtA; // Descending: mới nhất lên đầu
+        }
+      }
+      
+      // ⭐ Ưu tiên 3: appointmentDate (ngày mới nhất lên đầu)
       const dateA = a.appointmentDate || '';
       const dateB = b.appointmentDate || '';
       if (dateA !== dateB) {
         return dateB.localeCompare(dateA); // Descending: ngày mới nhất lên đầu
       }
       
-      // Nếu cùng ngày, sort theo startTime (giờ muộn nhất lên đầu trong cùng ngày)
+      // ⭐ Ưu tiên 4: startTime (giờ muộn nhất lên đầu trong cùng ngày)
       const timeA = a.startTime || '';
       const timeB = b.startTime || '';
       return timeB.localeCompare(timeA); // Descending: giờ muộn nhất lên đầu
@@ -819,7 +862,22 @@ const NurseSchedule = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="text-sm text-gray-700">{appointment.serviceName}</p>
+                    <div className="flex flex-col gap-1">
+                      {/* ⭐ Hiển thị tất cả services nếu có additionalServiceNames (follow-up với nhiều services) */}
+                      {appointment.type === "FollowUp" && appointment.additionalServiceNames && appointment.additionalServiceNames.length > 0 ? (
+                        appointment.additionalServiceNames.map((serviceName, idx) => (
+                          <p key={idx} className="text-sm text-gray-700">{serviceName}</p>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-700">{appointment.serviceName}</p>
+                      )}
+                      {/* ⭐ Hiển thị badge "Tái khám" nếu là follow-up */}
+                      {appointment.type === "FollowUp" && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 w-fit">
+                          Tái khám
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Chip 

@@ -288,7 +288,7 @@ export const appointmentApi = {
    */
   requestReschedule: async (
     appointmentId: string,
-    params: { newStartTime: string; newEndTime: string; reason?: string },
+    params: { newStartTime: string; newEndTime: string; reason?: string; reservedTimeslotId?: string },
   ): Promise<ApiResponse<any>> => {
     return authenticatedApiCall(`/appointments/${appointmentId}/request-reschedule`, {
       method: "POST",

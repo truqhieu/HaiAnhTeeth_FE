@@ -68,6 +68,7 @@ const DoctorMedicalRecord: React.FC = () => {
   // Reservation state
   const [activeReservation, setActiveReservation] = useState<ReservationInfo | null>(null);
   const [reservationCountdown, setReservationCountdown] = useState(0);
+  const [hasReservedAfterBlur, setHasReservedAfterBlur] = useState(false); // ⭐ Track xem đã blur và reserve thành công chưa
   const reservationTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const scheduleRefreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const activeReservationRef = useRef<ReservationInfo | null>(null);
@@ -239,7 +240,80 @@ const DoctorMedicalRecord: React.FC = () => {
           }
           
           setFollowUpNote(res.data.record.followUpNote || "");
-          setFollowUpAppointmentId(res.data.record.followUpAppointmentId || null);
+          
+          // ⭐ FIX: Lấy followUpAppointmentId từ record (có thể là ObjectId hoặc object đã populate)
+          const followUpApptId = res.data.record.followUpAppointmentId;
+          if (followUpApptId) {
+            const followUpId = typeof followUpApptId === 'object' && followUpApptId !== null && '_id' in followUpApptId
+              ? (followUpApptId as { _id: string })._id
+              : followUpApptId;
+            setFollowUpAppointmentId(followUpId?.toString() || String(followUpId));
+            
+            // ⭐ FIX: Ưu tiên lấy thời gian từ follow-up appointment's timeslot (nếu có)
+            if (typeof followUpApptId === 'object' && followUpApptId !== null && 'timeslotId' in followUpApptId) {
+              const timeslot = (followUpApptId as any).timeslotId;
+              if (timeslot && timeslot.startTime) {
+                const startTime = new Date(timeslot.startTime);
+                if (!Number.isNaN(startTime.getTime())) {
+                  // Set followUpDate và followUpTimeInput từ timeslot
+                  setFollowUpDate(startTime);
+                  const vnHours = String((startTime.getUTCHours() + 7) % 24).padStart(2, '0');
+                  const vnMinutes = String(startTime.getUTCMinutes()).padStart(2, '0');
+                  setFollowUpTimeInput(`${vnHours}:${vnMinutes}`);
+                  setFollowUpDateTime(formatDateTimeInputValue(startTime.toISOString()));
+                  
+                  // ⭐ FIX: Tính và set followUpEndTime từ timeslot.endTime
+                  if (timeslot.endTime) {
+                    const endTime = new Date(timeslot.endTime);
+                    if (!Number.isNaN(endTime.getTime())) {
+                      setFollowUpEndTime(endTime);
+                      console.log('✅ [load] Loaded follow-up appointment end time from timeslot');
+                    }
+                  }
+                  
+                  console.log('✅ [load] Loaded follow-up appointment time from timeslot:', `${vnHours}:${vnMinutes}`);
+                  // ⭐ Skip parsing từ followUpDate vì đã lấy từ timeslot
+                  return;
+                }
+              }
+            }
+          } else {
+            setFollowUpAppointmentId(null);
+          }
+          
+          // ⭐ Fallback: Nếu không có timeslot từ follow-up appointment, lấy từ followUpDate của record
+          if (res.data.record.followUpDate) {
+            const followUpDateObj = new Date(res.data.record.followUpDate);
+            setFollowUpDate(followUpDateObj);
+            // ⭐ Check và set lỗi nếu ngày là ngày hiện tại
+            if (isToday(followUpDateObj)) {
+              setFollowUpDateError("Vui lòng chọn ngày tái khám khác ngày hiện tại");
+            } else {
+              setFollowUpDateError(null);
+            }
+            const hours = String((followUpDateObj.getUTCHours() + 7) % 24).padStart(2, '0');
+            const minutes = String(followUpDateObj.getUTCMinutes()).padStart(2, '0');
+            setFollowUpTimeInput(`${hours}:${minutes}`);
+            setFollowUpDateTime(formatDateTimeInputValue(res.data.record.followUpDate));
+            
+            // ⭐ Tính followUpEndTime từ followUpDate + service duration (nếu có)
+            if (followUpServiceIds.length > 0 && allServices.length > 0) {
+              const totalDuration = followUpServiceIds.reduce((total, serviceId) => {
+                const service = allServices.find(s => s._id === serviceId);
+                return total + (service?.durationMinutes || 0);
+              }, 0);
+              if (totalDuration > 0) {
+                const endTime = new Date(followUpDateObj.getTime() + totalDuration * 60 * 1000);
+                setFollowUpEndTime(endTime);
+              }
+            }
+          } else {
+            setFollowUpDate(null);
+            setFollowUpTimeInput("");
+            setFollowUpDateTime("");
+            setFollowUpDateError(null);
+            setFollowUpEndTime(null);
+          }
           
           // Lấy doctorUserId từ record (có thể là ObjectId hoặc string)
           const doctorUserId = res.data.record.doctorUserId;
@@ -286,10 +360,12 @@ const DoctorMedicalRecord: React.FC = () => {
           setError(res.message || "Không thể tải hồ sơ khám bệnh");
         }
 
-        // Load all available services
+        // Load all available services (chỉ Examination)
         const servicesRes = await medicalRecordApi.getActiveServicesForDoctor();
         if (servicesRes.success && servicesRes.data) {
-          setAllServices(servicesRes.data);
+          // ⭐ Filter chỉ lấy Examination để đảm bảo (BE đã filter nhưng filter thêm ở FE để chắc chắn)
+          const examinationServices = servicesRes.data.filter((s: any) => s.category === 'Examination');
+          setAllServices(examinationServices);
         }
       } catch (e: any) {
         setError(e.message || "Lỗi kết nối máy chủ");
@@ -710,6 +786,13 @@ const DoctorMedicalRecord: React.FC = () => {
     if (errorMsg.includes('Bạn đã đặt lịch với bác sĩ này')) {
       return 'Bạn đã có lịch khám vào khung giờ này. Vui lòng chọn khung giờ khác.';
     }
+    // ⭐ Map message về conflict tái khám
+    if (errorMsg.includes('Khung giờ tái khám bị trùng với ca khám khác của bác sĩ')) {
+      return 'Khung giờ tái khám bị trùng với ca khám khác của bạn. Vui lòng chọn khung giờ khác.';
+    }
+    if (errorMsg.includes('Khung giờ tái khám mới bị trùng với ca khám khác của bác sĩ')) {
+      return 'Khung giờ tái khám mới bị trùng với ca khám khác của bạn. Vui lòng chọn khung giờ khác.';
+    }
     // Map các message khác có thể liên quan đến "bác sĩ" hoặc "bạn"
     if (errorMsg.includes('Thời gian bạn chọn không nằm trong lịch làm việc của bác sĩ')) {
       return 'Thời gian bạn chọn không nằm trong thời gian khả dụng của bạn. Vui lòng chọn thời gian khác.';
@@ -745,11 +828,14 @@ const DoctorMedicalRecord: React.FC = () => {
 
     // ⭐ Clear error ngay khi bắt đầu validate để tránh hiển thị lỗi cũ
     setTimeInputError(null);
-    // Clear end time khi bắt đầu validate
-    setFollowUpEndTime(null);
+    // ⭐ Sửa: KHÔNG clear endTime ngay khi bắt đầu validate
+    // Chỉ clear khi thực sự có lỗi hoặc thời gian thay đổi
+    // Giữ lại endTime hiện tại để tránh bị ẩn khi blur
     
     if (!timeInput || !followUpDoctorUserId || !followUpServiceIds || followUpServiceIds.length === 0) {
       setTimeInputError(null);
+      // ⭐ Chỉ clear endTime khi thiếu thông tin cần thiết
+      setFollowUpEndTime(null);
       return;
     }
 
@@ -765,6 +851,8 @@ const DoctorMedicalRecord: React.FC = () => {
     const timeRegex = /^(\d{1,2}):(\d{1,2})$/;
     if (!timeRegex.test(timeInput)) {
       setTimeInputError("Định dạng thời gian không hợp lệ. Vui lòng nhập HH:mm (ví dụ: 08:30)");
+      // ⭐ Chỉ clear endTime khi format không hợp lệ
+      setFollowUpEndTime(null);
       return;
     }
 
@@ -774,18 +862,21 @@ const DoctorMedicalRecord: React.FC = () => {
     // Validate range với thông báo lỗi cụ thể
     if (isNaN(hoursNum) || isNaN(minutesNum)) {
       setTimeInputError("Thời gian không hợp lệ. Vui lòng nhập số hợp lệ");
+      setFollowUpEndTime(null);
       return;
     }
 
     // Kiểm tra giờ
     if (hoursNum < 0 || hoursNum > 23) {
       setTimeInputError("Giờ không hợp lệ. Giờ phải từ 00-23");
+      setFollowUpEndTime(null);
       return;
     }
 
     // Kiểm tra phút
     if (minutesNum < 0 || minutesNum > 59) {
       setTimeInputError("Phút không hợp lệ. Phút phải từ 00-59");
+      setFollowUpEndTime(null);
       return;
     }
 
@@ -795,6 +886,7 @@ const DoctorMedicalRecord: React.FC = () => {
     
     if (!followUpDate) {
       setTimeInputError("Vui lòng chọn ngày trước");
+      setFollowUpEndTime(null);
       return;
     }
     
@@ -830,6 +922,7 @@ const DoctorMedicalRecord: React.FC = () => {
         // Nếu không nằm trong working hours → ngoài giờ làm việc
         if (!isInWorkingHours) {
           setTimeInputError("Thời gian bạn chọn không nằm trong thời gian khả dụng của bạn. Vui lòng chọn thời gian trong khoảng thời gian khả dụng.");
+          setFollowUpEndTime(null);
           return;
         }
       }
@@ -854,9 +947,17 @@ const DoctorMedicalRecord: React.FC = () => {
 
     // ⭐ Gọi backend validation, để BE quyết định trường hợp quá khứ và các edge cases
     try {
-      // ⭐ Release reservation cũ trước khi validate (nếu có)
+      // ⭐ Lưu endTime hiện tại để giữ lại trong quá trình validate (tránh bị ẩn khi click vào field khác)
+      const currentEndTime = followUpEndTime;
+      
+      // ⭐ Kiểm tra xem thời gian input có thay đổi so với reservation hiện tại không
+      // Nếu không thay đổi và đã có endTime, có thể skip validate hoặc giữ lại endTime
+      const currentReservation = activeReservationRef.current;
+      const isSameTime = currentReservation && currentReservation.startTime === startTimeISO;
+      
+      // ⭐ Release reservation cũ trước khi validate (nếu có và thời gian đã thay đổi)
       // Note: Có thể đã được release trong onChange, nhưng đảm bảo release hoàn tất
-      if (activeReservationRef.current) {
+      if (activeReservationRef.current && !isSameTime) {
         await releaseReservation({ silent: true });
         // ⭐ Đợi thêm để đảm bảo BE đã cập nhật status trong DB trước khi validate
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -875,8 +976,19 @@ const DoctorMedicalRecord: React.FC = () => {
         // ⭐ Map error message cho context bác sĩ
         const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
         setTimeInputError(mappedErrorMsg);
+        setHasReservedAfterBlur(false); // ⭐ Clear flag khi có lỗi
+        // ⭐ Chỉ clear endTime khi thực sự có lỗi, không clear khi chỉ đang validate lại
         setFollowUpEndTime(null);
         return;
+      }
+
+      // ⭐ Parse endTime từ BE (UTC) và tạo Date object ngay sau khi validate thành công
+      // ⭐ Set endTime ngay để tránh bị ẩn khi click vào field khác
+      const endTimeDate = new Date(validateRes.data!.endTime);
+      // ⭐ Chỉ update endTime nếu thực sự có thay đổi, hoặc chưa có endTime
+      // Nếu đã có endTime và giống nhau, giữ nguyên để tránh bị ẩn
+      if (!currentEndTime || currentEndTime.getTime() !== endTimeDate.getTime()) {
+        setFollowUpEndTime(endTimeDate);
       }
 
       // ⭐ Reserve slot sau khi validate thành công (giống BookingModal)
@@ -901,11 +1013,17 @@ const DoctorMedicalRecord: React.FC = () => {
       if (!reserveRes.success || !reserveRes.data) {
         const reserveError = reserveRes.message || "Không thể giữ chỗ cho khung giờ này.";
         setTimeInputError(reserveError);
-        setFollowUpEndTime(null);
+        setHasReservedAfterBlur(false); // ⭐ Clear flag khi reserve thất bại
+        // ⭐ Chỉ clear endTime khi reserve thất bại, nhưng nếu đã có endTime từ validate thì giữ lại
+        // Vì endTime từ validate vẫn đúng, chỉ là không reserve được
+        // setFollowUpEndTime(null);
         return;
       }
 
       handleReservationSuccess(reserveRes.data as ReservationInfo);
+      
+      // ⭐ Đánh dấu đã blur và reserve thành công để hiển thị message
+      setHasReservedAfterBlur(true);
 
       // ⭐ Refresh schedule ngay sau khi giữ chỗ thành công
       // để cập nhật khoảng thời gian khả dụng (slot đã giữ chỗ sẽ không còn khả dụng)
@@ -913,18 +1031,16 @@ const DoctorMedicalRecord: React.FC = () => {
         await loadAvailableSlots({ silent: true });
       }
 
-      // ⭐ Parse endTime từ BE (UTC) và tạo Date object (giống BookingModal)
-      const endTimeDate = new Date(validateRes.data!.endTime);
-      
       // ⭐ Clear error khi validation thành công
       setTimeInputError(null);
-      setFollowUpEndTime(endTimeDate);
+      // ⭐ endTime đã được set ở trên, không cần set lại
     } catch (err: any) {
       console.error("Error validating time:", err);
       const errorMsg = err.message || err.response?.data?.message || "Lỗi validate thời gian";
       // ⭐ Map error message cho context bác sĩ
       const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
       setTimeInputError(mappedErrorMsg);
+      setHasReservedAfterBlur(false); // ⭐ Clear flag khi có lỗi
       setFollowUpEndTime(null);
     }
   };
@@ -960,6 +1076,16 @@ const DoctorMedicalRecord: React.FC = () => {
     };
   }, [activeReservation, clearReservationTimer, releaseReservation]);
 
+  // ⭐ Clear hasReservedAfterBlur khi thay đổi input hoặc clear reservation
+  // ⭐ Sửa: Clear ngay khi thay đổi input để đảm bảo message không hiển thị khi đang nhập
+  useEffect(() => {
+    // ⭐ Clear flag khi không có input hoặc không có reservation
+    // Hoặc khi input thay đổi (để đảm bảo phải blur lại mới hiển thị message)
+    if (!followUpTimeInput || !activeReservation) {
+      setHasReservedAfterBlur(false);
+    }
+  }, [followUpTimeInput, activeReservation]);
+
   // ⭐ Release reservation khi thay đổi input (giống BookingModal)
   useEffect(() => {
     if (followUpTimeInput === "" || !followUpDate) {
@@ -969,6 +1095,7 @@ const DoctorMedicalRecord: React.FC = () => {
         pendingValidationRef.current = null;
       }
       releaseReservation({ silent: true });
+      setHasReservedAfterBlur(false); // ⭐ Clear flag khi clear input
     }
   }, [followUpTimeInput, followUpDate, releaseReservation]);
 
@@ -1164,6 +1291,20 @@ const DoctorMedicalRecord: React.FC = () => {
       toast.error("Không thể duyệt hồ sơ khi đã được khóa.");
       return;
     }
+    
+    // ⭐ VALIDATION: Kiểm tra các trường bắt buộc
+    if (!diagnosis || diagnosis.trim() === '') {
+      toast.error("Vui lòng nhập chẩn đoán");
+      setError("Vui lòng nhập chẩn đoán");
+      return;
+    }
+    
+    if (!conclusion || conclusion.trim() === '') {
+      toast.error("Vui lòng nhập kết luận");
+      setError("Vui lòng nhập kết luận");
+      return;
+    }
+    
     let followUpDateISO: string | null = null;
     if (followUpEnabled) {
       if (!followUpServiceIds || followUpServiceIds.length === 0) {
@@ -1196,8 +1337,12 @@ const DoctorMedicalRecord: React.FC = () => {
       // Combine date and time
       const vnHours = parseInt(hours);
       const vnMinutes = parseInt(minutes);
+      // ⭐ FIX: Tạo Date object từ date string (YYYY-MM-DD) để tránh timezone issue
+      // followUpDate từ DatePicker là local date, cần convert sang UTC date string trước
+      const dateStr = formatDateToVNString(followUpDate);
+      // ⭐ Tạo Date object với UTC date string (YYYY-MM-DD) và set UTC hours
+      const followUpDateObj = new Date(dateStr + "T00:00:00.000Z");
       const utcHours = vnHours - 7;
-      const followUpDateObj = new Date(followUpDate);
       followUpDateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
       
       if (Number.isNaN(followUpDateObj.getTime())) {
@@ -1235,6 +1380,20 @@ const DoctorMedicalRecord: React.FC = () => {
       }
       followUpDateISO = followUpDateObj.toISOString();
     }
+    
+    // ⭐ FIX: Release reservation trước khi save để tránh conflict với follow-up appointment mới
+    // Reserved slot từ lần blur có thể conflict với follow-up appointment khi tạo
+    if (followUpEnabled && activeReservation) {
+      try {
+        await releaseReservation({ silent: true });
+        // ⭐ Đợi một chút để đảm bảo BE đã cập nhật status trong DB
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (e) {
+        // Ignore lỗi release reservation, vẫn tiếp tục save
+        console.warn('Failed to release reservation before save:', e);
+      }
+    }
+    
     setSaving(true);
     try {
       const payload: any = {
@@ -1250,50 +1409,213 @@ const DoctorMedicalRecord: React.FC = () => {
 
       const res = await medicalRecordApi.updateMedicalRecordForDoctor(appointmentId, payload);
       if (res.success && res.data) {
-        setPermissions((prev) => {
-          if (!prev) return prev;
-          const nextRecordStatus = res.data?.status || prev.recordStatus;
-          const appointmentStatus = prev.appointmentStatus;
-          const appointmentLocked = appointmentStatus ? ['Completed', 'Finalized'].includes(appointmentStatus) : false;
-          const recordFinalized = nextRecordStatus === 'Finalized';
-          const doctorCanEdit = !appointmentLocked && !recordFinalized;
-          const nurseCanEdit = !appointmentLocked && !recordFinalized;
-          return {
-            ...prev,
-            recordStatus: nextRecordStatus,
-            doctor: {
-              canEdit: doctorCanEdit,
-              reason: doctorCanEdit
-                ? null
-                : appointmentLocked
-                ? 'Ca khám đã hoàn thành, không thể chỉnh sửa hồ sơ.'
-                : 'Hồ sơ đã được duyệt.'
-            },
-            nurse: {
-              canEdit: nurseCanEdit,
-              reason: nurseCanEdit
-                ? null
-                : appointmentLocked
-                ? 'Ca khám đã hoàn thành, không thể chỉnh sửa hồ sơ.'
-                : 'Hồ sơ đã được bác sĩ duyệt, điều dưỡng không thể chỉnh sửa.'
-            }
-          };
-        });
+        // ⭐ FIX: Không update permissions ở đây nữa, sẽ reload từ backend sau khi approve
+        // Permissions sẽ được update từ reload response để đảm bảo đúng logic (đặc biệt là với follow-up appointments)
         if (approve) {
           toast.success("Đã lưu và duyệt hồ sơ khám bệnh");
+          // ⭐ FIX: Nếu approve, reload lại medical record để lấy đầy đủ thông tin follow-up appointment và permissions mới
+          setTimeout(async () => {
+            try {
+              const reloadRes = await medicalRecordApi.getOrCreateByAppointment(appointmentId, 'Doctor');
+              if (reloadRes.success && reloadRes.data) {
+                // ⭐ Update permissions từ reload response (quan trọng để update canEdit sau khi duyệt)
+                if (reloadRes.data.permissions) {
+                  setPermissions(reloadRes.data.permissions);
+                  console.log('✅ [onSave] Updated permissions after approve:', reloadRes.data.permissions);
+                }
+                
+                // ⭐ Update follow-up appointment info
+                const reloadedRecord = reloadRes.data.record;
+                setFollowUpEnabled(!!reloadedRecord.followUpRequired);
+                
+                // ⭐ Lấy followUpAppointmentId và thời gian từ follow-up appointment đã tạo
+                const followUpApptId = reloadedRecord.followUpAppointmentId;
+                if (followUpApptId) {
+                  const followUpId = typeof followUpApptId === 'object' && followUpApptId !== null && '_id' in followUpApptId
+                    ? (followUpApptId as { _id: string })._id
+                    : followUpApptId;
+                  setFollowUpAppointmentId(followUpId?.toString() || String(followUpId));
+                  
+                  // ⭐ Nếu follow-up appointment đã được populate với timeslotId, lấy thời gian từ đó
+                  if (typeof followUpApptId === 'object' && followUpApptId !== null && 'timeslotId' in followUpApptId) {
+                    const timeslot = (followUpApptId as any).timeslotId;
+                    if (timeslot && timeslot.startTime) {
+                      const startTime = new Date(timeslot.startTime);
+                      if (!Number.isNaN(startTime.getTime())) {
+                        // Set followUpDate và followUpTimeInput từ timeslot
+                        setFollowUpDate(startTime);
+                        const vnHours = String((startTime.getUTCHours() + 7) % 24).padStart(2, '0');
+                        const vnMinutes = String(startTime.getUTCMinutes()).padStart(2, '0');
+                        setFollowUpTimeInput(`${vnHours}:${vnMinutes}`);
+                        setFollowUpDateTime(formatDateTimeInputValue(startTime.toISOString()));
+                        
+                        // ⭐ FIX: Tính và set followUpEndTime từ timeslot.endTime
+                        if (timeslot.endTime) {
+                          const endTime = new Date(timeslot.endTime);
+                          if (!Number.isNaN(endTime.getTime())) {
+                            setFollowUpEndTime(endTime);
+                            console.log('✅ [onSave] Reloaded follow-up appointment end time from timeslot');
+                          }
+                        }
+                        
+                        console.log('✅ [onSave] Reloaded follow-up appointment time from timeslot:', `${vnHours}:${vnMinutes}`);
+                      }
+                    }
+                  }
+                } else {
+                  setFollowUpAppointmentId(null);
+                }
+                
+                // ⭐ Update follow-up date và note từ record (fallback nếu không có timeslot)
+                // ⭐ FIX: Luôn check followUpDate từ record để đảm bảo hiển thị đúng giờ/phút
+                if (!reloadedRecord.followUpAppointmentId || (typeof reloadedRecord.followUpAppointmentId === 'object' && reloadedRecord.followUpAppointmentId !== null && !('timeslotId' in reloadedRecord.followUpAppointmentId))) {
+                  if (reloadedRecord.followUpDate) {
+                    const followUpDateObj = new Date(reloadedRecord.followUpDate);
+                    setFollowUpDate(followUpDateObj);
+                    const hours = String((followUpDateObj.getUTCHours() + 7) % 24).padStart(2, '0');
+                    const minutes = String(followUpDateObj.getUTCMinutes()).padStart(2, '0');
+                    setFollowUpTimeInput(`${hours}:${minutes}`);
+                    setFollowUpDateTime(formatDateTimeInputValue(reloadedRecord.followUpDate));
+                    
+                    // ⭐ Tính followUpEndTime từ followUpDate + service duration (nếu có)
+                    if (followUpServiceIds.length > 0 && allServices.length > 0) {
+                      const totalDuration = followUpServiceIds.reduce((total, serviceId) => {
+                        const service = allServices.find(s => s._id === serviceId);
+                        return total + (service?.durationMinutes || 0);
+                      }, 0);
+                      if (totalDuration > 0) {
+                        const endTime = new Date(followUpDateObj.getTime() + totalDuration * 60 * 1000);
+                        setFollowUpEndTime(endTime);
+                      }
+                    }
+                  } else {
+                    setFollowUpDate(null);
+                    setFollowUpTimeInput("");
+                    setFollowUpDateTime("");
+                    setFollowUpEndTime(null);
+                  }
+                }
+                setFollowUpNote(reloadedRecord.followUpNote || "");
+                
+                console.log('✅ [onSave] Reloaded medical record after approve');
+                
+                // ⭐ Navigate sau khi reload xong
+                navigate(-1);
+              }
+            } catch (e) {
+              console.warn('Failed to reload medical record:', e);
+              // ⭐ Navigate ngay cả khi có lỗi
+              navigate(-1);
+            }
+          }, 800); // Đợi 800ms để backend tạo follow-up appointment và update permissions
         } else {
           toast.success("Đã lưu hồ sơ khám bệnh");
+          // ⭐ FIX: Nếu chỉ lưu (không approve), vẫn reload lại để lấy permissions và follow-up info mới
+          setTimeout(async () => {
+            try {
+              const reloadRes = await medicalRecordApi.getOrCreateByAppointment(appointmentId, 'Doctor');
+              if (reloadRes.success && reloadRes.data) {
+                // ⭐ Update permissions từ reload response
+                if (reloadRes.data.permissions) {
+                  setPermissions(reloadRes.data.permissions);
+                }
+                
+                // ⭐ Update follow-up info
+                const reloadedRecord = reloadRes.data.record;
+                setFollowUpEnabled(!!reloadedRecord.followUpRequired);
+                
+                // ⭐ Lấy followUpAppointmentId và thời gian từ follow-up appointment (nếu có)
+                const followUpApptId = reloadedRecord.followUpAppointmentId;
+                if (followUpApptId) {
+                  const followUpId = typeof followUpApptId === 'object' && followUpApptId !== null && '_id' in followUpApptId
+                    ? (followUpApptId as { _id: string })._id
+                    : followUpApptId;
+                  setFollowUpAppointmentId(followUpId?.toString() || String(followUpId));
+                  
+                  // ⭐ Nếu follow-up appointment đã được populate với timeslotId, lấy thời gian từ đó
+                  if (typeof followUpApptId === 'object' && followUpApptId !== null && 'timeslotId' in followUpApptId) {
+                    const timeslot = (followUpApptId as any).timeslotId;
+                    if (timeslot && timeslot.startTime) {
+                      const startTime = new Date(timeslot.startTime);
+                      if (!Number.isNaN(startTime.getTime())) {
+                        setFollowUpDate(startTime);
+                        const vnHours = String((startTime.getUTCHours() + 7) % 24).padStart(2, '0');
+                        const vnMinutes = String(startTime.getUTCMinutes()).padStart(2, '0');
+                        setFollowUpTimeInput(`${vnHours}:${vnMinutes}`);
+                        setFollowUpDateTime(formatDateTimeInputValue(startTime.toISOString()));
+                        
+                        if (timeslot.endTime) {
+                          const endTime = new Date(timeslot.endTime);
+                          if (!Number.isNaN(endTime.getTime())) {
+                            setFollowUpEndTime(endTime);
+                          }
+                        }
+                      }
+                    }
+                  }
+                } else {
+                  setFollowUpAppointmentId(null);
+                }
+                
+                // ⭐ Update follow-up date và time từ record (nếu chưa có follow-up appointment)
+                // ⭐ FIX: Luôn check followUpDate từ record để đảm bảo hiển thị đúng giờ/phút
+                if (!followUpApptId || (typeof followUpApptId === 'object' && followUpApptId !== null && !('timeslotId' in followUpApptId))) {
+                  if (reloadedRecord.followUpDate) {
+                    const followUpDateObj = new Date(reloadedRecord.followUpDate);
+                    setFollowUpDate(followUpDateObj);
+                    const vnHours = String((followUpDateObj.getUTCHours() + 7) % 24).padStart(2, '0');
+                    const vnMinutes = String(followUpDateObj.getUTCMinutes()).padStart(2, '0');
+                    setFollowUpTimeInput(`${vnHours}:${vnMinutes}`);
+                    setFollowUpDateTime(formatDateTimeInputValue(reloadedRecord.followUpDate));
+                    
+                    // ⭐ Tính followUpEndTime từ followUpDate + service duration (nếu có)
+                    if (followUpServiceIds.length > 0 && allServices.length > 0) {
+                      const totalDuration = followUpServiceIds.reduce((total, serviceId) => {
+                        const service = allServices.find(s => s._id === serviceId);
+                        return total + (service?.durationMinutes || 0);
+                      }, 0);
+                      if (totalDuration > 0) {
+                        const endTime = new Date(followUpDateObj.getTime() + totalDuration * 60 * 1000);
+                        setFollowUpEndTime(endTime);
+                      }
+                    }
+                  } else {
+                    setFollowUpDate(null);
+                    setFollowUpTimeInput("");
+                    setFollowUpDateTime("");
+                    setFollowUpEndTime(null);
+                  }
+                }
+                
+                setFollowUpNote(reloadedRecord.followUpNote || "");
+              }
+            } catch (e) {
+              console.warn('Failed to reload medical record after save:', e);
+            }
+          }, 300);
+          // ⭐ FIX: Không navigate khi chỉ lưu, để user có thể xem kết quả
         }
-        setFollowUpEnabled(!!res.data.followUpRequired);
-        setFollowUpDateTime(res.data.followUpDate ? formatDateTimeInputValue(res.data.followUpDate) : "");
-        setFollowUpNote(res.data.followUpNote || "");
-        setFollowUpAppointmentId(res.data.followUpAppointmentId || null);
-        navigate(-1);
       } else {
-        setError(res.message || "Lưu thất bại");
+        // ⭐ Nếu lỗi liên quan đến follow-up time, hiển thị ở dưới ô nhập giờ
+        const errorMsg = res.message || "Lưu thất bại";
+        if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian'))) {
+          const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
+          setTimeInputError(mappedErrorMsg);
+          toast.error(errorMsg);
+        } else {
+          setError(errorMsg);
+        }
       }
     } catch (e: any) {
-      setError(e.message || "Lưu thất bại");
+      // ⭐ Nếu lỗi liên quan đến follow-up time, hiển thị ở dưới ô nhập giờ
+      const errorMsg = e.message || "Lưu thất bại";
+      if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian'))) {
+        const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
+        setTimeInputError(mappedErrorMsg);
+        toast.error(errorMsg);
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setSaving(false);
     }
@@ -1508,7 +1830,7 @@ const DoctorMedicalRecord: React.FC = () => {
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <BeakerIcon className="w-5 h-5 text-green-600" />
-            <h4 className="font-semibold text-gray-800">Chẩn đoán</h4>
+            <h4 className="font-semibold text-gray-800">Chẩn đoán <span className="text-red-500">*</span></h4>
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
@@ -1549,7 +1871,7 @@ const DoctorMedicalRecord: React.FC = () => {
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-2">
             <DocumentTextIcon className="w-5 h-5 text-blue-600" />
-            <h4 className="font-semibold text-gray-800">Kết luận - Hướng dẫn</h4>
+            <h4 className="font-semibold text-gray-800">Kết luận - Hướng dẫn <span className="text-red-500">*</span></h4>
           </div>
         </CardHeader>
         <CardBody className="px-6 pb-4">
@@ -1967,7 +2289,7 @@ const DoctorMedicalRecord: React.FC = () => {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">
-                              Nhập giờ bắt đầu
+                              Nhập giờ bắt đầu <span className="text-red-500">*</span>
                             </label>
                             <div className="flex items-center gap-2">
                               {/* Hour input */}
@@ -1986,8 +2308,11 @@ const DoctorMedicalRecord: React.FC = () => {
                                 value={(followUpTimeInput || '').split(':')[0] || ''}
                                 onChange={async (e) => {
                                   let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                                  // ⭐ Clear flag ngay khi bắt đầu onChange để ẩn message khi đang nhập
+                                  setHasReservedAfterBlur(false);
                                   setTimeInputError(null);
-                                  setFollowUpEndTime(null);
+                                  // ⭐ Sửa: Chỉ clear endTime khi thực sự thay đổi giờ/phút, không clear khi đang nhập
+                                  // Chỉ clear khi xóa hết hoặc thay đổi đáng kể
                                   const currentMinute = (followUpTimeInput || '').split(':')[1] || '';
                                   const timeInput = v + ':' + currentMinute;
                                   const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
@@ -1995,6 +2320,8 @@ const DoctorMedicalRecord: React.FC = () => {
                                   // ⭐ Release reservation nếu đã xóa hết giờ và phút
                                   if (activeReservation && (!v || v === '') && (!currentMinute || currentMinute === '')) {
                                     await releaseReservation({ silent: true });
+                                    setFollowUpEndTime(null); // ⭐ Chỉ clear endTime khi xóa hết
+                                    setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa hết
                                   }
                                   
                                   // ⭐ Release reservation cũ ngay khi phát hiện thời gian thay đổi (không cần đợi format đầy đủ)
@@ -2007,6 +2334,11 @@ const DoctorMedicalRecord: React.FC = () => {
                                     if (oldHour && v && oldHour !== v) {
                                       setTimeInputError(null);
                                       await releaseReservation({ silent: true });
+                                      setHasReservedAfterBlur(false); // ⭐ Clear flag khi thay đổi giờ
+                                      // ⭐ Chỉ clear endTime khi thay đổi giờ đáng kể (không phải chỉ đang nhập)
+                                      if (v.length === 2) {
+                                        setFollowUpEndTime(null);
+                                      }
                                     }
                                     // Hoặc nếu format đầy đủ và thời gian khác với reservation hiện tại
                                     else if (timeRegex.test(timeInput)) {
@@ -2024,12 +2356,16 @@ const DoctorMedicalRecord: React.FC = () => {
                                         // Thời gian đã thay đổi → release reservation cũ ngay lập tức
                                         setTimeInputError(null);
                                         await releaseReservation({ silent: true });
+                                        setHasReservedAfterBlur(false); // ⭐ Clear flag khi thời gian thay đổi
+                                        setFollowUpEndTime(null); // ⭐ Clear endTime khi thời gian thay đổi
                                       }
                                     }
                                     // Nếu đang xóa (v rỗng hoặc chỉ có 1 ký tự) nhưng vẫn có reservation → release
                                     else if ((!v || v === '') && oldHour) {
                                       setTimeInputError(null);
                                       await releaseReservation({ silent: true });
+                                      setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa
+                                      setFollowUpEndTime(null); // ⭐ Clear endTime khi xóa
                                     }
                                   }
                                   
@@ -2043,11 +2379,13 @@ const DoctorMedicalRecord: React.FC = () => {
                                     dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
                                     const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
                                     setFollowUpTimeInput(timeInput);
+                                    // ⭐ Chỉ set endTime khi format hợp lệ, không clear khi đang nhập
                                     setFollowUpEndTime(endTimeDate);
                                     
                                     // ⭐ KHÔNG tự động validate - chỉ validate khi blur
                                   } else {
                                     setFollowUpTimeInput(timeInput);
+                                    // ⭐ Không clear endTime khi đang nhập, chỉ clear khi xóa hết hoặc thay đổi đáng kể
                                   }
                                 }}
                                 onBlur={() => {
@@ -2077,8 +2415,10 @@ const DoctorMedicalRecord: React.FC = () => {
                                 value={(followUpTimeInput || '').split(':')[1] || ''}
                                 onChange={async (e) => {
                                   let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                                  // ⭐ Clear flag ngay khi bắt đầu onChange để ẩn message khi đang nhập
+                                  setHasReservedAfterBlur(false);
                                   setTimeInputError(null);
-                                  setFollowUpEndTime(null);
+                                  // ⭐ Sửa: Chỉ clear endTime khi thực sự thay đổi giờ/phút, không clear khi đang nhập
                                   const currentHour = (followUpTimeInput || '').split(':')[0] || '';
                                   const timeInput = currentHour + ':' + v;
                                   const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
@@ -2086,6 +2426,8 @@ const DoctorMedicalRecord: React.FC = () => {
                                   // ⭐ Release reservation nếu đã xóa hết giờ và phút
                                   if (activeReservation && (!currentHour || currentHour === '') && (!v || v === '')) {
                                     await releaseReservation({ silent: true });
+                                    setFollowUpEndTime(null); // ⭐ Chỉ clear endTime khi xóa hết
+                                    setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa hết
                                   }
                                   
                                   // ⭐ Release reservation cũ ngay khi phát hiện thời gian thay đổi (không cần đợi format đầy đủ)
@@ -2098,6 +2440,11 @@ const DoctorMedicalRecord: React.FC = () => {
                                     if (oldMinute && v && oldMinute !== v) {
                                       setTimeInputError(null);
                                       await releaseReservation({ silent: true });
+                                      setHasReservedAfterBlur(false); // ⭐ Clear flag khi thay đổi phút
+                                      // ⭐ Chỉ clear endTime khi thay đổi phút đáng kể (không phải chỉ đang nhập)
+                                      if (v.length === 2) {
+                                        setFollowUpEndTime(null);
+                                      }
                                     }
                                     // Hoặc nếu format đầy đủ và thời gian khác với reservation hiện tại
                                     else if (timeRegex.test(timeInput)) {
@@ -2115,12 +2462,16 @@ const DoctorMedicalRecord: React.FC = () => {
                                         // Thời gian đã thay đổi → release reservation cũ ngay lập tức
                                         setTimeInputError(null);
                                         await releaseReservation({ silent: true });
+                                        setHasReservedAfterBlur(false); // ⭐ Clear flag khi thời gian thay đổi
+                                        setFollowUpEndTime(null); // ⭐ Clear endTime khi thời gian thay đổi
                                       }
                                     }
                                     // Nếu đang xóa (v rỗng) nhưng vẫn có reservation → release
                                     else if ((!v || v === '') && oldMinute) {
                                       setTimeInputError(null);
                                       await releaseReservation({ silent: true });
+                                      setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa
+                                      setFollowUpEndTime(null); // ⭐ Clear endTime khi xóa
                                     }
                                   }
                                   
@@ -2134,11 +2485,13 @@ const DoctorMedicalRecord: React.FC = () => {
                                     dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
                                     const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
                                     setFollowUpTimeInput(timeInput);
+                                    // ⭐ Chỉ set endTime khi format hợp lệ, không clear khi đang nhập
                                     setFollowUpEndTime(endTimeDate);
                                     
                                     // ⭐ KHÔNG tự động validate - chỉ validate khi blur
                                   } else {
                                     setFollowUpTimeInput(timeInput);
+                                    // ⭐ Không clear endTime khi đang nhập, chỉ clear khi xóa hết hoặc thay đổi đáng kể
                                   }
                                 }}
                                 onBlur={() => {
@@ -2158,7 +2511,8 @@ const DoctorMedicalRecord: React.FC = () => {
                                 {timeInputError}
                               </p>
                             )}
-                            {activeReservation && reservationCountdown > 0 && !timeInputError && (
+                            {/* ⭐ Chỉ hiển thị message giữ chỗ sau khi blur và reserve thành công */}
+                            {activeReservation && reservationCountdown > 0 && !timeInputError && hasReservedAfterBlur && (
                               <p className="mt-1 text-xs text-[#39BDCC]">
                                 Đang giữ chỗ {formatVNTimeFromISO(activeReservation.startTime)} -{" "}
                                 {formatVNTimeFromISO(activeReservation.endTime)} ngày{" "}
@@ -2168,10 +2522,10 @@ const DoctorMedicalRecord: React.FC = () => {
                             )}
                           </div>
 
-                          {/* ⭐ Hiển thị endTime bằng 2 ô (Giờ/Phút) như start time — chỉ hiện khi start time hợp lệ */}
+                          {/* ⭐ Hiển thị endTime bằng 2 ô (Giờ/Phút) như start time — chỉ hiện khi start time hợp lệ và đã có endTime */}
+                          {/* ⭐ Sửa: Chỉ cần có followUpTimeInput hợp lệ và followUpEndTime, không cần kiểm tra regex lại vì đã validate khi blur */}
                           {followUpTimeInput &&
                            !timeInputError &&
-                           /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/.test(followUpTimeInput) &&
                            followUpEndTime &&
                            !isNaN(followUpEndTime.getTime()) && (
                             <div className="flex flex-col items-end text-right">
@@ -2224,8 +2578,38 @@ const DoctorMedicalRecord: React.FC = () => {
           {followUpAppointmentId && (
             <div className="rounded-lg bg-white/80 border border-purple-200 p-3 text-sm text-purple-700">
               Đã tạo lịch tái khám vào{" "}
-              {followUpDateTime
-                ? formatDateTimeDisplay(new Date(followUpDateTime).toISOString())
+              {followUpDate && followUpTimeInput
+                ? (() => {
+                    // ⭐ FIX: Format date và time từ state thay vì từ followUpDateTime (tránh timezone issue)
+                    const dateStr = followUpDate.toLocaleDateString('vi-VN', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    });
+                    return `${followUpTimeInput} ngày ${dateStr}`;
+                  })()
+                : followUpDateTime
+                ? (() => {
+                    // ⭐ Fallback: Parse từ followUpDateTime nếu không có state
+                    try {
+                      const followUpDateObj = new Date(followUpDateTime);
+                      if (!Number.isNaN(followUpDateObj.getTime())) {
+                        const vnHours = String((followUpDateObj.getUTCHours() + 7) % 24).padStart(2, '0');
+                        const vnMinutes = String(followUpDateObj.getUTCMinutes()).padStart(2, '0');
+                        // ⭐ Convert UTC date sang VN date (cộng 7 giờ)
+                        const vnDate = new Date(followUpDateObj.getTime() + 7 * 60 * 60 * 1000);
+                        const vnDateStr = vnDate.toLocaleDateString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        });
+                        return `${vnHours}:${vnMinutes} ngày ${vnDateStr}`;
+                      }
+                    } catch (e) {
+                      // Ignore parse errors
+                    }
+                    return "thời gian đang cập nhật";
+                  })()
                 : "thời gian đang cập nhật"}
             </div>
           )}
