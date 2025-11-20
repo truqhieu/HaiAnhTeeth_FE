@@ -80,7 +80,7 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <button
-            className="flex items-center space-x-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 rounded-md"
+            className="flex items-center w-full text-left space-x-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 rounded-md"
             onClick={() => handleNavigation(profilePath)}
             type="button"
           >
@@ -130,12 +130,7 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
         </nav>
 
         {/* Logout Button - fixed bottom */}
-        <div className="px-4 py-4 border-t border-gray-200 space-y-3">
-          <div className="px-4">
-            <p className="text-sm font-medium text-gray-700 truncate">
-              {user?.fullName || user?.email || "Nurse"}
-            </p>
-          </div>
+        <div className="px-4 py-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
             className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"

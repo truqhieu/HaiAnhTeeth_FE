@@ -14,13 +14,9 @@ const Home = () => {
   const navigate = useNavigate();
 
   // Khôi phục URL ảnh gốc của bạn
-  const images = [
-    "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/566204463_122193638510359809_566204463_122193638510359809_5577540246052546034_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=103&ccb=1-7&_nc_sid=833d8c&_nc_ohc=HJocOZy1OzIQ7kNvwFzJ4kO&_nc_oc=Adlr3PH49XeMVBwfqmLMna5YTHQhU2ZYQEPusr_HGV2pfSwArjaPCpyDCwT1eMNbWmI&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=Dttcniqd_4S8scHPaPnxcw&oh=00_AfcPtXDO_oUR5oCdoukdKOgnyB-ngA7UdapOL97Ca1SXrg&oe=68FF8213",
-    "https://scontent.fhan14-5.fna.fbcdn.net/v/t39.30808-6/561145387_122192341532359809_300409251944642402_n.jpg?stp=cp6_dst-jpg_tt6&_nc_cat=106&ccb=1-7&_nc_sid=833d8c&_nc_ohc=2NbXa8V9e2kQ7kNvwFJClFB&_nc_oc=AdkZwuRDXIT7YpYdSkJiqtNZUNlFZaQ7K62e0SxTiIBvkCqFKKKwm0yE6asfFIwkXiw&_nc_zt=23&_nc_ht=scontent.fhan14-5.fna&_nc_gid=mQCQe9wYq4JQk8wmZsKcYg&oh=00_AfdtiR4SmFrVxl1xhvExkFlR5cJAMg_9wBKx3cuJCm8iVw&oe=68FF8C90",
-    "https://scontent.fhan14-3.fna.fbcdn.net/v/t39.30808-6/555076308_122190721040359809_5009409531579541387_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=127cfc&_nc_ohc=oqTWmsqj1EwQ7kNvwGZ8BlS&_nc_oc=AdkOALoyNRgI9RWeooD57j2tcHiUB2N08bu_N-YQll_klpiMkiblBrP-n-V5d0quUcs&_nc_zt=23&_nc_ht=scontent.fhan14-3.fna&_nc_gid=zZmHitR5FR62-TdHjxKNGQ&oh=00_AfdqHtbujk0WfULM7GiPZI0pX9iN2JRD-IiKdrHy5OofxA&oe=68FF71AB",
-  ];
+  const sliderImages = ["/Bocrangsu.jpg", "/Niengrang.jpg"];
 
-  const services = [
+const services = [
     {
       title: "Bọc Răng Sứ Cao Cấp",
       description:
@@ -52,14 +48,25 @@ const Home = () => {
   const [isBlogLoading, setIsBlogLoading] = useState(false);
   const [blogError, setBlogError] = useState<string | null>(null);
 
+const CATEGORY_LABELS: Record<string, string> = {
+  News: "Tin tức",
+  "Health Tips": "Mẹo sức khỏe",
+  "Medical Services": "Dịch vụ y tế",
+  "Patient Stories": "Câu chuyện bệnh nhân",
+  "Recruitment": "Tuyển dụng",
+  Promotions: "Ưu đãi",
+};
+
+const getCategoryLabel = (category: string) => CATEGORY_LABELS[category] || category;
+
   const handlePrev = () =>
     setCurrentImageIndex((prevIndex) =>
-      prevIndex === 0 ? images.length - 1 : prevIndex - 1,
+      prevIndex === 0 ? sliderImages.length - 1 : prevIndex - 1,
     );
 
   const handleNext = () =>
     setCurrentImageIndex((prevIndex) =>
-      prevIndex === images.length - 1 ? 0 : prevIndex + 1,
+      prevIndex === sliderImages.length - 1 ? 0 : prevIndex + 1,
     );
 
   useEffect(() => {
@@ -94,6 +101,16 @@ const Home = () => {
 
     fetchLatestBlogs();
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) =>
+        prevIndex === sliderImages.length - 1 ? 0 : prevIndex + 1,
+      );
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [sliderImages.length]);
 
   // Hàm xử lý lỗi ảnh với placeholder mới cho từng loại
   const handleImageError = (
@@ -141,8 +158,9 @@ const Home = () => {
           <div className="absolute inset-0 transition-opacity duration-700">
             <img
               alt="Banner"
-              className="w-full h-full object-cover opacity-80"
-              src={images[currentImageIndex]}
+              className="w-full h-full object-cover opacity-90"
+              style={{ objectPosition: "50% 30%" }}
+              src={sliderImages[currentImageIndex]}
               onError={(e) => handleImageError(e, 'banner')}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
@@ -167,7 +185,7 @@ const Home = () => {
 
           {/* Image Indicators */}
           <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
-            {images.map((_, index) => (
+            {sliderImages.map((_, index) => (
               <button
                 key={index}
                 aria-label={`Go to image ${index + 1}`}
@@ -291,24 +309,24 @@ const Home = () => {
                     className="bg-white rounded-3xl shadow-lg overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-300 cursor-pointer"
                     onClick={() => navigate(`/news/${blog._id}`)}
                   >
-                    {blog.thumbnailUrl ? (
-                      <div className="h-56 w-full overflow-hidden">
+                    <div className="h-56 w-full overflow-hidden rounded-t-3xl relative">
+                      {blog.thumbnailUrl ? (
                         <img
                           src={blog.thumbnailUrl}
                           alt={blog.title}
                           className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                         />
-                      </div>
-                    ) : (
-                      <div className="h-56 w-full bg-gradient-to-r from-[#39BDCC]/20 to-[#2ca6b5]/20 flex items-center justify-center text-[#39BDCC] font-semibold">
-                        Hải Anh Teeth
-                      </div>
-                    )}
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-r from-[#39BDCC]/20 to-[#2ca6b5]/20 flex items-center justify-center text-[#39BDCC] font-semibold">
+                          Hải Anh Teeth
+                        </div>
+                      )}
+                      <span className="absolute top-3 left-3 inline-flex px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] bg-white/80 text-[#39BDCC] rounded-full shadow">
+                        {getCategoryLabel(blog.category)}
+                      </span>
+                    </div>
 
                     <div className="p-6 space-y-4">
-                      <span className="inline-flex px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-[#39BDCC]/10 text-[#39BDCC] rounded-full">
-                        {blog.category}
-                      </span>
                       <h3 className="text-xl font-semibold text-gray-900 line-clamp-2">
                         {blog.title}
                       </h3>

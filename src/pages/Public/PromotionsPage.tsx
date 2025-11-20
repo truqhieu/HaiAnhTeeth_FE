@@ -163,22 +163,15 @@ const PromotionsPage = () => {
                 >
                   {/* Thumbnail */}
                   {blog.thumbnailUrl && (
-                    <div className="relative h-48 overflow-hidden">
+                    <div className="relative h-48 overflow-hidden rounded-t-3xl">
                       <img
                         src={blog.thumbnailUrl}
                         alt={blog.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       />
-                      <div className="absolute top-3 right-3">
-                        <Chip
-                          color={getCategoryColor(blog.category)}
-                          size="sm"
-                          variant="shadow"
-                          startContent={<TagIcon className="w-3 h-3" />}
-                        >
-                          Ưu đãi
-                        </Chip>
-                      </div>
+                      <span className="absolute top-3 left-3 inline-flex px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] bg-white/80 text-[#39BDCC] rounded-full shadow">
+                        Ưu đãi
+                      </span>
                     </div>
                   )}
 

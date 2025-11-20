@@ -306,7 +306,7 @@ const BlogManagement = () => {
                         {blog.title}
                       </p>
                       <p className="text-sm text-gray-500 line-clamp-1 mt-1">
-                        {blog.content}
+                        {blog.summary || blog.content}
                       </p>
                     </div>
                   </TableCell>
