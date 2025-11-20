@@ -137,9 +137,9 @@ const AddIntroductionModal: React.FC<AddIntroductionModalProps> = ({
             <SelectItem key="Hidden">Ẩn</SelectItem>
           </Select>
           <div className="space-y-3">
-            <label className="text-sm font-semibold text-gray-700">
+            <p className="text-sm font-semibold text-gray-700">
               Ảnh đại diện <span className="text-red-500">*</span>
-            </label>
+            </p>
             <input
               ref={fileInputRef}
               type="file"

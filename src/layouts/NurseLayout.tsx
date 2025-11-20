@@ -5,7 +5,6 @@ import {
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
-  UserIcon,
   DocumentTextIcon,
   BellIcon,
 } from "@heroicons/react/24/outline";
@@ -29,18 +28,14 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
     navigate("/");
   };
 
+  const profilePath = "/nurse/profile";
+
   const navigation = [
     {
       name: "Lịch khám",
       href: "/nurse/schedule",
       icon: CalendarIcon,
       current: location.pathname === "/nurse/schedule",
-    },
-    {
-      name: "Hồ sơ cá nhân",
-      href: "/nurse/profile",
-      icon: UserIcon,
-      current: location.pathname === "/nurse/profile",
     },
     {
       name: "Đơn xin nghỉ phép",
@@ -84,7 +79,11 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
       >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
+          <button
+            className="flex items-center space-x-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 rounded-md"
+            onClick={() => handleNavigation(profilePath)}
+            type="button"
+          >
             <Avatar
               className="w-10 h-10 border border-pink-100"
               name={user?.fullName || "Nurse"}
@@ -96,7 +95,7 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
                 {user?.fullName || "Chưa xác định"}
               </span>
             </div>
-          </div>
+          </button>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <XMarkIcon className="w-6 h-6 text-gray-500" />
           </button>
@@ -131,8 +130,8 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
         </nav>
 
         {/* Logout Button - fixed bottom */}
-        <div className="px-4 py-4 border-t border-gray-200">
-          <div className="mb-3 px-4">
+        <div className="px-4 py-4 border-t border-gray-200 space-y-3">
+          <div className="px-4">
             <p className="text-sm font-medium text-gray-700 truncate">
               {user?.fullName || user?.email || "Nurse"}
             </p>

@@ -27,44 +27,13 @@ import {
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale, setDefaultLocale } from "react-datepicker";
-import { vi } from "date-fns/locale";
 import toast from "react-hot-toast";
 import { managerApi } from "../../api/manager";
 import { Tabs, Tab } from "@heroui/react";
-
-// Custom Vietnamese locale
-// - Months: T1, T2, T3... (Tháng 1, Tháng 2, Tháng 3...)
-// - Weekdays: CN, T2, T3... (Chủ nhật, Thứ 2, Thứ 3...) - keep normal
-const viLocaleCustom = {
-  ...vi,
-  localize: {
-    ...vi.localize,
-    // Keep weekdays normal: CN, T2, T3...
-    day: (n: number) => {
-      const days = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-      return days[n];
-    },
-    // Custom months: T1, T2, T3...
-    month: (n: number) => {
-      const months = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"];
-      return months[n];
-    },
-  },
-  // Override months array for month picker
-  months: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"],
-  monthsShort: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"],
-  // Keep weekdays normal
-  weekdays: ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"],
-  weekdaysShort: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
-  weekdaysMin: ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
-  options: {
-    ...vi.options,
-    weekStartsOn: 1, // Monday
-  },
-};
+import viLocale from "@/utils/viLocale";
 
 // Register Vietnamese locale
-registerLocale("vi", viLocaleCustom as any);
+registerLocale("vi", viLocale as any);
 setDefaultLocale("vi");
 
 interface DashboardData {

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { XMarkIcon } from "@heroicons/react/24/solid";
-import { Input, Button, Textarea, Select, SelectItem, Checkbox, CheckboxGroup, Spinner } from "@heroui/react";
+import { Input, Button, Textarea, Select, SelectItem, Checkbox, CheckboxGroup, Spinner, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { promotionApi } from "@/api/promotion";
 import { serviceApi, type Service } from "@/api/service";
+import VietnameseDateInput from "@/components/Common/VietnameseDateInput";
 
 interface AddPromotionModalProps {
   isOpen: boolean;
@@ -61,25 +61,32 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
 
   // Validation
   const isTitleInvalid =
-    showValidation && (!formData.title || formData.title.trim().length === 0);
+    Boolean(showValidation && (!formData.title || formData.title.trim().length === 0));
   const isDescriptionInvalid =
-    showValidation &&
-    (!formData.description || formData.description.trim().length === 0);
-  const isDiscountValueInvalid = showValidation && formData.discountValue <= 0;
+    Boolean(
+      showValidation &&
+        (!formData.description || formData.description.trim().length === 0),
+    );
+  const isDiscountValueInvalid = Boolean(showValidation && formData.discountValue <= 0);
   const isPercentInvalid =
-    showValidation &&
-    formData.discountType === "Percent" &&
-    formData.discountValue > 100;
-  const isStartDateInvalid = showValidation && !formData.startDate;
-  const isEndDateInvalid = showValidation && !formData.endDate;
-  const isServicesInvalid = showValidation && !formData.applyToAll && formData.applicableServices.length === 0;
+    Boolean(
+      showValidation &&
+        formData.discountType === "Percent" &&
+        formData.discountValue > 100,
+    );
+  const isStartDateInvalid = Boolean(showValidation && !formData.startDate);
+  const isEndDateInvalid = Boolean(showValidation && !formData.endDate);
+  const isServicesInvalid = Boolean(
+    showValidation && !formData.applyToAll && formData.applicableServices.length === 0,
+  );
 
   // Check if end date is after start date
-  const isDateRangeInvalid =
+  const isDateRangeInvalid = Boolean(
     showValidation &&
-    formData.startDate &&
-    formData.endDate &&
-    new Date(formData.endDate) <= new Date(formData.startDate);
+      formData.startDate &&
+      formData.endDate &&
+      new Date(formData.endDate) <= new Date(formData.startDate),
+  );
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -169,209 +176,171 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        aria-label="Close modal"
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        role="button"
-        tabIndex={0}
-        onClick={!isSubmitting ? handleClose : undefined}
-        onKeyDown={(e) => {
-          if (!isSubmitting && (e.key === "Enter" || e.key === " ")) {
-            handleClose();
-          }
-        }}
-      />
-
-      {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <img
-              alt="Logo"
-              className="h-8 w-auto object-contain"
-              src="/logo1.png"
-            />
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Thêm ưu đãi mới</h2>
-              <p className="text-sm text-gray-600">Tạo chương trình ưu đãi cho dịch vụ</p>
+    <Modal
+      isOpen={isOpen}
+      isDismissable={false}
+      onOpenChange={(open) => {
+        if (!open) {
+          handleClose();
+        }
+      }}
+      size="4xl"
+      scrollBehavior="outside"
+      classNames={{
+        base: "max-h-[90vh] rounded-2xl",
+      }}
+    >
+      <ModalContent>
+        <>
+          <ModalHeader className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center space-x-3">
+              <img
+                alt="Logo"
+                className="h-8 w-auto object-contain"
+                src="/logo1.png"
+              />
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Thêm ưu đãi mới</h2>
+                <p className="text-sm text-gray-600">Tạo chương trình ưu đãi cho dịch vụ</p>
+              </div>
             </div>
-          </div>
-          <Button
-            isIconOnly
-            className="text-gray-500 hover:text-gray-700"
-            variant="light"
-            onPress={handleClose}
-            isDisabled={isSubmitting}
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </Button>
-        </div>
+          </ModalHeader>
 
-        {/* Body */}
-        <div className="px-6 py-4 overflow-y-auto flex-1">
-          <div className="space-y-4">
-            <div>
-              <label
-                className="block text-sm font-semibold text-gray-700 mb-2"
-                htmlFor="title"
+          <ModalBody className="px-6 py-4 space-y-4">
+            <Input
+              fullWidth
+              id="title"
+              label={
+                <>
+                  Tiêu đề <span className="text-red-500">*</span>
+                </>
+              }
+              placeholder="Ví dụ: Ưu đãi Quốc Khánh 2/9"
+              value={formData.title}
+              variant="bordered"
+              isInvalid={isTitleInvalid}
+              errorMessage={
+                isTitleInvalid ? "Vui lòng nhập tiêu đề ưu đãi" : ""
+              }
+              onValueChange={(value) => handleInputChange("title", value)}
+            />
+
+            <Textarea
+              fullWidth
+              id="description"
+              label={
+                <>
+                  Mô tả <span className="text-red-500">*</span>
+                </>
+              }
+              minRows={3}
+              placeholder="Mô tả chi tiết về chương trình ưu đãi..."
+              value={formData.description}
+              variant="bordered"
+              isInvalid={isDescriptionInvalid}
+              errorMessage={
+                isDescriptionInvalid ? "Vui lòng nhập mô tả" : ""
+              }
+              onValueChange={(value) => handleInputChange("description", value)}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                className="w-full"
+                id="discountType"
+                label={
+                  <>
+                    Loại giảm giá <span className="text-red-500">*</span>
+                  </>
+                }
+                selectedKeys={[formData.discountType]}
+                variant="bordered"
+                disallowEmptySelection
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as "Percent" | "Fixed";
+                  handleInputChange("discountType", selected);
+                }}
+                popoverProps={{
+                  shouldCloseOnInteractOutside: (element) => {
+                    return !element.closest('[role="listbox"]');
+                  }
+                }}
               >
-                Tiêu đề <span className="text-red-500">*</span>
-              </label>
+                <SelectItem key="Percent">Phần trăm (%)</SelectItem>
+                <SelectItem key="Fixed">Số tiền cố định (đ)</SelectItem>
+              </Select>
+
               <Input
                 fullWidth
-                id="title"
-                placeholder="Ví dụ: Ưu đãi Quốc Khánh 2/9"
-                value={formData.title}
-                variant="bordered"
-                isInvalid={isTitleInvalid}
-                errorMessage={
-                  isTitleInvalid ? "Vui lòng nhập tiêu đề ưu đãi" : ""
+                id="discountValue"
+                label={
+                  <>
+                    Giá trị <span className="text-red-500">*</span>
+                  </>
                 }
-                onValueChange={(value) => handleInputChange("title", value)}
-              />
-            </div>
-
-            <div>
-              <label
-                className="block text-sm font-semibold text-gray-700 mb-2"
-                htmlFor="description"
-              >
-                Mô tả <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                fullWidth
-                id="description"
-                minRows={3}
-                placeholder="Mô tả chi tiết về chương trình ưu đãi..."
-                value={formData.description}
-                variant="bordered"
-                isInvalid={isDescriptionInvalid}
-                errorMessage={
-                  isDescriptionInvalid ? "Vui lòng nhập mô tả" : ""
+                min="0"
+                placeholder={
+                  formData.discountType === "Percent" ? "0-100" : "Số tiền"
                 }
-                onValueChange={(value) => handleInputChange("description", value)}
+                type="number"
+                value={formData.discountValue.toString()}
+                variant="bordered"
+                isInvalid={isDiscountValueInvalid || isPercentInvalid}
+                errorMessage={
+                  isDiscountValueInvalid
+                    ? "Giá trị giảm giá phải lớn hơn 0"
+                    : isPercentInvalid
+                    ? "Phần trăm giảm giá không được vượt quá 100%"
+                    : ""
+                }
+                onValueChange={(value) =>
+                  handleInputChange("discountValue", Number(value))
+                }
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                  htmlFor="discountType"
-                >
-                  Loại giảm giá <span className="text-red-500">*</span>
-                </label>
-                <Select
-                  className="w-full"
-                  id="discountType"
-                  selectedKeys={[formData.discountType]}
-                  variant="bordered"
-                  disallowEmptySelection
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0] as "Percent" | "Fixed";
-                    handleInputChange("discountType", selected);
-                  }}
-                  popoverProps={{
-                    shouldCloseOnInteractOutside: (element) => {
-                      // Don't close modal when clicking on select dropdown
-                      return !element.closest('[role="listbox"]');
-                    }
-                  }}
-                >
-                  <SelectItem key="Percent">Phần trăm (%)</SelectItem>
-                  <SelectItem key="Fixed">Số tiền cố định (đ)</SelectItem>
-                </Select>
-              </div>
+              <VietnameseDateInput
+                id="startDate"
+                label={
+                  <>
+                    Ngày bắt đầu <span className="text-red-500">*</span>
+                  </>
+                }
+                value={formData.startDate}
+                minDate={today}
+                placeholder="dd/mm/yyyy"
+                isInvalid={isStartDateInvalid}
+                errorMessage={isStartDateInvalid ? "Vui lòng chọn ngày bắt đầu" : ""}
+                onChange={(value) => handleInputChange("startDate", value)}
+              />
 
-              <div>
-                <label
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                  htmlFor="discountValue"
-                >
-                  Giá trị <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  fullWidth
-                  id="discountValue"
-                  min="0"
-                  placeholder={
-                    formData.discountType === "Percent" ? "0-100" : "Số tiền"
-                  }
-                  type="number"
-                  value={formData.discountValue.toString()}
-                  variant="bordered"
-                  isInvalid={isDiscountValueInvalid || isPercentInvalid}
-                  errorMessage={
-                    isDiscountValueInvalid
-                      ? "Giá trị giảm giá phải lớn hơn 0"
-                      : isPercentInvalid
-                      ? "Phần trăm giảm giá không được vượt quá 100%"
-                      : ""
-                  }
-                  onValueChange={(value) =>
-                    handleInputChange("discountValue", Number(value))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                  htmlFor="startDate"
-                >
-                  Ngày bắt đầu <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  fullWidth
-                  id="startDate"
-                  min={today}
-                  type="date"
-                  value={formData.startDate}
-                  variant="bordered"
-                  isInvalid={isStartDateInvalid}
-                  errorMessage={
-                    isStartDateInvalid ? "Vui lòng chọn ngày bắt đầu" : ""
-                  }
-                  onValueChange={(value) => handleInputChange("startDate", value)}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                  htmlFor="endDate"
-                >
-                  Ngày kết thúc <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  fullWidth
-                  id="endDate"
-                  min={formData.startDate || today}
-                  type="date"
-                  value={formData.endDate}
-                  variant="bordered"
-                  isInvalid={isEndDateInvalid || isDateRangeInvalid}
-                  errorMessage={
-                    isEndDateInvalid
-                      ? "Vui lòng chọn ngày kết thúc"
-                      : isDateRangeInvalid
-                      ? "Ngày kết thúc phải sau ngày bắt đầu"
-                      : ""
-                  }
-                  onValueChange={(value) => handleInputChange("endDate", value)}
-                />
-              </div>
+              <VietnameseDateInput
+                id="endDate"
+                label={
+                  <>
+                    Ngày kết thúc <span className="text-red-500">*</span>
+                  </>
+                }
+                value={formData.endDate}
+                minDate={formData.startDate || today}
+                placeholder="dd/mm/yyyy"
+                isInvalid={isEndDateInvalid || isDateRangeInvalid}
+                errorMessage={
+                  isEndDateInvalid
+                    ? "Vui lòng chọn ngày kết thúc"
+                    : isDateRangeInvalid
+                    ? "Ngày kết thúc phải sau ngày bắt đầu"
+                    : ""
+                }
+                onChange={(value) => handleInputChange("endDate", value)}
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <p className="block text-sm font-semibold text-gray-700 mb-3">
                 Phạm vi áp dụng <span className="text-red-500">*</span>
-              </label>
+              </p>
               <div className="space-y-3">
                 <Checkbox
                   isSelected={formData.applyToAll}
@@ -423,12 +392,9 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          </ModalBody>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex justify-end gap-4">
+          <ModalFooter className="px-6 py-4 border-t border-gray-200 bg-gray-50">
             <Button
               variant="bordered"
               onPress={handleClose}
@@ -443,10 +409,10 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
             >
               Tạo ưu đãi
             </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+          </ModalFooter>
+        </>
+      </ModalContent>
+    </Modal>
   );
 };
 

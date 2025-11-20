@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { XMarkIcon } from "@heroicons/react/24/solid";
-import { Input, Button, Form, Textarea } from "@heroui/react";
+import { Input, Button, Form, Textarea, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { managerApi } from "@/api";
@@ -88,6 +87,11 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
     }
   };
 
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    handleSubmit();
+  };
+
   const handleClose = () => {
     // Chỉ ẩn validation errors, KHÔNG clear form data
     setShowValidation(false);
@@ -97,50 +101,31 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        aria-label="Close modal"
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        role="button"
-        tabIndex={0}
-        onClick={handleClose}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            handleClose();
-          }
-        }}
-      />
-
-      {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
+    <Modal
+      isOpen={isOpen}
+      isDismissable={false}
+      onOpenChange={(open) => {
+        if (!open) {
+          handleClose();
+        }
+      }}
+      size="md"
+      scrollBehavior="outside"
+      classNames={{ base: "max-h-[90vh] rounded-2xl" }}
+    >
+      <ModalContent>
+        <>
+          <ModalHeader className="flex items-center gap-3 border-b border-gray-200">
             <img
               alt="Logo"
               className="h-8 w-auto object-contain"
               src="/logo1.png"
             />
             <h2 className="text-2xl font-bold">Thêm phòng mới</h2>
-          </div>
-          <Button
-            isIconOnly
-            className="text-gray-500 hover:text-gray-700"
-            variant="light"
-            onPress={handleClose}
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </Button>
-        </div>
+          </ModalHeader>
 
-        {/* Body */}
-        <div className="px-4 py-4 pb-0">
-          <Form
-            autoComplete="off"
-            className="space-y-5"
-            onSubmit={handleSubmit}
-          >
+          <ModalBody className="px-4 py-4 pb-0">
+            <Form autoComplete="off" className="space-y-5" onSubmit={handleFormSubmit}>
             <div className="space-y-4 w-full">
               <Input
                 fullWidth
@@ -187,30 +172,26 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
                 }
               />
             </div>
-          </Form>
-        </div>
+            </Form>
+          </ModalBody>
 
-        {/* Buttons outside Form */}
-        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
-          <Button
-            isDisabled={isSubmitting}
-            variant="bordered"
-            onPress={handleClose}
-          >
-            Hủy
-          </Button>
-          <Button
-            className="bg-blue-600 text-white hover:bg-blue-700"
-            isDisabled={isSubmitting}
-            isLoading={isSubmitting}
-            variant="solid"
-            onPress={handleSubmit}
-          >
-            {isSubmitting ? "Đang thêm..." : "Thêm phòng khám"}
-          </Button>
-        </div>
-      </div>
-    </div>
+          <ModalFooter className="px-4 py-4 border-t border-gray-200 bg-gray-50">
+            <Button isDisabled={isSubmitting} variant="bordered" onPress={handleClose}>
+              Hủy
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              isDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              variant="solid"
+              onPress={handleSubmit}
+            >
+              {isSubmitting ? "Đang thêm..." : "Thêm phòng khám"}
+            </Button>
+          </ModalFooter>
+        </>
+      </ModalContent>
+    </Modal>
   );
 };
 
