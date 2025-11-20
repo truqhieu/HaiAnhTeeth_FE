@@ -198,8 +198,12 @@ const UserProfileForm = ({
       formData.append("fullName", fullName.trim());
       formData.append("phoneNumber", phone.trim());
       formData.append("address", address.trim());
-      formData.append("gender", gender);
-      formData.append("dob", birthDate);
+      if (gender) {
+        formData.append("gender", gender);
+      }
+      if (birthDate) {
+        formData.append("dob", birthDate);
+      }
 
       if (showEmergencyContact) {
         if (

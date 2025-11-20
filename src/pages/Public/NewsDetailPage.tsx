@@ -7,12 +7,7 @@ import {
   Chip,
   Button,
 } from "@heroui/react";
-import {
-  CalendarIcon,
-  UserIcon,
-  TagIcon,
-  ArrowLeftIcon,
-} from "@heroicons/react/24/outline";
+import { CalendarIcon, TagIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { blogApi, Blog } from "@/api/blog";
 
 const NewsDetailPage = () => {
@@ -30,13 +25,16 @@ const NewsDetailPage = () => {
   const fetchBlogDetail = async (blogId: string) => {
     try {
       setLoading(true);
-      const response = await blogApi.getPublicBlogDetail(blogId);
+    const response = await blogApi.getPublicBlogDetail(blogId);
 
-      if (response.success && response.data) {
-        setBlog(response.data);
-      }
+    if (response.success && response.data) {
+      setBlog(response.data);
+    } else {
+      setBlog(null);
+    }
     } catch (error) {
       console.error("❌ Error fetching blog detail:", error);
+    setBlog(null);
     } finally {
       setLoading(false);
     }
@@ -136,12 +134,6 @@ const NewsDetailPage = () => {
               <CalendarIcon className="w-5 h-5" />
               <span>{formatDate(blog.createdAt)}</span>
             </div>
-            {blog.authorUserId && (
-              <div className="flex items-center gap-2">
-                <UserIcon className="w-5 h-5" />
-                <span>Bởi {blog.authorUserId.name}</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -164,13 +156,13 @@ const NewsDetailPage = () => {
             {/* Summary */}
             <div className="mb-8 p-6 bg-blue-50 border-l-4 border-[#39BDCC] rounded-r-lg">
               <p className="text-lg text-gray-800 font-medium leading-relaxed">
-                {blog.content}
+                {blog.summary || blog.content}
               </p>
             </div>
 
             {/* TODO: Add full content when available from backend */}
             <div className="prose prose-lg max-w-none">
-              <p className="text-gray-600 leading-relaxed">
+              <p className="text-gray-600 leading-relaxed whitespace-pre-line">
                 {blog.content}
               </p>
             </div>

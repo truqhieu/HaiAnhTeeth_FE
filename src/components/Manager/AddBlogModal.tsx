@@ -27,6 +27,7 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     title: "",
+    summary: "",
     content: "",
     category: "News",
     status: "Published",
@@ -82,6 +83,8 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
   // Validation
   const isTitleInvalid =
     showValidation && (!formData.title || formData.title.trim().length === 0);
+  const isSummaryInvalid =
+    showValidation && (!formData.summary || formData.summary.trim().length === 0);
   const isContentInvalid =
     showValidation &&
     (!formData.content || formData.content.trim().length === 0);
@@ -93,6 +96,7 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
     // Check if there are any errors
     const hasErrors =
       !formData.title.trim() ||
+      !formData.summary.trim() ||
       !formData.content.trim() ||
       !thumbnailFile;
 
@@ -108,6 +112,7 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
     try {
       const createData: any = {
         title: formData.title.trim(),
+        summary: formData.summary.trim(),
         content: formData.content.trim(),
         category: formData.category,
         status: formData.status,
@@ -146,6 +151,7 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
     // Reset form
     setFormData({
       title: "",
+      summary: "",
       content: "",
       category: "News",
       status: "Published",
@@ -211,6 +217,24 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
             />
 
             {/* Summary */}
+            <Textarea
+              fullWidth
+              id="summary"
+              label={
+                <>
+                  Tóm tắt <span className="text-red-500">*</span>
+                </>
+              }
+              minRows={2}
+              placeholder="Viết tóm tắt ngắn gọn về blog..."
+              value={formData.summary}
+              variant="bordered"
+              isInvalid={isSummaryInvalid}
+              errorMessage={isSummaryInvalid ? "Vui lòng nhập tóm tắt" : ""}
+              onValueChange={(value) => handleInputChange("summary", value)}
+            />
+
+            {/* Content */}
             <Textarea
               fullWidth
               id="content"

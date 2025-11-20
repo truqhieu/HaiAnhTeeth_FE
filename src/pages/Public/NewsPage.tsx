@@ -31,7 +31,7 @@ const NewsPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 9;
 
-  const categories = [
+const categories = [
     { value: "all", label: "Tất cả danh mục" },
     { value: "News", label: "Tin tức" },
     { value: "Health Tips", label: "Mẹo sức khỏe" },
@@ -39,6 +39,17 @@ const NewsPage = () => {
     { value: "Patient Stories", label: "Câu chuyện bệnh nhân" },
     { value: "Recruitment", label: "Tuyển dụng" },
   ];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  News: "Tin tức",
+  "Health Tips": "Mẹo sức khỏe",
+  "Medical Services": "Dịch vụ y tế",
+  "Patient Stories": "Câu chuyện bệnh nhân",
+  Promotions: "Ưu đãi",
+  Recruitment: "Tuyển dụng",
+};
+
+const getCategoryLabel = (category: string) => CATEGORY_LABELS[category] || category;
 
   useEffect(() => {
     fetchBlogs();
@@ -189,7 +200,7 @@ const NewsPage = () => {
             {/* Results count */}
             <div className="mb-6">
               <p className="text-gray-600">
-                Tìm thấy <span className="font-semibold text-[#39BDCC]">{total}</span> tin tức
+                Tìm thấy <span className="font-semibold text-[#39BDCC]">{blogs.length}</span> tin tức
               </p>
             </div>
 
@@ -203,25 +214,22 @@ const NewsPage = () => {
                   onPress={() => navigate(`/news/${blog._id}`)}
                 >
                   {/* Thumbnail */}
-                  {blog.thumbnailUrl && (
-                    <div className="relative h-48 overflow-hidden">
+                  <div className="relative h-48 overflow-hidden rounded-t-3xl">
+                    {blog.thumbnailUrl ? (
                       <img
                         src={blog.thumbnailUrl}
                         alt={blog.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       />
-                      <div className="absolute top-3 right-3">
-                        <Chip
-                          color={getCategoryColor(blog.category)}
-                          size="sm"
-                          variant="shadow"
-                          startContent={<TagIcon className="w-3 h-3" />}
-                        >
-                          {categories.find(c => c.value === blog.category)?.label || blog.category}
-                        </Chip>
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-[#39BDCC]/20 to-[#2ca6b5]/20 flex items-center justify-center text-[#39BDCC] font-semibold">
+                        Hải Anh Teeth
                       </div>
-                    </div>
-                  )}
+                    )}
+                    <span className="absolute top-3 left-3 inline-flex px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] bg-white/80 text-[#39BDCC] rounded-full shadow">
+                      {getCategoryLabel(blog.category)}
+                    </span>
+                  </div>
 
                   <CardBody className="p-4">
                     {/* Title */}
