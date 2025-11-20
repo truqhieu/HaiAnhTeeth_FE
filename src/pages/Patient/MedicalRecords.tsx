@@ -138,7 +138,7 @@ const MedicalRecords = () => {
     return filtered;
   }, [records, searchText, dateRange]);
 
-  const baseRecordLookup = useMemo(() => {
+  const recordLookupByAppointmentId = useMemo(() => {
     const map = new Map<string, MedicalRecordItem>();
     records.forEach((record) => {
       if (record.appointmentId) {
@@ -148,25 +148,65 @@ const MedicalRecords = () => {
     return map;
   }, [records]);
 
+  const recordLookupById = useMemo(() => {
+    const map = new Map<string, MedicalRecordItem>();
+    records.forEach((record) => {
+      if (record._id) {
+        map.set(record._id, record);
+      }
+    });
+    return map;
+  }, [records]);
+
   const groupedRecords = useMemo(() => {
     const groups = new Map<string, { base?: MedicalRecordItem; followUps: MedicalRecordItem[] }>();
 
+    const resolveGroupKey = (record: MedicalRecordItem) => {
+      let current: MedicalRecordItem | undefined = record;
+      const visited = new Set<string>();
+
+      while (
+        current?.appointmentType === "FollowUp" &&
+        current.followUpOfAppointmentId &&
+        !visited.has(current.followUpOfAppointmentId)
+      ) {
+        visited.add(current.followUpOfAppointmentId);
+        const parent: MedicalRecordItem | undefined =
+          recordLookupByAppointmentId.get(current.followUpOfAppointmentId) ||
+          recordLookupById.get(current.followUpOfAppointmentId);
+
+        if (!parent) {
+          return {
+            rootKey: current.followUpOfAppointmentId,
+            baseRecord:
+              recordLookupByAppointmentId.get(current.followUpOfAppointmentId) ||
+              recordLookupById.get(current.followUpOfAppointmentId),
+          };
+        }
+
+        current = parent;
+      }
+
+      return {
+        rootKey: current?.appointmentId || current?._id || record._id,
+        baseRecord: current,
+      };
+    };
+
     filteredRecords.forEach((record) => {
       const isFollowUp = record.appointmentType === "FollowUp" && record.followUpOfAppointmentId;
-      const groupKey = isFollowUp ? record.followUpOfAppointmentId! : record.appointmentId || record._id;
+      const { rootKey, baseRecord } = resolveGroupKey(record);
+      const groupKey = rootKey;
 
       if (!groups.has(groupKey)) {
-        groups.set(groupKey, { base: undefined, followUps: [] });
+        groups.set(groupKey, { base: baseRecord, followUps: [] });
       }
 
       const group = groups.get(groupKey)!;
 
       if (isFollowUp) {
-        const baseRecordFromLookup = baseRecordLookup.get(record.followUpOfAppointmentId!);
-        if (baseRecordFromLookup) {
-          group.base = baseRecordFromLookup;
-        } else if (!group.base) {
-          group.base = record;
+        if (!group.base && baseRecord) {
+          group.base = baseRecord;
         }
         group.followUps.push(record);
       } else {
@@ -178,7 +218,8 @@ const MedicalRecords = () => {
       .map(([groupKey, group]) => {
         const baseRecord =
           group.base ||
-          baseRecordLookup.get(groupKey) ||
+          recordLookupByAppointmentId.get(groupKey) ||
+          recordLookupById.get(groupKey) ||
           group.followUps[0];
 
         const followUps = [...group.followUps].sort((a, b) => {
@@ -203,7 +244,7 @@ const MedicalRecords = () => {
           : new Date(b.baseRecord.createdAt).getTime();
         return dateB - dateA;
       });
-  }, [filteredRecords, baseRecordLookup]);
+  }, [filteredRecords, recordLookupByAppointmentId, recordLookupById]);
 
   if (!isAuthenticated) {
     return (
@@ -294,8 +335,6 @@ const MedicalRecords = () => {
             <div className="p-6">
               <div className="space-y-4">
                 {groupedRecords.map(({ groupKey, baseRecord, followUps }) => {
-                  const isBaseFollowUp = baseRecord.appointmentType === "FollowUp";
-
                   return (
                     <div
                       key={groupKey}
