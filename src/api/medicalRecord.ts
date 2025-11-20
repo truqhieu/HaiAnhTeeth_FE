@@ -195,6 +195,8 @@ export const medicalRecordApi = {
     diagnosis?: string | null;
     conclusion?: string | null;
     status: string;
+    appointmentType?: "FollowUp" | "Consultation" | "WalkIn" | string;
+    followUpOfAppointmentId?: string | null;
     createdAt: string;
     updatedAt: string;
   }>>> => {

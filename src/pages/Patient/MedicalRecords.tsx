@@ -10,7 +10,6 @@ import { Spinner, Input, Card, CardBody } from "@heroui/react";
 import { medicalRecordApi } from "@/api/medicalRecord";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
-import toast from "react-hot-toast";
 
 interface MedicalRecordItem {
   _id: string;
@@ -30,8 +29,16 @@ interface MedicalRecordItem {
   diagnosis?: string | null;
   conclusion?: string | null;
   status: string;
+  appointmentType?: "FollowUp" | "Consultation" | "WalkIn" | string;
+  followUpOfAppointmentId?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+interface GroupedMedicalRecord {
+  groupKey: string;
+  baseRecord: MedicalRecordItem;
+  followUps: MedicalRecordItem[];
 }
 
 const MedicalRecords = () => {
@@ -123,13 +130,80 @@ const MedicalRecords = () => {
 
     // Sort by date descending (mới nhất lên đầu)
     filtered.sort((a, b) => {
-      const dateA = a.date ? new Date(a.date).getTime() : 0;
-      const dateB = b.date ? new Date(b.date).getTime() : 0;
+      const dateA = a.date ? new Date(a.date).getTime() : new Date(a.createdAt).getTime();
+      const dateB = b.date ? new Date(b.date).getTime() : new Date(b.createdAt).getTime();
       return dateB - dateA; // Descending: mới nhất lên đầu
     });
 
     return filtered;
   }, [records, searchText, dateRange]);
+
+  const baseRecordLookup = useMemo(() => {
+    const map = new Map<string, MedicalRecordItem>();
+    records.forEach((record) => {
+      if (record.appointmentId) {
+        map.set(record.appointmentId, record);
+      }
+    });
+    return map;
+  }, [records]);
+
+  const groupedRecords = useMemo(() => {
+    const groups = new Map<string, { base?: MedicalRecordItem; followUps: MedicalRecordItem[] }>();
+
+    filteredRecords.forEach((record) => {
+      const isFollowUp = record.appointmentType === "FollowUp" && record.followUpOfAppointmentId;
+      const groupKey = isFollowUp ? record.followUpOfAppointmentId! : record.appointmentId || record._id;
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, { base: undefined, followUps: [] });
+      }
+
+      const group = groups.get(groupKey)!;
+
+      if (isFollowUp) {
+        const baseRecordFromLookup = baseRecordLookup.get(record.followUpOfAppointmentId!);
+        if (baseRecordFromLookup) {
+          group.base = baseRecordFromLookup;
+        } else if (!group.base) {
+          group.base = record;
+        }
+        group.followUps.push(record);
+      } else {
+        group.base = record;
+      }
+    });
+
+    return Array.from(groups.entries())
+      .map(([groupKey, group]) => {
+        const baseRecord =
+          group.base ||
+          baseRecordLookup.get(groupKey) ||
+          group.followUps[0];
+
+        const followUps = [...group.followUps].sort((a, b) => {
+          const dateA = a.date ? new Date(a.date).getTime() : new Date(a.createdAt).getTime();
+          const dateB = b.date ? new Date(b.date).getTime() : new Date(b.createdAt).getTime();
+          return dateA - dateB;
+        });
+
+        return {
+          groupKey,
+          baseRecord: baseRecord || (group.followUps.length > 0 ? group.followUps[0] : filteredRecords[0]),
+          followUps,
+        } as GroupedMedicalRecord;
+      })
+      .filter((group): group is GroupedMedicalRecord => Boolean(group.baseRecord))
+      .sort((a, b) => {
+        const dateA = a.baseRecord.date
+          ? new Date(a.baseRecord.date).getTime()
+          : new Date(a.baseRecord.createdAt).getTime();
+        const dateB = b.baseRecord.date
+          ? new Date(b.baseRecord.date).getTime()
+          : new Date(b.baseRecord.createdAt).getTime();
+        return dateB - dateA;
+      });
+  }, [filteredRecords, baseRecordLookup]);
 
   if (!isAuthenticated) {
     return (
@@ -206,66 +280,128 @@ const MedicalRecords = () => {
         </Card>
 
         {/* All Records List */}
-        {filteredRecords.length > 0 ? (
+        {groupedRecords.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] px-6 py-4">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <CalendarIcon className="w-6 h-6" />
                 Tất cả hồ sơ khám bệnh
                 <span className="text-sm font-normal opacity-90">
-                  ({filteredRecords.length} {filteredRecords.length === 1 ? "hồ sơ" : "hồ sơ"})
+                  ({groupedRecords.length} {groupedRecords.length === 1 ? "hồ sơ" : "hồ sơ"})
                 </span>
               </h2>
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                {filteredRecords.map((record) => (
-                  <div
-                    key={record._id}
-                    className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer bg-white hover:border-[#39BDCC]"
-                    onClick={() => navigate(`/patient/medical-record/${record.appointmentId}`)}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                          {record.serviceName}
-                        </h3>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <CalendarIcon className="w-4 h-4 text-[#39BDCC]" />
-                            <span className="font-medium text-gray-700">Ngày khám:</span>
-                            <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-[#39BDCC] text-white">
-                              {formatDate(record.date)}
-                            </span>
+                {groupedRecords.map(({ groupKey, baseRecord, followUps }) => {
+                  const isBaseFollowUp = baseRecord.appointmentType === "FollowUp";
+
+                  return (
+                    <div
+                      key={groupKey}
+                      className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 bg-white"
+                    >
+                      <div
+                        className="flex items-start justify-between cursor-pointer"
+                        onClick={() => baseRecord.appointmentId && navigate(`/patient/medical-record/${baseRecord.appointmentId}`)}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            {/* <h3 className="text-lg font-semibold text-gray-900">
+                              {baseRecord.serviceName}
+                            </h3> */}
+                            {/* <span className="text-xs uppercase tracking-wide font-semibold px-2 py-1 rounded-md bg-gray-100 text-gray-700">
+                              {isBaseFollowUp ? "Tái khám" : "Ca khám gốc"}
+                            </span> */}
+                            {followUps.length > 0 && (
+                              <span className="text-xs font-semibold px-2 py-1 rounded-md bg-[#39BDCC]/10 text-[#2ca6b5]">
+                                {followUps.length} lần tái khám
+                              </span>
+                            )}
                           </div>
-                          {record.startTime && record.endTime && (
+                          <div className="space-y-2">
                             <div className="flex items-center gap-2 text-sm">
-                              <ClockIcon className="w-4 h-4 text-gray-500" />
-                              <span className="font-medium text-gray-700">Giờ khám:</span>
-                              <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-gray-100 text-gray-700">
-                                {record.startTime} - {record.endTime}
+                              <CalendarIcon className="w-4 h-4 text-[#39BDCC]" />
+                              <span className="font-medium text-gray-700">Ngày khám:</span>
+                              <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-[#39BDCC] text-white">
+                                {formatDate(baseRecord.date || baseRecord.createdAt)}
                               </span>
                             </div>
-                          )}
-                          <div className="flex items-center gap-2 text-sm">
-                            <DocumentTextIcon className="w-4 h-4 text-gray-500" />
-                            <span className="font-medium text-gray-700">Bác sĩ:</span>
-                            <span className="text-gray-900">{record.doctorName}</span>
+                            {baseRecord.startTime && baseRecord.endTime && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <ClockIcon className="w-4 h-4 text-gray-500" />
+                                <span className="font-medium text-gray-700">Giờ khám:</span>
+                                <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-gray-100 text-gray-700">
+                                  {baseRecord.startTime} - {baseRecord.endTime}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 text-sm">
+                              <DocumentTextIcon className="w-4 h-4 text-gray-500" />
+                              <span className="font-medium text-gray-700">Bác sĩ:</span>
+                              <span className="text-gray-900">{baseRecord.doctorName}</span>
+                            </div>
                           </div>
                         </div>
+                        <button
+                          className="ml-4 px-4 py-2 text-sm font-medium text-[#39BDCC] hover:text-[#2ca6b5] hover:bg-[#39BDCC]/10 rounded-lg transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (baseRecord.appointmentId) {
+                              navigate(`/patient/medical-record/${baseRecord.appointmentId}`);
+                            }
+                          }}
+                        >
+                          Xem chi tiết →
+                        </button>
                       </div>
-                      <button
-                        className="ml-4 px-4 py-2 text-sm font-medium text-[#39BDCC] hover:text-[#2ca6b5] hover:bg-[#39BDCC]/10 rounded-lg transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/patient/medical-record/${record.appointmentId}`);
-                        }}
-                      >
-                        Xem chi tiết →
-                      </button>
+
+                      {followUps.length > 0 && (
+                        <div className="mt-5 pt-5 border-t border-dashed border-gray-200">
+                          <p className="text-sm font-semibold text-[#39BDCC] uppercase tracking-wide mb-3">
+                            Các lần tái khám
+                          </p>
+                          <div className="space-y-3">
+                            {followUps.map((followUp, index) => (
+                              <div
+                                key={followUp._id}
+                                className="bg-gray-50 border border-gray-100 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                              >
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-semibold text-gray-900">
+                                      Tái khám lần {index + 1}
+                                    </span>
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#39BDCC]/10 text-[#2ca6b5]">
+                                      {formatDate(followUp.date || followUp.createdAt)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-sm text-gray-700 flex-wrap">
+                                    {followUp.startTime && followUp.endTime && (
+                                      <span>
+                                        ⏰ {followUp.startTime} - {followUp.endTime}
+                                      </span>
+                                    )}
+                                    <span>👨‍⚕️ {followUp.doctorName}</span>
+                                  </div>
+                                </div>
+                                <button
+                                  className="self-start md:self-auto px-3 py-2 text-sm font-medium text-[#39BDCC] hover:text-[#2ca6b5] rounded-lg transition-colors"
+                                  onClick={() =>
+                                    followUp.appointmentId &&
+                                    navigate(`/patient/medical-record/${followUp.appointmentId}`)
+                                  }
+                                >
+                                  Xem chi tiết →
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

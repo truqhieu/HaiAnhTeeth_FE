@@ -1407,12 +1407,18 @@ const DoctorMedicalRecord: React.FC = () => {
         followUpNote: followUpEnabled ? followUpNote : '',
       };
 
-      const res = await medicalRecordApi.updateMedicalRecordForDoctor(appointmentId, payload);
-      if (res.success && res.data) {
-        // ⭐ FIX: Không update permissions ở đây nữa, sẽ reload từ backend sau khi approve
-        // Permissions sẽ được update từ reload response để đảm bảo đúng logic (đặc biệt là với follow-up appointments)
-        if (approve) {
-          toast.success("Đã lưu và duyệt hồ sơ khám bệnh");
+const res = await medicalRecordApi.updateMedicalRecordForDoctor(appointmentId, payload);
+
+if (res.success && res.data) {
+  if (approve) {
+    // 1️⃣ Lưu xong rồi thì gọi approve
+    const approveRes = await medicalRecordApi.approveMedicalRecordByDoctor(appointmentId);
+    if (!approveRes.success) {
+      throw new Error(approveRes.message || 'Duyệt hồ sơ thất bại');
+    }
+
+    // 2️⃣ Sau đó mới reload record như code cũ
+    toast.success("Đã lưu và duyệt hồ sơ khám bệnh");
           // ⭐ FIX: Nếu approve, reload lại medical record để lấy đầy đủ thông tin follow-up appointment và permissions mới
           setTimeout(async () => {
             try {
