@@ -1,4 +1,12 @@
-import { forwardRef, ReactNode, useEffect } from "react";
+import {
+  forwardRef,
+  ReactNode,
+  FocusEvent,
+  KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Input } from "@heroui/react";
 import { CalendarIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import DatePicker, { registerLocale, setDefaultLocale } from "react-datepicker";
@@ -42,6 +50,43 @@ const toDate = (value?: string | Date) => {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
+const formatDisplayDate = (date: Date) => {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const parseDDMMYYYY = (input: string): Date | null => {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const parts = trimmed.split(/[^0-9]/).filter(Boolean);
+  if (parts.length !== 3) return null;
+  const day = Number(parts[0]);
+  const month = Number(parts[1]);
+  const year = Number(parts[2]);
+  if (
+    Number.isNaN(day) ||
+    Number.isNaN(month) ||
+    Number.isNaN(year) ||
+    parts[2].length !== 4
+  ) {
+    return null;
+  }
+
+  const candidate = new Date(year, month - 1, day);
+  if (
+    candidate.getDate() !== day ||
+    candidate.getMonth() !== month - 1 ||
+    candidate.getFullYear() !== year
+  ) {
+    return null;
+  }
+
+  return candidate;
+};
+
 interface CalendarInputProps {
   value?: string;
   onClick?: () => void;
@@ -55,6 +100,12 @@ interface CalendarInputProps {
   className?: string;
   inputWrapperClassName?: string;
   inputClassName?: string;
+  displayValue?: string;
+  onManualValueChange?: (value: string) => void;
+  onManualBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  onManualKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
+  onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
 }
 
 const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
@@ -72,15 +123,20 @@ const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
       className,
       inputWrapperClassName,
       inputClassName,
+      displayValue,
+      onManualValueChange,
+      onManualBlur,
+      onManualKeyDown,
+      onBlur,
+      onKeyDown,
     },
     ref,
   ) => (
     <Input
       id={id}
       ref={ref}
-      value={value || ""}
+      value={displayValue ?? value ?? ""}
       placeholder={placeholder}
-      readOnly
       onClick={isDisabled ? undefined : onClick}
       variant="bordered"
       isInvalid={isInvalid}
@@ -108,6 +164,15 @@ const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
         ) : null
       }
       isDisabled={isDisabled}
+      onValueChange={(val) => onManualValueChange?.(val)}
+      onBlur={(event) => {
+        onManualBlur?.(event);
+        onBlur?.(event);
+      }}
+      onKeyDown={(event) => {
+        onManualKeyDown?.(event);
+        onKeyDown?.(event);
+      }}
     />
   )
 );
@@ -137,7 +202,7 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
   onChange,
   minDate,
   maxDate,
-  placeholder = "dd/mm/yyyy",
+  placeholder = "DD/MM/YYYY",
   isInvalid,
   errorMessage,
   disabled,
@@ -152,6 +217,64 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
   useEffect(() => {
     ensurePortalContainer();
   }, []);
+
+  const [internalValue, setInternalValue] = useState("");
+  const lastValueRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!value) {
+      setInternalValue("");
+      lastValueRef.current = "";
+      return;
+    }
+
+    if (value === lastValueRef.current) return;
+
+    const parsedValue = parseDateValue(value);
+    if (parsedValue) {
+      setInternalValue(formatDisplayDate(parsedValue));
+      lastValueRef.current = value;
+    }
+  }, [value]);
+
+  const commitManualValue = () => {
+    const trimmed = internalValue.trim();
+
+    if (!trimmed) {
+      if (value) {
+        onChange?.("");
+        lastValueRef.current = "";
+      }
+      return;
+    }
+
+    const parsed = parseDDMMYYYY(trimmed);
+    if (!parsed) {
+      return;
+    }
+
+    const isoString = formatToISO(parsed);
+    lastValueRef.current = isoString;
+    if (isoString !== value) {
+      onChange?.(isoString);
+    } else {
+      setInternalValue(formatDisplayDate(parsed));
+    }
+  };
+
+  const handleManualValueChange = (nextValue: string) => {
+    setInternalValue(nextValue);
+  };
+
+  const handleManualBlur = (_event: FocusEvent<HTMLInputElement>) => {
+    commitManualValue();
+  };
+
+  const handleManualKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      commitManualValue();
+    }
+  };
 
   const selected = parseDateValue(value);
 
@@ -178,6 +301,10 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
           className={className}
           inputWrapperClassName={inputWrapperClassName}
           inputClassName={inputClassName}
+          displayValue={internalValue}
+          onManualValueChange={handleManualValueChange}
+          onManualBlur={handleManualBlur}
+          onManualKeyDown={handleManualKeyDown}
         />
       }
       shouldCloseOnSelect

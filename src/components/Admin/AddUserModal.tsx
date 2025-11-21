@@ -496,7 +496,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   </>
                 }
                 maxDate={new Date()}
-                placeholder="dd/mm/yyyy"
+                placeholder="DD/MM/YYYY"
                 value={formData.dob}
                 onChange={(value) => {
                   handleInputChange("dob", value);
