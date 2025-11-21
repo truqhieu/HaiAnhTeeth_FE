@@ -194,7 +194,7 @@ const ScheduleManagement = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               startContent={<MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />}
-              className="max-w-md"
+              className="w-full"
             />
           </div>
 
@@ -210,15 +210,7 @@ const ScheduleManagement = () => {
           </div>
 
           {/* Add Button */}
-          <div className="flex-shrink-0 flex gap-2">
-            <Button
-              color="secondary"
-              variant="bordered"
-              onPress={fetchDoctors}
-              isLoading={isLoading}
-            >
-              Refresh
-            </Button>
+          <div className="flex-shrink-0">
             <Button
               color="primary"
               startContent={<PlusIcon className="h-4 w-4" />}
