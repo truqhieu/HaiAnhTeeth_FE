@@ -50,10 +50,23 @@ const AIBooking: React.FC = () => {
         },
       ]);
       
-      // Update conversation history từ backend response (AI đã tự manage history)
-      const newHistory = (res.data as any)?.parsedData?.conversationHistory;
-      if (newHistory && Array.isArray(newHistory)) {
+      // ⭐ CỰC KỲ QUAN TRỌNG: Update conversation history từ backend response
+      // Backend có thể trả về conversationHistory trong res.data.conversationHistory hoặc res.data.parsedData.conversationHistory
+      const newHistory = (res.data as any)?.conversationHistory || (res.data as any)?.parsedData?.conversationHistory;
+      if (newHistory && Array.isArray(newHistory) && newHistory.length > 0) {
+        // Backend đã trả về conversation history → dùng conversation history từ backend
+        // eslint-disable-next-line no-console
+        console.log('📝 [AI Booking FE] Updating conversation history from backend:', newHistory.length, 'messages');
         setConversationHistory(newHistory);
+      } else {
+        // ⭐ FALLBACK: Nếu backend không trả về conversation history, tự động append user message và bot response vào conversation history hiện tại
+        // eslint-disable-next-line no-console
+        console.log('⚠️ [AI Booking FE] Backend did not return conversation history, appending manually');
+        setConversationHistory((prev) => [
+          ...prev,
+          { role: "user", content: userMessage },
+          { role: "assistant", content: botResponse }
+        ]);
       }
       
       // Nếu appointment được tạo thành công, có thể navigate hoặc hiển thị thông báo
@@ -62,20 +75,31 @@ const AIBooking: React.FC = () => {
         return;
       }
       
+      // ⭐ QUAN TRỌNG: Nếu success = true nhưng không có appointment (informational query, off-topic response)
+      // Đây không phải là lỗi, chỉ cần tiếp tục conversation
+      if (res.success && !(res.data as any)?.appointment) {
+        // Informational query hoặc off-topic response - không phải lỗi
+        return; // Continue conversation
+      }
+      
       // Continue conversation if needsMoreInfo
       if ((res.data as any)?.needsMoreInfo) {
         return; // Wait for user response
       }
 
-      // Handle other errors
-      if (!res.success || !res.data) {
+      // ⭐ CHỈ throw error khi thực sự có lỗi (không có message hợp lệ)
+      // Nếu có message (res.message hoặc botResponse), không phải lỗi
+      if (!res.success && (!res.message && !botResponse)) {
         throw new Error(res.message || "Không thể tạo lịch tự động");
       }
+      
+      // Nếu có message nhưng success = false, vẫn hiển thị message (không throw error)
+      // Đây có thể là trường hợp needsMoreInfo hoặc response thông tin
 
       // Success - appointment created
       toast.success("Đặt lịch thành công!");
 
-      const appointment: any = res.data.appointment;
+      const appointment: any = res.data?.appointment;
       // Thử lấy paymentId từ nhiều cấu trúc khác nhau để an toàn
       const paymentObj = appointment?.paymentId || appointment?.payment || null;
       const paymentId: string | null = (paymentObj && (paymentObj._id || paymentObj.paymentId)) ? (paymentObj._id || paymentObj.paymentId) : (typeof paymentObj === 'string' ? paymentObj : null);

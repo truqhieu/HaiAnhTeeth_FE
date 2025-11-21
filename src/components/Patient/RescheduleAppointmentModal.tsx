@@ -378,7 +378,7 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
 
   const validateTime = (
     timeStr: string,
-    { skipErrors = false }: { skipErrors?: boolean } = {},
+    { skipErrors = false, skipGapValidation = false }: { skipErrors?: boolean; skipGapValidation?: boolean } = {},
   ) => {
       setComputedEndTime(null);
     setActiveRangeShift(null);
@@ -424,14 +424,47 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
       return false;
     }
 
+    // ⭐ FIX: Chỉ validate với thời gian hiện tại nếu ngày đã chọn là ngày hôm nay
+    // Nếu ngày đã chọn là ngày tương lai, không cần kiểm tra quá khứ
     const nowUtc = new Date();
-    if (startUtc <= nowUtc) {
+    const selectedDateObj = new Date(date + "T00:00:00.000Z");
+    selectedDateObj.setUTCHours(0, 0, 0, 0);
+    const todayUtc = new Date(nowUtc);
+    todayUtc.setUTCHours(0, 0, 0, 0);
+    
+    const isToday = selectedDateObj.getTime() === todayUtc.getTime();
+    
+    // ⭐ Chỉ check quá khứ nếu date là ngày hiện tại
+    if (isToday && startUtc <= nowUtc) {
       showError("Không thể đặt lịch hẹn trong quá khứ");
       return false;
     }
 
     const endUtc = new Date(startUtc.getTime() + serviceInfo.duration * 60000);
 
+    // ⭐ FIX: Nếu đã có activeReservation (đã reserve slot), skip validation với availableGaps
+    // vì slot đã reserved không còn trong availableGaps nữa
+    if (skipGapValidation || activeReservation) {
+      // Chỉ validate format và quá khứ, không validate với gaps
+      // Tìm range để set activeRangeShift cho UI
+      const matchedRange = scheduleRanges.find((range) => {
+        const rangeStart = new Date(range.startTime);
+        const rangeEnd = new Date(range.endTime);
+        return startUtc >= rangeStart && endUtc <= rangeEnd;
+      });
+      
+      if (matchedRange) {
+        setActiveRangeShift(matchedRange.shift);
+      }
+      
+      if (!skipErrors) {
+        setValidationError("");
+      }
+      setComputedEndTime(endUtc);
+      return true;
+    }
+
+    // ⭐ Chỉ validate với availableGaps nếu chưa có reservation
     if (!availableGaps.length) {
       showError("Bác sĩ không còn khoảng thời gian trống cho ngày này");
       return false;
@@ -669,7 +702,9 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
   }, [activeReservation]);
 
   const handleSubmit = async () => {
-    if (!validateTime(selectedStartTime)) {
+    // ⭐ FIX: Nếu đã có activeReservation, skip validation với availableGaps
+    // vì slot đã reserved không còn trong availableGaps nữa
+    if (!validateTime(selectedStartTime, { skipGapValidation: !!activeReservation })) {
       return;
     }
 

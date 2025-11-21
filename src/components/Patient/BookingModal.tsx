@@ -1061,7 +1061,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }
 
     setSubmitting(true);
+    // ⭐ Clear TẤT CẢ error messages trước khi submit để tránh hiển thị lỗi cũ
     setErrorMessage(null);
+    setTimeInputError(null);
     try {
       const payload = {
         fullName: formData.fullName,
@@ -1082,6 +1084,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       const res = await appointmentApi.create(payload);
 
       if (res.success) {
+        // ⭐ QUAN TRỌNG: Clear TẤT CẢ errors TRƯỚC KHI reset form và navigate
+        // Để tránh hiển thị lỗi cũ khi booking thành công
+        setErrorMessage(null);
+        setTimeInputError(null);
+        setFieldErrors({});
+        
         // Reset form after successful booking
         resetForm();
         
@@ -1111,11 +1119,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         }
         
         if (res.data?.requirePayment && res.data?.payment?.paymentId) {
-          setErrorMessage(null);
           onClose();
           navigate(`/patient/payment/${res.data.payment.paymentId}`);
         } else {
-          setErrorMessage(null);
           onClose();
           toast.success(res.message || "Đặt lịch thành công!");
           // ⭐ Navigate với state để trigger refetch mà không cần reload trang
@@ -1131,6 +1137,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           errorMsg.includes("Khung giờ") || 
           errorMsg.includes("thời gian") || 
           errorMsg.includes("đã có người đặt") ||
+          errorMsg.includes("đã có lịch") ||
           errorMsg.includes("chờ thanh toán") ||
           errorMsg.includes("time slot") ||
           errorMsg.includes("unavailable");
@@ -1161,6 +1168,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         errorMsg.includes("Khung giờ") || 
         errorMsg.includes("thời gian") || 
         errorMsg.includes("đã có người đặt") ||
+        errorMsg.includes("đã có lịch") ||
         errorMsg.includes("chờ thanh toán") ||
         errorMsg.includes("time slot") ||
         errorMsg.includes("unavailable");
