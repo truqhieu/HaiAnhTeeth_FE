@@ -156,7 +156,7 @@ const AccountManagement = () => {
 
   const roleOptions = [
     { key: "all", label: "Tất cả vai trò" },
-    { key: "Manager", label: "Manager" },
+    { key: "Manager", label: "Quản lý" },
     { key: "Doctor", label: "Bác sĩ" },
     { key: "Nurse", label: "Điều dưỡng" },
     { key: "Staff", label: "Lễ Tân" },

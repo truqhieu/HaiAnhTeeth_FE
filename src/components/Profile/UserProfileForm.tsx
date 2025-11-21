@@ -1,10 +1,17 @@
-import { useState, useEffect, useRef } from "react";
+import { forwardRef, useState, useEffect, useRef } from "react";
 import { Input, Button, Select, SelectItem, Avatar } from "@heroui/react";
-import { EyeIcon, EyeSlashIcon, CameraIcon } from "@heroicons/react/24/outline";
+import {
+  CameraIcon,
+  CalendarIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import DatePicker, { registerLocale } from "react-datepicker";
+import viLocale from "date-fns/locale/vi";
 import toast from "react-hot-toast";
 
 import { authApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
+import "react-datepicker/dist/react-datepicker.css";
 
 interface UserProfileFormProps {
   title?: string;
@@ -27,6 +34,78 @@ const relationshipOptions = [
   { key: "Friend", label: "Bạn bè" },
   { key: "Other", label: "Khác" },
 ];
+
+const PROFILE_DATE_PICKER_PORTAL_ID = "profile-date-picker-portal";
+
+const ensureProfileDatePickerPortal = () => {
+  if (typeof document === "undefined") return;
+  if (!document.getElementById(PROFILE_DATE_PICKER_PORTAL_ID)) {
+    const portalRoot = document.createElement("div");
+    portalRoot.id = PROFILE_DATE_PICKER_PORTAL_ID;
+    portalRoot.style.position = "relative";
+    portalRoot.style.zIndex = "9999";
+    document.body.appendChild(portalRoot);
+  }
+};
+
+registerLocale("vi", viLocale);
+
+const formatDateToISO = (date: Date | null) => {
+  if (!date) return "";
+  const timezoneOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - timezoneOffset).toISOString().split("T")[0];
+};
+
+const parseDateValue = (value?: string) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+interface BirthDateInputProps {
+  value?: string;
+  onClick?: () => void;
+  placeholder?: string;
+  onClear?: () => void;
+}
+
+const BirthDateInput = forwardRef<HTMLInputElement, BirthDateInputProps>(
+  ({ value, onClick, placeholder, onClear }, ref) => (
+    <Input
+      ref={ref}
+      value={value || ""}
+      readOnly
+      onClick={onClick}
+      placeholder={placeholder}
+      label="Ngày sinh"
+      labelPlacement="outside"
+      variant="bordered"
+      classNames={{
+        base: "w-full",
+        input: "bg-gray-100",
+        inputWrapper: "bg-gray-100 border-gray-300 cursor-pointer",
+      }}
+      startContent={<CalendarIcon className="w-5 h-5 text-gray-400" />}
+      endContent={
+        value ? (
+          <button
+            type="button"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onClear?.();
+            }}
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        ) : null
+      }
+    />
+  ),
+);
+
+BirthDateInput.displayName = "BirthDateInput";
 
 const UserProfileForm = ({
   title = "Hồ sơ cá nhân",
@@ -51,11 +130,9 @@ const UserProfileForm = ({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [isPasswordVisible, setIsPasswordVisible] = useState({
-    current: false,
-    new: false,
-    confirm: false,
-  });
+  useEffect(() => {
+    ensureProfileDatePickerPortal();
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -113,8 +190,12 @@ const UserProfileForm = ({
       formData.append("fullName", fullName.trim());
       formData.append("phoneNumber", phone.trim());
       formData.append("address", address.trim());
-      formData.append("gender", gender);
-      formData.append("dob", birthDate);
+      if (gender) {
+        formData.append("gender", gender);
+      }
+      if (birthDate) {
+        formData.append("dob", birthDate);
+      }
 
       if (showEmergencyContact) {
         if (
@@ -214,34 +295,19 @@ const UserProfileForm = ({
     setValue: (val: string) => void,
     field: "current" | "new" | "confirm",
   ) => (
-    <Input
-      classNames={{
-        input: "bg-gray-100",
-        inputWrapper: "bg-gray-100 border-gray-300",
-      }}
-      label={label}
-      labelPlacement="outside"
-      placeholder="••••••"
-      type={isPasswordVisible[field] ? "text" : "password"}
-      value={value}
-      variant="bordered"
-      onValueChange={setValue}
-      endContent={
-        <button
-          type="button"
-          className="focus:outline-none"
-          onClick={() =>
-            setIsPasswordVisible((prev) => ({ ...prev, [field]: !prev[field] }))
-          }
-        >
-          {isPasswordVisible[field] ? (
-            <EyeSlashIcon className="w-4 h-4 text-gray-500" />
-          ) : (
-            <EyeIcon className="w-4 h-4 text-gray-500" />
-          )}
-        </button>
-      }
-    />
+        <Input
+          classNames={{
+            input: "bg-gray-100",
+            inputWrapper: "bg-gray-100 border-gray-300",
+          }}
+          label={label}
+          labelPlacement="outside"
+          placeholder="••••••"
+          type="password"
+          value={value}
+          variant="bordered"
+          onValueChange={setValue}
+        />
   );
 
   return (
@@ -326,39 +392,51 @@ const UserProfileForm = ({
                 />
               </div>
 
-              <Input
-                classNames={{
-                  input: "bg-gray-100",
-                  inputWrapper: "bg-gray-100 border-gray-300",
-                }}
-                label="Ngày sinh"
-                labelPlacement="outside"
-                placeholder="DD/MM/YYYY"
-                type="date"
-                value={birthDate}
-                variant="bordered"
-                onValueChange={setBirthDate}
-              />
+              <div className="w-full md:max-w-sm md:justify-self-start">
+                <DatePicker
+                  selected={parseDateValue(birthDate)}
+                  onChange={(date) => setBirthDate(formatDateToISO(date))}
+                  dateFormat="dd/MM/yyyy"
+                  locale="vi"
+                  calendarStartDay={1}
+                  showPopperArrow={false}
+                  popperPlacement="bottom-start"
+                  popperClassName="z-[9999]"
+                  popperProps={{
+                    strategy: "fixed",
+                  }}
+                  portalId={PROFILE_DATE_PICKER_PORTAL_ID}
+                  wrapperClassName="w-full"
+                  customInput={
+                    <BirthDateInput
+                      placeholder="dd/mm/yyyy"
+                      onClear={() => setBirthDate("")}
+                    />
+                  }
+                />
+              </div>
 
-              <Select
-                classNames={{
-                  trigger: "bg-gray-100 border-gray-300",
-                  value: "bg-gray-100",
-                }}
-                label="Giới tính"
-                labelPlacement="outside"
-                placeholder="Chọn giới tính"
-                selectedKeys={gender ? [gender] : []}
-                variant="bordered"
-                onSelectionChange={(keys) => {
-                  const selectedKey = Array.from(keys)[0] as string;
-                  setGender(selectedKey);
-                }}
-              >
-                {genderOptions.map((option) => (
-                  <SelectItem key={option.key}>{option.label}</SelectItem>
-                ))}
-              </Select>
+              <div className="w-full md:max-w-sm md:justify-self-start">
+                <Select
+                  classNames={{
+                    trigger: "bg-gray-100 border-gray-300",
+                    value: "bg-gray-100",
+                  }}
+                  label="Giới tính"
+                  labelPlacement="outside"
+                  placeholder="Chọn giới tính"
+                  selectedKeys={gender ? [gender] : []}
+                  variant="bordered"
+                  onSelectionChange={(keys) => {
+                    const selectedKey = Array.from(keys)[0] as string;
+                    setGender(selectedKey);
+                  }}
+                >
+                  {genderOptions.map((option) => (
+                    <SelectItem key={option.key}>{option.label}</SelectItem>
+                  ))}
+                </Select>
+              </div>
 
               <div className="md:col-span-2">
                 <Input
@@ -537,5 +615,6 @@ const UserProfileForm = ({
 };
 
 export default UserProfileForm;
+
 
 

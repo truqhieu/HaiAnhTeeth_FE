@@ -356,9 +356,15 @@ const PolicyManagement = () => {
       {/* Create/Edit Modal */}
       <Modal
         isOpen={isOpen}
-        onClose={onClose}
+        isDismissable={false}
+        onOpenChange={(open) => {
+          if (!open) {
+            onClose();
+          }
+        }}
         size="2xl"
         scrollBehavior="inside"
+        classNames={{ base: "max-h-[90vh] rounded-2xl" }}
       >
         <ModalContent>
           {(onClose) => (

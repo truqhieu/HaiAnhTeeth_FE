@@ -6,7 +6,6 @@ import {
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
-  UserIcon,
   DocumentTextIcon,
   BellIcon,
   ChatBubbleLeftRightIcon,
@@ -62,18 +61,14 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
     navigate("/");
   };
 
+  const profilePath = "/doctor/profile";
+
   const navigation = [
     {
       name: "Lịch khám",
       href: "/doctor/schedule",
       icon: CalendarIcon,
       current: location.pathname === "/doctor/schedule",
-    },
-    {
-      name: "Hồ sơ cá nhân",
-      href: "/doctor/profile",
-      icon: UserIcon,
-      current: location.pathname === "/doctor/profile",
     },
     {
       name: "Chat với bệnh nhân",
@@ -124,7 +119,11 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
       >
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
+          <button
+            className="flex items-center w-full text-left space-x-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
+            type="button"
+            onClick={() => handleNavigation(profilePath)}
+          >
             <Avatar
               className="w-10 h-10 border border-blue-100"
               name={user?.fullName || "Doctor"}
@@ -136,7 +135,7 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
                 {user?.fullName || "Chưa xác định"}
               </span>
             </div>
-          </div>
+          </button>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <XMarkIcon className="w-6 h-6 text-gray-500" />
           </button>
@@ -172,11 +171,6 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
 
         {/* Logout Button - fixed bottom */}
         <div className="px-4 py-4 border-t border-gray-200">
-          <div className="mb-3 px-4">
-            <p className="text-sm font-medium text-gray-700 truncate">
-              {user?.fullName || user?.email || "Doctor"}
-            </p>
-          </div>
           <button
             onClick={handleLogout}
             className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"

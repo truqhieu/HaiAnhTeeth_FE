@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { XMarkIcon } from "@heroicons/react/24/solid";
-import { Input, Button, Form, Select, SelectItem } from "@heroui/react";
+import { Input, Button, Form, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { managerApi, ManagerDoctor, ManagerClinic } from "@/api";
@@ -149,6 +148,11 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     }
   };
 
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    handleSubmit();
+  };
+
   const handleClose = () => {
     setShowValidation(false);
     onClose();
@@ -157,26 +161,21 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   if (!isOpen || !schedule) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        aria-label="Close modal"
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        role="button"
-        tabIndex={0}
-        onClick={handleClose}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            handleClose();
-          }
-        }}
-      />
-
-      {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
+    <Modal
+      isOpen={isOpen}
+      isDismissable={false}
+      onOpenChange={(open) => {
+        if (!open) {
+          handleClose();
+        }
+      }}
+      size="lg"
+      scrollBehavior="outside"
+      classNames={{ base: "max-h-[90vh] rounded-2xl" }}
+    >
+      <ModalContent>
+        <>
+          <ModalHeader className="flex items-center gap-3 border-b border-gray-200">
             <img
               alt="Logo"
               className="h-8 w-auto object-contain"
@@ -188,49 +187,34 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 {schedule.shiftName} - {schedule.doctorName}
               </p>
             </div>
-          </div>
-          <Button
-            isIconOnly
-            className="text-gray-500 hover:text-gray-700"
-            variant="light"
-            onPress={handleClose}
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </Button>
-        </div>
+          </ModalHeader>
 
-        {/* Body */}
-        <div className="px-4 py-4 pb-0">
-          {/* Read-only info */}
-          <div className="mb-7 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2">
-              Thông tin ca khám
-            </h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600">Ngày:</span>
-                <span className="ml-2 font-medium">
-                  {new Date(schedule.date).toLocaleDateString("vi-VN")}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-600">Bác sĩ:</span>
-                <span className="ml-2 font-medium">{schedule.doctorName}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Số slot:</span>
-                <span className="ml-2 font-medium">
-                  {schedule.maxSlots} slot
-                </span>
+          <ModalBody className="px-4 py-4 pb-0">
+            <div className="mb-7 p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                Thông tin ca khám
+              </h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Ngày:</span>
+                  <span className="ml-2 font-medium">
+                    {new Date(schedule.date).toLocaleDateString("vi-VN")}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Bác sĩ:</span>
+                  <span className="ml-2 font-medium">{schedule.doctorName}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Số slot:</span>
+                  <span className="ml-2 font-medium">
+                    {schedule.maxSlots} slot
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <Form
-            autoComplete="off"
-            className="space-y-7"
-            onSubmit={handleSubmit}
-          >
+            <Form autoComplete="off" className="space-y-7" onSubmit={handleFormSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
               <Select
                 fullWidth
@@ -389,30 +373,30 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 ))}
               </Select>
             </div>
-          </Form>
-        </div>
+            </Form>
+          </ModalBody>
 
-        {/* Buttons outside Form */}
-        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
-          <Button
-            isDisabled={isSubmitting}
-            variant="bordered"
-            onPress={handleClose}
-          >
-            Hủy
-          </Button>
-          <Button
-            className="bg-blue-600 text-white hover:bg-blue-700"
-            isDisabled={isSubmitting}
-            isLoading={isSubmitting}
-            variant="solid"
-            onPress={handleSubmit}
-          >
-            {isSubmitting ? "Đang cập nhật..." : "Cập nhật ca khám"}
-          </Button>
-        </div>
-      </div>
-    </div>
+          <ModalFooter className="px-4 py-4 border-t border-gray-200 bg-gray-50">
+            <Button
+              isDisabled={isSubmitting}
+              variant="bordered"
+              onPress={handleClose}
+            >
+              Hủy
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              isDisabled={isSubmitting}
+              isLoading={isSubmitting}
+              variant="solid"
+              onPress={handleSubmit}
+            >
+              {isSubmitting ? "Đang cập nhật..." : "Cập nhật ca khám"}
+            </Button>
+          </ModalFooter>
+        </>
+      </ModalContent>
+    </Modal>
   );
 };
 

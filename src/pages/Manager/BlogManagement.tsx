@@ -182,7 +182,6 @@ const BlogManagement = () => {
     { key: "thumbnail", label: "Ảnh" },
     { key: "title", label: "Tiêu đề" },
     { key: "category", label: "Thể loại" },
-    { key: "author", label: "Tác giả" },
     { key: "status", label: "Trạng thái" },
     { key: "createdAt", label: "Ngày tạo" },
     { key: "actions", label: "Hành động" },
@@ -193,10 +192,10 @@ const BlogManagement = () => {
       {/* Header */}
       <div className="mb-8">
         <div className="mb-2">
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý Blog</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Quản lý bài viết</h1>
         </div>
         <p className="text-gray-600 mt-2">
-          Quản lý các bài viết blog cho website
+          Quản lý các bài viết cho website
         </p>
       </div>
 
@@ -256,7 +255,7 @@ const BlogManagement = () => {
           startContent={<PlusIcon className="w-5 h-5" />}
           onPress={handleAdd}
         >
-          Thêm blog
+          Thêm bài viết
         </Button>
       </div>
 
@@ -307,7 +306,7 @@ const BlogManagement = () => {
                         {blog.title}
                       </p>
                       <p className="text-sm text-gray-500 line-clamp-1 mt-1">
-                        {blog.content}
+                        {blog.summary || blog.content}
                       </p>
                     </div>
                   </TableCell>
@@ -315,16 +314,6 @@ const BlogManagement = () => {
                     <Chip color="primary" size="sm" variant="flat">
                       {getCategoryLabel(blog.category)}
                     </Chip>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <p className="text-gray-900 font-medium">
-                        {blog.authorUserId?.name || "N/A"}
-                      </p>
-                      <p className="text-gray-500 text-xs">
-                        {blog.authorUserId?.email || ""}
-                      </p>
-                    </div>
                   </TableCell>
                   <TableCell>
                     <Chip

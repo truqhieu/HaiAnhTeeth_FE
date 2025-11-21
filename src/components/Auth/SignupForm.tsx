@@ -1,13 +1,101 @@
-import React from "react";
+import React, { forwardRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { UserIcon, ArrowLeftIcon } from "@heroicons/react/24/solid";
 import {
-  EyeIcon,
-  EyeSlashIcon,
-  UserIcon,
-  ArrowLeftIcon,
-} from "@heroicons/react/24/solid";
-import { DatePicker, Input, Button, Form, Select, SelectItem } from "@heroui/react";
+  Input,
+  Button,
+  Form,
+  Select,
+  SelectItem,
+} from "@heroui/react";
+import { CalendarIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import DatePicker, { registerLocale, setDefaultLocale } from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+
+import viLocale from "@/utils/viLocale";
 import { authApi } from "@/api";
+
+registerLocale("vi", viLocale as any);
+setDefaultLocale("vi");
+
+const SIGNUP_DATE_PICKER_PORTAL_ID = "signup-date-picker-portal";
+
+const ensureSignupDatePickerPortal = () => {
+  if (typeof document === "undefined") return;
+  if (!document.getElementById(SIGNUP_DATE_PICKER_PORTAL_ID)) {
+    const portalRoot = document.createElement("div");
+    portalRoot.id = SIGNUP_DATE_PICKER_PORTAL_ID;
+    portalRoot.style.position = "relative";
+    portalRoot.style.zIndex = "9999";
+    document.body.appendChild(portalRoot);
+  }
+};
+
+const formatDateToISO = (date: Date | null) => {
+  if (!date) return "";
+  const timezoneOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - timezoneOffset).toISOString().split("T")[0];
+};
+
+const parseDateValue = (value?: string) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+interface BirthdateInputProps {
+  value?: string;
+  onClick?: () => void;
+  placeholder?: string;
+  isInvalid?: boolean;
+  errorMessage?: React.ReactNode;
+  onClear?: () => void;
+}
+
+const BirthdateInput = forwardRef<HTMLInputElement, BirthdateInputProps>(
+  ({ value, onClick, placeholder, isInvalid, errorMessage, onClear }, ref) => (
+    <Input
+      ref={ref}
+      readOnly
+      value={value || ""}
+      placeholder={placeholder}
+      onClick={onClick}
+      label={
+        <>
+          Ngày sinh <span className="text-red-500">*</span>
+        </>
+      }
+      labelPlacement="inside"
+      variant="bordered"
+      isInvalid={isInvalid}
+      errorMessage={errorMessage}
+      classNames={{
+        label: "text-base text-gray-700",
+        input: "bg-white",
+        inputWrapper: "cursor-pointer bg-gray-100",
+      }}
+      size="lg"
+      startContent={<CalendarIcon className="w-5 h-5 text-gray-400" />}
+      endContent={
+        value ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onClear?.();
+            }}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        ) : null
+      }
+    />
+  ),
+);
+
+BirthdateInput.displayName = "BirthdateInput";
 
 const SignupForm = () => {
   const navigate = useNavigate();
@@ -18,14 +106,15 @@ const SignupForm = () => {
   const [gender, setGender] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
-  const [birthdate, setBirthdate] = React.useState<any>(null);
-  const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
-    React.useState(false);
+  const [birthdate, setBirthdate] = React.useState<string>("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState("");
   const [submitted, setSubmitted] = React.useState<any>(null);
   const [showValidation, setShowValidation] = React.useState(false);
+
+  useEffect(() => {
+    ensureSignupDatePickerPortal();
+  }, []);
 
   // --- Validation ---
   const validateEmail = (value: string): boolean =>
@@ -73,11 +162,7 @@ const SignupForm = () => {
     setIsLoading(true);
     try {
       const formattedBirthdate = birthdate
-        ? new Date(
-            birthdate.year,
-            birthdate.month - 1,
-            birthdate.day,
-          ).toISOString()
+        ? new Date(birthdate).toISOString()
         : "";
 
       const genderMap: Record<string, string> = { Nam: "Male", Nữ: "Female" };
@@ -186,34 +271,36 @@ const SignupForm = () => {
           <SelectItem key="Nữ">Nữ</SelectItem>
         </Select>
 
-        <DatePicker
-          errorMessage={
-            isBirthdateInvalid ? "Vui lòng chọn ngày sinh" : undefined
-          }
-          isInvalid={isBirthdateInvalid}
-          label={
-            <>
-              Ngày sinh <span className="text-red-500">*</span>
-            </>
-          }
-          value={birthdate}
-          onChange={setBirthdate}
-        />
+        <div className="w-full">
+          <DatePicker
+            selected={parseDateValue(birthdate)}
+            onChange={(date) => setBirthdate(formatDateToISO(date))}
+            dateFormat="dd/MM/yyyy"
+            locale="vi"
+            calendarStartDay={1}
+            showPopperArrow={false}
+            popperPlacement="bottom-start"
+            popperClassName="z-[9999]"
+            popperProps={{
+              strategy: "fixed",
+            }}
+            portalId={SIGNUP_DATE_PICKER_PORTAL_ID}
+            wrapperClassName="w-full"
+            customInput={
+              <BirthdateInput
+                placeholder="dd/mm/yyyy"
+                isInvalid={isBirthdateInvalid}
+                errorMessage={
+                  isBirthdateInvalid ? "Vui lòng chọn ngày sinh" : undefined
+                }
+                onClear={() => setBirthdate("")}
+              />
+            }
+          />
+        </div>
 
         <Input
           fullWidth
-          endContent={
-            <button
-              type="button"
-              onClick={() => setIsPasswordVisible(!isPasswordVisible)}
-            >
-              {isPasswordVisible ? (
-                <EyeSlashIcon className="w-6 h-6 text-gray-400" />
-              ) : (
-                <EyeIcon className="w-6 h-6 text-gray-400" />
-              )}
-            </button>
-          }
           errorMessage={
             isPasswordInvalid
               ? getPasswordErrors().map((e, i) => <div key={i}>{e}</div>)
@@ -227,27 +314,13 @@ const SignupForm = () => {
           }
           placeholder="Nhập mật khẩu"
           size="lg"
-          type={isPasswordVisible ? "text" : "password"}
+          type="password"
           value={password}
           onValueChange={setPassword}
         />
 
         <Input
           fullWidth
-          endContent={
-            <button
-              type="button"
-              onClick={() =>
-                setIsConfirmPasswordVisible(!isConfirmPasswordVisible)
-              }
-            >
-              {isConfirmPasswordVisible ? (
-                <EyeSlashIcon className="w-6 h-6 text-gray-400" />
-              ) : (
-                <EyeIcon className="w-6 h-6 text-gray-400" />
-              )}
-            </button>
-          }
           errorMessage={
             isConfirmPasswordInvalid
               ? !confirmPassword
@@ -263,7 +336,7 @@ const SignupForm = () => {
           }
           placeholder="Nhập lại mật khẩu"
           size="lg"
-          type={isConfirmPasswordVisible ? "text" : "password"}
+          type="password"
           value={confirmPassword}
           onValueChange={setConfirmPassword}
         />

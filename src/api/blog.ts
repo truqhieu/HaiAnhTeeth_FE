@@ -5,6 +5,7 @@ export interface Blog {
   _id: string;
   title: string;
   category: "News" | "Health Tips" | "Medical Services" | "Promotions" | "Patient Stories" | "Recruitment";
+  summary: string;
   content: string;
   thumbnailUrl: string;
   authorUserId?: {
@@ -13,6 +14,8 @@ export interface Blog {
     email: string;
   };
   status: "Published" | "Hidden";
+  startDate?: string; // Ngày bắt đầu (cho blog category "Promotions")
+  endDate?: string; // Ngày kết thúc (cho blog category "Promotions")
   createdAt: string;
   updatedAt: string;
 }
@@ -21,18 +24,24 @@ export interface Blog {
 export interface CreateBlogData {
   title: string;
   category: string;
+  summary: string;
   content: string;
   status: string;
   thumbnailFile?: File;
+  startDate?: string; // Ngày bắt đầu (cho blog category "Promotions")
+  endDate?: string; // Ngày kết thúc (cho blog category "Promotions")
 }
 
 // Update Blog Data
 export interface UpdateBlogData {
   title?: string;
   category?: string;
+  summary?: string;
   content?: string;
   status?: string;
   thumbnailFile?: File;
+  startDate?: string; // Ngày bắt đầu (cho blog category "Promotions")
+  endDate?: string; // Ngày kết thúc (cho blog category "Promotions")
 }
 
 // Get Blogs Params
@@ -89,12 +98,8 @@ export const blogApi = {
   // Get published blog detail (no authentication required)
   getPublicBlogDetail: async (
     id: string,
-  ): Promise<ApiResponse<{ success: boolean; message: string; data: Blog }>> => {
-    return apiCall<{
-      success: boolean;
-      message: string;
-      data: Blog;
-    }>(`/manager/blogs/${id}`, {
+  ): Promise<ApiResponse<Blog>> => {
+    return apiCall<Blog>(`/manager/blogs/${id}`, {
       method: "GET",
     });
   },
@@ -149,11 +154,20 @@ export const blogApi = {
     const formData = new FormData();
     formData.append("title", data.title);
     formData.append("category", data.category);
+    formData.append("summary", data.summary);
     formData.append("content", data.content);
     formData.append("status", data.status);
     
     if (data.thumbnailFile) {
       formData.append("thumbnailUrl", data.thumbnailFile);
+    }
+
+    // Thêm startDate và endDate nếu có
+    if (data.startDate) {
+      formData.append("startDate", data.startDate);
+    }
+    if (data.endDate) {
+      formData.append("endDate", data.endDate);
     }
 
     // For FormData, we need to manually handle the request
@@ -189,11 +203,20 @@ export const blogApi = {
     
     if (data.title !== undefined) formData.append("title", data.title);
     if (data.category !== undefined) formData.append("category", data.category);
+    if (data.summary !== undefined) formData.append("summary", data.summary);
     if (data.content !== undefined) formData.append("content", data.content);
     if (data.status !== undefined) formData.append("status", data.status);
     
     if (data.thumbnailFile) {
       formData.append("thumbnailUrl", data.thumbnailFile);
+    }
+
+    // Thêm startDate và endDate nếu có (hoặc null để xóa)
+    if (data.startDate !== undefined) {
+      formData.append("startDate", data.startDate || "");
+    }
+    if (data.endDate !== undefined) {
+      formData.append("endDate", data.endDate || "");
     }
 
     // For FormData, we need to manually handle the request

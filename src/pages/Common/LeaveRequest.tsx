@@ -2,7 +2,6 @@ import type { LeaveRequest } from "@/api/leaveRequest";
 
 import { useState, useEffect } from "react";
 import {
-  Input,
   Textarea,
   Button,
   Table,
@@ -19,6 +18,7 @@ import {
 import toast from "react-hot-toast";
 
 import { leaveRequestApi } from "@/api/leaveRequest";
+import VietnameseDateInput from "@/components/Common/VietnameseDateInput";
 
 const LeaveRequestPage = () => {
   const [startDate, setStartDate] = useState("");
@@ -203,53 +203,33 @@ const LeaveRequestPage = () => {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label
-                  className="block text-sm font-bold text-gray-700 mb-3"
-                  htmlFor="startDate"
-                >
-                  Ngày bắt đầu <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  fullWidth
-                  classNames={{
-                    input: "text-base",
-                    inputWrapper:
-                      "border-2 border-gray-300 hover:border-blue-400 data-[focus=true]:border-blue-500 h-12 transition-colors",
-                  }}
-                  id="startDate"
-                  min={today}
-                  size="lg"
-                  type="date"
-                  value={startDate}
-                  variant="bordered"
-                  onValueChange={setStartDate}
-                />
-              </div>
+              <VietnameseDateInput
+                className="w-full"
+                inputWrapperClassName="border-2 border-gray-300 hover:border-blue-400 data-[focus=true]:border-blue-500 h-12 transition-colors"
+                label={
+                  <>
+                    Ngày bắt đầu <span className="text-red-500">*</span>
+                  </>
+                }
+                value={startDate}
+                onChange={setStartDate}
+                minDate={new Date(today)}
+                labelOutside
+              />
 
-              <div>
-                <label
-                  className="block text-sm font-bold text-gray-700 mb-3"
-                  htmlFor="endDate"
-                >
-                  Ngày kết thúc <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  fullWidth
-                  classNames={{
-                    input: "text-base",
-                    inputWrapper:
-                      "border-2 border-gray-300 hover:border-blue-400 data-[focus=true]:border-blue-500 h-12 transition-colors",
-                  }}
-                  id="endDate"
-                  min={startDate || today}
-                  size="lg"
-                  type="date"
-                  value={endDate}
-                  variant="bordered"
-                  onValueChange={setEndDate}
-                />
-              </div>
+              <VietnameseDateInput
+                className="w-full"
+                inputWrapperClassName="border-2 border-gray-300 hover:border-blue-400 data-[focus=true]:border-blue-500 h-12 transition-colors"
+                label={
+                  <>
+                    Ngày kết thúc <span className="text-red-500">*</span>
+                  </>
+                }
+                value={endDate}
+                onChange={setEndDate}
+                minDate={startDate ? new Date(startDate) : new Date(today)}
+                labelOutside
+              />
             </div>
 
             {/* Bỏ hiển thị tổng số ngày nghỉ */}

@@ -31,15 +31,25 @@ const NewsPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const itemsPerPage = 9;
 
-  const categories = [
+const categories = [
     { value: "all", label: "Tất cả danh mục" },
     { value: "News", label: "Tin tức" },
     { value: "Health Tips", label: "Mẹo sức khỏe" },
     { value: "Medical Services", label: "Dịch vụ y tế" },
-    { value: "Promotions", label: "Ưu đãi" },
     { value: "Patient Stories", label: "Câu chuyện bệnh nhân" },
     { value: "Recruitment", label: "Tuyển dụng" },
   ];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  News: "Tin tức",
+  "Health Tips": "Mẹo sức khỏe",
+  "Medical Services": "Dịch vụ y tế",
+  "Patient Stories": "Câu chuyện bệnh nhân",
+  Promotions: "Ưu đãi",
+  Recruitment: "Tuyển dụng",
+};
+
+const getCategoryLabel = (category: string) => CATEGORY_LABELS[category] || category;
 
   useEffect(() => {
     fetchBlogs();
@@ -80,7 +90,11 @@ const NewsPage = () => {
       const response = await blogApi.getPublicBlogs(params);
 
       if (response.status && response.data) {
-        setBlogs(response.data);
+        // Loại bỏ blog có category "Promotions"
+        const filteredBlogs = response.data.filter(
+          (blog) => blog.category !== "Promotions"
+        );
+        setBlogs(filteredBlogs);
         setTotal(response.total || 0);
         setTotalPages(response.totalPages || 1);
       }
@@ -96,7 +110,6 @@ const NewsPage = () => {
       "News": "primary",
       "Health Tips": "success",
       "Medical Services": "secondary",
-      "Promotions": "danger",
       "Patient Stories": "warning",
       "Recruitment": "primary",
     };
@@ -114,14 +127,16 @@ const NewsPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white py-16">
+      <div className="bg-gradient-to-r from-[#39BDCC] to-[#2ca6b5] text-white py-16 md:py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Tin tức
-          </h1>
-          <p className="text-xl text-white/90">
-            Cập nhật những thông tin mới nhất về dịch vụ, sức khỏe răng miệng
-          </p>
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              Tin tức
+            </h1>
+            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto">
+              Cập nhật những thông tin mới nhất về dịch vụ, sức khỏe răng miệng
+            </p>
+          </div>
         </div>
       </div>
 
@@ -185,7 +200,7 @@ const NewsPage = () => {
             {/* Results count */}
             <div className="mb-6">
               <p className="text-gray-600">
-                Tìm thấy <span className="font-semibold text-[#39BDCC]">{total}</span> tin tức
+                Tìm thấy <span className="font-semibold text-[#39BDCC]">{blogs.length}</span> tin tức
               </p>
             </div>
 
@@ -199,25 +214,22 @@ const NewsPage = () => {
                   onPress={() => navigate(`/news/${blog._id}`)}
                 >
                   {/* Thumbnail */}
-                  {blog.thumbnailUrl && (
-                    <div className="relative h-48 overflow-hidden">
+                  <div className="relative h-48 overflow-hidden rounded-t-3xl">
+                    {blog.thumbnailUrl ? (
                       <img
                         src={blog.thumbnailUrl}
                         alt={blog.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                       />
-                      <div className="absolute top-3 right-3">
-                        <Chip
-                          color={getCategoryColor(blog.category)}
-                          size="sm"
-                          variant="shadow"
-                          startContent={<TagIcon className="w-3 h-3" />}
-                        >
-                          {categories.find(c => c.value === blog.category)?.label || blog.category}
-                        </Chip>
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-r from-[#39BDCC]/20 to-[#2ca6b5]/20 flex items-center justify-center text-[#39BDCC] font-semibold">
+                        Hải Anh Teeth
                       </div>
-                    </div>
-                  )}
+                    )}
+                    <span className="absolute top-3 left-3 inline-flex px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] bg-white/80 text-[#39BDCC] rounded-full shadow">
+                      {getCategoryLabel(blog.category)}
+                    </span>
+                  </div>
 
                   <CardBody className="p-4">
                     {/* Title */}

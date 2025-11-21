@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { XMarkIcon } from "@heroicons/react/24/solid";
-import { Input, Button, Form } from "@heroui/react";
+import { Input, Button, Form, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { managerApi } from "@/api";
@@ -221,6 +220,10 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
     }
   };
 
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    handleSubmit();
+  };
   const handleClose = () => {
     setShowValidation(false);
     onClose();
@@ -231,56 +234,40 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
   return (
     <>
       <style>{timeInputStyle}</style>
-      <div className="fixed inset-0 z-50 flex items-center justify-center" lang="vi-VN">
-        {/* Backdrop */}
-      <div
-        aria-label="Close modal"
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        role="button"
-        tabIndex={0}
-        onClick={handleClose}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+      <Modal
+        isOpen={isOpen}
+        isDismissable={false}
+        onOpenChange={(open) => {
+          if (!open) {
             handleClose();
           }
         }}
-      />
+        size="md"
+        scrollBehavior="outside"
+        classNames={{ base: "max-h-[90vh] rounded-2xl" }}
+        lang="vi-VN"
+      >
+        <ModalContent>
+          <>
+            <ModalHeader className="flex items-center gap-3 border-b border-gray-200">
+              <img
+                alt="Logo"
+                className="h-8 w-auto object-contain"
+                src="/logo1.png"
+              />
+              <div>
+                <h2 className="text-2xl font-bold">Cập nhật giờ làm việc</h2>
+                <p className="text-sm text-gray-600">
+                  Chỉnh sửa thời gian làm việc của bác sĩ
+                </p>
+              </div>
+            </ModalHeader>
 
-      {/* Modal Content */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <img
-              alt="Logo"
-              className="h-8 w-auto object-contain"
-              src="/logo1.png"
-            />
-            <div>
-              <h2 className="text-2xl font-bold">Cập nhật giờ làm việc</h2>
-              <p className="text-sm text-gray-600">
-                Chỉnh sửa thời gian làm việc của bác sĩ
-              </p>
-            </div>
-          </div>
-          <Button
-            isIconOnly
-            className="text-gray-500 hover:text-gray-700"
-            variant="light"
-            onPress={handleClose}
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </Button>
-        </div>
-
-        {/* Body */}
-        <div className="px-4 py-4">
-          <Form autoComplete="off" className="space-y-5">
+            <ModalBody className="px-4 py-4">
+              <Form autoComplete="off" className="space-y-5" onSubmit={handleFormSubmit}>
             {/* Morning Shift */}
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Ca sáng
-              </label>
+              <p className="text-sm font-semibold text-gray-700">Ca sáng</p>
               <div className="grid grid-cols-2 gap-4">
                 <Input
                   fullWidth
@@ -368,9 +355,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
 
             {/* Afternoon Shift */}
             <div className="space-y-3">
-              <label className="block text-sm font-medium text-gray-700">
-                Ca chiều
-              </label>
+              <p className="text-sm font-semibold text-gray-700">Ca chiều</p>
               <div className="grid grid-cols-2 gap-4">
                 <Input
                   fullWidth
@@ -455,30 +440,30 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                 />
               </div>
             </div>
-          </Form>
-        </div>
+              </Form>
+            </ModalBody>
 
-        {/* Buttons outside Form */}
-        <div className="flex justify-end items-center gap-4 px-4 py-4 border-t border-gray-200 bg-gray-50 sticky bottom-0">
-          <Button
-            isDisabled={isSubmitting}
-            variant="bordered"
-            onPress={handleClose}
-          >
-            Hủy
-          </Button>
-          <Button
-            className="bg-blue-600 text-white hover:bg-blue-700"
-            isDisabled={isSubmitting}
-            isLoading={isSubmitting}
-            variant="solid"
-            onPress={handleSubmit}
-          >
-            {isSubmitting ? "Đang cập nhật..." : "Cập nhật"}
-          </Button>
-        </div>
-      </div>
-    </div>
+            <ModalFooter className="px-4 py-4 border-t border-gray-200 bg-gray-50">
+              <Button
+                isDisabled={isSubmitting}
+                variant="bordered"
+                onPress={handleClose}
+              >
+                Hủy
+              </Button>
+              <Button
+                className="bg-blue-600 text-white hover:bg-blue-700"
+                isDisabled={isSubmitting}
+                isLoading={isSubmitting}
+                variant="solid"
+                onPress={handleSubmit}
+              >
+                {isSubmitting ? "Đang cập nhật..." : "Cập nhật"}
+              </Button>
+            </ModalFooter>
+          </>
+        </ModalContent>
+      </Modal>
     </>
   );
 };
