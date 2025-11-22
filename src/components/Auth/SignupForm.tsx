@@ -43,9 +43,81 @@ const parseDateValue = (value?: string) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+// Format date to dd/mm/yyyy for display
+const formatDateToDisplay = (date: Date | null) => {
+  if (!date) return "";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Format input to automatically add "/" between dd, mm, yyyy
+const formatDateInput = (input: string | undefined | null): string => {
+  // Handle null/undefined/empty input
+  if (!input || typeof input !== 'string') {
+    return "";
+  }
+  
+  // Remove all non-digit characters
+  const digitsOnly = input.replace(/\D/g, "");
+  
+  // Limit to 8 digits (ddmmyyyy)
+  const limitedDigits = digitsOnly.slice(0, 8);
+  
+  // Add slashes automatically
+  let formatted = "";
+  
+  if (limitedDigits.length > 0) {
+    formatted += limitedDigits.slice(0, 2); // Day
+  }
+  if (limitedDigits.length > 2) {
+    formatted += "/" + limitedDigits.slice(2, 4); // Month
+  }
+  if (limitedDigits.length > 4) {
+    formatted += "/" + limitedDigits.slice(4, 8); // Year
+  }
+  
+  return formatted;
+};
+
+// Parse dd/mm/yyyy format from user input
+const parseDateFromInput = (input: string): Date | null => {
+  if (!input || input.trim() === "") return null;
+  
+  // Remove any extra spaces
+  const cleaned = input.trim();
+  
+  // Match dd/mm/yyyy or d/m/yyyy formats
+  const datePattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const match = cleaned.match(datePattern);
+  
+  if (!match) return null;
+  
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10) - 1; // Month is 0-indexed
+  const year = parseInt(match[3], 10);
+  
+  // Validate date
+  const date = new Date(year, month, day);
+  
+  // Check if the date is valid and matches the input
+  if (
+    date.getDate() === day &&
+    date.getMonth() === month &&
+    date.getFullYear() === year &&
+    date.getTime() <= new Date().getTime() // Not in the future
+  ) {
+    return date;
+  }
+  
+  return null;
+};
+
 interface BirthdateInputProps {
   value?: string;
   onClick?: () => void;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   isInvalid?: boolean;
   errorMessage?: React.ReactNode;
@@ -53,46 +125,79 @@ interface BirthdateInputProps {
 }
 
 const BirthdateInput = forwardRef<HTMLInputElement, BirthdateInputProps>(
-  ({ value, onClick, placeholder, isInvalid, errorMessage, onClear }, ref) => (
-    <Input
-      ref={ref}
-      readOnly
-      value={value || ""}
-      placeholder={placeholder}
-      onClick={onClick}
-      label={
-        <>
-          Ngày sinh <span className="text-red-500">*</span>
-        </>
+  ({ value, onClick, onChange, placeholder, isInvalid, errorMessage, onClear }, ref) => {
+    // React-datepicker passes the formatted value here - use it directly
+    const displayValue = value !== undefined && value !== null ? String(value) : "";
+    const hasValue = displayValue && displayValue.trim().length > 0;
+    
+    
+    const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+      // Call react-datepicker's onClick to open calendar
+      if (onClick) {
+        onClick(e as any);
       }
-      labelPlacement="inside"
-      variant="bordered"
-      isInvalid={isInvalid}
-      errorMessage={errorMessage}
-      classNames={{
-        label: "text-base text-gray-700",
-        input: "bg-white",
-        inputWrapper: "cursor-pointer bg-gray-100",
-      }}
-      size="lg"
-      startContent={<CalendarIcon className="w-5 h-5 text-gray-400" />}
-      endContent={
-        value ? (
+    };
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (onChange) {
+        // Simply pass through to react-datepicker's onChange
+        // React-datepicker will handle the value updates
+        // Formatting for manual typing is handled in onChangeRaw
+        onChange(e);
+      }
+    };
+    
+    return (
+      <Input
+        ref={ref}
+        value={displayValue}
+        placeholder={placeholder || "dd/mm/yyyy"}
+        onClick={handleClick}
+        onChange={handleChange}
+        onFocus={handleClick}
+        label={
+          <>
+            Ngày sinh <span className="text-red-500">*</span>
+          </>
+        }
+        labelPlacement="inside"
+        variant="bordered"
+        isInvalid={isInvalid}
+        errorMessage={errorMessage}
+        classNames={{
+          label: "text-base text-gray-700",
+          input: "bg-white cursor-pointer",
+          inputWrapper: "bg-gray-100 cursor-pointer",
+        }}
+        size="lg"
+        startContent={
           <button
             type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onClear?.();
-            }}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={handleClick}
+            className="cursor-pointer"
+            tabIndex={-1}
           >
-            <XMarkIcon className="w-4 h-4" />
+            <CalendarIcon className="w-5 h-5 text-gray-400" />
           </button>
-        ) : null
-      }
-    />
-  ),
+        }
+        endContent={
+          hasValue ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onClear?.();
+              }}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          ) : null
+        }
+      />
+    );
+  },
 );
 
 BirthdateInput.displayName = "BirthdateInput";
@@ -107,6 +212,7 @@ const SignupForm = () => {
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [birthdate, setBirthdate] = React.useState<string>("");
+  const [birthdateDisplay, setBirthdateDisplay] = React.useState<string>("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState("");
   const [submitted, setSubmitted] = React.useState<any>(null);
@@ -115,6 +221,19 @@ const SignupForm = () => {
   useEffect(() => {
     ensureSignupDatePickerPortal();
   }, []);
+
+  // Sync display value when birthdate changes (from calendar selection)
+  useEffect(() => {
+    if (birthdate) {
+      const formatted = formatDateToDisplay(parseDateValue(birthdate));
+      if (formatted && formatted !== birthdateDisplay) {
+        setBirthdateDisplay(formatted);
+      }
+    } else if (!birthdate && birthdateDisplay) {
+      // Clear display when birthdate is cleared
+      setBirthdateDisplay("");
+    }
+  }, [birthdate]);
 
   // --- Validation ---
   const validateEmail = (value: string): boolean =>
@@ -274,7 +393,29 @@ const SignupForm = () => {
         <div className="w-full">
           <DatePicker
             selected={parseDateValue(birthdate)}
-            onChange={(date) => setBirthdate(formatDateToISO(date))}
+            onChange={(date) => {
+              // Handle calendar selection - this is called when user clicks a date in calendar
+              if (date && date instanceof Date && !isNaN(date.getTime())) {
+                const isoDate = formatDateToISO(date);
+                const displayDate = formatDateToDisplay(date);
+                setBirthdate(isoDate);
+                setBirthdateDisplay(displayDate);
+              } else if (date === null) {
+                // Clear when date is cleared
+                setBirthdate("");
+                setBirthdateDisplay("");
+              }
+            }}
+            onSelect={(date) => {
+              // This fires immediately when a date is selected from calendar
+              if (date && date instanceof Date && !isNaN(date.getTime())) {
+                const isoDate = formatDateToISO(date);
+                const displayDate = formatDateToDisplay(date);
+                setBirthdate(isoDate);
+                setBirthdateDisplay(displayDate);
+              }
+            }}
+            strictParsing={false}
             dateFormat="dd/MM/yyyy"
             locale="vi"
             calendarStartDay={1}
@@ -286,14 +427,68 @@ const SignupForm = () => {
             }}
             portalId={SIGNUP_DATE_PICKER_PORTAL_ID}
             wrapperClassName="w-full"
+            showYearDropdown
+            showMonthDropdown
+            dropdownMode="select"
+            scrollableYearDropdown
+            yearDropdownItemNumber={100}
+            maxDate={new Date()}
+            allowSameDay
+            onChangeRaw={(e) => {
+              // Handle manual typing - format as user types
+              // Only format if it's not already in the correct format (to avoid interfering with calendar selection)
+              const inputValue = e.target?.value;
+              
+              // Safety check
+              if (!e.target || inputValue === undefined || inputValue === null) {
+                return;
+              }
+              
+              // Check if value is already in dd/MM/yyyy format (from calendar selection)
+              if (inputValue && typeof inputValue === 'string' && inputValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                // Already formatted from calendar, just update display
+                setBirthdateDisplay(inputValue);
+                const parsedDate = parseDateFromInput(inputValue);
+                if (parsedDate) {
+                  setBirthdate(formatDateToISO(parsedDate));
+                }
+                return;
+              }
+              
+              // Manual typing - format it
+              const formatted = formatDateInput(inputValue);
+              
+              // Update the input value with formatted version
+              if (inputValue !== formatted) {
+                const cursorPos = e.target.selectionStart || 0;
+                e.target.value = formatted;
+                const lengthDiff = formatted.length - (inputValue?.length || 0);
+                const newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, formatted.length));
+                e.target.setSelectionRange(newCursorPos, newCursorPos);
+              }
+              
+              // Update state for manual typing
+              setBirthdateDisplay(formatted);
+              
+              // Parse and update the actual date value
+              const parsedDate = parseDateFromInput(formatted);
+              if (parsedDate) {
+                setBirthdate(formatDateToISO(parsedDate));
+              } else if (formatted === "") {
+                setBirthdate("");
+              }
+            }}
             customInput={
               <BirthdateInput
                 placeholder="dd/mm/yyyy"
                 isInvalid={isBirthdateInvalid}
                 errorMessage={
-                  isBirthdateInvalid ? "Vui lòng chọn ngày sinh" : undefined
+                  isBirthdateInvalid ? "Vui lòng nhập ngày sinh (dd/mm/yyyy)" : undefined
                 }
-                onClear={() => setBirthdate("")}
+                onClear={() => {
+                  setBirthdate("");
+                  setBirthdateDisplay("");
+                }}
               />
             }
           />
