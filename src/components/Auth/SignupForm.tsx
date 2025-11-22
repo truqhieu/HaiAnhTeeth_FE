@@ -53,6 +53,7 @@ const formatDateToDisplay = (date: Date | null) => {
 };
 
 // Format input to automatically add "/" between dd, mm, yyyy
+// Also validates and blocks invalid numbers as user types
 const formatDateInput = (input: string | undefined | null): string => {
   // Handle null/undefined/empty input
   if (!input || typeof input !== 'string') {
@@ -65,17 +66,121 @@ const formatDateInput = (input: string | undefined | null): string => {
   // Limit to 8 digits (ddmmyyyy)
   const limitedDigits = digitsOnly.slice(0, 8);
   
-  // Add slashes automatically
+  if (limitedDigits.length === 0) {
+    return "";
+  }
+  
+  // Validate and block invalid values as user types
+  let validatedDigits = "";
+  
+  // Day validation (first 2 digits)
+  if (limitedDigits.length >= 1) {
+    const firstDayDigit = Number(limitedDigits[0]);
+    // First digit must be 0-3 (for days 01-39)
+    if (firstDayDigit > 3) {
+      // Block invalid first digit
+      return "";
+    }
+    validatedDigits += limitedDigits[0];
+    
+    if (limitedDigits.length >= 2) {
+      const day = Number(limitedDigits.slice(0, 2));
+      // Day must be 01-31
+      if (day >= 1 && day <= 31) {
+        validatedDigits += limitedDigits[1];
+      } else {
+        // Block invalid day (00, 32-99)
+        return validatedDigits; // Return only first digit
+      }
+    }
+  }
+  
+  // Month validation (next 2 digits)
+  if (limitedDigits.length > 2 && validatedDigits.length >= 2) {
+    const firstMonthDigit = limitedDigits[2];
+    
+    if (limitedDigits.length === 3) {
+      // Only first digit of month entered
+      // Allow 0-1 (for 01-19), or if they type "1" allow it (could become 10-12)
+      if (firstMonthDigit === "0" || firstMonthDigit === "1") {
+        validatedDigits += firstMonthDigit;
+      } else {
+        // Block invalid first digit (2-9 cannot start valid month)
+        return validatedDigits; // Return only day part
+      }
+    } else if (limitedDigits.length >= 4) {
+      // Both month digits entered
+      const month = Number(limitedDigits.slice(2, 4));
+      // Month must be 01-12
+      if (month >= 1 && month <= 12) {
+        validatedDigits += limitedDigits[2];
+        validatedDigits += limitedDigits[3];
+      } else {
+        // Block invalid month (00, 13-99)
+        // Check if first digit is valid, keep it if so
+        if (firstMonthDigit === "0" || firstMonthDigit === "1") {
+          validatedDigits += firstMonthDigit;
+        }
+        return validatedDigits; // Return only day and possibly first month digit
+      }
+    }
+  }
+  
+  // Year validation (next 4 digits)
+  if (limitedDigits.length > 4 && validatedDigits.length >= 4) {
+    const firstYearDigit = limitedDigits[4];
+    // First digit must be 1 or 2 (for years 1900-2999)
+    if (firstYearDigit !== "1" && firstYearDigit !== "2") {
+      // Block invalid first digit
+      return validatedDigits; // Return only day/month part
+    }
+    validatedDigits += firstYearDigit;
+    
+    if (limitedDigits.length >= 6) {
+      const firstTwoYear = Number(limitedDigits.slice(4, 6));
+      // First two digits must be 19, 20, or 21 (for years 1900-2199)
+      if (firstTwoYear >= 19 && firstTwoYear <= 21) {
+        validatedDigits += limitedDigits[5];
+      } else {
+        // Block invalid first two digits
+        return validatedDigits; // Return only up to first year digit
+      }
+    }
+    
+    if (limitedDigits.length >= 7) {
+      const firstThreeYear = Number(limitedDigits.slice(4, 7));
+      // Validate reasonable range
+      if (firstThreeYear >= 190 && firstThreeYear <= 210) {
+        validatedDigits += limitedDigits[6];
+      } else {
+        // Block if outside reasonable range
+        return validatedDigits; // Return only up to first two year digits
+      }
+    }
+    
+    if (limitedDigits.length >= 8) {
+      const year = Number(limitedDigits.slice(4, 8));
+      // Full year must be 1900-2100
+      if (year >= 1900 && year <= 2100) {
+        validatedDigits += limitedDigits[7];
+      } else {
+        // Block invalid year
+        return validatedDigits; // Return only up to first three year digits
+      }
+    }
+  }
+  
+  // Build formatted string with slashes
   let formatted = "";
   
-  if (limitedDigits.length > 0) {
-    formatted += limitedDigits.slice(0, 2); // Day
+  if (validatedDigits.length > 0) {
+    formatted += validatedDigits.slice(0, 2); // Day
   }
-  if (limitedDigits.length > 2) {
-    formatted += "/" + limitedDigits.slice(2, 4); // Month
+  if (validatedDigits.length > 2) {
+    formatted += "/" + validatedDigits.slice(2, 4); // Month
   }
-  if (limitedDigits.length > 4) {
-    formatted += "/" + limitedDigits.slice(4, 8); // Year
+  if (validatedDigits.length > 4) {
+    formatted += "/" + validatedDigits.slice(4, 8); // Year
   }
   
   return formatted;

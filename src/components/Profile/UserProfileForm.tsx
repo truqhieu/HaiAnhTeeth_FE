@@ -1,4 +1,5 @@
 import { forwardRef, useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Input, Button, Select, SelectItem, Avatar } from "@heroui/react";
 import {
   CameraIcon,
@@ -217,6 +218,7 @@ const UserProfileForm = ({
   description = "Quản lý thông tin, địa chỉ liên lạc của bạn",
   showEmergencyContact = false,
 }: UserProfileFormProps) => {
+  const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -269,6 +271,7 @@ const UserProfileForm = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted", { showEmergencyContact, emergencyName, emergencyPhone, emergencyRelationship });
     if (!fullName.trim()) {
       toast.error("Vui lòng nhập họ tên");
       return;
@@ -292,6 +295,7 @@ const UserProfileForm = ({
       (emergencyPhone.trim().length < 10 || emergencyPhone.trim().length > 11)
     ) {
       toast.error("Số điện thoại người liên hệ khẩn cấp phải có 10-11 chữ số");
+      setIsLoading(false);
       return;
     }
 
@@ -309,30 +313,34 @@ const UserProfileForm = ({
       }
 
       if (showEmergencyContact) {
-        if (
-          emergencyName.trim() &&
-          emergencyPhone.trim() &&
-          emergencyRelationship.trim()
-        ) {
-          formData.append(
-            "emergencyContact",
-            JSON.stringify({
-              name: emergencyName.trim(),
-              phone: emergencyPhone.trim(),
-              relationship: emergencyRelationship.trim(),
-            }),
-          );
-        } else if (
-          emergencyName.trim() ||
-          emergencyPhone.trim() ||
-          emergencyRelationship.trim()
-        ) {
+        // Check if any field is filled
+        const hasAnyField = emergencyName.trim() || emergencyPhone.trim() || emergencyRelationship.trim();
+        // Check if all fields are filled
+        const hasAllFields = emergencyName.trim() && emergencyPhone.trim() && emergencyRelationship.trim();
+        
+        if (hasAnyField && !hasAllFields) {
+          // Partial fill - show error
           toast.error(
             "Vui lòng điền đầy đủ thông tin liên hệ khẩn cấp hoặc bỏ trống cả 3 trường.",
           );
           setIsLoading(false);
           return;
         }
+        
+        // Always send emergency contact (either all filled or all empty to clear/update)
+        // Even if all empty, we send it to clear existing data or ensure it's included
+        const emergencyContactData = {
+          name: emergencyName.trim() || "",
+          phone: emergencyPhone.trim() || "",
+          relationship: emergencyRelationship.trim() || "",
+        };
+        
+        // Debug: log emergency contact data
+        console.log("Emergency Contact Data:", emergencyContactData);
+        formData.append("emergencyContact", JSON.stringify(emergencyContactData));
+        
+        // Debug: verify FormData
+        console.log("FormData emergencyContact:", formData.get("emergencyContact"));
       }
 
       if (avatarFile) {
@@ -371,15 +379,53 @@ const UserProfileForm = ({
         }
       }
 
+      // Debug: log all FormData before sending
+      console.log("Submitting form with emergencyContact:", showEmergencyContact);
+      
       const response = await authApi.updateProfile(formData, true);
+      console.log("Update profile response:", response);
+      
       if (response.success && response.data) {
         const userData = response.data.user;
+        console.log("Updated user data:", userData);
+        console.log("Emergency contact in response:", userData?.emergencyContact);
+        
         if (userData && user) {
+          // Get the emergency contact data we sent - this is what we want to preserve
+          const sentEmergencyContact = showEmergencyContact ? {
+            name: emergencyName.trim() || "",
+            phone: emergencyPhone.trim() || "",
+            relationship: emergencyRelationship.trim() || "",
+          } : null;
+          
+          // Create updated user, but exclude emergencyContact from userData spread
+          // We'll handle emergencyContact separately
+          const { emergencyContact: backendEmergencyContact, ...userDataWithoutEmergencyContact } = userData;
+          
           const updatedUser = {
             ...user,
-            ...userData,
+            ...userDataWithoutEmergencyContact,
             _id: userData.id || userData._id || user._id,
           };
+          
+          // Handle emergencyContact - prioritize what we sent over backend response
+          // Backend might only return partial data, so we merge intelligently
+          if (showEmergencyContact && sentEmergencyContact) {
+            // Use what we sent as the source of truth
+            // If backend returned something, merge it (but our sent data takes priority for missing fields)
+            const backendContact = backendEmergencyContact && typeof backendEmergencyContact === 'object' 
+              ? backendEmergencyContact 
+              : {};
+            
+            (updatedUser as any).emergencyContact = {
+              name: sentEmergencyContact.name || backendContact.name || "",
+              phone: sentEmergencyContact.phone || backendContact.phone || "",
+              relationship: sentEmergencyContact.relationship || backendContact.relationship || "",
+            };
+          }
+          
+          console.log("Final user data being updated:", updatedUser);
+          console.log("Final emergency contact:", (updatedUser as any).emergencyContact);
           updateUser(updatedUser as any);
         }
         if (newPassword.trim() && passwordChangeSuccess) {
@@ -390,10 +436,16 @@ const UserProfileForm = ({
         } else {
           toast.success(response.message || "Cập nhật thông tin thành công!");
         }
+        
+        // Redirect to homepage after successful save
+        setTimeout(() => {
+          navigate("/");
+        }, 1000);
       } else {
         toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
     } catch (error: any) {
+      console.error("Error updating profile:", error);
       toast.error(error.message || "Không thể cập nhật thông tin");
     } finally {
       setIsLoading(false);
@@ -783,7 +835,11 @@ const UserProfileForm = ({
           </div>
 
           <div className="flex justify-end gap-4 pt-4">
-            <Button size="lg" variant="light">
+            <Button 
+              size="lg" 
+              variant="light"
+              onPress={() => navigate("/")}
+            >
               Hủy
             </Button>
             <Button
