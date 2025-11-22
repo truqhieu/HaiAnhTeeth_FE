@@ -3,6 +3,7 @@ import {
   ReactNode,
   FocusEvent,
   KeyboardEvent,
+  MouseEvent,
   useEffect,
   useRef,
   useState,
@@ -87,6 +88,35 @@ const parseDDMMYYYY = (input: string): Date | null => {
   return candidate;
 };
 
+// Format input to automatically add "/" between dd, mm, yyyy
+const formatDateInput = (input: string | undefined | null): string => {
+  // Handle null/undefined/empty input
+  if (!input || typeof input !== 'string') {
+    return "";
+  }
+  
+  // Remove all non-digit characters
+  const digitsOnly = input.replace(/\D/g, "");
+  
+  // Limit to 8 digits (ddmmyyyy)
+  const limitedDigits = digitsOnly.slice(0, 8);
+  
+  // Add slashes automatically
+  let formatted = "";
+  
+  if (limitedDigits.length > 0) {
+    formatted += limitedDigits.slice(0, 2); // Day
+  }
+  if (limitedDigits.length > 2) {
+    formatted += "/" + limitedDigits.slice(2, 4); // Month
+  }
+  if (limitedDigits.length > 4) {
+    formatted += "/" + limitedDigits.slice(4, 8); // Year
+  }
+  
+  return formatted;
+};
+
 interface CalendarInputProps {
   value?: string;
   onClick?: () => void;
@@ -131,50 +161,87 @@ const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
       onKeyDown,
     },
     ref,
-  ) => (
-    <Input
-      id={id}
-      ref={ref}
-      value={displayValue ?? value ?? ""}
-      placeholder={placeholder}
-      onClick={isDisabled ? undefined : onClick}
-      variant="bordered"
-      isInvalid={isInvalid}
-      errorMessage={errorMessage}
-      label={label}
-      classNames={{
-        base: className || "w-full",
-        inputWrapper: `cursor-pointer ${inputWrapperClassName || ""}`,
-        input: inputClassName,
-      }}
-      startContent={<CalendarIcon className="w-5 h-5 text-gray-400" />}
-      endContent={
-        value && onClear && !isDisabled ? (
+  ) => {
+    const handleClick = (e: MouseEvent<HTMLInputElement>) => {
+      // Call react-datepicker's onClick to open calendar
+      if (onClick && !isDisabled) {
+        onClick(e as any);
+      }
+    };
+    
+    const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
+      // Open calendar on focus (when input is clicked)
+      if (onClick && !isDisabled) {
+        onClick(e as any);
+      }
+    };
+    
+    // React-datepicker passes 'value' prop when using customInput  
+    // We need to ensure placeholder shows when value is empty
+    // displayValue takes priority for manual typing state
+    // Try using undefined for empty values so placeholder shows properly
+    const hasDisplayValue = displayValue !== undefined && displayValue !== null && displayValue !== "";
+    const hasReactDatepickerValue = value !== undefined && value !== null && value !== "" && String(value).trim() !== "";
+    
+    const finalValue = hasDisplayValue 
+      ? displayValue 
+      : (hasReactDatepickerValue ? String(value) : undefined);
+    
+    return (
+      <Input
+        id={id}
+        ref={ref}
+        value={finalValue ?? ""}
+        placeholder={placeholder || "dd/mm/yyyy"}
+        onClick={handleClick}
+        onFocus={handleFocus}
+        variant="bordered"
+        isInvalid={isInvalid}
+        errorMessage={errorMessage}
+        label={label}
+        classNames={{
+          base: className || "w-full",
+          inputWrapper: `cursor-pointer ${inputWrapperClassName || ""}`,
+          input: `${inputClassName || ""} cursor-pointer`,
+        }}
+        startContent={
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onClear();
-            }}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={isDisabled ? undefined : handleClick}
+            className="cursor-pointer"
+            tabIndex={-1}
           >
-            <XMarkIcon className="w-4 h-4" />
+            <CalendarIcon className="w-5 h-5 text-gray-400" />
           </button>
-        ) : null
-      }
-      isDisabled={isDisabled}
-      onValueChange={(val) => onManualValueChange?.(val)}
-      onBlur={(event) => {
-        onManualBlur?.(event);
-        onBlur?.(event);
-      }}
-      onKeyDown={(event) => {
-        onManualKeyDown?.(event);
-        onKeyDown?.(event);
-      }}
-    />
-  )
+        }
+        endContent={
+          value && onClear && !isDisabled ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClear();
+              }}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          ) : null
+        }
+        isDisabled={isDisabled}
+        onValueChange={(val) => onManualValueChange?.(val)}
+        onBlur={(event) => {
+          onManualBlur?.(event);
+          onBlur?.(event);
+        }}
+        onKeyDown={(event) => {
+          onManualKeyDown?.(event);
+          onKeyDown?.(event);
+        }}
+      />
+    );
+  }
 );
 
 CalendarInput.displayName = "CalendarInput";
@@ -202,7 +269,7 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
   onChange,
   minDate,
   maxDate,
-  placeholder = "DD/MM/YYYY",
+  placeholder = "dd/mm/yyyy",
   isInvalid,
   errorMessage,
   disabled,
@@ -263,7 +330,9 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
   };
 
   const handleManualValueChange = (nextValue: string) => {
-    setInternalValue(nextValue);
+    // Auto-format the input as user types
+    const formatted = formatDateInput(nextValue);
+    setInternalValue(formatted);
   };
 
   const handleManualBlur = (_event: FocusEvent<HTMLInputElement>) => {
@@ -283,12 +352,79 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
       selected={selected}
       onChange={(date) => {
         onChange?.(formatToISO(date));
+        // Update internal value when date is selected from calendar
+        if (date && date instanceof Date && !isNaN(date.getTime())) {
+          setInternalValue(formatDisplayDate(date));
+        } else if (date === null) {
+          setInternalValue("");
+        }
       }}
+      onSelect={(date) => {
+        // This fires immediately when a date is selected from calendar
+        if (date && date instanceof Date && !isNaN(date.getTime())) {
+          const isoDate = formatToISO(date);
+          onChange?.(isoDate);
+          setInternalValue(formatDisplayDate(date));
+        }
+      }}
+      strictParsing={false}
       dateFormat="dd/MM/yyyy"
+      placeholderText={placeholder}
       locale="vi"
       minDate={toDate(minDate)}
       maxDate={toDate(maxDate)}
       calendarStartDay={1}
+      showYearDropdown
+      showMonthDropdown
+      dropdownMode="select"
+      scrollableYearDropdown
+      yearDropdownItemNumber={100}
+      allowSameDay
+      onChangeRaw={(e) => {
+        // Handle manual typing - format as user types
+        const inputValue = e.target?.value;
+        
+        // Safety check
+        if (!e.target || inputValue === undefined || inputValue === null) {
+          return;
+        }
+        
+        // Check if value is already in dd/MM/yyyy format (from calendar selection)
+        if (inputValue && typeof inputValue === 'string' && inputValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+          // Already formatted from calendar, just update internal value
+          setInternalValue(inputValue);
+          const parsedDate = parseDDMMYYYY(inputValue);
+          if (parsedDate) {
+            const isoDate = formatToISO(parsedDate);
+            onChange?.(isoDate);
+          }
+          return;
+        }
+        
+        // Manual typing - format it
+        const formatted = formatDateInput(inputValue);
+        
+        // Update the input value with formatted version
+        if (inputValue !== formatted) {
+          const cursorPos = e.target.selectionStart || 0;
+          e.target.value = formatted;
+          const lengthDiff = formatted.length - (inputValue?.length || 0);
+          const newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, formatted.length));
+          e.target.setSelectionRange(newCursorPos, newCursorPos);
+        }
+        
+        // Update internal value for manual typing
+        setInternalValue(formatted);
+        
+        // Parse and update the actual date value
+        const parsedDate = parseDDMMYYYY(formatted);
+        if (parsedDate) {
+          const isoDate = formatToISO(parsedDate);
+          onChange?.(isoDate);
+        } else if (formatted === "") {
+          onChange?.("");
+        }
+      }}
       customInput={
         <CalendarInput
           id={id}
@@ -296,7 +432,10 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
           isInvalid={isInvalid}
           errorMessage={labelOutside ? undefined : errorMessage}
           label={labelOutside ? undefined : label}
-          onClear={() => onChange?.("")}
+          onClear={() => {
+            onChange?.("");
+            setInternalValue("");
+          }}
           isDisabled={disabled}
           className={className}
           inputWrapperClassName={inputWrapperClassName}
