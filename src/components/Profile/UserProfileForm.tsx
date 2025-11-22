@@ -1,13 +1,14 @@
 import { forwardRef, useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Input, Button, Select, SelectItem, Avatar } from "@heroui/react";
 import {
   CameraIcon,
   CalendarIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import DatePicker, { registerLocale } from "react-datepicker";
-import viLocale from "date-fns/locale/vi";
+import DatePicker, { registerLocale, setDefaultLocale } from "react-datepicker";
 import toast from "react-hot-toast";
+import viLocale from "@/utils/viLocale";
 
 import { authApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,7 +49,8 @@ const ensureProfileDatePickerPortal = () => {
   }
 };
 
-registerLocale("vi", viLocale);
+registerLocale("vi", viLocale as any);
+setDefaultLocale("vi");
 
 const formatDateToISO = (date: Date | null) => {
   if (!date) return "";
@@ -62,47 +64,151 @@ const parseDateValue = (value?: string) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+// Format date to dd/mm/yyyy for display
+const formatDateToDisplay = (date: Date | null) => {
+  if (!date) return "";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Format input to automatically add "/" between dd, mm, yyyy
+const formatDateInput = (input: string | undefined | null): string => {
+  // Handle null/undefined/empty input
+  if (!input || typeof input !== 'string') {
+    return "";
+  }
+  
+  // Remove all non-digit characters
+  const digitsOnly = input.replace(/\D/g, "");
+  
+  // Limit to 8 digits (ddmmyyyy)
+  const limitedDigits = digitsOnly.slice(0, 8);
+  
+  // Add slashes automatically
+  let formatted = "";
+  
+  if (limitedDigits.length > 0) {
+    formatted += limitedDigits.slice(0, 2); // Day
+  }
+  if (limitedDigits.length > 2) {
+    formatted += "/" + limitedDigits.slice(2, 4); // Month
+  }
+  if (limitedDigits.length > 4) {
+    formatted += "/" + limitedDigits.slice(4, 8); // Year
+  }
+  
+  return formatted;
+};
+
+// Parse dd/mm/yyyy format from user input
+const parseDateFromInput = (input: string): Date | null => {
+  if (!input || input.trim() === "") return null;
+  
+  // Remove any extra spaces
+  const cleaned = input.trim();
+  
+  // Match dd/mm/yyyy or d/m/yyyy formats
+  const datePattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+  const match = cleaned.match(datePattern);
+  
+  if (!match) return null;
+  
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10) - 1; // Month is 0-indexed
+  const year = parseInt(match[3], 10);
+  
+  // Validate date
+  const date = new Date(year, month, day);
+  
+  // Check if the date is valid and matches the input
+  if (
+    date.getDate() === day &&
+    date.getMonth() === month &&
+    date.getFullYear() === year &&
+    date.getTime() <= new Date().getTime() // Not in the future
+  ) {
+    return date;
+  }
+  
+  return null;
+};
+
 interface BirthDateInputProps {
   value?: string;
   onClick?: () => void;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   onClear?: () => void;
 }
 
 const BirthDateInput = forwardRef<HTMLInputElement, BirthDateInputProps>(
-  ({ value, onClick, placeholder, onClear }, ref) => (
-    <Input
-      ref={ref}
-      value={value || ""}
-      readOnly
-      onClick={onClick}
-      placeholder={placeholder}
-      label="Ngày sinh"
-      labelPlacement="outside"
-      variant="bordered"
-      classNames={{
-        base: "w-full",
-        input: "bg-gray-100",
-        inputWrapper: "bg-gray-100 border-gray-300 cursor-pointer",
-      }}
-      startContent={<CalendarIcon className="w-5 h-5 text-gray-400" />}
-      endContent={
-        value ? (
+  ({ value, onClick, onChange, placeholder, onClear }, ref) => {
+    // React-datepicker passes the formatted value here - use it directly
+    const displayValue = value !== undefined && value !== null ? String(value) : "";
+    const hasValue = displayValue && displayValue.trim().length > 0;
+    
+    const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+      // Call react-datepicker's onClick to open calendar
+      if (onClick) {
+        onClick(e as any);
+      }
+    };
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (onChange) {
+        // Simply pass through to react-datepicker's onChange
+        // React-datepicker will handle the value updates
+        // Formatting for manual typing is handled in onChangeRaw
+        onChange(e);
+      }
+    };
+    
+    return (
+      <Input
+        ref={ref}
+        value={displayValue}
+        placeholder={placeholder || "dd/mm/yyyy"}
+        onClick={handleClick}
+        onChange={handleChange}
+        onFocus={handleClick}
+        label="Ngày sinh"
+        labelPlacement="outside"
+        variant="bordered"
+        classNames={{
+          base: "w-full",
+          input: "bg-gray-100 cursor-pointer",
+          inputWrapper: "bg-gray-100 border-gray-300 cursor-pointer",
+        }}
+        startContent={
           <button
             type="button"
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onClear?.();
-            }}
+            onClick={handleClick}
+            className="cursor-pointer"
+            tabIndex={-1}
           >
-            <XMarkIcon className="w-4 h-4" />
+            <CalendarIcon className="w-5 h-5 text-gray-400" />
           </button>
-        ) : null
-      }
-    />
-  ),
+        }
+        endContent={
+          hasValue ? (
+            <button
+              type="button"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onClear?.();
+              }}
+            >
+              <XMarkIcon className="w-4 h-4" />
+            </button>
+          ) : null
+        }
+      />
+    );
+  },
 );
 
 BirthDateInput.displayName = "BirthDateInput";
@@ -112,6 +218,7 @@ const UserProfileForm = ({
   description = "Quản lý thông tin, địa chỉ liên lạc của bạn",
   showEmergencyContact = false,
 }: UserProfileFormProps) => {
+  const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -120,6 +227,7 @@ const UserProfileForm = ({
 
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [birthDateDisplay, setBirthDateDisplay] = useState("");
   const [gender, setGender] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
@@ -144,8 +252,13 @@ const UserProfileForm = ({
     if (user.dateOfBirth || user.dob) {
       const dob = new Date(user.dateOfBirth || user.dob || "");
       if (!isNaN(dob.getTime())) {
-        setBirthDate(dob.toISOString().split("T")[0]);
+        const isoDate = dob.toISOString().split("T")[0];
+        setBirthDate(isoDate);
+        setBirthDateDisplay(formatDateToDisplay(dob));
       }
+    } else {
+      setBirthDate("");
+      setBirthDateDisplay("");
     }
     if (showEmergencyContact) {
       const emergencyContact = (user as any).emergencyContact;
@@ -158,6 +271,7 @@ const UserProfileForm = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted", { showEmergencyContact, emergencyName, emergencyPhone, emergencyRelationship });
     if (!fullName.trim()) {
       toast.error("Vui lòng nhập họ tên");
       return;
@@ -181,6 +295,7 @@ const UserProfileForm = ({
       (emergencyPhone.trim().length < 10 || emergencyPhone.trim().length > 11)
     ) {
       toast.error("Số điện thoại người liên hệ khẩn cấp phải có 10-11 chữ số");
+      setIsLoading(false);
       return;
     }
 
@@ -198,30 +313,34 @@ const UserProfileForm = ({
       }
 
       if (showEmergencyContact) {
-        if (
-          emergencyName.trim() &&
-          emergencyPhone.trim() &&
-          emergencyRelationship.trim()
-        ) {
-          formData.append(
-            "emergencyContact",
-            JSON.stringify({
-              name: emergencyName.trim(),
-              phone: emergencyPhone.trim(),
-              relationship: emergencyRelationship.trim(),
-            }),
-          );
-        } else if (
-          emergencyName.trim() ||
-          emergencyPhone.trim() ||
-          emergencyRelationship.trim()
-        ) {
+        // Check if any field is filled
+        const hasAnyField = emergencyName.trim() || emergencyPhone.trim() || emergencyRelationship.trim();
+        // Check if all fields are filled
+        const hasAllFields = emergencyName.trim() && emergencyPhone.trim() && emergencyRelationship.trim();
+        
+        if (hasAnyField && !hasAllFields) {
+          // Partial fill - show error
           toast.error(
             "Vui lòng điền đầy đủ thông tin liên hệ khẩn cấp hoặc bỏ trống cả 3 trường.",
           );
           setIsLoading(false);
           return;
         }
+        
+        // Always send emergency contact (either all filled or all empty to clear/update)
+        // Even if all empty, we send it to clear existing data or ensure it's included
+        const emergencyContactData = {
+          name: emergencyName.trim() || "",
+          phone: emergencyPhone.trim() || "",
+          relationship: emergencyRelationship.trim() || "",
+        };
+        
+        // Debug: log emergency contact data
+        console.log("Emergency Contact Data:", emergencyContactData);
+        formData.append("emergencyContact", JSON.stringify(emergencyContactData));
+        
+        // Debug: verify FormData
+        console.log("FormData emergencyContact:", formData.get("emergencyContact"));
       }
 
       if (avatarFile) {
@@ -260,15 +379,53 @@ const UserProfileForm = ({
         }
       }
 
+      // Debug: log all FormData before sending
+      console.log("Submitting form with emergencyContact:", showEmergencyContact);
+      
       const response = await authApi.updateProfile(formData, true);
+      console.log("Update profile response:", response);
+      
       if (response.success && response.data) {
         const userData = response.data.user;
+        console.log("Updated user data:", userData);
+        console.log("Emergency contact in response:", userData?.emergencyContact);
+        
         if (userData && user) {
+          // Get the emergency contact data we sent - this is what we want to preserve
+          const sentEmergencyContact = showEmergencyContact ? {
+            name: emergencyName.trim() || "",
+            phone: emergencyPhone.trim() || "",
+            relationship: emergencyRelationship.trim() || "",
+          } : null;
+          
+          // Create updated user, but exclude emergencyContact from userData spread
+          // We'll handle emergencyContact separately
+          const { emergencyContact: backendEmergencyContact, ...userDataWithoutEmergencyContact } = userData;
+          
           const updatedUser = {
             ...user,
-            ...userData,
+            ...userDataWithoutEmergencyContact,
             _id: userData.id || userData._id || user._id,
           };
+          
+          // Handle emergencyContact - prioritize what we sent over backend response
+          // Backend might only return partial data, so we merge intelligently
+          if (showEmergencyContact && sentEmergencyContact) {
+            // Use what we sent as the source of truth
+            // If backend returned something, merge it (but our sent data takes priority for missing fields)
+            const backendContact = backendEmergencyContact && typeof backendEmergencyContact === 'object' 
+              ? backendEmergencyContact 
+              : {};
+            
+            (updatedUser as any).emergencyContact = {
+              name: sentEmergencyContact.name || backendContact.name || "",
+              phone: sentEmergencyContact.phone || backendContact.phone || "",
+              relationship: sentEmergencyContact.relationship || backendContact.relationship || "",
+            };
+          }
+          
+          console.log("Final user data being updated:", updatedUser);
+          console.log("Final emergency contact:", (updatedUser as any).emergencyContact);
           updateUser(updatedUser as any);
         }
         if (newPassword.trim() && passwordChangeSuccess) {
@@ -279,10 +436,16 @@ const UserProfileForm = ({
         } else {
           toast.success(response.message || "Cập nhật thông tin thành công!");
         }
+        
+        // Redirect to homepage after successful save
+        setTimeout(() => {
+          navigate("/");
+        }, 1000);
       } else {
         toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
     } catch (error: any) {
+      console.error("Error updating profile:", error);
       toast.error(error.message || "Không thể cập nhật thông tin");
     } finally {
       setIsLoading(false);
@@ -395,7 +558,29 @@ const UserProfileForm = ({
               <div className="w-full md:max-w-sm md:justify-self-start">
                 <DatePicker
                   selected={parseDateValue(birthDate)}
-                  onChange={(date) => setBirthDate(formatDateToISO(date))}
+                  onChange={(date) => {
+                    // Handle calendar selection - this is called when user clicks a date in calendar
+                    if (date && date instanceof Date && !isNaN(date.getTime())) {
+                      const isoDate = formatDateToISO(date);
+                      const displayDate = formatDateToDisplay(date);
+                      setBirthDate(isoDate);
+                      setBirthDateDisplay(displayDate);
+                    } else if (date === null) {
+                      // Clear when date is cleared
+                      setBirthDate("");
+                      setBirthDateDisplay("");
+                    }
+                  }}
+                  onSelect={(date) => {
+                    // This fires immediately when a date is selected from calendar
+                    if (date && date instanceof Date && !isNaN(date.getTime())) {
+                      const isoDate = formatDateToISO(date);
+                      const displayDate = formatDateToDisplay(date);
+                      setBirthDate(isoDate);
+                      setBirthDateDisplay(displayDate);
+                    }
+                  }}
+                  strictParsing={false}
                   dateFormat="dd/MM/yyyy"
                   locale="vi"
                   calendarStartDay={1}
@@ -407,10 +592,64 @@ const UserProfileForm = ({
                   }}
                   portalId={PROFILE_DATE_PICKER_PORTAL_ID}
                   wrapperClassName="w-full"
+                  showYearDropdown
+                  showMonthDropdown
+                  dropdownMode="select"
+                  scrollableYearDropdown
+                  yearDropdownItemNumber={100}
+                  maxDate={new Date()}
+                  allowSameDay
+                  onChangeRaw={(e) => {
+                    // Handle manual typing - format as user types
+                    // Only format if it's not already in the correct format (to avoid interfering with calendar selection)
+                    const inputValue = e.target?.value;
+                    
+                    // Safety check
+                    if (!e.target || inputValue === undefined || inputValue === null) {
+                      return;
+                    }
+                    
+                    // Check if value is already in dd/MM/yyyy format (from calendar selection)
+                    if (inputValue && typeof inputValue === 'string' && inputValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                      // Already formatted from calendar, just update display
+                      setBirthDateDisplay(inputValue);
+                      const parsedDate = parseDateFromInput(inputValue);
+                      if (parsedDate) {
+                        setBirthDate(formatDateToISO(parsedDate));
+                      }
+                      return;
+                    }
+                    
+                    // Manual typing - format it
+                    const formatted = formatDateInput(inputValue);
+                    
+                    // Update the input value with formatted version
+                    if (inputValue !== formatted) {
+                      const cursorPos = e.target.selectionStart || 0;
+                      e.target.value = formatted;
+                      const lengthDiff = formatted.length - (inputValue?.length || 0);
+                      const newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, formatted.length));
+                      e.target.setSelectionRange(newCursorPos, newCursorPos);
+                    }
+                    
+                    // Update state for manual typing
+                    setBirthDateDisplay(formatted);
+                    
+                    // Parse and update the actual date value
+                    const parsedDate = parseDateFromInput(formatted);
+                    if (parsedDate) {
+                      setBirthDate(formatDateToISO(parsedDate));
+                    } else if (formatted === "") {
+                      setBirthDate("");
+                    }
+                  }}
                   customInput={
                     <BirthDateInput
                       placeholder="dd/mm/yyyy"
-                      onClear={() => setBirthDate("")}
+                      onClear={() => {
+                        setBirthDate("");
+                        setBirthDateDisplay("");
+                      }}
                     />
                   }
                 />
@@ -596,7 +835,11 @@ const UserProfileForm = ({
           </div>
 
           <div className="flex justify-end gap-4 pt-4">
-            <Button size="lg" variant="light">
+            <Button 
+              size="lg" 
+              variant="light"
+              onPress={() => navigate("/")}
+            >
               Hủy
             </Button>
             <Button

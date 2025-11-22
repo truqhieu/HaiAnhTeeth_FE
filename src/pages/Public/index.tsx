@@ -13,6 +13,11 @@ const Home = () => {
   const { openBookingModal } = useBookingModal();
   const navigate = useNavigate();
 
+  // Scroll to top when component mounts (when navigating to homepage)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
+
   // Khôi phục URL ảnh gốc của bạn
   const sliderImages = ["/Bocrangsu.jpg", "/Niengrang.jpg"];
 
