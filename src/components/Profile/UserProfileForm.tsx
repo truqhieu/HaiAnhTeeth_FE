@@ -1,6 +1,7 @@
 import { forwardRef, useState, useEffect, useRef } from "react";
+import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Input, Button, Select, SelectItem, Avatar } from "@heroui/react";
+import { Input, Button, Select, SelectItem, Avatar, Textarea } from "@heroui/react";
 import {
   CameraIcon,
   CalendarIcon,
@@ -10,7 +11,8 @@ import DatePicker, { registerLocale, setDefaultLocale } from "react-datepicker";
 import toast from "react-hot-toast";
 import viLocale from "@/utils/viLocale";
 
-import { authApi } from "@/api";
+import { authApi, doctorApi } from "@/api";
+import type { DoctorProfileInfo } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -51,6 +53,23 @@ const ensureProfileDatePickerPortal = () => {
 
 registerLocale("vi", viLocale as any);
 setDefaultLocale("vi");
+
+const MAX_CERT_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+const isLikelyImageUrl = (url?: string | null) => {
+  if (!url) return false;
+  const normalized = url.split("?")[0].toLowerCase();
+  return /\.(png|jpe?g|webp|gif|bmp)$/i.test(normalized);
+};
+
+const extractDoctorProfileId = (profile?: DoctorProfileInfo | null) => {
+  if (!profile) return "";
+  if (typeof profile.doctorUserId === "string") {
+    return profile.doctorUserId;
+  }
+  const nested = profile.doctorUserId as { _id?: string; id?: string } | undefined;
+  return nested?._id || nested?.id || "";
+};
 
 const formatDateToISO = (date: Date | null) => {
   if (!date) return "";
@@ -220,10 +239,12 @@ const UserProfileForm = ({
 }: UserProfileFormProps) => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
+  const isDoctor = user?.role === "doctor";
   const [isLoading, setIsLoading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const certificateInputRef = useRef<HTMLInputElement | null>(null);
 
   const [fullName, setFullName] = useState("");
   const [birthDate, setBirthDate] = useState("");
@@ -238,6 +259,15 @@ const UserProfileForm = ({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [doctorCertificateUrl, setDoctorCertificateUrl] = useState<string | null>(null);
+  const [certificatePreview, setCertificatePreview] = useState<string | null>(null);
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
+  const [doctorProfileLoading, setDoctorProfileLoading] = useState(false);
+  const [certificateUploading, setCertificateUploading] = useState(false);
+  const [specialization, setSpecialization] = useState("");
+  const [yearsOfExperience, setYearsOfExperience] = useState("");
+  const [summary, setSummary] = useState("");
+  const [savingProfessionalInfo, setSavingProfessionalInfo] = useState(false);
   useEffect(() => {
     ensureProfileDatePickerPortal();
   }, []);
@@ -268,6 +298,60 @@ const UserProfileForm = ({
     }
     setAvatarPreview(user.avatar || null);
   }, [user, showEmergencyContact]);
+
+  useEffect(() => {
+    return () => {
+      if (certificatePreview && certificatePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(certificatePreview);
+      }
+    };
+  }, [certificatePreview]);
+
+  useEffect(() => {
+    if (!isDoctor || !user?._id) {
+      setDoctorCertificateUrl(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadDoctorProfile = async () => {
+      setDoctorProfileLoading(true);
+      try {
+        const response = await doctorApi.getDoctorInfoList();
+        if (!isMounted) return;
+
+        if (response.success && Array.isArray(response.data)) {
+          const doctorRecord = response.data.find((profile) => {
+            const profileId = extractDoctorProfileId(profile);
+            const currentId = user._id || (user as any).id;
+            return profileId && currentId && profileId.toString() === currentId.toString();
+          });
+          setDoctorCertificateUrl(doctorRecord?.certificate || null);
+          setSpecialization(doctorRecord?.specialization || "");
+          setYearsOfExperience(doctorRecord?.yearsOfExperience?.toString() || "");
+          setSummary(doctorRecord?.summary || "");
+        } else {
+          toast.error(response.message || "Không thể tải thông tin bác sĩ");
+        }
+      } catch (error: any) {
+        console.error("Error loading doctor profile:", error);
+        if (isMounted) {
+          toast.error(error.message || "Không thể tải thông tin bác sĩ");
+        }
+      } finally {
+        if (isMounted) {
+          setDoctorProfileLoading(false);
+        }
+      }
+    };
+
+    loadDoctorProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isDoctor, user?._id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -452,6 +536,70 @@ const UserProfileForm = ({
     }
   };
 
+  const handleCertificateSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!(file.type === "application/pdf" || file.type.startsWith("image/"))) {
+      toast.error("Vui lòng chọn file ảnh hoặc PDF hợp lệ");
+      return;
+    }
+
+    if (file.size > MAX_CERT_FILE_SIZE) {
+      toast.error("Dung lượng chứng chỉ tối đa 5MB");
+      return;
+    }
+
+    if (certificatePreview && certificatePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(certificatePreview);
+    }
+
+    setCertificateFile(file);
+    setCertificatePreview(URL.createObjectURL(file));
+  };
+
+  const handleClearCertificateSelection = () => {
+    if (certificatePreview && certificatePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(certificatePreview);
+    }
+    setCertificateFile(null);
+    setCertificatePreview(null);
+    if (certificateInputRef.current) {
+      certificateInputRef.current.value = "";
+    }
+  };
+
+  const handleUploadCertificate = async () => {
+    if (!isDoctor) {
+      toast.error("Chỉ bác sĩ mới có thể cập nhật chứng chỉ");
+      return;
+    }
+    if (!certificateFile) {
+      toast.error("Vui lòng chọn file chứng chỉ trước khi lưu");
+      return;
+    }
+
+    setCertificateUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("certificate", certificateFile);
+
+      const response = await doctorApi.updateProfile(formData);
+      if (response.success && response.data) {
+        setDoctorCertificateUrl(response.data.certificate || null);
+        toast.success("Đã cập nhật chứng chỉ bác sĩ");
+        handleClearCertificateSelection();
+      } else {
+        toast.error(response.message || "Không thể cập nhật chứng chỉ");
+      }
+    } catch (error: any) {
+      console.error("Error uploading certificate:", error);
+      toast.error(error.message || "Không thể cập nhật chứng chỉ");
+    } finally {
+      setCertificateUploading(false);
+    }
+  };
+
   const renderPasswordField = (
     label: string,
     value: string,
@@ -472,6 +620,11 @@ const UserProfileForm = ({
           onValueChange={setValue}
         />
   );
+
+  const activeCertificateUrl = certificatePreview || doctorCertificateUrl;
+  const shouldShowImagePreview = certificateFile
+    ? certificateFile.type.startsWith("image/")
+    : isLikelyImageUrl(activeCertificateUrl);
 
   return (
     <div className="min-h-screen bg-white">
@@ -798,6 +951,193 @@ const UserProfileForm = ({
                 </Select>
               </div>
             </div>
+          )}
+
+          {isDoctor && (
+            <>
+              <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm space-y-5">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Thông tin chuyên môn</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Cập nhật thông tin chuyên môn và kinh nghiệm của bạn
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Input
+                    classNames={{
+                      input: "bg-gray-100",
+                      inputWrapper: "bg-gray-100 border-gray-300",
+                    }}
+                    label="Chuyên môn"
+                    labelPlacement="outside"
+                    placeholder="Ví dụ: Răng hàm mặt, Nha khoa tổng quát..."
+                    value={specialization}
+                    variant="bordered"
+                    onValueChange={setSpecialization}
+                  />
+
+                  <Input
+                    classNames={{
+                      input: "bg-gray-100",
+                      inputWrapper: "bg-gray-100 border-gray-300",
+                    }}
+                    label="Số năm kinh nghiệm"
+                    labelPlacement="outside"
+                    placeholder="Ví dụ: 5"
+                    type="number"
+                    min="0"
+                    value={yearsOfExperience}
+                    variant="bordered"
+                    onValueChange={(value) => {
+                      const numValue = value.replace(/[^0-9]/g, "");
+                      setYearsOfExperience(numValue);
+                    }}
+                  />
+                </div>
+
+                <Textarea
+                  classNames={{
+                    input: "bg-gray-100",
+                    inputWrapper: "bg-gray-100 border-gray-300",
+                  }}
+                  label="Tóm tắt kinh nghiệm"
+                  labelPlacement="outside"
+                  placeholder="Mô tả ngắn gọn về kinh nghiệm và thành tích của bạn..."
+                  value={summary}
+                  variant="bordered"
+                  onValueChange={setSummary}
+                  minRows={4}
+                />
+
+                <div className="flex justify-end">
+                  <Button
+                    className="bg-[#39BDCC] text-white"
+                    color="primary"
+                    isLoading={savingProfessionalInfo}
+                    onPress={async () => {
+                      setSavingProfessionalInfo(true);
+                      try {
+                        const formData = new FormData();
+                        if (specialization.trim()) {
+                          formData.append("specialization", specialization.trim());
+                        }
+                        if (yearsOfExperience.trim()) {
+                          formData.append("yearsOfExperience", yearsOfExperience.trim());
+                        }
+                        if (summary.trim()) {
+                          formData.append("summary", summary.trim());
+                        }
+
+                        const response = await doctorApi.updateProfile(formData);
+                        if (response.success) {
+                          toast.success("Cập nhật thông tin chuyên môn thành công!");
+                          // Reload doctor profile to get updated data
+                          const profileResponse = await doctorApi.getDoctorInfoList();
+                          if (profileResponse.success && Array.isArray(profileResponse.data)) {
+                            const doctorRecord = profileResponse.data.find((profile) => {
+                              const profileId = extractDoctorProfileId(profile);
+                              const currentId = user?._id || (user as any)?.id;
+                              return profileId && currentId && profileId.toString() === currentId.toString();
+                            });
+                            if (doctorRecord) {
+                              setSpecialization(doctorRecord?.specialization || "");
+                              setYearsOfExperience(doctorRecord?.yearsOfExperience?.toString() || "");
+                              setSummary(doctorRecord?.summary || "");
+                            }
+                          }
+                        } else {
+                          toast.error(response.message || "Không thể cập nhật thông tin");
+                        }
+                      } catch (error: any) {
+                        console.error("Error updating doctor profile:", error);
+                        toast.error(error.message || "Không thể cập nhật thông tin");
+                      } finally {
+                        setSavingProfessionalInfo(false);
+                      }
+                    }}
+                  >
+                    {savingProfessionalInfo ? "Đang lưu..." : "Lưu thông tin chuyên môn"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm space-y-5">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Chứng chỉ hành nghề</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Tải lên file ảnh hoặc PDF (tối đa 5MB) để phòng khám xác thực thông tin của bạn.
+                </p>
+              </div>
+
+              {doctorProfileLoading ? (
+                <p className="text-sm text-gray-500">Đang tải chứng chỉ hiện tại...</p>
+              ) : activeCertificateUrl ? (
+                shouldShowImagePreview ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm text-gray-600">Chứng chỉ hiện tại:</p>
+                    <img
+                      src={activeCertificateUrl}
+                      alt="Chứng chỉ bác sĩ"
+                      className="rounded-lg border border-gray-200 shadow-sm max-w-sm object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-sm text-gray-600">Chứng chỉ hiện tại:</p>
+                    <a
+                      href={activeCertificateUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#39BDCC] font-semibold hover:underline"
+                    >
+                      Mở chứng chỉ
+                    </a>
+                  </div>
+                )
+              ) : (
+                <p className="text-sm text-gray-500">Chưa có chứng chỉ nào được lưu.</p>
+              )}
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="bordered" onPress={() => certificateInputRef.current?.click()}>
+                  Chọn chứng chỉ
+                </Button>
+                <input
+                  ref={certificateInputRef}
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  type="file"
+                  onChange={handleCertificateSelect}
+                />
+                {certificateFile && (
+                  <Button color="danger" variant="light" onPress={handleClearCertificateSelection}>
+                    Xóa tệp đã chọn
+                  </Button>
+                )}
+              </div>
+
+              {certificateFile && (
+                <p className="text-sm text-gray-600">
+                  Tệp đã chọn:{" "}
+                  <span className="font-medium">{certificateFile.name}</span>{" "}
+                  ({(certificateFile.size / (1024 * 1024)).toFixed(2)} MB)
+                </p>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  className="bg-[#39BDCC] text-white"
+                  color="primary"
+                  isDisabled={!certificateFile}
+                  isLoading={certificateUploading}
+                  onPress={handleUploadCertificate}
+                >
+                  {certificateUploading ? "Đang tải..." : "Lưu chứng chỉ"}
+                </Button>
+              </div>
+            </div>
+            </>
           )}
 
           <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 shadow-sm">

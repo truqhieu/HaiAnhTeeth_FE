@@ -7,6 +7,7 @@ import {
   ArrowRightOnRectangleIcon,
   DocumentTextIcon,
   BellIcon,
+  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import { Avatar } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -73,17 +74,13 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen flex flex-col ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Sidebar Header */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <button
-            className="flex items-center w-full text-left space-x-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 rounded-md"
-            onClick={() => handleNavigation(profilePath)}
-            type="button"
-          >
+        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200 flex-shrink-0">
+          <div className="flex items-center w-full space-x-3">
             <Avatar
               className="w-10 h-10 border border-pink-100"
               name={user?.fullName || "Nurse"}
@@ -95,14 +92,14 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
                 {user?.fullName || "Chưa xác định"}
               </span>
             </div>
-          </button>
+          </div>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <XMarkIcon className="w-6 h-6 text-gray-500" />
           </button>
         </div>
 
         {/* Sidebar Navigation */}
-        <nav className="flex-1 px-4 py-6">
+        <nav className="flex-1 px-4 py-6 overflow-y-auto min-h-0">
           <div className="space-y-2">
             {navigation.map((item) => {
               const Icon = item.icon;
@@ -129,8 +126,15 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
           </div>
         </nav>
 
-        {/* Logout Button - fixed bottom */}
-        <div className="px-4 py-4 border-t border-gray-200">
+        {/* Profile & Logout Section - Fixed at bottom */}
+        <div className="px-4 py-4 border-t border-gray-200 space-y-2 flex-shrink-0 bg-white">
+          <button
+            className="w-full flex items-center px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            onClick={() => handleNavigation(profilePath)}
+          >
+            <UserCircleIcon className="w-5 h-5 mr-3 text-gray-600" />
+            Hồ sơ cá nhân
+          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
