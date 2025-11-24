@@ -23,6 +23,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   CalendarDaysIcon,
+  ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -93,8 +94,9 @@ const Dashboard = () => {
         end.toISOString()
       );
 
-      // Handle different response structures
-      const dashboardResult = response.data?.result || response.result || response.data;
+      // Backend returns: { success: true, message: 'Doanh thu', result: {...} }
+      // But ApiResponse wraps it in data, so check both
+      const dashboardResult = (response as any).result || response.data?.result || response.data;
       
       if (response.success && dashboardResult) {
         setDashboardData(dashboardResult);
@@ -123,7 +125,9 @@ const Dashboard = () => {
         endOfYear.toISOString()
       );
 
-      const monthlyResult = response.data?.result || response.result || response.data;
+      // Backend returns: { success: true, message: '...', result: {...} }
+      // But ApiResponse wraps it in data, so check both
+      const monthlyResult = (response as any).result || response.data?.result || response.data;
       
       if (response.success && monthlyResult) {
         setMonthlyRevenueData(monthlyResult);
@@ -191,6 +195,50 @@ const Dashboard = () => {
     doanhThu: revenue,
   })) || [];
 
+  // Export service revenue report to PDF using backend endpoint
+  const handleExportPDF = async () => {
+    if (!dashboardData) {
+      toast.error("Không có dữ liệu để xuất PDF");
+      return;
+    }
+
+    try {
+      const { start, end } = getMonthDateRange(selectedMonth);
+      
+      // Show loading toast
+      const loadingToast = toast.loading("Đang tạo PDF...");
+      
+      // Call backend PDF endpoint
+      const blob = await managerApi.exportServiceRevenuePDF(
+        start.toISOString(),
+        end.toISOString()
+      );
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      
+      // Generate filename with date range
+      const startDateStr = start.toISOString().split('T')[0];
+      const endDateStr = end.toISOString().split('T')[0];
+      link.download = `bao-cao-doanh-thu-dich-vu-${startDateStr}-${endDateStr}.pdf`;
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.dismiss(loadingToast);
+      toast.success("Xuất PDF thành công!");
+    } catch (error: any) {
+      console.error("Error exporting PDF:", error);
+      toast.error("Lỗi khi xuất PDF: " + (error.message || "Unknown error"));
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
@@ -204,6 +252,15 @@ const Dashboard = () => {
               Theo dõi hiệu suất và phân tích dữ liệu phòng khám
             </p>
           </div>
+          {dashboardData && (
+            <button
+              onClick={handleExportPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium text-sm"
+            >
+              <ArrowDownTrayIcon className="w-5 h-5" />
+              <span>Xuất PDF báo cáo dịch vụ</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -417,13 +474,7 @@ const Dashboard = () => {
                       return Math.round(value).toString();
                     }}
                   />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#fff",
-                      border: "1px solid #E5E7EB",
-                      borderRadius: "8px",
-                    }}
-                  />
+
                   <Bar
                     dataKey="value"
                     fill="#39BDCC"

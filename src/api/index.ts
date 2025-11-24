@@ -203,7 +203,7 @@ export type { AvailableDoctor } from "./availableDoctor";
 export { generateByDateApi } from "./generateByDate";
 export type { GeneratedSlot } from "./generateByDate";
 export { doctorApi } from './doctor';
-export type { DoctorAppointment, AppointmentDetail, PatientDetail } from './doctor';
+export type { DoctorAppointment, AppointmentDetail, PatientDetail, DoctorProfileInfo } from './doctor';
 export { nurseApi } from './nurse';
 export type { NurseAppointment, NurseAppointmentDetail, NursePatientDetail } from './nurse';
 export { introductionApi } from "./introduction";

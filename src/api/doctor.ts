@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse, API_BASE_URL } from "./index";
 
 export interface DoctorAppointment {
   appointmentId: string;
@@ -61,6 +61,16 @@ export interface ServiceSummary {
   category: string;
   isPrepaid: boolean | string;
   durationMinutes: number;
+}
+
+export interface DoctorProfileInfo {
+  doctorUserId: string | { _id?: string };
+  fullName?: string | null;
+  avatar?: string | null;
+  specialization?: string | null;
+  yearsOfExperience?: number | null;
+  certificate?: string | null;
+  summary?: string | null;
 }
 
 export const doctorApi = {
@@ -142,5 +152,36 @@ export const doctorApi = {
       method: "PATCH",
       body: JSON.stringify({ serviceIds }),
     });
+  },
+
+  getDoctorInfoList: async (): Promise<ApiResponse<DoctorProfileInfo[]>> => {
+    return apiCall<DoctorProfileInfo[]>("/doctor/info", {
+      method: "GET",
+    });
+  },
+
+  updateProfile: async (
+    formData: FormData,
+  ): Promise<ApiResponse<DoctorProfileInfo>> => {
+    const token = sessionStorage.getItem("authToken");
+    if (!token) {
+      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/doctor/profile`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+      credentials: "include",
+    });
+
+    const result = (await response.json()) as ApiResponse<DoctorProfileInfo>;
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || "Không thể cập nhật thông tin bác sĩ");
+    }
+
+    return result;
   },
 };
