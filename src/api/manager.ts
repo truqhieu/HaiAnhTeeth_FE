@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse } from "./index";
+import { authenticatedApiCall, ApiResponse, API_BASE_URL } from "./index";
 
 // Manager Service Types
 export interface ManagerService {
@@ -712,5 +712,38 @@ export const managerApi = {
     return authenticatedApiCall(endpoint, {
       method: "GET",
     });
+  },
+
+  // Export service revenue report as PDF
+  exportServiceRevenuePDF: async (
+    startDate?: string,
+    endDate?: string,
+  ): Promise<Blob> => {
+    const queryParams = new URLSearchParams();
+    if (startDate) queryParams.append("startDate", startDate);
+    if (endDate) queryParams.append("endDate", endDate);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/appointments/dashboard/service-revenue-report/pdf${queryString ? `?${queryString}` : ""}`;
+
+    const token = sessionStorage.getItem("authToken");
+    if (!token) {
+      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ message: "Lỗi khi xuất PDF" }));
+      throw new Error(error.message || "Lỗi khi xuất PDF");
+    }
+
+    return response.blob();
   },
 };

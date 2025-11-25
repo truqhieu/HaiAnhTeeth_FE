@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { medicalRecordApi, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
 import { doctorApi, type AppointmentDetail } from "@/api/doctor";
-import { getDoctorScheduleRange, validateAppointmentTime } from "@/api/availableSlot";
+import { getDoctorScheduleRangeForFollowUp, validateAppointmentTime } from "@/api/availableSlot";
 import { appointmentApi } from "@/api/appointment";
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
 import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon, PlusIcon, TrashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
@@ -56,6 +56,7 @@ const DoctorMedicalRecord: React.FC = () => {
   const [followUpTimeInput, setFollowUpTimeInput] = useState("");
   const [followUpServiceIds, setFollowUpServiceIds] = useState<string[]>([]);
   const [followUpDoctorUserId, setFollowUpDoctorUserId] = useState<string | null>(null);
+  const [followUpPatientUserId, setFollowUpPatientUserId] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [userReservedSlots, setUserReservedSlots] = useState<any[]>([]); // Reserved slots của user từ BE
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -323,6 +324,16 @@ const DoctorMedicalRecord: React.FC = () => {
               : doctorUserId;
             setFollowUpDoctorUserId(doctorId?.toString() || String(doctorId));
           }
+
+          const patientUserId = res.data.record.patientUserId;
+          if (patientUserId) {
+            const parsedPatientId = typeof patientUserId === 'object' && patientUserId !== null && '_id' in patientUserId
+              ? (patientUserId as { _id: string })._id
+              : patientUserId;
+            setFollowUpPatientUserId(parsedPatientId?.toString() || String(parsedPatientId));
+          } else {
+            setFollowUpPatientUserId(null);
+          }
           
           // Set current services from display or record
           const services = res.data.display?.additionalServices || res.data.record?.additionalServiceIds || [];
@@ -418,8 +429,13 @@ const DoctorMedicalRecord: React.FC = () => {
   }, [followUpServiceIds, allServices, currentServices]);
 
   // Helper function để format date theo timezone VN (YYYY-MM-DD)
+  // ⭐ FIX: DatePicker trả về local date với time 00:00:00 local timezone
+  // Cần lấy local date components (year, month, day) để tạo date string
+  // Vì user chọn ngày theo local timezone, nên phải giữ nguyên local date components
   const formatDateToVNString = (date: Date): string => {
-    // Lấy năm, tháng, ngày theo local time (đã là VN timezone)
+    // ⭐ FIX: Lấy local date components (theo timezone của user)
+    // DatePicker trả về date với local time 00:00:00, nên getFullYear(), getMonth(), getDate()
+    // sẽ trả về đúng ngày mà user chọn
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -427,14 +443,19 @@ const DoctorMedicalRecord: React.FC = () => {
   };
 
   // Helper function để check xem ngày có phải là ngày hiện tại không
-  const isToday = (date: Date | null): boolean => {
-    if (!date) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const checkDate = new Date(date);
-    checkDate.setHours(0, 0, 0, 0);
-    return checkDate.getTime() === today.getTime();
-  };
+const isToday = (date: Date | null): boolean => {
+  if (!date) return false;
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
+  
+  // ⭐ FIX: Sử dụng local date (vì DatePicker trả về local timezone)
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+};
+
 
   // ⭐ Memoize followUpServiceIds để tránh thay đổi reference không cần thiết
   const followUpServiceIdsString = useMemo(() => JSON.stringify(followUpServiceIds), [followUpServiceIds]);
@@ -446,7 +467,7 @@ const DoctorMedicalRecord: React.FC = () => {
       setSlotsMessage(null);
       return;
     }
-
+    
     if (!silent) {
       setLoadingSlots(true);
     }
@@ -465,21 +486,57 @@ const DoctorMedicalRecord: React.FC = () => {
       // ⭐ GIẢM LOG: Comment lại để giảm spam log
       // console.log('🔍 [FollowUp] Loading slots for date:', dateStr, 'from Date object:', followUpDate);
       
-      const res = await getDoctorScheduleRange(
-        followUpDoctorUserId,
-        serviceId,
-        dateStr,
-        'self'
-      );
+const res = await getDoctorScheduleRangeForFollowUp(
+  followUpDoctorUserId,
+  serviceId,
+  dateStr,
+  'self',
+  followUpPatientUserId
+);
+
+// // ⭐ THÊM DEBUG LOGS NGAY ĐÂY
+console.log('🔍 [loadAvailableSlots] Raw Response:', res);
+console.log('🔍 [loadAvailableSlots] Response success:', res.success);
+console.log('🔍 [loadAvailableSlots] Response message:', res.message);
+console.log('🔍 [loadAvailableSlots] Response data:', res.data);
+
+if (res.data) {
+  console.log('🔍 [loadAvailableSlots] Data keys:', Object.keys(res.data));
+  console.log('🔍 [loadAvailableSlots] scheduleRanges:', res.data.scheduleRanges);
+  console.log('🔍 [loadAvailableSlots] scheduleRanges length:', res.data.scheduleRanges?.length);
+  
+  if (res.data.scheduleRanges && Array.isArray(res.data.scheduleRanges)) {
+    console.log('🔍 [loadAvailableSlots] First range:', res.data.scheduleRanges[0]);
+    res.data.scheduleRanges.forEach((range, idx) => {
+      console.log(`   Range ${idx}:`, {
+        shiftDisplay: range.shiftDisplay,
+        displayRange: range.displayRange,
+        startTime: range.startTime,
+        endTime: range.endTime
+      });
+    });
+  }
+}
       
       // ⭐ GIẢM LOG: Comment lại để giảm spam log
       // console.log('🔍 [FollowUp] API response:', res.success, res.data ? 'has data' : 'no data', res.message);
 
-      if (res.success && res.data) {
-        const data = res.data as any;
-        if (data.scheduleRanges && Array.isArray(data.scheduleRanges)) {
-          setAvailableSlots(data.scheduleRanges);
-          setSlotsMessage(data.message || null);
+if (res.success && res.data) {
+  const data = res.data as any;
+  
+  // ⭐ THÊM: Kiểm tra bác sĩ đang nghỉ phép
+  if ((!data.scheduleRanges || data.scheduleRanges.length === 0) && 
+      data.message && 
+      data.message.includes('nghỉ phép')) {
+    setAvailableSlots([]);
+    setSlotsMessage(data.message);
+    setUserReservedSlots([]);
+    return;
+  }
+  
+  if (data.scheduleRanges && Array.isArray(data.scheduleRanges)) {
+    setAvailableSlots(data.scheduleRanges);
+    setSlotsMessage(data.message || null);
           // ⭐ Lưu userReservedSlots từ BE để hiển thị trong available slots
           if (data.userReservedSlots && Array.isArray(data.userReservedSlots)) {
             setUserReservedSlots(data.userReservedSlots);
@@ -507,7 +564,7 @@ const DoctorMedicalRecord: React.FC = () => {
         setLoadingSlots(false);
       }
     }
-  }, [followUpDate, followUpDoctorUserId, followUpServiceIdsString]);
+  }, [followUpDate, followUpDoctorUserId, followUpServiceIdsString, followUpPatientUserId]);
 
   // ⭐ Cập nhật refs mỗi khi giá trị thay đổi
   useEffect(() => {
@@ -637,7 +694,7 @@ const DoctorMedicalRecord: React.FC = () => {
     });
 
     // Parse existing gaps (loại bỏ reserved markers cũ)
-    const existingGaps = range.displayRange.split(', ').filter(gap => {
+    const existingGaps = range.displayRange.split(', ').filter((gap: string) => {
       const gapClean = gap.trim().replace(' (Đang giữ chỗ)', '');
       return gapClean !== '' && !reservedSlotDisplays.includes(gapClean);
     });
@@ -674,6 +731,58 @@ const DoctorMedicalRecord: React.FC = () => {
       displayRange: getDisplayRangeWithReservation(range, reservedSlotsToUse)
     }));
   }, [availableSlots, activeReservation, userReservedSlots, getDisplayRangeWithReservation]);
+
+  // ⭐ Helper giống BookingModal: kiểm tra input có nằm trong khoảng khả dụng không
+  const isTimeInAvailableRanges = useCallback(
+    (timeInput: string) => {
+      if (!availableSlots || !Array.isArray(availableSlots) || availableSlots.length === 0) {
+        return { isValid: false as const };
+      }
+
+      const [hours, minutes] = timeInput.split(":");
+      if (
+        !hours ||
+        !minutes ||
+        hours.trim() === "" ||
+        minutes.trim() === "" ||
+        Number.isNaN(Number(hours)) ||
+        Number.isNaN(Number(minutes))
+      ) {
+        return { isValid: false as const };
+      }
+
+      const vnHours = parseInt(hours, 10);
+      const vnMinutes = parseInt(minutes, 10);
+      const inputMinutes = vnHours * 60 + vnMinutes;
+
+      for (const range of availableSlots) {
+        if (!range || range.displayRange === "Đã hết chỗ" || range.displayRange === "Đã qua thời gian làm việc") {
+          continue;
+        }
+
+        const rangeStart = new Date(range.startTime);
+        const rangeEnd = new Date(range.endTime);
+        if (Number.isNaN(rangeStart.getTime()) || Number.isNaN(rangeEnd.getTime())) {
+          continue;
+        }
+
+        const rangeStartVNMinutes = (rangeStart.getUTCHours() + 7) * 60 + rangeStart.getUTCMinutes();
+        const rangeEndVNMinutes = (rangeEnd.getUTCHours() + 7) * 60 + rangeEnd.getUTCMinutes();
+
+        if (inputMinutes >= rangeStartVNMinutes && inputMinutes < rangeEndVNMinutes) {
+          return {
+            isValid: true as const,
+            overrideHours: vnHours,
+            overrideMinutes: vnMinutes,
+            rangeEndVNMinutes,
+          };
+        }
+      }
+
+      return { isValid: false as const };
+    },
+    [availableSlots],
+  );
 
   // ⭐ Release reservation function (phải đặt sau loadAvailableSlots)
   const releaseReservation = useCallback(
@@ -880,66 +989,40 @@ const DoctorMedicalRecord: React.FC = () => {
       return;
     }
 
-    // FE validation: Kiểm tra thời gian có trong khoảng khả dụng không
-    // Kiểm tra xem có nằm trong working hours (range tổng thể) không
-    let isInWorkingHours = false;
-    
     if (!followUpDate) {
       setTimeInputError("Vui lòng chọn ngày trước");
       setFollowUpEndTime(null);
       return;
     }
-    
-    // ⭐ Chỉ validate nếu có availableSlots và có ít nhất 1 slot khả dụng
-    if (availableSlots && Array.isArray(availableSlots) && availableSlots.length > 0) {
-      // Kiểm tra xem có slot nào khả dụng không (không phải "Đã hết chỗ" hoặc "Đã qua thời gian làm việc")
-      const hasAvailableSlots = availableSlots.some(range => 
-        range.displayRange !== 'Đã hết chỗ' && range.displayRange !== 'Đã qua thời gian làm việc'
-      );
-      
-      if (hasAvailableSlots) {
-        // ⭐ Sử dụng helper function để format date theo VN timezone
-        const dateStr = formatDateToVNString(followUpDate);
-        const dateObj = new Date(dateStr + "T00:00:00.000Z");
-        const utcHours = hoursNum - 7;
-        dateObj.setUTCHours(utcHours, minutesNum, 0, 0);
-        const startUtc = dateObj;
-        const endUtc = new Date(startUtc.getTime() + serviceDuration * 60000);
 
-        // Kiểm tra có nằm trong working hours (range tổng thể) không
-        for (const range of availableSlots) {
-          if (range.displayRange === 'Đã hết chỗ' || range.displayRange === 'Đã qua thời gian làm việc') {
-            continue;
-          }
-          const rangeStart = new Date(range.startTime);
-          const rangeEnd = new Date(range.endTime);
-          if (startUtc >= rangeStart && endUtc <= rangeEnd) {
-            isInWorkingHours = true;
-            break;
-          }
-        }
-
-        // Nếu không nằm trong working hours → ngoài giờ làm việc
-        if (!isInWorkingHours) {
-          setTimeInputError("Thời gian bạn chọn không nằm trong thời gian khả dụng của bạn. Vui lòng chọn thời gian trong khoảng thời gian khả dụng.");
-          setFollowUpEndTime(null);
-          return;
-        }
-      }
-      // Nếu không có slot khả dụng nào, bỏ qua FE validation, để backend xử lý
+    // ⭐ FE validation giống BookingModal: thời gian phải nằm trong khoảng khả dụng và đủ thời lượng dịch vụ
+    const rangeResult = isTimeInAvailableRanges(timeInput);
+    if (!rangeResult.isValid) {
+      setTimeInputError("Khung giờ này không khả dụng. Vui lòng chọn thời gian trong khoảng thời gian khả dụng.");
+      setFollowUpEndTime(null);
+      return;
     }
 
-    // Nếu nằm trong working hours nhưng không trong available gaps → có thể đã có lịch
-    // Nhưng để backend validate chính xác hơn, chỉ cảnh báo nhẹ hoặc để backend xử lý
-    // (Backend sẽ trả về message chi tiết hơn)
+    const validatedHours = rangeResult.overrideHours ?? hoursNum;
+    const validatedMinutes = rangeResult.overrideMinutes ?? minutesNum;
+    const startTotalMin = validatedHours * 60 + validatedMinutes;
+    const endLimitMinutes = rangeResult.rangeEndVNMinutes ?? null;
+    if (endLimitMinutes != null) {
+      const endTotalMin = startTotalMin + serviceDuration;
+      if (endTotalMin > endLimitMinutes) {
+        setTimeInputError(`Thời gian bạn chọn không đáp ứng đủ thời gian cho dịch vụ này (${serviceDuration} phút). Vui lòng chọn giờ khác.`);
+        setFollowUpEndTime(null);
+        return;
+      }
+    }
 
     // ⭐ Convert giờ VN sang UTC: VN - 7
     // User nhập 08:00 (VN) → lưu 01:00 (UTC)
     // ⭐ Sử dụng helper function để format date theo VN timezone
     const dateStr = formatDateToVNString(followUpDate);
     const dateObj = new Date(dateStr + "T00:00:00.000Z");
-    const utcHours = hoursNum - 7; // Convert VN to UTC
-    dateObj.setUTCHours(utcHours, minutesNum, 0, 0);
+    const utcHours = validatedHours - 7; // Convert VN to UTC
+    dateObj.setUTCHours(utcHours, validatedMinutes, 0, 0);
     const startTimeISO = dateObj.toISOString();
 
     // ⭐ Clear tất cả lỗi cũ trước khi gọi BE validate
@@ -1305,6 +1388,12 @@ const DoctorMedicalRecord: React.FC = () => {
       return;
     }
     
+    // ⭐ THÊM: Validate nếu bác sĩ đang nghỉ phép
+if (followUpEnabled && followUpDate && availableSlots.length === 0 && 
+    slotsMessage && slotsMessage.includes('nghỉ phép')) {
+  toast.error("Bạn đang xin nghỉ phép vào ngày tái khám. Vui lòng chọn ngày khác.");
+  return;
+}
     let followUpDateISO: string | null = null;
     if (followUpEnabled) {
       if (!followUpServiceIds || followUpServiceIds.length === 0) {
@@ -1337,13 +1426,42 @@ const DoctorMedicalRecord: React.FC = () => {
       // Combine date and time
       const vnHours = parseInt(hours);
       const vnMinutes = parseInt(minutes);
+      
       // ⭐ FIX: Tạo Date object từ date string (YYYY-MM-DD) để tránh timezone issue
-      // followUpDate từ DatePicker là local date, cần convert sang UTC date string trước
+      // followUpDate từ DatePicker là local date với time 00:00:00 local timezone
+      // Cần lấy local date components và tạo UTC date string đúng
       const dateStr = formatDateToVNString(followUpDate);
+      
+      console.log('🔍 [onSave] Creating followUpDateISO:', {
+        followUpDate: followUpDate,
+        dateStr,
+        vnHours,
+        vnMinutes
+      });
+      
       // ⭐ Tạo Date object với UTC date string (YYYY-MM-DD) và set UTC hours
+      // dateStr là "YYYY-MM-DD" từ local date components
       const followUpDateObj = new Date(dateStr + "T00:00:00.000Z");
       const utcHours = vnHours - 7;
       followUpDateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+      
+      console.log('🔍 [onSave] followUpDateObj after setUTCHours:', {
+        iso: followUpDateObj.toISOString(),
+        utc: {
+          year: followUpDateObj.getUTCFullYear(),
+          month: followUpDateObj.getUTCMonth() + 1,
+          day: followUpDateObj.getUTCDate(),
+          hour: followUpDateObj.getUTCHours(),
+          minute: followUpDateObj.getUTCMinutes()
+        },
+        local: {
+          year: followUpDateObj.getFullYear(),
+          month: followUpDateObj.getMonth() + 1,
+          day: followUpDateObj.getDate(),
+          hour: followUpDateObj.getHours(),
+          minute: followUpDateObj.getMinutes()
+        }
+      });
       
       if (Number.isNaN(followUpDateObj.getTime())) {
         toast.error("Thời gian tái khám không hợp lệ");
@@ -2258,7 +2376,7 @@ if (res.success && res.data) {
                     <div className="text-gray-500 py-3 text-center">
                       Đang tải lịch bác sĩ...
                     </div>
-                  ) : availableSlots && Array.isArray(availableSlots) ? (
+                  ) : availableSlots && Array.isArray(availableSlots) && availableSlots.length > 0 ? (
                     <div className="space-y-3">
                       {/* Hiển thị các khoảng thời gian khả dụng chi tiết - TRƯỚC phần nhập giờ */}
                       <div className="p-3 bg-blue-50 border border-gray-200 rounded-lg">
@@ -2562,11 +2680,30 @@ if (res.success && res.data) {
                         </div>
                       ) : null}
                     </div>
-                  ) : (
-                    <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">
-                      Vui lòng chọn bác sĩ để xem lịch khả dụng
-                    </div>
-                  )}
+                 ) : (
+  <div className="p-4 bg-yellow-50 border border-yellow-400 rounded-lg">
+    <div className="flex items-start gap-3">
+      <svg className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+      </svg>
+      <div>
+        {slotsMessage?.includes('nghỉ phép') ? (
+          <>
+            <p className="font-semibold text-yellow-800">🗓️ Bạn đang xin nghỉ phép</p>
+            <p className="text-sm text-yellow-700 mt-2">{slotsMessage}</p>
+          </>
+        ) : (
+          <>
+            <p className="font-semibold text-yellow-800">⚠️ Không có lịch khả dụng</p>
+            <p className="text-sm text-yellow-700 mt-2">
+              {slotsMessage || "Vui lòng chọn ngày tái khám khác."}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+)}
                 </div>
               )}
               

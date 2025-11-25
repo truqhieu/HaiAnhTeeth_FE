@@ -401,6 +401,68 @@ export const getDoctorScheduleRange = async (
 };
 
 /**
+ * API lấy khoảng thời gian khả dụng dành riêng cho luồng bác sĩ tạo lịch tái khám
+ * Backend endpoint: GET /api/available-slots/doctor-schedule/follow-up
+ */
+export const getDoctorScheduleRangeForFollowUp = async (
+  doctorUserId: string,
+  serviceId: string,
+  date: string,
+  appointmentFor: 'self' | 'other' = 'self',
+  patientUserId?: string | null,
+): Promise<GetAvailableStartTimesResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append("doctorUserId", doctorUserId);
+    queryParams.append("serviceId", serviceId);
+    queryParams.append("date", date);
+    queryParams.append("appointmentFor", appointmentFor);
+    if (patientUserId) {
+      queryParams.append("patientUserId", patientUserId);
+    }
+
+    const query = queryParams.toString();
+    const endpoint = `/available-slots/doctor-schedule/follow-up?${query}`;
+
+    const { store } = await import("../store/index");
+    const state = store.getState();
+    const token = state.auth.token;
+
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
+      {
+        method: "GET",
+        headers,
+        credentials: "include",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data: GetAvailableStartTimesResponse = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error("❌ Error fetching doctor schedule range (follow-up):", error);
+    return {
+      success: false,
+      data: null,
+      message: error.message || "Không thể tải lịch bác sĩ.",
+    };
+  }
+};
+
+/**
  * API validate appointment time
  * Backend endpoint: GET /api/available-slots/validate-appointment-time
  */
