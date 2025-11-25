@@ -29,6 +29,7 @@ export interface CreateUserData {
 
 export interface UpdateUserData {
   fullName?: string;
+  email?: string;
   phoneNumber?: string;
   address?: string;
   dob?: string;
