@@ -101,6 +101,8 @@ const formatVNDateFromISO = (iso: string) => {
 const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  // ⭐ Ref để track xem user có đang click nút submit không
+  const isSubmittingRef = useRef(false);
   const prevUserIdRef = useRef<string | undefined>(user?.id || user?._id);
   const isFirstMountRef = useRef(true);
 
@@ -658,6 +660,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
   // === Handle time input blur ===
   const handleTimeInputBlur = async (timeInput: string) => {
+    // ⭐ Nếu đang submit thì bỏ qua logic blur để tránh race condition
+    if (isSubmittingRef.current) return;
+
     if (!isOpen) {
       return;
     }
@@ -1566,7 +1571,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Input thời gian và hiển thị kết quả nằm ngang */}
-                    {doctorScheduleRange.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ? (
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">
@@ -1892,7 +1896,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                           </div>
                         )}
                     </div>
-                    ) : null}
                   </div>
               ) : (
                 <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">
@@ -1915,7 +1918,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 onChange={handleInputChange}
               />
             </div>
-
             <div className="flex justify-end gap-3 pt-4 border-t">
               <button
                 className="px-6 py-2 border rounded-lg hover:bg-gray-50"
@@ -1928,6 +1930,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 className="px-6 py-2 bg-[#39BDCC] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#32a8b5]"
                 disabled={submitting}
                 type="submit"
+                onMouseDown={() => {
+                  // ⭐ Set flag ngay khi user nhấn chuột xuống nút submit
+                  isSubmittingRef.current = true;
+                }}
+                onMouseLeave={() => {
+                  // ⭐ Reset flag nếu user nhấn chuột nhưng kéo ra ngoài
+                  isSubmittingRef.current = false;
+                }}
               >
                 {submitting ? "Đang xử lý..." : "Xác nhận đặt lịch"}
               </button>
