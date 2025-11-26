@@ -135,20 +135,6 @@ const DoctorMedicalRecord: React.FC = () => {
     return local.toISOString().slice(0, 16);
   };
 
-  const formatDateTimeDisplay = (value?: string | null) => {
-    if (!value) return "";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleString("vi-VN", {
-      hour: "2-digit",
-      minute: "2-digit",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "Asia/Ho_Chi_Minh",
-    });
-  };
-
   const formatVNTimeFromISO = (iso: string) => {
     if (!iso) return "";
     const dateObj = new Date(iso);
@@ -443,18 +429,18 @@ const DoctorMedicalRecord: React.FC = () => {
   };
 
   // Helper function để check xem ngày có phải là ngày hiện tại không
-const isToday = (date: Date | null): boolean => {
-  if (!date) return false;
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
-  
-  // ⭐ FIX: Sử dụng local date (vì DatePicker trả về local timezone)
-  const today = new Date();
-  return (
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate()
-  );
-};
+  const isToday = (date: Date | null): boolean => {
+    if (!date) return false;
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return false;
+
+    // ⭐ FIX: Sử dụng local date (vì DatePicker trả về local timezone)
+    const today = new Date();
+    return (
+      date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth() &&
+      date.getDate() === today.getDate()
+    );
+  };
 
 
   // ⭐ Memoize followUpServiceIds để tránh thay đổi reference không cần thiết
@@ -485,58 +471,56 @@ const isToday = (date: Date | null): boolean => {
       
       // ⭐ GIẢM LOG: Comment lại để giảm spam log
       // console.log('🔍 [FollowUp] Loading slots for date:', dateStr, 'from Date object:', followUpDate);
-      
-const res = await getDoctorScheduleRangeForFollowUp(
-  followUpDoctorUserId,
-  serviceId,
-  dateStr,
-  'self',
-  followUpPatientUserId
-);
+      const res = await getDoctorScheduleRangeForFollowUp(
+        followUpDoctorUserId,
+        serviceId,
+        dateStr,
+        "self",
+        followUpPatientUserId,
+      );
 
-// // ⭐ THÊM DEBUG LOGS NGAY ĐÂY
-console.log('🔍 [loadAvailableSlots] Raw Response:', res);
-console.log('🔍 [loadAvailableSlots] Response success:', res.success);
-console.log('🔍 [loadAvailableSlots] Response message:', res.message);
-console.log('🔍 [loadAvailableSlots] Response data:', res.data);
+      // // ⭐ THÊM DEBUG LOGS NGAY ĐÂY
+      console.log("🔍 [loadAvailableSlots] Raw Response:", res);
+      console.log("🔍 [loadAvailableSlots] Response success:", res.success);
+      console.log("🔍 [loadAvailableSlots] Response message:", res.message);
+      console.log("🔍 [loadAvailableSlots] Response data:", res.data);
 
-if (res.data) {
-  console.log('🔍 [loadAvailableSlots] Data keys:', Object.keys(res.data));
-  console.log('🔍 [loadAvailableSlots] scheduleRanges:', res.data.scheduleRanges);
-  console.log('🔍 [loadAvailableSlots] scheduleRanges length:', res.data.scheduleRanges?.length);
-  
-  if (res.data.scheduleRanges && Array.isArray(res.data.scheduleRanges)) {
-    console.log('🔍 [loadAvailableSlots] First range:', res.data.scheduleRanges[0]);
-    res.data.scheduleRanges.forEach((range, idx) => {
-      console.log(`   Range ${idx}:`, {
-        shiftDisplay: range.shiftDisplay,
-        displayRange: range.displayRange,
-        startTime: range.startTime,
-        endTime: range.endTime
-      });
-    });
-  }
-}
+      if (res.data) {
+        console.log("🔍 [loadAvailableSlots] Data keys:", Object.keys(res.data));
+        console.log("🔍 [loadAvailableSlots] scheduleRanges:", res.data.scheduleRanges);
+        console.log("🔍 [loadAvailableSlots] scheduleRanges length:", res.data.scheduleRanges?.length);
+
+        if (res.data.scheduleRanges && Array.isArray(res.data.scheduleRanges)) {
+          console.log("🔍 [loadAvailableSlots] First range:", res.data.scheduleRanges[0]);
+          res.data.scheduleRanges.forEach((range, idx) => {
+            console.log(`   Range ${idx}:`, {
+              shiftDisplay: range.shiftDisplay,
+              displayRange: range.displayRange,
+              startTime: range.startTime,
+              endTime: range.endTime,
+            });
+          });
+        }
+      }
       
       // ⭐ GIẢM LOG: Comment lại để giảm spam log
       // console.log('🔍 [FollowUp] API response:', res.success, res.data ? 'has data' : 'no data', res.message);
+      if (res.success && res.data) {
+        const data = res.data as any;
 
-if (res.success && res.data) {
-  const data = res.data as any;
-  
-  // ⭐ THÊM: Kiểm tra bác sĩ đang nghỉ phép
-  if ((!data.scheduleRanges || data.scheduleRanges.length === 0) && 
-      data.message && 
-      data.message.includes('nghỉ phép')) {
-    setAvailableSlots([]);
-    setSlotsMessage(data.message);
-    setUserReservedSlots([]);
-    return;
-  }
-  
-  if (data.scheduleRanges && Array.isArray(data.scheduleRanges)) {
-    setAvailableSlots(data.scheduleRanges);
-    setSlotsMessage(data.message || null);
+        // ⭐ THÊM: Kiểm tra bác sĩ đang nghỉ phép
+        if ((!data.scheduleRanges || data.scheduleRanges.length === 0) &&
+            data.message &&
+            data.message.includes("nghỉ phép")) {
+          setAvailableSlots([]);
+          setSlotsMessage(data.message);
+          setUserReservedSlots([]);
+          return;
+        }
+
+        if (data.scheduleRanges && Array.isArray(data.scheduleRanges)) {
+          setAvailableSlots(data.scheduleRanges);
+          setSlotsMessage(data.message || null);
           // ⭐ Lưu userReservedSlots từ BE để hiển thị trong available slots
           if (data.userReservedSlots && Array.isArray(data.userReservedSlots)) {
             setUserReservedSlots(data.userReservedSlots);
@@ -731,6 +715,13 @@ if (res.success && res.data) {
       displayRange: getDisplayRangeWithReservation(range, reservedSlotsToUse)
     }));
   }, [availableSlots, activeReservation, userReservedSlots, getDisplayRangeWithReservation]);
+
+  const slotsForDisplay = useMemo(() => {
+    if (Array.isArray(availableSlotsWithReservation)) {
+      return availableSlotsWithReservation;
+    }
+    return availableSlots;
+  }, [availableSlotsWithReservation, availableSlots]);
 
   // ⭐ Helper giống BookingModal: kiểm tra input có nằm trong khoảng khả dụng không
   const isTimeInAvailableRanges = useCallback(
@@ -1389,11 +1380,16 @@ if (res.success && res.data) {
     }
     
     // ⭐ THÊM: Validate nếu bác sĩ đang nghỉ phép
-if (followUpEnabled && followUpDate && availableSlots.length === 0 && 
-    slotsMessage && slotsMessage.includes('nghỉ phép')) {
-  toast.error("Bạn đang xin nghỉ phép vào ngày tái khám. Vui lòng chọn ngày khác.");
-  return;
-}
+    if (
+      followUpEnabled &&
+      followUpDate &&
+      availableSlots.length === 0 &&
+      slotsMessage &&
+      slotsMessage.includes("nghỉ phép")
+    ) {
+      toast.error("Bạn đang xin nghỉ phép vào ngày tái khám. Vui lòng chọn ngày khác.");
+      return;
+    }
     let followUpDateISO: string | null = null;
     if (followUpEnabled) {
       if (!followUpServiceIds || followUpServiceIds.length === 0) {
@@ -2376,7 +2372,7 @@ if (res.success && res.data) {
                     <div className="text-gray-500 py-3 text-center">
                       Đang tải lịch bác sĩ...
                     </div>
-                  ) : availableSlots && Array.isArray(availableSlots) && availableSlots.length > 0 ? (
+                  ) : slotsForDisplay && Array.isArray(slotsForDisplay) && slotsForDisplay.length > 0 ? (
                     <div className="space-y-3">
                       {/* Hiển thị các khoảng thời gian khả dụng chi tiết - TRƯỚC phần nhập giờ */}
                       <div className="p-3 bg-blue-50 border border-gray-200 rounded-lg">
@@ -2384,7 +2380,7 @@ if (res.success && res.data) {
                           Khoảng thời gian khả dụng:
                         </p>
                         <div className="space-y-2">
-                          {availableSlots.map((range: any, index: number) => (
+                          {slotsForDisplay.map((range: any, index: number) => (
                             <div key={index}>
                               <p className="text-sm font-semibold text-[#39BDCC] mb-1">
                                 {range.shiftDisplay}:
@@ -2409,7 +2405,7 @@ if (res.success && res.data) {
                       </div>
 
                       {/* Input thời gian và hiển thị kết quả nằm ngang - Chỉ hiện khi có slot khả dụng */}
-                      {availableSlots.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ? (
+                      {slotsForDisplay.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ? (
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">

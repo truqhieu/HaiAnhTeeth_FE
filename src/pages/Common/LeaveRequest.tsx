@@ -160,17 +160,17 @@ const LeaveRequestPage = () => {
   };
 
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-
-    // Parse as UTC and format in UTC to avoid timezone shift
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      timeZone: "UTC", // ⭐ Force UTC to prevent date shift
-    });
-  };
+const formatDate = (dateString?: string) => {
+  if (!dateString) return "N/A";
+  
+  const date = new Date(dateString);
+  
+  return date.toLocaleDateString("vi-VN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+};
 
   // Bỏ tính và hiển thị tổng số ngày nghỉ theo yêu cầu
 
