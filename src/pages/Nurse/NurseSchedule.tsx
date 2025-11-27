@@ -61,6 +61,11 @@ const NurseSchedule = () => {
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("upcoming");
+  const [tabCounts, setTabCounts] = useState({
+    today: 0,
+    future: 0,
+    history: 0,
+  });
   // Theo dõi ca đang trong quá trình khám (UI-only toggle)
   
   // Pagination
@@ -218,6 +223,58 @@ const NurseSchedule = () => {
     });
   };
 
+  const refreshTabCounts = useCallback(async () => {
+    try {
+      const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+      const todayDate = new Date(todayStr);
+
+      const tomorrowDate = new Date(todayDate);
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      const tomorrowStr = tomorrowDate.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+
+      const currentDayOfWeek = todayDate.getDay();
+      const daysUntilThisSunday = currentDayOfWeek === 0 ? 0 : 7 - currentDayOfWeek;
+      const thisSunday = new Date(todayDate);
+      thisSunday.setDate(thisSunday.getDate() + daysUntilThisSunday);
+      const nextSunday = new Date(thisSunday);
+      nextSunday.setDate(nextSunday.getDate() + 7);
+      const nextSundayStr = nextSunday.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+
+      const [todayRes, futureRes, historyRes] = await Promise.all([
+        nurseApi.getAppointmentsSchedule(todayStr, todayStr),
+        nurseApi.getAppointmentsSchedule(tomorrowStr, nextSundayStr),
+        nurseApi.getAppointmentsSchedule(null, null),
+      ]);
+
+      const getAppointmentsFromResponse = (res: any) => {
+        if (res && res.success && Array.isArray(res.data)) {
+          return res.data as NurseAppointment[];
+        }
+        return [] as NurseAppointment[];
+      };
+
+      const activeStatuses = new Set(["Approved", "CheckedIn", "InProgress"]);
+      const historyStatuses = new Set(["Completed", "Expired", "No-Show"]);
+
+      const todayAppointments = getAppointmentsFromResponse(todayRes);
+      const futureAppointments = getAppointmentsFromResponse(futureRes);
+      const historyAppointments = getAppointmentsFromResponse(historyRes);
+
+      setTabCounts({
+        today: todayAppointments.filter((apt) => activeStatuses.has(apt.status)).length,
+        future: futureAppointments.filter((apt) => activeStatuses.has(apt.status)).length,
+        history: historyAppointments.filter((apt) => historyStatuses.has(apt.status)).length,
+      });
+    } catch (error) {
+      console.error("Error refreshing tab counts:", error);
+      setTabCounts({
+        today: 0,
+        future: 0,
+        history: 0,
+      });
+    }
+  }, []);
+
   const fetchAppointments = useCallback(async (startDate?: string | null, endDate?: string | null, silent: boolean = false) => {
     try {
       // Chỉ set loading khi là lần fetch đầu tiên (không phải silent)
@@ -235,6 +292,7 @@ const NurseSchedule = () => {
         // ⭐ Đảm bảo data là array
         const appointmentsData = Array.isArray(res.data) ? res.data : [];
         setAppointments(appointmentsData);
+        refreshTabCounts();
         
         // Extract unique dates từ appointments (sử dụng formatDate inline để tránh dependency)
         const uniqueDates = [...new Set(appointmentsData.map(apt => {
@@ -250,18 +308,20 @@ const NurseSchedule = () => {
       } else {
         setError(res?.message || "Lỗi lấy danh sách lịch khám");
         setAppointments([]); // ⭐ Đảm bảo appointments luôn là array
+        refreshTabCounts();
       }
     } catch (err: any) {
       console.error("Error fetching appointments:", err);
       setError(err.message || "Lỗi khi tải lịch khám");
       setAppointments([]); // ⭐ Đảm bảo appointments luôn là array khi có lỗi
+      refreshTabCounts();
     } finally {
       if (!silent) {
         setInitialLoading(false);
         setLoading(false);
       }
     }
-  }, []);
+  }, [refreshTabCounts]);
 
   useEffect(() => {
     // ⭐ FIX: Chỉ fetch khi đã xác nhận authentication status (không còn loading)
@@ -269,10 +329,11 @@ const NurseSchedule = () => {
       fetchAllDoctors(); // Lấy tất cả bác sĩ trước
       fetchApprovedLeaves(); // ⭐ Lấy approved leaves
       fetchAppointments(); // Fetch mặc định (2 tuần)
+      refreshTabCounts();
     }
     // ⭐ Loại bỏ các function khỏi dependencies để tránh re-run không cần thiết
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, refreshTabCounts]);
 
   // Debounce search text để tránh filter quá nhiều lần
   useEffect(() => {
@@ -286,20 +347,24 @@ const NurseSchedule = () => {
   // ⭐ FIX: Fetch appointments khi switch tab hoặc dateRange thay đổi
   useEffect(() => {
     if (!isAuthenticated) return;
-    
-    // ⭐ FIX: Khi switch tab, cần fetch lại appointments với date range phù hợp
+
+    // Nếu người dùng đang chọn khoảng thời gian, ưu tiên sử dụng filters này
+    if (dateRange.startDate && dateRange.endDate) {
+      fetchAppointments(dateRange.startDate, dateRange.endDate);
+      return;
+    }
+
+    // Không có date range tùy chỉnh -> sử dụng các tab mặc định
     if (activeTab === "upcoming") {
-      // Tab "Các ca khám hôm nay": Fetch appointments của ngày hôm nay
       const today = getTodayInVietnam();
       fetchAppointments(today, today);
     } else if (activeTab === "future") {
-      // Tab "Các ca khám sắp tới": Fetch từ ngày mai đến chủ nhật tuần sau
       const today = getTodayInVietnam();
       const todayDate = new Date(today);
       const tomorrowDate = new Date(todayDate);
       tomorrowDate.setDate(tomorrowDate.getDate() + 1);
       const tomorrowStr = tomorrowDate.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
-      
+
       const currentDayOfWeek = todayDate.getDay();
       const daysUntilThisSunday = currentDayOfWeek === 0 ? 0 : 7 - currentDayOfWeek;
       const thisSunday = new Date(todayDate);
@@ -307,21 +372,15 @@ const NurseSchedule = () => {
       const nextSunday = new Date(thisSunday);
       nextSunday.setDate(nextSunday.getDate() + 7);
       const nextSundayStr = nextSunday.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
-      
+
       fetchAppointments(tomorrowStr, nextSundayStr);
     } else if (activeTab === "history") {
-      // Tab "Lịch sử": Fetch tất cả (không filter date)
       fetchAppointments(null, null);
-    } else if (dateRange.startDate && dateRange.endDate) {
-      // Nếu có dateRange, fetch theo dateRange
-      fetchAppointments(dateRange.startDate, dateRange.endDate);
-    } else if (!dateRange.startDate && !dateRange.endDate) {
-      // Khi clear date range, fetch lại mặc định (2 tuần)
+    } else {
       fetchAppointments();
     }
-    // ⭐ Loại bỏ fetchAppointments và getTodayInVietnam khỏi dependencies để tránh re-run không cần thiết
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, dateRange.startDate, dateRange.endDate, isAuthenticated]); 
+  }, [activeTab, dateRange.startDate, dateRange.endDate, isAuthenticated]);
 
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
@@ -535,42 +594,6 @@ const NurseSchedule = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentAppointments = safeFilteredAppointments.slice(startIndex, endIndex);
 
-  // ⭐ FIX: Stats calculation - phải đặt TRƯỚC các early returns để tuân thủ Rules of Hooks
-  const stats = useMemo(() => {
-    // ⭐ FIX: Đảm bảo appointments luôn là array
-    const safeAppointments = Array.isArray(appointments) ? appointments : [];
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const historyStatuses = ["Completed", "Expired", "No-Show"];
-    return {
-      total: safeAppointments.length,
-      // ⭐ Đếm số ca khám hôm nay (Approved, CheckedIn hoặc InProgress và là của ngày hôm nay)
-      upcoming: safeAppointments.filter(a => {
-        const isToday = isTodayAppointment(a.appointmentDate);
-        const isValidStatus = a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress";
-        return isValidStatus && isToday;
-      }).length,
-      // ⭐ Đếm số ca khám sắp tới (Approved, CheckedIn hoặc InProgress và là từ ngày mai trở đi)
-      future: safeAppointments.filter(a => {
-        const isFuture = isFutureAppointment(a.appointmentDate);
-        const isValidStatus = a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress";
-        return isValidStatus && isFuture;
-      }).length,
-      history: safeAppointments.filter(a => historyStatuses.includes(a.status)).length,
-      today: safeAppointments.filter(a => {
-        if (!a.appointmentDate) return false;
-        try {
-          const aptDate = new Date(a.appointmentDate).toISOString().split('T')[0];
-          return aptDate === today;
-        } catch (e) {
-          return false;
-        }
-      }).length,
-      online: safeAppointments.filter(a => a.mode === "Online").length,
-      offline: safeAppointments.filter(a => a.mode === "Offline").length,
-      completed: safeAppointments.filter(a => a.status === "Completed").length,
-    };
-  }, [appointments, isTodayAppointment, isFutureAppointment]);
-
   const columns = [
     { key: "date", label: "Ngày" },
     { key: "time", label: "Giờ" },
@@ -629,51 +652,12 @@ const NurseSchedule = () => {
         </Card>
       )}
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
-            <p className="text-sm text-blue-600 mt-1">Tổng số</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-green-700">{stats.upcoming}</p>
-            <p className="text-sm text-green-600 mt-1">Sắp tới</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-orange-700">{stats.today}</p>
-            <p className="text-sm text-orange-600 mt-1">Hôm nay</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-purple-700">{stats.online}</p>
-            <p className="text-sm text-purple-600 mt-1">Trực tuyến</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-indigo-700">{stats.offline}</p>
-            <p className="text-sm text-indigo-600 mt-1">Trực tiếp</p>
-          </CardBody>
-        </Card>
-        <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
-          <CardBody className="text-center py-4">
-            <p className="text-2xl font-bold text-teal-700">{stats.completed}</p>
-            <p className="text-sm text-teal-600 mt-1">Hoàn thành</p>
-          </CardBody>
-        </Card>
-      </div>
-
       {/* Filters */}
       <Card>
         <CardBody>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Input
+            label="Tìm kiếm"
               placeholder="Tìm kiếm bệnh nhân, bác sĩ, dịch vụ..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
@@ -704,15 +688,17 @@ const NurseSchedule = () => {
             </Select>
 
             <DateRangePicker
+              label="Khoảng thời gian"
               startDate={dateRange.startDate}
               endDate={dateRange.endDate}
               onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
               placeholder="Chọn khoảng thời gian"
-              className="w-full"
+              className="w-full text-gray-500"
             />
 
             <Select
               label="Hình thức"
+              labelPlacement="inside"
               placeholder="Chọn hình thức"
               selectedKeys={selectedMode !== "all" ? new Set([selectedMode]) : new Set([])}
               onSelectionChange={(keys) => {
@@ -767,7 +753,7 @@ const NurseSchedule = () => {
               title={
                 <div className="flex items-center gap-2">
                   <ClockIcon className="w-5 h-5" />
-                  <span>Các ca khám hôm nay ({stats.upcoming})</span>
+                  <span>Các ca khám hôm nay ({tabCounts.today})</span>
                 </div>
               } 
             />
@@ -776,7 +762,7 @@ const NurseSchedule = () => {
               title={
                 <div className="flex items-center gap-2">
                   <ArrowRightIcon className="w-5 h-5" />
-                  <span>Các ca khám sắp tới ({stats.future})</span>
+                  <span>Các ca khám sắp tới ({tabCounts.future})</span>
                 </div>
               } 
             />
@@ -785,7 +771,7 @@ const NurseSchedule = () => {
               title={
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5" />
-                  <span>Lịch sử khám ({stats.history})</span>
+                  <span>Lịch sử khám ({tabCounts.history})</span>
                 </div>
               } 
             />

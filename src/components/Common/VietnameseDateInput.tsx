@@ -324,6 +324,7 @@ interface CalendarInputProps {
   onManualKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
   onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
+  size?: "sm" | "md" | "lg";
 }
 
 const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
@@ -347,22 +348,23 @@ const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
       onManualKeyDown,
       onBlur,
       onKeyDown,
+      size = "md",
     },
     ref,
   ) => {
-    const handleClick = (e: MouseEvent<HTMLInputElement>) => {
-      // Call react-datepicker's onClick to open calendar
-      if (onClick && !isDisabled) {
-        onClick(e as any);
-      }
-    };
-    
-    const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
-      // Open calendar on focus (when input is clicked)
-      if (onClick && !isDisabled) {
-        onClick(e as any);
-      }
-    };
+  const triggerCalendar = () => {
+    if (onClick && !isDisabled) {
+      onClick();
+    }
+  };
+  
+  const handleClick = () => {
+    triggerCalendar();
+  };
+  
+  const handleFocus = () => {
+    triggerCalendar();
+  };
     
     // React-datepicker passes 'value' prop when using customInput  
     // We need to ensure placeholder shows when value is empty
@@ -384,6 +386,7 @@ const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
         onClick={handleClick}
         onFocus={handleFocus}
         variant="bordered"
+        size={size}
         isInvalid={isInvalid}
         errorMessage={errorMessage}
         label={label}
@@ -450,6 +453,7 @@ interface VietnameseDateInputProps {
   labelOutside?: boolean;
   inputClassName?: string;
   outsideLabelClassName?: string;
+  size?: "sm" | "md" | "lg";
 }
 
 const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
@@ -468,6 +472,7 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
   labelOutside = false,
   inputClassName,
   outsideLabelClassName,
+  size = "lg",
 }) => {
   useEffect(() => {
     ensurePortalContainer();
@@ -638,12 +643,11 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
       allowSameDay
       onChangeRaw={(e) => {
         // Handle manual typing - format as user types
-        const inputValue = e.target?.value;
-        
-        // Safety check
-        if (!e.target || inputValue === undefined || inputValue === null) {
+        const inputEl = e?.target instanceof HTMLInputElement ? e.target : null;
+        if (!inputEl) {
           return;
         }
+        const inputValue = inputEl.value ?? "";
         
         // Check if value is already in dd/MM/yyyy format (from calendar selection)
         if (inputValue && typeof inputValue === 'string' && inputValue.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
@@ -673,11 +677,11 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
         
         // Update the input value with formatted version
         if (inputValue !== formatted) {
-          const cursorPos = e.target.selectionStart || 0;
-          e.target.value = formatted;
+          const cursorPos = inputEl.selectionStart ?? 0;
+          inputEl.value = formatted;
           const lengthDiff = formatted.length - (inputValue?.length || 0);
           const newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, formatted.length));
-          e.target.setSelectionRange(newCursorPos, newCursorPos);
+          inputEl.setSelectionRange(newCursorPos, newCursorPos);
         }
         
         // Update internal value for manual typing
@@ -743,6 +747,7 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
           onManualValueChange={handleManualValueChange}
           onManualBlur={handleManualBlur}
           onManualKeyDown={handleManualKeyDown}
+          size={size}
         />
       }
       shouldCloseOnSelect
