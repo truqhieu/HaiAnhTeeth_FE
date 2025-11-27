@@ -43,6 +43,8 @@ const DoctorSchedule = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
+  // ⭐ State riêng để lưu tất cả appointments cho việc tính stats (không bị ảnh hưởng bởi tab/date filter)
+  const [allAppointmentsForStats, setAllAppointmentsForStats] = useState<DoctorAppointment[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true); // Separate initial load from subsequent loads
   const [error, setError] = useState<string | null>(null);
@@ -78,8 +80,10 @@ const DoctorSchedule = () => {
   const prevDateRangeRef = useRef<{startDate: string | null, endDate: string | null}>(dateRange);
   // ⭐ Ref để lưu dateRange mới nhất cho location change effect
   const dateRangeRef = useRef<{startDate: string | null, endDate: string | null}>(dateRange);
+  // ⭐ Flag để đánh dấu đã fetch allAppointmentsForStats chưa
+  const hasFetchedStatsRef = useRef<boolean>(false);
 
-  const fetchAppointments = useCallback(async (startDate?: string | null, endDate?: string | null, silent: boolean = false) => {
+  const fetchAppointments = useCallback(async (startDate?: string | null, endDate?: string | null, silent: boolean = false, updateStats: boolean = false) => {
     try {
       // Chỉ set loading khi là lần fetch đầu tiên (không phải silent)
       if (!silent) {
@@ -94,6 +98,11 @@ const DoctorSchedule = () => {
       
       if (res.success && res.data) {
         setAppointments(res.data);
+        
+        // ⭐ Nếu updateStats = true, cập nhật allAppointmentsForStats để tính stats
+        if (updateStats) {
+          setAllAppointmentsForStats(res.data);
+        }
         
         // Extract unique dates (sử dụng formatDate inline để tránh dependency)
         const uniqueDates = [...new Set(res.data.map(apt => {
@@ -119,11 +128,19 @@ const DoctorSchedule = () => {
     }
   }, []);
 
+  // ⭐ Fetch tất cả appointments để tính stats (chỉ fetch một lần khi mount)
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchAppointments(); // Fetch mặc định (2 tuần)
+    if (isAuthenticated && !hasFetchedStatsRef.current) {
+      // ⭐ Fetch tất cả appointments (không filter date) để tính stats cho tất cả tabs
+      // updateStats = true để cập nhật allAppointmentsForStats, silent = true để không hiển thị loading
+      fetchAppointments(null, null, true, true);
+      hasFetchedStatsRef.current = true;
+      
+      // ⭐ Sau đó fetch appointments cho tab mặc định (upcoming) để hiển thị trong table
+      const today = getTodayInVietnam();
+      fetchAppointments(today, today, false, false);
     }
-    // ⭐ Loại bỏ fetchAppointments khỏi dependencies để tránh re-run không cần thiết
+    // ⭐ Loại bỏ fetchAppointments và getTodayInVietnam khỏi dependencies để tránh re-run không cần thiết
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
@@ -159,12 +176,18 @@ const DoctorSchedule = () => {
     prevDateRangeRef.current = { startDate: currentStartDate, endDate: currentEndDate };
     dateRangeRef.current = { startDate: currentStartDate, endDate: currentEndDate };
     
+    // ⭐ FIX: Ưu tiên dateRange nếu có (trừ tab "history" vì history cần fetch tất cả)
     if (currentTab === "history") {
       // Khi chọn tab "history", fetch tất cả lịch sử (không giới hạn date range)
       // Truyền null để BE lấy tất cả appointments không filter theo date
-      fetchAppointments(null, null);
+      // updateStats = false để không ghi đè allAppointmentsForStats
+      fetchAppointments(null, null, false, false);
+    } else if (currentStartDate && currentEndDate) {
+      // ⭐ Nếu có dateRange, ưu tiên dùng dateRange để fetch (bất kể tab nào)
+      // updateStats = false để không ghi đè allAppointmentsForStats
+      fetchAppointments(currentStartDate, currentEndDate, false, false);
     } else if (currentTab === "future") {
-      // Khi chọn tab "future", fetch từ ngày mai đến chủ nhật tuần sau
+      // Khi chọn tab "future" và không có dateRange, fetch từ ngày mai đến chủ nhật tuần sau
       const today = getTodayInVietnam();
       const todayDate = new Date(today);
       
@@ -182,17 +205,17 @@ const DoctorSchedule = () => {
       nextSunday.setDate(nextSunday.getDate() + 7);
       const nextSundayStr = nextSunday.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
       
-      fetchAppointments(tomorrowStr, nextSundayStr);
+      // updateStats = false để không ghi đè allAppointmentsForStats
+      fetchAppointments(tomorrowStr, nextSundayStr, false, false);
     } else if (currentTab === "upcoming") {
-      // ⭐ FIX: Tab "Các ca khám hôm nay": Fetch appointments của ngày hôm nay
+      // ⭐ Tab "Các ca khám hôm nay": Fetch appointments của ngày hôm nay (khi không có dateRange)
       const today = getTodayInVietnam();
-      fetchAppointments(today, today);
-    } else if (currentStartDate && currentEndDate) {
-      // Chỉ fetch khi cả startDate và endDate đều có giá trị
-      fetchAppointments(currentStartDate, currentEndDate);
-    } else if (!currentStartDate && !currentEndDate) {
-      // Khi clear date range, fetch lại mặc định (2 tuần)
-      fetchAppointments();
+      // updateStats = false để không ghi đè allAppointmentsForStats
+      fetchAppointments(today, today, false, false);
+    } else {
+      // Khi không có dateRange và không phải các tab đặc biệt, fetch mặc định (2 tuần)
+      // updateStats = false để không ghi đè allAppointmentsForStats
+      fetchAppointments(undefined, undefined, false, false);
     }
     // ⭐ Loại bỏ fetchAppointments và getTodayInVietnam khỏi dependencies để tránh re-run không cần thiết
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,6 +225,21 @@ const DoctorSchedule = () => {
   useEffect(() => {
     dateRangeRef.current = dateRange;
   }, [dateRange]);
+
+  // ⭐ Debounce search text để tránh filter quá nhiều lần khi user đang gõ
+  useEffect(() => {
+    // Nếu searchText rỗng, clear ngay lập tức không cần debounce
+    if (!searchText || searchText.trim() === "") {
+      setDebouncedSearchText("");
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+    }, 300); // Debounce 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [searchText]);
 
   // ⭐ Refetch appointments khi quay lại từ trang edit medical record
   useEffect(() => {
@@ -215,7 +253,10 @@ const DoctorSchedule = () => {
       // Refetch appointments để cập nhật medicalRecordStatus (silent để không hiển thị loading)
       // Sử dụng ref để lấy giá trị mới nhất
       const currentDateRange = dateRangeRef.current;
-      fetchAppointments(currentDateRange.startDate || undefined, currentDateRange.endDate || undefined, true);
+      fetchAppointments(currentDateRange.startDate || undefined, currentDateRange.endDate || undefined, true, false);
+      // ⭐ Cũng refetch allAppointmentsForStats để cập nhật stats
+      fetchAppointments(null, null, true, true);
+      hasFetchedStatsRef.current = true; // Đánh dấu đã fetch stats
     }
     
     // Update previous location
@@ -276,6 +317,30 @@ const DoctorSchedule = () => {
     return aptDateStr >= tomorrowStr && aptDateStr <= nextSundayStr;
   }, [getTodayInVietnam]);
 
+  // ⭐ Helper functions - phải định nghĩa trước khi sử dụng trong useMemo
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "Approved":
+        return "Đã xác nhận";
+      case "CheckedIn":
+        return "Đã có mặt";
+      case "InProgress":
+        return "Đang trong ca khám";
+      case "Completed":
+        return "Hoàn thành";
+      case "Finalized":
+        return "Đã kết thúc";
+      case "Cancelled":
+        return "Ca khám đã hủy";
+      case "Expired":
+        return "Đã hết hạn";
+      case "No-Show":
+        return "Không đến";
+      default:
+        return status;
+    }
+  };
+
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
     let filtered = [...appointments];
@@ -303,40 +368,114 @@ const DoctorSchedule = () => {
     }
 
     // Filter by search text (sử dụng debounced search text)
-    if (debouncedSearchText) {
-      const searchLower = debouncedSearchText.toLowerCase();
+    if (debouncedSearchText && debouncedSearchText.trim()) {
+      const searchLower = debouncedSearchText.toLowerCase().trim();
+      
+      // Helper function để normalize text (loại bỏ dấu tiếng Việt)
+      const normalizeText = (text: string): string => {
+        if (!text || typeof text !== 'string') return "";
+        return text
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") // Loại bỏ dấu
+          .replace(/đ/g, "d")
+          .replace(/Đ/g, "D");
+      };
+      
+      const searchNormalized = normalizeText(searchLower);
+      
       filtered = filtered.filter(apt => {
-        // Tìm theo tên bệnh nhân, dịch vụ
-        const matchesBasic = 
-          apt.patientName.toLowerCase().includes(searchLower) ||
-          (apt.serviceName.toLowerCase().includes(searchLower) ||
-          (apt.additionalServiceNames && apt.additionalServiceNames.some(s => s.toLowerCase().includes(searchLower))));
-        
-        // Tìm theo trạng thái (text search)
-        const statusText = getStatusText(apt.status).toLowerCase();
-        const matchesStatus = statusText.includes(searchLower);
+        try {
+          // Tìm theo tên bệnh nhân
+          let matchesPatient = false;
+          if (apt.patientName && typeof apt.patientName === 'string') {
+            const patientNameLower = apt.patientName.toLowerCase();
+            const patientNameNormalized = normalizeText(apt.patientName);
+            matchesPatient = patientNameLower.includes(searchLower) || patientNameNormalized.includes(searchNormalized);
+          }
+          
+          // Tìm theo tên dịch vụ
+          let matchesService = false;
+          if (apt.serviceName && typeof apt.serviceName === 'string') {
+            const serviceNameLower = apt.serviceName.toLowerCase();
+            const serviceNameNormalized = normalizeText(apt.serviceName);
+            matchesService = serviceNameLower.includes(searchLower) || serviceNameNormalized.includes(searchNormalized);
+          }
+          
+          // Tìm theo dịch vụ bổ sung
+          let matchesAdditionalService = false;
+          if (apt.additionalServiceNames && Array.isArray(apt.additionalServiceNames)) {
+            matchesAdditionalService = apt.additionalServiceNames.some(s => {
+              if (!s || typeof s !== 'string') return false;
+              const serviceLower = s.toLowerCase();
+              const serviceNormalized = normalizeText(s);
+              return serviceLower.includes(searchLower) || serviceNormalized.includes(searchNormalized);
+            });
+          }
+          
+          const matchesBasic = matchesPatient || matchesService || matchesAdditionalService;
+          
+          // Tìm theo trạng thái (text search)
+          const statusText = getStatusText(apt.status).toLowerCase();
+          const matchesStatus = statusText.includes(searchLower);
 
-        // Tìm theo ngày/giờ hiển thị tiếng Việt
-        const appointmentDateVi = apt.appointmentDate
-          ? new Date(apt.appointmentDate).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
-          : "";
-        const startTimeVi = apt.startTime
-          ? new Date(apt.startTime).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
-          : "";
-        const matchesDate = appointmentDateVi.includes(searchLower) || startTimeVi.includes(searchLower);
-        
-        // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
-        if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
-          // Khi search "đang trong ca khám", chỉ hiển thị InProgress, không hiển thị CheckedIn
-          return apt.status === 'InProgress';
+          // Tìm theo ngày hiển thị tiếng Việt
+          let appointmentDateVi = "";
+          if (apt.appointmentDate) {
+            try {
+              const date = new Date(apt.appointmentDate);
+              if (!isNaN(date.getTime())) {
+                appointmentDateVi = date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase();
+              }
+            } catch (e) {
+              // Ignore date parsing errors
+            }
+          }
+          
+          // Tìm theo giờ (startTime và endTime có thể là "HH:mm" hoặc ISO string)
+          const startTimeStr = apt.startTime ? apt.startTime.toLowerCase() : "";
+          const endTimeStr = apt.endTime ? apt.endTime.toLowerCase() : "";
+          
+          // Tìm trong cả format hiển thị (nếu có formatDate được dùng)
+          let startTimeVi = "";
+          if (apt.startTime) {
+            try {
+              // Thử parse như ISO string trước
+              const time = new Date(apt.startTime);
+              if (!isNaN(time.getTime())) {
+                startTimeVi = time.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase();
+              } else {
+                // Nếu không phải ISO, dùng trực tiếp string
+                startTimeVi = apt.startTime.toLowerCase();
+              }
+            } catch (e) {
+              // Nếu parse fail, dùng trực tiếp string
+              startTimeVi = apt.startTime.toLowerCase();
+            }
+          }
+          
+          const matchesDate = appointmentDateVi.includes(searchLower) || 
+                             startTimeStr.includes(searchLower) || 
+                             endTimeStr.includes(searchLower) ||
+                             startTimeVi.includes(searchLower);
+          
+          // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
+          if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
+            // Khi search "đang trong ca khám", chỉ hiển thị InProgress, không hiển thị CheckedIn
+            return apt.status === 'InProgress';
+          }
+          if (searchLower.includes('đã có mặt') || searchLower.includes('đã nhận') || searchLower.includes('check-in')) {
+            // Khi search "đã có mặt", chỉ hiển thị CheckedIn
+            return apt.status === 'CheckedIn';
+          }
+          
+          // Nếu không có keyword đặc biệt, tìm theo basic search hoặc status text
+          return matchesBasic || matchesStatus || matchesDate;
+        } catch (error) {
+          // Nếu có lỗi trong quá trình filter, bỏ qua appointment này
+          console.error("Error filtering appointment:", error, apt);
+          return false;
         }
-        if (searchLower.includes('đã có mặt') || searchLower.includes('đã nhận') || searchLower.includes('check-in')) {
-          // Khi search "đã có mặt", chỉ hiển thị CheckedIn
-          return apt.status === 'CheckedIn';
-        }
-        
-        // Nếu không có keyword đặc biệt, tìm theo basic search hoặc status text
-        return matchesBasic || matchesStatus || matchesDate;
       });
     }
 
@@ -419,29 +558,6 @@ const DoctorSchedule = () => {
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return "Đã xác nhận";
-      case "CheckedIn":
-        return "Đã có mặt";
-      case "InProgress":
-        return "Đang trong ca khám";
-      case "Completed":
-        return "Hoàn thành";
-      case "Finalized":
-        return "Đã kết thúc";
-      case "Cancelled":
-        return "Ca khám đã hủy";
-      case "Expired":
-        return "Đã hết hạn";
-      case "No-Show":
-        return "Không đến";
-      default:
-        return status;
-    }
-  };
-
   const getModeText = (mode: string) => {
     switch (mode) {
       case "Online":
@@ -466,34 +582,35 @@ const DoctorSchedule = () => {
   }, []);
 
   // Stats calculation - sử dụng useMemo để tránh tính toán lại
+  // ⭐ Sử dụng allAppointmentsForStats thay vì appointments để stats luôn chính xác
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const historyStatuses = ["Completed", "Expired", "No-Show"];
     return {
-      total: appointments.length,
+      total: allAppointmentsForStats.length,
       // ⭐ Đếm số ca khám hôm nay (Approved, CheckedIn hoặc InProgress và là của ngày hôm nay)
-      upcoming: appointments.filter(a => {
+      upcoming: allAppointmentsForStats.filter(a => {
         const isToday = isTodayAppointment(a.appointmentDate);
         const isValidStatus = a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress";
         return isValidStatus && isToday;
       }).length,
       // ⭐ Đếm số ca khám sắp tới (Approved, CheckedIn hoặc InProgress và là từ ngày mai trở đi)
-      future: appointments.filter(a => {
+      future: allAppointmentsForStats.filter(a => {
         const isFuture = isFutureAppointment(a.appointmentDate);
         const isValidStatus = a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress";
         return isValidStatus && isFuture;
       }).length,
-      history: appointments.filter(a => historyStatuses.includes(a.status)).length,
-      today: appointments.filter(a => {
+      history: allAppointmentsForStats.filter(a => historyStatuses.includes(a.status)).length,
+      today: allAppointmentsForStats.filter(a => {
         if (!a.appointmentDate) return false;
         const aptDate = new Date(a.appointmentDate).toISOString().split('T')[0];
         return aptDate === today;
       }).length,
-      online: appointments.filter(a => a.mode === "Online").length,
-      offline: appointments.filter(a => a.mode === "Offline").length,
-      completed: appointments.filter(a => a.status === "Completed" || a.status === "Finalized").length,
+      online: allAppointmentsForStats.filter(a => a.mode === "Online").length,
+      offline: allAppointmentsForStats.filter(a => a.mode === "Offline").length,
+      completed: allAppointmentsForStats.filter(a => a.status === "Completed" || a.status === "Finalized").length,
     };
-  }, [appointments, isTodayAppointment, isFutureAppointment]);
+  }, [allAppointmentsForStats, isTodayAppointment, isFutureAppointment]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
@@ -551,7 +668,7 @@ const DoctorSchedule = () => {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardBody className="text-center py-4">
             <p className="text-2xl font-bold text-blue-700">{stats.total}</p>
@@ -588,13 +705,15 @@ const DoctorSchedule = () => {
             <p className="text-sm text-teal-600 mt-1">Hoàn thành</p>
           </CardBody>
         </Card>
-      </div>
+      </div> */}
 
       {/* Filters */}
       <Card>
         <CardBody>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input
+            label="Tìm kiếm"
+            labelPlacement="inside"
               placeholder="Tìm kiếm bệnh nhân, dịch vụ..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
@@ -606,11 +725,13 @@ const DoctorSchedule = () => {
             />
 
             <DateRangePicker
+            label="Khoảng thời gian"
+            labelPlacement="inside"
               startDate={dateRange.startDate}
               endDate={dateRange.endDate}
               onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
               placeholder="Chọn khoảng thời gian"
-              className="w-full"
+              className="w-full text-gray-500"
             />
 
             <Select
@@ -626,7 +747,7 @@ const DoctorSchedule = () => {
               startContent={<VideoCameraIcon className="w-5 h-5 text-gray-400" />}
             >
               <SelectItem key="all">Tất cả hình thức</SelectItem>
-              <SelectItem key="Online" startContent={<VideoCameraIcon className="w-4 h-4" />}>
+              <SelectItem key="Online" startContent={<VideoCameraIcon className="w-4 h-4 t" />}>
                 Trực tuyến
               </SelectItem>
               <SelectItem key="Offline" startContent={<BuildingOfficeIcon className="w-4 h-4" />}>
@@ -732,9 +853,7 @@ const DoctorSchedule = () => {
                         <CalendarIcon className="w-5 h-5 text-gray-400" />
                         <span className="font-medium">{formatDate(appointment.appointmentDate)}</span>
                       </div>
-                      <p className="text-xs text-gray-500 ml-7">
-                        {formatDateTime(appointment.appointmentDate)}
-                      </p>
+
                     </div>
                   </TableCell>
                   <TableCell>
