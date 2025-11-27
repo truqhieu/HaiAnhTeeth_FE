@@ -52,6 +52,15 @@ interface ReservationInfo {
 const now = new Date();
 const utcNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
 
+const getFreshUtcRange = () => {
+  const current = new Date();
+  const currentUtc = new Date(current.getTime() - current.getTimezoneOffset() * 60000);
+  return {
+    startUtc: currentUtc,
+    endUtc: new Date(currentUtc.getTime() + 30 * 60000),
+  };
+};
+
 const initialFormData: FormData = {
   appointmentFor: "self",
   fullName: "",
@@ -92,6 +101,8 @@ const formatVNDateFromISO = (iso: string) => {
 const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
+  // ⭐ Ref để track xem user có đang click nút submit không
+  const isSubmittingRef = useRef(false);
   const prevUserIdRef = useRef<string | undefined>(user?.id || user?._id);
   const isFirstMountRef = useRef(true);
 
@@ -378,20 +389,31 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
   // === Handle click vào relative ===
   const handleRelativeClick = (relative: Relative) => {
+    const { startUtc, endUtc } = getFreshUtcRange();
+    releaseReservation({ silent: true });
+    setSelectedDate(null);
+    setAvailableDoctors([]);
+    setDoctorScheduleRange(null);
+    setErrorMessage(null);
+    setTimeInputError(null);
+    setFieldErrors({});
+    setLoadingDoctors(false);
+    setLoadingSchedule(false);
     setFormData((prev) => ({
       ...prev,
+      appointmentFor: "other",
       fullName: relative.fullName,
       email: relative.email,
-      phoneNumber: relative.phoneNumber || prev.phoneNumber,
+      phoneNumber: relative.phoneNumber || "",
+      date: "",
+      serviceId: "",
+      doctorUserId: "",
+      userStartTimeInput: "",
+      startTime: startUtc,
+      endTime: endUtc,
+      doctorScheduleId: null,
+      notes: "",
     }));
-    
-    // Clear errors khi fill data
-    setFieldErrors((prev) => {
-      const newErrors = { ...prev };
-      delete newErrors.fullName;
-      delete newErrors.email;
-      return newErrors;
-    });
   };
 
   // === Fetch available doctors for selected date + service ===
@@ -450,6 +472,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (formData.date) {
       setSelectedDate(new Date(formData.date + "T00:00:00"));
+    } else {
+      setSelectedDate(null);
     }
   }, [formData.date]);
 
@@ -471,6 +495,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           formData.serviceId,
           formData.date,
           formData.appointmentFor,
+          formData.fullName,
+          formData.email
         );
 
         if (scheduleRes.success && scheduleRes.data) {
@@ -510,7 +536,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         }
       }
     },
-    [formData.serviceId, formData.date, formData.appointmentFor, isNonCriticalAvailabilityMessage],
+    [formData.serviceId, formData.date, formData.appointmentFor, formData.fullName, formData.email, isNonCriticalAvailabilityMessage],
   );
 
   // === Fetch doctor schedule when doctor is selected ===
@@ -550,7 +576,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     }
 
     // ⭐ Tạo key từ các giá trị quan trọng để so sánh
-    const currentKey = `${formData.doctorUserId}-${formData.serviceId}-${formData.date}-${formData.appointmentFor}`;
+    const currentKey = `${formData.doctorUserId}-${formData.serviceId}-${formData.date}-${formData.appointmentFor}-${formData.fullName}-${formData.email}`;
     
     // ⭐ Chỉ gọi API khi key thay đổi (các giá trị thực sự thay đổi)
     // Tránh gọi API mỗi lần component re-render
@@ -634,6 +660,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
 
   // === Handle time input blur ===
   const handleTimeInputBlur = async (timeInput: string) => {
+    // ⭐ Nếu đang submit thì bỏ qua logic blur để tránh race condition
+    if (isSubmittingRef.current) return;
+
     if (!isOpen) {
       return;
     }
@@ -968,9 +997,38 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         break;
       case "date":
         {
-          const d = new Date(String(v || "") + "T00:00:00");
-          if (!v || isNaN(d.getTime())) next.date = "Ngày không hợp lệ.";
-          else delete next.date;
+          if (!v || !String(v).trim()) {
+            // Không báo lỗi khi date rỗng (chưa chọn) - chỉ validate khi đã có giá trị
+            delete next.date;
+          } else {
+            // Validate format YYYY-MM-DD hoặc parse date
+            const dateStr = String(v).trim();
+            let d: Date;
+            
+            // Nếu là format YYYY-MM-DD (ISO)
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+              d = new Date(dateStr + "T00:00:00");
+            } else {
+              // Thử parse các format khác
+              d = new Date(dateStr);
+            }
+            
+            if (isNaN(d.getTime())) {
+              next.date = "Ngày không hợp lệ.";
+            } else {
+              // Kiểm tra ngày không được trong quá khứ
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const selectedDate = new Date(d);
+              selectedDate.setHours(0, 0, 0, 0);
+              
+              if (selectedDate < today) {
+                next.date = "Ngày không được trong quá khứ.";
+              } else {
+                delete next.date;
+              }
+            }
+          }
         }
         break;
       case "doctorUserId":
@@ -994,8 +1052,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     if (formData.appointmentFor === "other" && !formData.fullName.trim()) {
       errors.fullName = "Vui lòng nhập họ và tên.";
     }
-    if (formData.appointmentFor === "other" && !formData.email.trim()) {
-      errors.email = "Vui lòng nhập email.";
+    if (formData.appointmentFor === "other") {
+      if (!formData.email.trim()) {
+        errors.email = "Vui lòng nhập email.";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        errors.email = "Email không hợp lệ.";
+      }
     }
     if (!formData.phoneNumber.trim()) {
       errors.phoneNumber = "Vui lòng nhập số điện thoại.";
@@ -1368,11 +1430,17 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                     const dd = String(d.getDate()).padStart(2, "0");
                     const isoDate = `${yyyy}-${mm}-${dd}`;
                     setFormData(prev => ({ ...prev, date: isoDate }));
+                    // Validate sau khi set date
+                    setTimeout(() => handleFieldBlur("date"), 0);
                   } else {
                     setFormData(prev => ({ ...prev, date: "" }));
+                    // Clear error khi xóa date
+                    setFieldErrors(prev => {
+                      const next = { ...prev };
+                      delete next.date;
+                      return next;
+                    });
                   }
-                  // inline validate date
-                  handleFieldBlur("date");
                 }}
                 minDate={new Date()}
                 dateFormat="dd/MM/yyyy"
@@ -1503,7 +1571,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Input thời gian và hiển thị kết quả nằm ngang */}
-                    {doctorScheduleRange.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ? (
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs text-gray-600 mb-1">
@@ -1829,7 +1896,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                           </div>
                         )}
                     </div>
-                    ) : null}
                   </div>
               ) : (
                 <div className="text-gray-500 py-3 text-center bg-gray-50 rounded-lg">
@@ -1852,7 +1918,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 onChange={handleInputChange}
               />
             </div>
-
             <div className="flex justify-end gap-3 pt-4 border-t">
               <button
                 className="px-6 py-2 border rounded-lg hover:bg-gray-50"
@@ -1865,6 +1930,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 className="px-6 py-2 bg-[#39BDCC] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#32a8b5]"
                 disabled={submitting}
                 type="submit"
+                onMouseDown={() => {
+                  // ⭐ Set flag ngay khi user nhấn chuột xuống nút submit
+                  isSubmittingRef.current = true;
+                }}
+                onMouseLeave={() => {
+                  // ⭐ Reset flag nếu user nhấn chuột nhưng kéo ra ngoài
+                  isSubmittingRef.current = false;
+                }}
               >
                 {submitting ? "Đang xử lý..." : "Xác nhận đặt lịch"}
               </button>

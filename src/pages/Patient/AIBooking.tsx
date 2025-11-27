@@ -11,6 +11,7 @@ const AIBooking: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   // 🆕 Lưu conversation history để gửi cho OpenAI API
   const [conversationHistory, setConversationHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [conversationContext, setConversationContext] = useState<any>(null);
 
   useEffect(() => {
     setMessages([
@@ -36,7 +37,7 @@ const AIBooking: React.FC = () => {
       setPrompt(""); // Clear input
 
       // 🆕 Gửi API với conversation history
-      const res = await appointmentApi.aiCreate(userMessage, "self", conversationHistory);
+      const res = await appointmentApi.aiCreate(userMessage, "self", conversationHistory, conversationContext);
       
       // 🆕 Handle new Function Calling response format
       // Cả success và needsMoreInfo đều có followUpQuestion (response từ AI)
@@ -69,9 +70,15 @@ const AIBooking: React.FC = () => {
         ]);
       }
       
+      const bookingContext = (res.data as any)?.parsedData?.bookingContext;
+      if (bookingContext) {
+        setConversationContext(bookingContext);
+      }
+      
       // Nếu appointment được tạo thành công, có thể navigate hoặc hiển thị thông báo
       if (res.success && (res.data as any)?.appointment) {
         // Appointment created successfully!
+        setConversationContext(null);
         return;
       }
       
@@ -147,7 +154,7 @@ const AIBooking: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  }, [prompt, navigate, conversationHistory]);
+  }, [prompt, navigate, conversationHistory, conversationContext]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     // Nhấn Enter (không có Shift) để gửi

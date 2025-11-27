@@ -540,9 +540,15 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
     // Check against minDate and maxDate if provided
     if (minDate) {
       const min = toDate(minDate);
-      if (min && parsed < min) {
-        setValidationError("Ngày không được trước ngày tối thiểu cho phép");
-        return;
+      if (min) {
+        // Clone and set to midnight to compare dates only
+        const minDateOnly = new Date(min);
+        minDateOnly.setHours(0, 0, 0, 0);
+        
+        if (parsed < minDateOnly) {
+          setValidationError("Ngày không được trước ngày tối thiểu cho phép");
+          return;
+        }
       }
     }
     if (maxDate) {

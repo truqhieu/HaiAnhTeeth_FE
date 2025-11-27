@@ -348,7 +348,9 @@ export const getDoctorScheduleRange = async (
   doctorUserId: string,
   serviceId: string,
   date: string,
-  appointmentFor: 'self' | 'other' = 'self'
+  appointmentFor: 'self' | 'other' = 'self',
+  customerFullName?: string,
+  customerEmail?: string
 ): Promise<GetAvailableStartTimesResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -356,6 +358,13 @@ export const getDoctorScheduleRange = async (
     queryParams.append("serviceId", serviceId);
     queryParams.append("date", date);
     queryParams.append("appointmentFor", appointmentFor);
+    
+    if (customerFullName) {
+      queryParams.append("customerFullName", encodeURIComponent(customerFullName));
+    }
+    if (customerEmail) {
+      queryParams.append("customerEmail", encodeURIComponent(customerEmail));
+    }
 
     const query = queryParams.toString();
     const endpoint = `/available-slots/doctor-schedule?${query}`;

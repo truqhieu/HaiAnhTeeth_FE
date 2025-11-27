@@ -160,15 +160,17 @@ const LeaveRequestPage = () => {
   };
 
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  };
+const formatDate = (dateString?: string) => {
+  if (!dateString) return "N/A";
+  
+  const date = new Date(dateString);
+  
+  return date.toLocaleDateString("vi-VN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+};
 
   // Bỏ tính và hiển thị tổng số ngày nghỉ theo yêu cầu
 
