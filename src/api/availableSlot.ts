@@ -350,7 +350,8 @@ export const getDoctorScheduleRange = async (
   date: string,
   appointmentFor: 'self' | 'other' = 'self',
   customerFullName?: string,
-  customerEmail?: string
+  customerEmail?: string,
+  patientUserId?: string // ⭐ THÊM: ID của user đang đặt (để backend loại trừ reserved slots của họ)
 ): Promise<GetAvailableStartTimesResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -364,6 +365,10 @@ export const getDoctorScheduleRange = async (
     }
     if (customerEmail) {
       queryParams.append("customerEmail", encodeURIComponent(customerEmail));
+    }
+    // ⭐ THÊM: Gửi patientUserId để backend loại trừ reserved slots của user này
+    if (patientUserId) {
+      queryParams.append("patientUserId", patientUserId);
     }
 
     const query = queryParams.toString();

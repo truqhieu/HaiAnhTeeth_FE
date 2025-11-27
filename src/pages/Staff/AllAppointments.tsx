@@ -330,7 +330,8 @@ const AllAppointments = () => {
 
   // Fetch available slots when doctor/service/date selected
   // Lấy scheduleRanges giống BookingModal (BE đã chuẩn hóa)
-  const fetchWalkInScheduleRanges = async () => {
+  // @param silent - If true, skip showing loading spinner (for background refresh)
+  const fetchWalkInScheduleRanges = async (silent: boolean = false) => {
     const { doctorUserId, serviceId, date } = walkInForm;
     if (!doctorUserId || !serviceId || !date) {
       setWalkInScheduleRanges(null);
@@ -338,8 +339,24 @@ const AllAppointments = () => {
       return;
     }
     try {
-      setWalkInLoadingSchedule(true); // ⭐ Set loading state
-      const res = await getDoctorScheduleRange(doctorUserId, serviceId, date, "other");
+      if (!silent) {
+        setWalkInLoadingSchedule(true); // ⭐ Set loading state only if not silent
+      }
+      
+      // ⭐ FIX: Pass staffUserId để backend loại trừ reserved slots của chính staff
+      // Lấy staffUserId từ auth context
+      const staffUserId = user?.userId;
+      
+      const res = await getDoctorScheduleRange(
+        doctorUserId, 
+        serviceId, 
+        date, 
+        "other",
+        undefined, // customerFullName
+        undefined, // customerEmail
+        staffUserId // ⭐ THÊM: Pass staffUserId để backend loại trừ reserved slots
+      );
+      
       if (res.success && (res as any).data) {
         const data: any = (res as any).data;
         setWalkInScheduleRanges(data.scheduleRanges || []);
@@ -353,7 +370,9 @@ const AllAppointments = () => {
       setWalkInScheduleRanges(null);
       setWalkInDoctorScheduleId(null);
     } finally {
-      setWalkInLoadingSchedule(false); // ⭐ Clear loading state
+      if (!silent) {
+        setWalkInLoadingSchedule(false); // ⭐ Clear loading state only if not silent
+      }
     }
   };
 
@@ -418,6 +437,20 @@ const AllAppointments = () => {
     dateObj.setUTCHours(utcHours, m, 0, 0);
     const startISO = dateObj.toISOString();
 
+    // ⭐ Check if this time is already reserved - if so, skip reservation
+    if (walkInReservation && walkInForm.startTime) {
+      const currentReservedTime = walkInForm.startTime.toISOString();
+      if (currentReservedTime === startISO) {
+        // Same time already reserved, no need to reserve again
+        return;
+      } else {
+        // Different time, release old reservation first
+        await appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
+          .catch(err => console.warn("Failed to release old slot:", err));
+        setWalkInReservation(null);
+      }
+    }
+
     try {
       // Step 1: Validate time
       const validateRes = await validateAppointmentTime(
@@ -472,12 +505,47 @@ const AllAppointments = () => {
       });
 
       toast.success(`Đã giữ chỗ thành công! Còn ${countdownSeconds}s`);
+      
+      // ⭐ Refetch schedule ranges silently to update available time display
+      // Pass true to skip showing loading spinner (silent refresh)
+      fetchWalkInScheduleRanges(true).catch(err => console.warn("Failed to refresh schedule:", err));
 
     } catch (e: any) {
       setWalkInTimeError(e.message || "Lỗi validate thời gian");
       setWalkInForm(prev => ({ ...prev, endTime: null }));
     }
   };
+
+  // ⭐ Countdown timer for walk-in reservation
+  useEffect(() => {
+    if (!walkInReservation || walkInReservation.countdownSeconds <= 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setWalkInReservation(prev => {
+        if (!prev) return null;
+        
+        const newCountdown = prev.countdownSeconds - 1;
+        
+        // Hết hạn → auto release
+        if (newCountdown <= 0) {
+          appointmentApi.releaseSlot({ timeslotId: prev.timeslotId })
+            .then(() => {
+              toast.error('Giữ chỗ đã hết hạn. Vui lòng chọn lại thời gian.');
+              // Refetch schedule ranges để hiển thị lại slot
+              fetchWalkInScheduleRanges().catch(err => console.warn('Failed to refresh:', err));
+            })
+            .catch(err => console.warn('Failed to release expired slot:', err));
+          return null;
+        }
+        
+        return { ...prev, countdownSeconds: newCountdown };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [walkInReservation?.timeslotId]); // Chỉ re-run khi timeslotId thay đổi
 
   // ⭐ REMOVED: tryUpdateWalkInEndTimeLive (không cần nữa vì đã có reservation)
 
@@ -2154,10 +2222,18 @@ const AllAppointments = () => {
                     reservedTimeslotId: walkInReservation?.timeslotId || null
                   };
                   
+                  console.log('📤 Sending walk-in appointment request:', payload);
                   const res = await appointmentApi.createWalkIn(payload);
+                  console.log('📥 Walk-in appointment response:', res);
                   
                   if (res.success) {
                     toast.success("Đặt lịch thành công!");
+                    
+                    // Log pricing info if available
+                    if (res.data?.pricing) {
+                      console.log('💰 Appointment pricing:', res.data.pricing);
+                    }
+                    
                     setIsWalkInOpen(false);
                     refetchAllAppointments();
                     
@@ -2177,10 +2253,16 @@ const AllAppointments = () => {
                     });
                     setWalkInReservation(null);
                   } else {
+                    console.error('❌ Walk-in appointment failed:', res);
                     toast.error(res.message || "Đặt lịch thất bại");
                   }
                 } catch (err: any) {
-                  toast.error(err.message || "Có lỗi xảy ra");
+                  console.error('❌ Walk-in appointment error:', err);
+                  console.error('   - Error message:', err.message);
+                  console.error('   - Error response:', err.response?.data);
+                  
+                  const errorMessage = err.response?.data?.message || err.message || "Có lỗi xảy ra khi đặt lịch";
+                  toast.error(errorMessage);
                 } finally {
                   setWalkInSubmitting(false);
                 }
@@ -2402,106 +2484,153 @@ const AllAppointments = () => {
                           </div>
                         </div>
                         
-                        {/* Time Input */}
-                        <div>
-                          <label className="block text-sm mb-1 font-medium text-gray-700">
-                            Giờ bắt đầu <span className="text-red-500">*</span>
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="Giờ"
-                              className={`w-20 text-center border px-3 py-2 rounded-lg ${
-                                walkInTimeError ? "border-red-500" : "border-gray-300"
-                              }`}
-                              value={(walkInForm.userStartTimeInput || "").split(":")[0] || ""}
-                              onChange={(e) => {
-                                let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
-                                const currentMinute = (walkInForm.userStartTimeInput || "").split(":")[1] || "";
-                                setWalkInForm(prev => ({ ...prev, userStartTimeInput: v + ":" + currentMinute }));
-                                setWalkInTimeError(null);
-                              }}
-                              onBlur={() => {
-                                const [h, m] = (walkInForm.userStartTimeInput || "").split(":");
-                                if (h && m && m.length >= 2) {
-                                  handleWalkInTimeBlur(h + ":" + m);
-                                }
-                              }}
-                            />
-                            <span className="font-semibold">:</span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="Phút"
-                              className={`w-20 text-center border px-3 py-2 rounded-lg ${
-                                walkInTimeError ? "border-red-500" : "border-gray-300"
-                              }`}
-                              value={(walkInForm.userStartTimeInput || "").split(":")[1] || ""}
-                              onChange={(e) => {
-                                let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
-                                const currentHour = (walkInForm.userStartTimeInput || "").split(":")[0] || "";
-                                setWalkInForm(prev => ({ ...prev, userStartTimeInput: currentHour + ":" + v }));
-                                setWalkInTimeError(null);
-                              }}
-                              onBlur={() => {
-                                const [h, m] = (walkInForm.userStartTimeInput || "").split(":");
-                                if (h && m && m.length >= 2) {
-                                  handleWalkInTimeBlur(h + ":" + m);
-                                }
-                              }}
-                            />
+                        {/* Time Input and End Time Display - Grid Layout */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Nhập giờ bắt đầu
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Giờ"
+                                className={`w-16 text-center border px-3 py-2 rounded-lg ${
+                                  walkInTimeError ? "border-red-500" : "border-gray-300"
+                                }`}
+                                value={(walkInForm.userStartTimeInput || "").split(":")[0] || ""}
+                                onChange={(e) => {
+                                  let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+                                  const currentMinute = (walkInForm.userStartTimeInput || "").split(":")[1] || "";
+                                  
+                                  // ⭐ If both hour and minute are empty, clear reservation and refetch schedule
+                                  if ((!v || v === "") && (!currentMinute || currentMinute === "")) {
+                                    if (walkInReservation) {
+                                      appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
+                                        .then(() => {
+                                          // Refetch schedule ranges to update available time display
+                                          fetchWalkInScheduleRanges();
+                                        })
+                                        .catch(err => console.warn("Failed to release slot:", err));
+                                      setWalkInReservation(null);
+                                    }
+                                  }
+                                  
+                                  setWalkInForm(prev => ({ ...prev, userStartTimeInput: v + ":" + currentMinute }));
+                                  setWalkInTimeError(null);
+                                }}
+                                onBlur={() => {
+                                  const [h, m] = (walkInForm.userStartTimeInput || "").split(":");
+                                  if (h && m && m.length >= 2) {
+                                    handleWalkInTimeBlur(h + ":" + m);
+                                  }
+                                }}
+                              />
+                              <span className="font-semibold">:</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Phút"
+                                className={`w-16 text-center border px-3 py-2 rounded-lg ${
+                                  walkInTimeError ? "border-red-500" : "border-gray-300"
+                                }`}
+                                value={(walkInForm.userStartTimeInput || "").split(":")[1] || ""}
+                                onChange={(e) => {
+                                  let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+                                  const currentHour = (walkInForm.userStartTimeInput || "").split(":")[0] || "";
+                                  
+                                  // ⭐ If both hour and minute are empty, clear reservation and refetch schedule
+                                  if ((!currentHour || currentHour === "") && (!v || v === "")) {
+                                    if (walkInReservation) {
+                                      appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
+                                        .then(() => {
+                                          // Refetch schedule ranges to update available time display
+                                          fetchWalkInScheduleRanges();
+                                        })
+                                        .catch(err => console.warn("Failed to release slot:", err));
+                                      setWalkInReservation(null);
+                                    }
+                                  }
+                                  
+                                  setWalkInForm(prev => ({ ...prev, userStartTimeInput: currentHour + ":" + v }));
+                                  setWalkInTimeError(null);
+                                }}
+                                onBlur={() => {
+                                  const [h, m] = (walkInForm.userStartTimeInput || "").split(":");
+                                  if (h && m && m.length >= 2) {
+                                    handleWalkInTimeBlur(h + ":" + m);
+                                  }
+                                }}
+                              />
+                            </div>
+                            {walkInTimeError && (
+                              <p className="mt-1 text-xs text-red-600">{walkInTimeError}</p>
+                            )}
+                            {walkInReservation && walkInReservation.countdownSeconds > 0 && !walkInTimeError && (
+                              <p className="mt-1 text-xs text-[#39BDCC]">
+                                Đã giữ chỗ · Còn lại {walkInReservation.countdownSeconds}s
+                              </p>
+                            )}
                           </div>
-                          {walkInTimeError && (
-                            <p className="mt-1 text-xs text-red-600">{walkInTimeError}</p>
-                          )}
-                          {walkInReservation && walkInReservation.countdownSeconds > 0 && !walkInTimeError && (
-                            <p className="mt-1 text-xs text-[#39BDCC]">
-                              Đã giữ chỗ · Còn lại {walkInReservation.countdownSeconds}s
-                            </p>
-                          )}
-                          
-                          {/* ⭐ NEW: Display predicted end time */}
-                          {walkInForm.userStartTimeInput && walkInForm.serviceId && !walkInTimeError && (
-                            (() => {
-                              const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
-                              if (!selectedService || !selectedService.durationMinutes) return null;
-                              
-                              const [h, m] = walkInForm.userStartTimeInput.split(':');
-                              if (!h || !m || m.length < 2) return null;
-                              
-                              const hours = parseInt(h, 10);
-                              const minutes = parseInt(m, 10);
-                              if (isNaN(hours) || isNaN(minutes)) return null;
-                              
-                              // Calculate end time
-                              const totalMinutes = hours * 60 + minutes + selectedService.durationMinutes;
-                              const endHours = Math.floor(totalMinutes / 60) % 24;
-                              const endMinutes = totalMinutes % 60;
-                              
-                              return (
-                                <p className="mt-2 text-sm text-gray-600">
-                                  <span className="font-medium">Thời gian kết thúc dự kiến:</span>{' '}
-                                  <span className="text-[#39BDCC] font-semibold">
-                                    {String(endHours).padStart(2, '0')}:{String(endMinutes).padStart(2, '0')}
-                                  </span>
-                                  {' '}({selectedService.durationMinutes} phút)
-                                </p>
-                              );
-                            })()
+
+                          {/* ⭐ Display predicted end time - matches patient booking modal exactly */}
+                          {walkInForm.userStartTimeInput &&
+                           walkInForm.serviceId &&
+                           !walkInTimeError &&
+                           /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/.test(walkInForm.userStartTimeInput) &&
+                           (() => {
+                             const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
+                             if (!selectedService || !selectedService.durationMinutes) return false;
+                             
+                             const [h, m] = walkInForm.userStartTimeInput.split(':');
+                             if (!h || !m || m.length < 2) return false;
+                             
+                             const hours = parseInt(h, 10);
+                             const minutes = parseInt(m, 10);
+                             if (isNaN(hours) || isNaN(minutes)) return false;
+                             
+                             return true;
+                           })() && (
+                            <div className="flex flex-col items-end text-right">
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Thời gian kết thúc dự kiến
+                              </label>
+                              <div className="flex items-center gap-2 justify-end">
+                                {(() => {
+                                  const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
+                                  const [h, m] = walkInForm.userStartTimeInput.split(':');
+                                  const hours = parseInt(h, 10);
+                                  const minutes = parseInt(m, 10);
+                                  const totalMinutes = hours * 60 + minutes + selectedService!.durationMinutes;
+                                  const endHours = Math.floor(totalMinutes / 60) % 24;
+                                  const endMinutes = totalMinutes % 60;
+                                  
+                                  return (
+                                    <>
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="Giờ"
+                                        className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
+                                        readOnly
+                                        value={String(endHours).padStart(2, '0')}
+                                      />
+                                      <span className="font-semibold">:</span>
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="Phút"
+                                        className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
+                                        readOnly
+                                        value={String(endMinutes).padStart(2, '0')}
+                                      />
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </div>
                           )}
                         </div>
-                        
-                        {/* End Time Display */}
-                        {walkInForm.endTime && !walkInTimeError && (
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <span>Thời gian kết thúc dự kiến:</span>
-                            <span className="font-semibold text-[#39BDCC]">
-                              {String((walkInForm.endTime.getUTCHours() + 7) % 24).padStart(2, "0")}:
-                              {String(walkInForm.endTime.getUTCMinutes()).padStart(2, "0")}
-                            </span>
-                          </div>
-                        )}
                       </>
                     ) : null}
                   </div>
