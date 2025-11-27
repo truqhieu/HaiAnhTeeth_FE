@@ -33,7 +33,7 @@ export interface GetAvailableDoctorsResponse {
   message?: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:9999/api";
+const API_BASE = import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api";
 
 const fetchJsonWithCacheBypass = async (
   endpoint: string,

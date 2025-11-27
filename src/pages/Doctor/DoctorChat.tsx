@@ -118,7 +118,7 @@ const DoctorChat = () => {
   useEffect(() => {
     if (!user?._id) return;
 
-    const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:9999';
+    const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://haianhteethbe-production.up.railway.app';
     const socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       withCredentials: true,

@@ -1,7 +1,7 @@
 // API Configuration
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
-  "http://localhost:9999/api";
+  "https://haianhteethbe-production.up.railway.app/api";
 
 // API Response Types
 export interface ApiResponse<T = any> {

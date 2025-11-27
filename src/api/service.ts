@@ -60,7 +60,7 @@ export const serviceApi = {
       const endpoint = query ? `/services?${query}` : "/services";
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
+        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
         {
           method: "GET",
           headers: {
@@ -103,7 +103,7 @@ export const serviceApi = {
 
       // Gọi apiCall và cast response về GetServicesResponse
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}${endpoint}`,
+        `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}${endpoint}`,
         {
           method: "GET",
           headers: {

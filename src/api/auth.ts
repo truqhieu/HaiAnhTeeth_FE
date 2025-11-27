@@ -128,7 +128,7 @@ export const authApi = {
       const token = sessionStorage.getItem("authToken");
       if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:9999/api"}/auth/profile`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}/auth/profile`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
