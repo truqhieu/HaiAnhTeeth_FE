@@ -356,7 +356,10 @@ const UserProfileForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Form submitted", { showEmergencyContact, emergencyName, emergencyPhone, emergencyRelationship });
-    if (!fullName.trim()) {
+    
+    // Allow avatar-only updates - if avatar is being updated, don't require other fields
+    // Otherwise, require fullName for other profile updates
+    if (!avatarFile && !fullName.trim()) {
       toast.error("Vui lòng nhập họ tên");
       return;
     }
@@ -365,14 +368,17 @@ const UserProfileForm = ({
       toast.error("Số điện thoại chỉ được nhập số");
       return;
     }
+    // Validate emergency phone only if it's filled (it's optional)
     if (showEmergencyContact && emergencyPhone.trim() && !phoneRegex.test(emergencyPhone.trim())) {
       toast.error("Số điện thoại người liên hệ khẩn cấp chỉ được nhập số");
       return;
     }
+    // Validate phone only if it's filled (it's optional)
     if (phone.trim() && (phone.trim().length < 10 || phone.trim().length > 11)) {
       toast.error("Số điện thoại phải có 10-11 chữ số");
       return;
     }
+    // Validate emergency phone length only if it's filled (it's optional)
     if (
       showEmergencyContact &&
       emergencyPhone.trim() &&
@@ -386,9 +392,17 @@ const UserProfileForm = ({
     setIsLoading(true);
     try {
       const formData = new FormData();
-      formData.append("fullName", fullName.trim());
-      formData.append("phoneNumber", phone.trim());
-      formData.append("address", address.trim());
+      
+      // Only append fields that have values (allow partial updates)
+      if (fullName.trim()) {
+        formData.append("fullName", fullName.trim());
+      }
+      if (phone.trim()) {
+        formData.append("phoneNumber", phone.trim());
+      }
+      if (address.trim()) {
+        formData.append("address", address.trim());
+      }
       if (gender) {
         formData.append("gender", gender);
       }
@@ -397,22 +411,8 @@ const UserProfileForm = ({
       }
 
       if (showEmergencyContact) {
-        // Check if any field is filled
-        const hasAnyField = emergencyName.trim() || emergencyPhone.trim() || emergencyRelationship.trim();
-        // Check if all fields are filled
-        const hasAllFields = emergencyName.trim() && emergencyPhone.trim() && emergencyRelationship.trim();
-        
-        if (hasAnyField && !hasAllFields) {
-          // Partial fill - show error
-          toast.error(
-            "Vui lòng điền đầy đủ thông tin liên hệ khẩn cấp hoặc bỏ trống cả 3 trường.",
-          );
-          setIsLoading(false);
-          return;
-        }
-        
-        // Always send emergency contact (either all filled or all empty to clear/update)
-        // Even if all empty, we send it to clear existing data or ensure it's included
+        // Emergency contact is now completely optional - send whatever fields are filled
+        // If all fields are empty, send empty object to clear existing data
         const emergencyContactData = {
           name: emergencyName.trim() || "",
           phone: emergencyPhone.trim() || "",
@@ -521,10 +521,10 @@ const UserProfileForm = ({
           toast.success(response.message || "Cập nhật thông tin thành công!");
         }
         
-        // Redirect to homepage after successful save
-        setTimeout(() => {
-          navigate("/");
-        }, 1000);
+        // Clear avatar file state after successful save
+        if (avatarFile) {
+          setAvatarFile(null);
+        }
       } else {
         toast.error(response.message || "Có lỗi xảy ra khi cập nhật");
       }
@@ -698,6 +698,7 @@ const UserProfileForm = ({
                   classNames={{
                     input: "bg-gray-100",
                     inputWrapper: "bg-gray-100 border-gray-300",
+                    label: "group-data-[required=true]:after:content-['*'] group-data-[required=true]:after:text-red-500 group-data-[required=true]:after:ml-0.5",
                   }}
                   label="Họ và tên"
                   labelPlacement="outside"

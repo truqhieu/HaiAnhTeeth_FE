@@ -127,6 +127,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
       // Prepare data for API call - only include phone if it's not empty
       const updateData: any = {
         fullName: formData.name,
+        email: formData.email.trim(),
       };
 
       if (formData.phone && formData.phone.trim() !== "") {

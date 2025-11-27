@@ -714,6 +714,52 @@ export const managerApi = {
     });
   },
 
+  // Get service revenue report
+  getServiceRevenueReport: async (
+    startDate?: string,
+    endDate?: string,
+  ): Promise<
+    ApiResponse<{
+      success: boolean;
+      message: string;
+      result: {
+        filterRange: {
+          startDate: string;
+          endDate: string;
+        };
+        summary: {
+          totalServices: number;
+          totalOriginalRevenue: number;
+          totalPaidRevenue: number;
+          totalRevenue: number;
+          totalCount: number;
+        };
+        services: Array<{
+          serviceId: string;
+          serviceName: string;
+          category: string;
+          originalPrice: number;
+          paidPrice: number;
+          count: number;
+          totalOriginalRevenue: number;
+          totalPaidRevenue: number;
+          totalRevenue: number;
+        }>;
+      };
+    }>
+  > => {
+    const queryParams = new URLSearchParams();
+    if (startDate) queryParams.append("startDate", startDate);
+    if (endDate) queryParams.append("endDate", endDate);
+
+    const queryString = queryParams.toString();
+    const endpoint = `/appointments/dashboard/service-revenue-report${queryString ? `?${queryString}` : ""}`;
+
+    return authenticatedApiCall(endpoint, {
+      method: "GET",
+    });
+  },
+
   // Export service revenue report as PDF
   exportServiceRevenuePDF: async (
     startDate?: string,
