@@ -94,6 +94,7 @@ export const AppointmentsList = () => {
       case "Completed":
         return "secondary";
       case "Cancelled":
+      case "No-Show":
         return "danger";
       default:
         return "default";
@@ -108,6 +109,7 @@ export const AppointmentsList = () => {
       CheckedIn: "Đã nhận",
       Completed: "Đã hoàn thành",
       Cancelled: "Đã hủy",
+      "No-Show": "Vắng mặt",
     };
 
     return statusMap[status] || status;

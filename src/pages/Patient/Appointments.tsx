@@ -257,6 +257,8 @@ const Appointments = () => {
         return "Đã hết hạn";
       case "PendingPayment":
         return "Chờ thanh toán";
+      case "No-Show":
+        return "Vắng mặt";
       default:
         return appointment.status;
     }
@@ -480,6 +482,7 @@ const Appointments = () => {
           }
         }
         if (statusFilter === "pendingPayment" && apt.status !== "PendingPayment") return false;
+        if (statusFilter === "noShow" && apt.status !== "No-Show") return false;
       }
 
       // Filter theo date range
@@ -717,6 +720,7 @@ const Appointments = () => {
                 <option value="completed">Đã hoàn thành</option>
                 <option value="cancelled">Đã hủy</option>
                 <option value="pendingPayment">Chờ thanh toán</option>
+                <option value="noShow">Vắng mặt</option>
               </select>
             </div>
 

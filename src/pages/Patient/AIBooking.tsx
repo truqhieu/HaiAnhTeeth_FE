@@ -12,6 +12,11 @@ const AIBooking: React.FC = () => {
   // 🆕 Lưu conversation history để gửi cho OpenAI API
   const [conversationHistory, setConversationHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [conversationContext, setConversationContext] = useState<any>(null);
+  // ⭐ NEW: Reservation countdown
+  const [reservationExpiresAt, setReservationExpiresAt] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number>(0);
+  // ⭐ NEW: Track if this is a new conversation
+  const [isNewConversation, setIsNewConversation] = useState<boolean>(true);
 
   useEffect(() => {
     setMessages([
@@ -21,6 +26,8 @@ const AIBooking: React.FC = () => {
           "Xin chào 👋 Mình là trợ lý AI đặt lịch. Bạn chỉ cần mô tả nhu cầu của mình, mình sẽ giúp bạn đặt lịch khám một cách nhanh chóng và tiện lợi!\n\nVui lòng cung cấp ngày, giờ mong muốn, tên dịch vụ, tên bác sĩ để mình hỗ trợ bạn đặt lịch một cách tốt nhất nhé.",
       },
     ]);
+    // Set isNewConversation to true when component mounts
+    setIsNewConversation(true);
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -36,8 +43,8 @@ const AIBooking: React.FC = () => {
       setMessages((prev) => [...prev, { role: "user", text: userMessage }]);
       setPrompt(""); // Clear input
 
-      // 🆕 Gửi API với conversation history
-      const res = await appointmentApi.aiCreate(userMessage, "self", conversationHistory, conversationContext);
+      // 🆕 Gửi API với conversation history và isNewConversation flag
+      const res = await appointmentApi.aiCreate(userMessage, "self", conversationHistory, conversationContext, isNewConversation);
       
       // 🆕 Handle new Function Calling response format
       // Cả success và needsMoreInfo đều có followUpQuestion (response từ AI)
@@ -70,9 +77,22 @@ const AIBooking: React.FC = () => {
         ]);
       }
       
+      // ⭐ Reset isNewConversation after first message
+      if (isNewConversation) {
+        setIsNewConversation(false);
+      }
+      
       const bookingContext = (res.data as any)?.parsedData?.bookingContext;
       if (bookingContext) {
         setConversationContext(bookingContext);
+      }
+      
+      // ⭐ NEW: Update reservation expiry time
+      const expiresAt = (res.data as any)?.reservationExpiresAt;
+      if (expiresAt) {
+        setReservationExpiresAt(expiresAt);
+      } else {
+        setReservationExpiresAt(null);
       }
       
       // Nếu appointment được tạo thành công, có thể navigate hoặc hiển thị thông báo
@@ -156,6 +176,30 @@ const AIBooking: React.FC = () => {
     }
   }, [prompt, navigate, conversationHistory, conversationContext]);
 
+  // ⭐ NEW: Countdown timer effect
+  useEffect(() => {
+    if (!reservationExpiresAt) {
+      setCountdown(0);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const expiry = new Date(reservationExpiresAt).getTime();
+      const remaining = Math.max(0, Math.floor((expiry - now) / 1000));
+      setCountdown(remaining);
+
+      if (remaining === 0) {
+        setReservationExpiresAt(null);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(interval);
+  }, [reservationExpiresAt]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     // Nhấn Enter (không có Shift) để gửi
     if (e.key === "Enter" && !e.shiftKey) {
@@ -164,12 +208,36 @@ const AIBooking: React.FC = () => {
     }
   }, [handleSubmit]);
 
+  // ⭐ NEW: Handle new conversation button
+  const handleNewConversation = useCallback(() => {
+    setIsNewConversation(true);
+    setConversationHistory([]);
+    setConversationContext(null);
+    setReservationExpiresAt(null);
+    setMessages([
+      {
+        role: "bot",
+        text:
+          "Xin chào 👋 Mình là trợ lý AI đặt lịch. Bạn chỉ cần mô tả nhu cầu của mình, mình sẽ giúp bạn đặt lịch khám một cách nhanh chóng và tiện lợi!\n\nVui lòng cung cấp ngày, giờ mong muốn, tên dịch vụ, tên bác sĩ để mình hỗ trợ bạn đặt lịch một cách tốt nhất nhé.",
+      },
+    ]);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <Card className="bg-white shadow-lg border border-gray-200 h-[70vh] flex flex-col">
-          <CardHeader className="pb-0 pt-6 px-6">
+          <CardHeader className="pb-0 pt-6 px-6 flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-900">Trợ lý AI – Đặt lịch</h1>
+            <Button 
+              size="sm" 
+              color="default" 
+              variant="flat"
+              onPress={handleNewConversation}
+              className="text-sm"
+            >
+              🔄 Cuộc hội thoại mới
+            </Button>
           </CardHeader>
           <CardBody className="px-6 pb-0 flex-1 overflow-y-auto space-y-4">
             {messages.map((m, idx) => (
@@ -186,6 +254,16 @@ const AIBooking: React.FC = () => {
               </div>
             ))}
           </CardBody>
+          {/* ⭐ NEW: Reservation countdown display */}
+          {countdown > 0 && (
+            <div className="px-6 py-2 bg-yellow-50 border-t border-yellow-200">
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <span className="text-yellow-800">⏱️ Đã giữ chỗ cho bạn:</span>
+                <span className="font-bold text-yellow-900">{countdown}s</span>
+                <span className="text-yellow-700">còn lại</span>
+              </div>
+            </div>
+          )}
           <div className="px-6 pb-6 pt-3 border-t border-gray-200">
             <div className="flex items-end gap-3">
               <Textarea
