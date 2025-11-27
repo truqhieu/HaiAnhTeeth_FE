@@ -9,6 +9,8 @@ interface DateRangePickerProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  label?: string;
+  labelPlacement?: 'inside' | 'outside';
 }
 
 const formatDateValue = (date: Date) => {
@@ -24,7 +26,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   onDateChange,
   placeholder = "Chọn khoảng thời gian",
   className = "",
-  disabled = false
+  disabled = false,
+  label,
+  labelPlacement = 'inside'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [tempStartDate, setTempStartDate] = useState<string | null>(startDate);
@@ -238,6 +242,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
       <Input
+        label={label}
+        labelPlacement={label ? labelPlacement : undefined}
         value={getDisplayText()}
         placeholder={placeholder}
         readOnly
