@@ -110,9 +110,18 @@ const LeaveRequestPage = () => {
       setSubmitting(true);
 
       // ✅ Gửi date ở dạng ISO với timezone VN để tránh lệch múi giờ
+      // If start and end are the same day, send them with the same time to avoid timezone issues
+      const isSameDay = startDate === endDate;
+      const startDateTime = isSameDay 
+        ? startDate + 'T12:00:00+07:00'  // Use noon for same-day requests to avoid timezone edge cases
+        : startDate + 'T00:00:00+07:00';
+      const endDateTime = isSameDay
+        ? endDate + 'T12:00:00+07:00'    // Use noon for same-day requests
+        : endDate + 'T23:59:59+07:00';
+      
       const response = await leaveRequestApi.createLeaveRequest({
-        startDate: new Date(startDate + 'T00:00:00+07:00').toISOString(),
-        endDate: new Date(endDate + 'T23:59:59+07:00').toISOString(),
+        startDate: new Date(startDateTime).toISOString(),
+        endDate: new Date(endDateTime).toISOString(),
         reason: reason.trim(),
       });
 
@@ -165,11 +174,127 @@ const formatDate = (dateString?: string) => {
   
   const date = new Date(dateString);
   
+  // Use Vietnam timezone explicitly to ensure consistent display
   return date.toLocaleDateString("vi-VN", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh",
   });
+};
+
+// Normalize date to YYYY-MM-DD format using Vietnam timezone
+// This ensures we compare dates correctly regardless of how they're stored (UTC vs local)
+// Ignores time component and extracts only the date part
+const normalizeDate = (dateString?: string | null): string | null => {
+  if (!dateString) return null;
+  try {
+    // Create Date object from the string (handles ISO strings, UTC, etc.)
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      console.error("Invalid date string:", dateString);
+      return null;
+    }
+    
+    // Use Intl.DateTimeFormat to get date components in Vietnam timezone
+    // This properly handles UTC dates and converts them to Vietnam timezone
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    
+    // Format to get YYYY-MM-DD directly
+    const formatted = formatter.format(date);
+    
+    // Validate the format (should be YYYY-MM-DD)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(formatted)) {
+      return formatted;
+    }
+    
+    // Fallback: manually extract parts if formatting fails
+    const parts = formatter.formatToParts(date);
+    const year = parts.find(p => p.type === "year")?.value;
+    const month = parts.find(p => p.type === "month")?.value;
+    const day = parts.find(p => p.type === "day")?.value;
+    
+    if (year && month && day) {
+      return `${year}-${month}-${day}`;
+    }
+    
+    console.error("Failed to normalize date:", dateString);
+    return null;
+  } catch (error) {
+    console.error("Error normalizing date:", dateString, error);
+    return null;
+  }
+};
+
+// Format date range - shows single date if start and end are the same day
+const formatDateRange = (startDate?: string, endDate?: string): string => {
+  if (!startDate || !endDate) return "N/A";
+  
+  try {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // Extract UTC date parts (YYYY-MM-DD) to compare the calendar day
+    // This works because the backend stores dates that represent the same calendar day
+    // even if they're at different times (00:00 vs 23:59)
+    const startUTCStr = start.toISOString().split('T')[0]; // YYYY-MM-DD in UTC
+    const endUTCStr = end.toISOString().split('T')[0];     // YYYY-MM-DD in UTC
+    
+    // Also get Vietnam timezone date parts for display
+    const startVnDateStr = start.toLocaleDateString("en-CA", { 
+      timeZone: "Asia/Ho_Chi_Minh" 
+    });
+    const endVnDateStr = end.toLocaleDateString("en-CA", { 
+      timeZone: "Asia/Ho_Chi_Minh" 
+    });
+    
+    // Check if same calendar day in UTC (which is how backend stores them)
+    // OR if they're within 24 hours and represent the same intended day
+    const hoursDiff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    const isSameDayUTC = startUTCStr === endUTCStr;
+    const isSameDayVN = startVnDateStr === endVnDateStr;
+    const isWithin24Hours = hoursDiff >= 0 && hoursDiff < 24;
+    
+    // Consider it the same day if:
+    // 1. Same day in UTC (how backend stores it), OR
+    // 2. Same day in Vietnam timezone, OR  
+    // 3. Within 24 hours (single day range)
+    const isSameDay = isSameDayUTC || (isSameDayVN && isWithin24Hours);
+    
+    // Debug logging
+    console.log('📅 Date range comparison:', {
+      rawStart: startDate,
+      rawEnd: endDate,
+      startUTCStr,
+      endUTCStr,
+      startVnDateStr,
+      endVnDateStr,
+      hoursDiff: hoursDiff.toFixed(2),
+      isSameDayUTC,
+      isSameDayVN,
+      isWithin24Hours,
+      isSameDay,
+      formattedStart: formatDate(startDate),
+      formattedEnd: formatDate(endDate)
+    });
+    
+    // If both dates represent the same calendar day, show only one date
+    if (isSameDay) {
+      // Use the start date for display, formatted in Vietnam timezone
+      return formatDate(startDate);
+    }
+    
+    // Otherwise show the range
+    return `${formatDate(startDate)} → ${formatDate(endDate)}`;
+  } catch (error) {
+    console.error("Error formatting date range:", error);
+    return `${formatDate(startDate)} → ${formatDate(endDate)}`;
+  }
 };
 
   // Bỏ tính và hiển thị tổng số ngày nghỉ theo yêu cầu
@@ -331,7 +456,7 @@ const formatDate = (dateString?: string) => {
                     <TableCell>
                       <div className="space-y-1">
                         <span className="text-sm font-semibold text-gray-900">
-                          {formatDate(request.startDate)} → {formatDate(request.endDate)}
+                          {formatDateRange(request.startDate, request.endDate)}
                         </span>
                         {/* Bỏ chip hiển thị số ngày */}
                       </div>
