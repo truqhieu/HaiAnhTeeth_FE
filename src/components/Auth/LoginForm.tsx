@@ -13,15 +13,16 @@ const LoginForm = () => {
   const [password, setPassword] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState("");
+  const [emailTouched, setEmailTouched] = React.useState(false);
 
   const validateEmail = (value: string): boolean =>
     value.match(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i) !== null;
 
   const isInvalidEmail = React.useMemo(() => {
-    if (email === "") return false;
+    if (!emailTouched || email === "") return false;
 
     return !validateEmail(email);
-  }, [email]);
+  }, [email, emailTouched]);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -114,6 +115,7 @@ const LoginForm = () => {
             size="lg"
             value={email}
             onValueChange={setEmail}
+            onBlur={() => setEmailTouched(true)}
           />
 
           <Input
