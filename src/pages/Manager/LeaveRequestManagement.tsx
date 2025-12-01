@@ -244,10 +244,12 @@ const LeaveRequestManagement = () => {
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
 
+    // Use Vietnam timezone explicitly to ensure consistent display
     return new Date(dateString).toLocaleDateString("vi-VN", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
+      timeZone: "Asia/Ho_Chi_Minh",
     });
   };
 
@@ -263,30 +265,57 @@ const LeaveRequestManagement = () => {
     if (!dateString) return null;
     const date = new Date(dateString);
     if (Number.isNaN(date.getTime())) return null;
-    return date.toISOString().split("T")[0];
+    // Use Vietnam timezone to avoid date shifting
+    return date.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // Returns YYYY-MM-DD
   };
 
   const formatDateRange = (start?: string | null, end?: string | null) => {
-    const normalizedStart = normalizeDate(start);
-    const normalizedEnd = normalizeDate(end);
+    if (!start && !end) return "N/A";
+    if (!start) return formatDate(end || undefined);
+    if (!end) return formatDate(start || undefined);
 
-    if (!normalizedStart && !normalizedEnd) return "N/A";
+    try {
+      const startDate = new Date(start);
+      const endDate = new Date(end);
 
-    if (normalizedStart && normalizedEnd && normalizedStart === normalizedEnd) {
-      return formatDate(start || end || undefined);
+      // Extract UTC date parts (YYYY-MM-DD) to compare the calendar day
+      // This works because the backend stores dates that represent the same calendar day
+      // even if they're at different times (00:00 vs 23:59)
+      const startUTCStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD in UTC
+      const endUTCStr = endDate.toISOString().split('T')[0];     // YYYY-MM-DD in UTC
+
+      // Also get Vietnam timezone date parts for comparison
+      const startVnDateStr = startDate.toLocaleDateString("en-CA", { 
+        timeZone: "Asia/Ho_Chi_Minh" 
+      });
+      const endVnDateStr = endDate.toLocaleDateString("en-CA", { 
+        timeZone: "Asia/Ho_Chi_Minh" 
+      });
+
+      // Check if same calendar day in UTC (which is how backend stores them)
+      // OR if they're within 24 hours and represent the same intended day
+      const hoursDiff = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+      const isSameDayUTC = startUTCStr === endUTCStr;
+      const isSameDayVN = startVnDateStr === endVnDateStr;
+      const isWithin24Hours = hoursDiff >= 0 && hoursDiff < 24;
+
+      // Consider it the same day if:
+      // 1. Same day in UTC (how backend stores it), OR
+      // 2. Same day in Vietnam timezone, OR  
+      // 3. Within 24 hours (single day range)
+      const isSameDay = isSameDayUTC || (isSameDayVN && isWithin24Hours);
+
+      // If both dates represent the same calendar day, show only one date
+      if (isSameDay) {
+        return formatDate(start || undefined);
+      }
+
+      // Otherwise show the range
+      return `${formatDate(start || undefined)} - ${formatDate(end || undefined)}`;
+    } catch (error) {
+      console.error("Error formatting date range:", error);
+      return `${formatDate(start || undefined)} - ${formatDate(end || undefined)}`;
     }
-
-    if (normalizedStart && !normalizedEnd) {
-      return formatDate(start || undefined);
-    }
-
-    if (!normalizedStart && normalizedEnd) {
-      return formatDate(end || undefined);
-    }
-
-    return `${formatDate(start || undefined)} - ${formatDate(
-      end || undefined,
-    )}`;
   };
 
   const columns = [
@@ -495,8 +524,7 @@ const LeaveRequestManagement = () => {
                     <div className="col-span-2">
                       <p className="text-gray-500">Thời gian nghỉ</p>
                       <p className="font-medium text-gray-900">
-                        {formatDate(selectedRequest.startDate)} -{" "}
-                        {formatDate(selectedRequest.endDate)}
+                        {formatDateRange(selectedRequest.startDate, selectedRequest.endDate)}
                       </p>
                     </div>
                     <div className="col-span-2">

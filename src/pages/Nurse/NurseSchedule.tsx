@@ -57,7 +57,7 @@ const NurseSchedule = () => {
     startDate: null,
     endDate: null
   });
-  // Removed selectedMode - Nurse không cần filter theo hình thức vì chỉ xem Offline
+  const [selectedMode, setSelectedMode] = useState<string>("all");
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("upcoming");
@@ -337,6 +337,12 @@ const NurseSchedule = () => {
 
   // Debounce search text để tránh filter quá nhiều lần
   useEffect(() => {
+    // Nếu searchText rỗng, clear ngay lập tức
+    if (!searchText || !searchText.trim()) {
+      setDebouncedSearchText("");
+      return;
+    }
+
     const timer = setTimeout(() => {
       setDebouncedSearchText(searchText);
     }, 300); // 300ms delay
@@ -382,6 +388,40 @@ const NurseSchedule = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, dateRange.startDate, dateRange.endDate, isAuthenticated]);
 
+  // Helper function để normalize text (loại bỏ dấu tiếng Việt)
+  const normalizeText = useCallback((text: string): string => {
+    if (!text || typeof text !== 'string') return "";
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Loại bỏ dấu
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D");
+  }, []);
+
+  const getStatusText = useCallback((status: string) => {
+    switch (status) {
+      case "Approved":
+        return "Đã xác nhận";
+      case "CheckedIn":
+        return "Đã có mặt";
+      case "InProgress":
+        return "Đang trong ca khám";
+      case "Completed":
+        return "Hoàn thành";
+      case "Finalized":
+        return "Đã kết thúc";
+      case "Cancelled":
+        return "Ca khám đã hủy";
+      case "Expired":
+        return "Đã hết hạn";
+      case "No-Show":
+        return "Không đến";
+      default:
+        return status;
+    }
+  }, []);
+
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
     // ⭐ FIX: Đảm bảo appointments luôn là array
@@ -389,9 +429,6 @@ const NurseSchedule = () => {
       return [];
     }
     let filtered = [...appointments];
-
-    // ⭐ NURSE: Chỉ hiển thị ca khám Offline (loại bỏ Online)
-    filtered = filtered.filter(apt => apt.mode !== "Online");
 
     // Sửa logic tab:
     // - Các ca khám hôm nay: hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là của ngày hôm nay
@@ -416,45 +453,108 @@ const NurseSchedule = () => {
     }
 
     // Filter by search text (sử dụng debounced search text)
-    if (debouncedSearchText) {
-      const searchLower = debouncedSearchText.toLowerCase();
+    if (debouncedSearchText && debouncedSearchText.trim()) {
+      const searchLower = debouncedSearchText.toLowerCase().trim();
+      const searchNormalized = normalizeText(searchLower);
+      
       filtered = filtered.filter(apt => {
-        // Tìm theo tên bệnh nhân, bác sĩ, dịch vụ
-        const matchesBasic = 
-          apt.patientName.toLowerCase().includes(searchLower) ||
-          apt.serviceName.toLowerCase().includes(searchLower) ||
-          (apt.additionalServiceNames && apt.additionalServiceNames.some(s => s.toLowerCase().includes(searchLower))) ||
-          apt.doctorName.toLowerCase().includes(searchLower);
-        
-        // Tìm theo trạng thái (text search)
-        const statusText = getStatusText(apt.status).toLowerCase();
-        const matchesStatus = statusText.includes(searchLower);
+        try {
+          // Tìm theo tên bệnh nhân
+          let matchesPatient = false;
+          if (apt.patientName && typeof apt.patientName === 'string') {
+            const patientNameLower = apt.patientName.toLowerCase();
+            const patientNameNormalized = normalizeText(apt.patientName);
+            matchesPatient = patientNameLower.includes(searchLower) || patientNameNormalized.includes(searchNormalized);
+          }
+          
+          // Tìm theo tên dịch vụ
+          let matchesService = false;
+          if (apt.serviceName && typeof apt.serviceName === 'string') {
+            const serviceNameLower = apt.serviceName.toLowerCase();
+            const serviceNameNormalized = normalizeText(apt.serviceName);
+            matchesService = serviceNameLower.includes(searchLower) || serviceNameNormalized.includes(searchNormalized);
+          }
+          
+          // Tìm theo dịch vụ bổ sung
+          let matchesAdditionalService = false;
+          if (apt.additionalServiceNames && Array.isArray(apt.additionalServiceNames)) {
+            matchesAdditionalService = apt.additionalServiceNames.some(s => {
+              if (!s || typeof s !== 'string') return false;
+              const serviceLower = s.toLowerCase();
+              const serviceNormalized = normalizeText(s);
+              return serviceLower.includes(searchLower) || serviceNormalized.includes(searchNormalized);
+            });
+          }
+          
+          // Tìm theo tên bác sĩ
+          let matchesDoctor = false;
+          if (apt.doctorName && typeof apt.doctorName === 'string') {
+            const doctorNameLower = apt.doctorName.toLowerCase();
+            const doctorNameNormalized = normalizeText(apt.doctorName);
+            matchesDoctor = doctorNameLower.includes(searchLower) || doctorNameNormalized.includes(searchNormalized);
+          }
+          
+          const matchesBasic = matchesPatient || matchesService || matchesAdditionalService || matchesDoctor;
+          
+          // Tìm theo trạng thái (text search)
+          const statusText = getStatusText(apt.status).toLowerCase();
+          const matchesStatus = statusText.includes(searchLower);
 
-        // Tìm theo ngày/giờ hiển thị tiếng Việt
-        const appointmentDateVi = apt.appointmentDate
-          ? new Date(apt.appointmentDate).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
-          : "";
-        const startTimeVi = apt.startTime
-          ? new Date(apt.startTime).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
-          : "";
-        const matchesDate = appointmentDateVi.includes(searchLower) || startTimeVi.includes(searchLower);
-        
-        // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
-        if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
-          // Khi search "đang trong ca khám", chỉ hiển thị InProgress, không hiển thị CheckedIn
-          return apt.status === 'InProgress';
+          // Tìm theo ngày hiển thị tiếng Việt
+          let appointmentDateVi = "";
+          if (apt.appointmentDate) {
+            try {
+              const date = new Date(apt.appointmentDate);
+              if (!isNaN(date.getTime())) {
+                appointmentDateVi = date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase();
+              }
+            } catch (e) { /* Ignore date parsing errors */ }
+          }
+          
+          // Tìm theo giờ (startTime và endTime có thể là "HH:mm" hoặc ISO string)
+          const startTimeStr = apt.startTime ? apt.startTime.toLowerCase() : "";
+          const endTimeStr = apt.endTime ? apt.endTime.toLowerCase() : "";
+          
+          // Tìm trong cả format hiển thị (nếu có formatDate được dùng)
+          let startTimeVi = "";
+          if (apt.startTime) {
+            try {
+              const time = new Date(apt.startTime);
+              if (!isNaN(time.getTime())) {
+                startTimeVi = time.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase();
+              } else {
+                startTimeVi = apt.startTime.toLowerCase(); // Fallback to raw string if not a valid date
+              }
+            } catch (e) {
+              startTimeVi = apt.startTime.toLowerCase(); // Fallback to raw string if parsing fails
+            }
+          }
+          
+          const matchesDate = appointmentDateVi.includes(searchLower) || 
+                            startTimeStr.includes(searchLower) || 
+                            endTimeStr.includes(searchLower) ||
+                            startTimeVi.includes(searchLower);
+          
+          // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
+          if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
+            return apt.status === 'InProgress';
+          }
+          if (searchLower.includes('đã có mặt') || searchLower.includes('đã nhận') || searchLower.includes('check-in')) {
+            return apt.status === 'CheckedIn';
+          }
+          
+          return matchesBasic || matchesStatus || matchesDate;
+        } catch (error) {
+          console.error("Error filtering appointment:", error, apt);
+          return false;
         }
-        if (searchLower.includes('đã có mặt') || searchLower.includes('đã nhận') || searchLower.includes('check-in')) {
-          // Khi search "đã có mặt", chỉ hiển thị CheckedIn
-          return apt.status === 'CheckedIn';
-        }
-        
-        // Nếu không có keyword đặc biệt, tìm theo basic search hoặc status text
-        return matchesBasic || matchesStatus || matchesDate;
       });
     }
 
-    // Removed mode filter - Nurse chỉ xem Offline appointments
+    // Filter by mode
+    if (selectedMode !== "all") {
+      filtered = filtered.filter(apt => apt.mode === selectedMode);
+    }
 
     // Filter by doctor
     if (selectedDoctor !== "all") {
@@ -494,12 +594,12 @@ const NurseSchedule = () => {
     });
 
     return filtered;
-  }, [appointments, activeTab, debouncedSearchText, selectedDoctor, selectedStatus, isTodayAppointment, isFutureAppointment]);
+  }, [appointments, activeTab, debouncedSearchText, selectedMode, selectedDoctor, selectedStatus, isTodayAppointment, isFutureAppointment, getStatusText, normalizeText]);
 
   // Reset page khi filtered appointments thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchText, selectedDoctor, selectedStatus, activeTab]);
+  }, [debouncedSearchText, selectedMode, selectedDoctor, selectedStatus, activeTab]);
 
   const handleViewAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
@@ -535,29 +635,6 @@ const NurseSchedule = () => {
         return "danger";
       default:
         return "default";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return "Đã xác nhận";
-      case "CheckedIn":
-        return "Đã có mặt";
-      case "InProgress":
-        return "Đang trong ca khám";
-      case "Completed":
-        return "Hoàn thành";
-      case "Finalized":
-        return "Đã kết thúc";
-      case "Cancelled":
-        return "Ca khám đã hủy";
-      case "Expired":
-        return "Đã hết hạn";
-      case "No-Show":
-        return "Không đến";
-      default:
-        return status;
     }
   };
 
@@ -600,7 +677,7 @@ const NurseSchedule = () => {
     { key: "doctor", label: "Bác sĩ" },
     { key: "patient", label: "Bệnh nhân" },
     { key: "service", label: "Dịch vụ" },
-    // Removed mode column - Nurse chỉ xem Offline
+    { key: "mode", label: "Hình thức" },
     { key: "status", label: "Trạng thái" },
     { key: "actions", label: "Hành động" },
   ];
@@ -655,7 +732,7 @@ const NurseSchedule = () => {
       {/* Filters */}
       <Card>
         <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <Input
             label="Tìm kiếm"
               placeholder="Tìm kiếm bệnh nhân, bác sĩ, dịch vụ..."
@@ -696,7 +773,27 @@ const NurseSchedule = () => {
               className="w-full text-gray-500"
             />
 
-            {/* Removed mode filter - Nurse chỉ xem Offline appointments */}
+            <Select
+              label="Hình thức"
+              labelPlacement="inside"
+              placeholder="Chọn hình thức"
+              selectedKeys={selectedMode !== "all" ? new Set([selectedMode]) : new Set([])}
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0];
+                setSelectedMode(selected ? String(selected) : "all");
+              }}
+              size="lg"
+              variant="bordered"
+              startContent={<VideoCameraIcon className="w-5 h-5 text-gray-400" />}
+            >
+              <SelectItem key="all">Tất cả hình thức</SelectItem>
+              <SelectItem key="Online" startContent={<VideoCameraIcon className="w-4 h-4" />}>
+                Trực tuyến
+              </SelectItem>
+              <SelectItem key="Offline" startContent={<BuildingOfficeIcon className="w-4 h-4" />}>
+                Tại phòng khám
+              </SelectItem>
+            </Select>
 
             <Select
               label="Trạng thái"
@@ -796,9 +893,6 @@ const NurseSchedule = () => {
                         <CalendarIcon className="w-5 h-5 text-gray-400" />
                         <span className="font-medium">{formatDate(appointment.appointmentDate)}</span>
                       </div>
-                      <p className="text-xs text-gray-500 ml-7">
-                        {formatDateTime(appointment.appointmentDate)}
-                      </p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -845,7 +939,20 @@ const NurseSchedule = () => {
                       )}
                     </div>
                   </TableCell>
-                  {/* Removed mode column - Nurse chỉ xem Offline */}
+                  <TableCell>
+                    <Chip 
+                      size="lg" 
+                      variant="flat"
+                      color={appointment.mode === "Online" ? "secondary" : "default"}
+                      startContent={
+                        appointment.mode === "Online" ? 
+                          <VideoCameraIcon className="w-4 h-4" /> : 
+                          <BuildingOfficeIcon className="w-4 h-4" />
+                      }
+                    >
+                      {getModeText(appointment.mode)}
+                    </Chip>
+                  </TableCell>
                   <TableCell>
                     <Chip
                       size="lg"
@@ -1050,4 +1157,3 @@ const NurseSchedule = () => {
 };
 
 export default NurseSchedule;
-
