@@ -57,7 +57,7 @@ const NurseSchedule = () => {
     startDate: null,
     endDate: null
   });
-  const [selectedMode, setSelectedMode] = useState<string>("all");
+  // Removed selectedMode - Nurse không cần filter theo hình thức vì chỉ xem Offline
   const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("upcoming");
@@ -390,6 +390,9 @@ const NurseSchedule = () => {
     }
     let filtered = [...appointments];
 
+    // ⭐ NURSE: Chỉ hiển thị ca khám Offline (loại bỏ Online)
+    filtered = filtered.filter(apt => apt.mode !== "Online");
+
     // Sửa logic tab:
     // - Các ca khám hôm nay: hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là của ngày hôm nay
     // - Các ca khám sắp tới: hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là từ ngày mai trở đi
@@ -451,10 +454,7 @@ const NurseSchedule = () => {
       });
     }
 
-    // Filter by mode
-    if (selectedMode !== "all") {
-      filtered = filtered.filter(apt => apt.mode === selectedMode);
-    }
+    // Removed mode filter - Nurse chỉ xem Offline appointments
 
     // Filter by doctor
     if (selectedDoctor !== "all") {
@@ -494,12 +494,12 @@ const NurseSchedule = () => {
     });
 
     return filtered;
-  }, [appointments, activeTab, debouncedSearchText, selectedMode, selectedDoctor, selectedStatus, isTodayAppointment, isFutureAppointment]);
+  }, [appointments, activeTab, debouncedSearchText, selectedDoctor, selectedStatus, isTodayAppointment, isFutureAppointment]);
 
   // Reset page khi filtered appointments thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchText, selectedMode, selectedDoctor, selectedStatus, activeTab]);
+  }, [debouncedSearchText, selectedDoctor, selectedStatus, activeTab]);
 
   const handleViewAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
@@ -600,7 +600,7 @@ const NurseSchedule = () => {
     { key: "doctor", label: "Bác sĩ" },
     { key: "patient", label: "Bệnh nhân" },
     { key: "service", label: "Dịch vụ" },
-    { key: "mode", label: "Hình thức" },
+    // Removed mode column - Nurse chỉ xem Offline
     { key: "status", label: "Trạng thái" },
     { key: "actions", label: "Hành động" },
   ];
@@ -655,7 +655,7 @@ const NurseSchedule = () => {
       {/* Filters */}
       <Card>
         <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Input
             label="Tìm kiếm"
               placeholder="Tìm kiếm bệnh nhân, bác sĩ, dịch vụ..."
@@ -696,27 +696,7 @@ const NurseSchedule = () => {
               className="w-full text-gray-500"
             />
 
-            <Select
-              label="Hình thức"
-              labelPlacement="inside"
-              placeholder="Chọn hình thức"
-              selectedKeys={selectedMode !== "all" ? new Set([selectedMode]) : new Set([])}
-              onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0];
-                setSelectedMode(selected ? String(selected) : "all");
-              }}
-              size="lg"
-              variant="bordered"
-              startContent={<VideoCameraIcon className="w-5 h-5 text-gray-400" />}
-            >
-              <SelectItem key="all">Tất cả hình thức</SelectItem>
-              <SelectItem key="Online" startContent={<VideoCameraIcon className="w-4 h-4" />}>
-                Trực tuyến
-              </SelectItem>
-              <SelectItem key="Offline" startContent={<BuildingOfficeIcon className="w-4 h-4" />}>
-                Tại phòng khám
-              </SelectItem>
-            </Select>
+            {/* Removed mode filter - Nurse chỉ xem Offline appointments */}
 
             <Select
               label="Trạng thái"
@@ -865,20 +845,7 @@ const NurseSchedule = () => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <Chip 
-                      size="lg" 
-                      variant="flat"
-                      color={appointment.mode === "Online" ? "secondary" : "default"}
-                      startContent={
-                        appointment.mode === "Online" ? 
-                          <VideoCameraIcon className="w-4 h-4" /> : 
-                          <BuildingOfficeIcon className="w-4 h-4" />
-                      }
-                    >
-                      {getModeText(appointment.mode)}
-                    </Chip>
-                  </TableCell>
+                  {/* Removed mode column - Nurse chỉ xem Offline */}
                   <TableCell>
                     <Chip
                       size="lg"

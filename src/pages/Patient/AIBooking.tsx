@@ -114,14 +114,17 @@ const AIBooking: React.FC = () => {
         return; // Wait for user response
       }
 
-      // ⭐ CHỈ throw error khi thực sự có lỗi (không có message hợp lệ)
-      // Nếu có message (res.message hoặc botResponse), không phải lỗi
-      if (!res.success && (!res.message && !botResponse)) {
+      // ⭐ FIX: If success = false but we have a valid bot response (error message from AI)
+      // Display it in chat and DON'T navigate or throw error
+      if (!res.success && botResponse) {
+        // Error message already displayed in chat (line 53-59)
+        return; // Don't navigate, let user continue conversation
+      }
+
+      // ⭐ Only throw error if no valid response at all
+      if (!res.success && !botResponse) {
         throw new Error(res.message || "Không thể tạo lịch tự động");
       }
-      
-      // Nếu có message nhưng success = false, vẫn hiển thị message (không throw error)
-      // Đây có thể là trường hợp needsMoreInfo hoặc response thông tin
 
       // Success - appointment created
       toast.success("Đặt lịch thành công!");

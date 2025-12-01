@@ -29,6 +29,8 @@ import {
   BuildingOfficeIcon,
   DocumentTextIcon,
   ArrowRightIcon,
+  CheckCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { doctorApi, type DoctorAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -859,6 +861,58 @@ const DoctorSchedule = () => {
                         <UserIcon className="w-5 h-5" />
                       </Button>
                     </div>
+                    
+                    {/* ⭐ Online appointments: 2 icon buttons */}
+                    {appointment.mode === "Online" && (appointment.status === "Approved" || appointment.status === "No-Show") && (
+                      <div className="flex gap-2">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="flat"
+                          color="danger"
+                          onPress={async () => {
+                            try {
+                              const { appointmentApi } = await import("@/api");
+                              const res = await appointmentApi.updateAppointmentStatus(appointment.appointmentId, "No-Show");
+                              if (res.success) {
+                                toast.success("Đã cập nhật: Không đến");
+                                fetchAppointments();
+                              } else {
+                                toast.error(res.message || "Cập nhật thất bại");
+                              }
+                            } catch (e: any) {
+                              toast.error(e.message || "Lỗi cập nhật");
+                            }
+                          }}
+                          title="Đánh dấu vắng mặt"
+                        >
+                          <XMarkIcon className="w-5 h-5" />
+                        </Button>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="flat"
+                          color="success"
+                          onPress={async () => {
+                            try {
+                              const { appointmentApi } = await import("@/api");
+                              const res = await appointmentApi.updateAppointmentStatus(appointment.appointmentId, "Completed");
+                              if (res.success) {
+                                toast.success("Đã hoàn thành ca khám");
+                                fetchAppointments();
+                              } else {
+                                toast.error(res.message || "Cập nhật thất bại");
+                              }
+                            } catch (e: any) {
+                              toast.error(e.message || "Lỗi cập nhật");
+                            }
+                          }}
+                          title="Đánh dấu hoàn thành"
+                        >
+                          <CheckCircleIcon className="w-5 h-5" />
+                        </Button>
+                      </div>
+                    )}
                     {/* Ẩn nút hồ sơ khi status là Approved hoặc CheckedIn; chỉ hiển thị khi InProgress hoặc Completed */}
                     {appointment.status !== "Approved" && 
                      appointment.status !== "CheckedIn" && 
@@ -927,4 +981,3 @@ const DoctorSchedule = () => {
 };
 
 export default DoctorSchedule;
-

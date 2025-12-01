@@ -67,6 +67,7 @@ interface Appointment {
   createdAt: string;
   updatedAt?: string; // ⭐ THÊM: Thời gian cập nhật để sắp xếp
   noTreatment?: boolean;
+  mode: string; // ⭐ THÊM: Mode của appointment (Online/Offline)
 }
 
 interface ApiResponse<T> {
@@ -640,6 +641,7 @@ const AllAppointments = () => {
             createdAt: apt.createdAt || "",
             updatedAt: apt.updatedAt || apt.createdAt || "", // ⭐ Thêm updatedAt để sắp xếp
             noTreatment: !!apt.noTreatment,
+            mode: apt.mode || "Offline", // ⭐ Map mode từ API
           };
         });
 
@@ -1982,8 +1984,8 @@ const AllAppointments = () => {
                             )}
                             {appointment.status === "Approved" && (
                               <>
-                                {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám */}
-                                {isAppointmentDateReached(appointment.startTime) ? (
+                                {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám VÀ không phải Online */}
+                                {isAppointmentDateReached(appointment.startTime) && appointment.mode !== "Online" ? (
                                   <Tooltip content="Có mặt">
                                     <Button
                                       isIconOnly
