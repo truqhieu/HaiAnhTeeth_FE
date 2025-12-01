@@ -109,19 +109,11 @@ const LeaveRequestPage = () => {
     try {
       setSubmitting(true);
 
-      // ✅ Gửi date ở dạng ISO với timezone VN để tránh lệch múi giờ
-      // If start and end are the same day, send them with the same time to avoid timezone issues
-      const isSameDay = startDate === endDate;
-      const startDateTime = isSameDay 
-        ? startDate + 'T12:00:00+07:00'  // Use noon for same-day requests to avoid timezone edge cases
-        : startDate + 'T00:00:00+07:00';
-      const endDateTime = isSameDay
-        ? endDate + 'T12:00:00+07:00'    // Use noon for same-day requests
-        : endDate + 'T23:59:59+07:00';
-      
+      // ✅ Backend expects "YYYY-MM-DD" format, not ISO strings
+      // The DateHelper.parseVNDateOnlyStart/End functions expect plain date strings
       const response = await leaveRequestApi.createLeaveRequest({
-        startDate: new Date(startDateTime).toISOString(),
-        endDate: new Date(endDateTime).toISOString(),
+        startDate: startDate, // Already in YYYY-MM-DD format
+        endDate: endDate,     // Already in YYYY-MM-DD format
         reason: reason.trim(),
       });
 
@@ -239,60 +231,33 @@ const formatDateRange = (startDate?: string, endDate?: string): string => {
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    // Extract UTC date parts (YYYY-MM-DD) to compare the calendar day
-    // This works because the backend stores dates that represent the same calendar day
-    // even if they're at different times (00:00 vs 23:59)
+    // ⭐ Backend stores dates as UTC dates representing calendar days:
+    // - startDate: YYYY-MM-DD 00:00:00.000Z (e.g., 2025-12-07T00:00:00.000Z)
+    // - endDate: YYYY-MM-DD 23:59:59.999Z (e.g., 2025-12-11T23:59:59.999Z)
+    // Extract the date part (YYYY-MM-DD) directly from UTC to get the intended calendar day
     const startUTCStr = start.toISOString().split('T')[0]; // YYYY-MM-DD in UTC
     const endUTCStr = end.toISOString().split('T')[0];     // YYYY-MM-DD in UTC
     
-    // Also get Vietnam timezone date parts for display
-    const startVnDateStr = start.toLocaleDateString("en-CA", { 
-      timeZone: "Asia/Ho_Chi_Minh" 
-    });
-    const endVnDateStr = end.toLocaleDateString("en-CA", { 
-      timeZone: "Asia/Ho_Chi_Minh" 
-    });
+    // Check if same calendar day
+    const isSameDay = startUTCStr === endUTCStr;
     
-    // Check if same calendar day in UTC (which is how backend stores them)
-    // OR if they're within 24 hours and represent the same intended day
-    const hoursDiff = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    const isSameDayUTC = startUTCStr === endUTCStr;
-    const isSameDayVN = startVnDateStr === endVnDateStr;
-    const isWithin24Hours = hoursDiff >= 0 && hoursDiff < 24;
-    
-    // Consider it the same day if:
-    // 1. Same day in UTC (how backend stores it), OR
-    // 2. Same day in Vietnam timezone, OR  
-    // 3. Within 24 hours (single day range)
-    const isSameDay = isSameDayUTC || (isSameDayVN && isWithin24Hours);
-    
-    // Debug logging
-    console.log('📅 Date range comparison:', {
-      rawStart: startDate,
-      rawEnd: endDate,
-      startUTCStr,
-      endUTCStr,
-      startVnDateStr,
-      endVnDateStr,
-      hoursDiff: hoursDiff.toFixed(2),
-      isSameDayUTC,
-      isSameDayVN,
-      isWithin24Hours,
-      isSameDay,
-      formattedStart: formatDate(startDate),
-      formattedEnd: formatDate(endDate)
-    });
+    // Format dates for display: extract date part from UTC and format as DD/MM/YYYY
+    const formatDateFromUTC = (dateStr: string): string => {
+      // dateStr is in format YYYY-MM-DD from UTC
+      const [year, month, day] = dateStr.split('-');
+      return `${day}/${month}/${year}`;
+    };
     
     // If both dates represent the same calendar day, show only one date
     if (isSameDay) {
-      // Use the start date for display, formatted in Vietnam timezone
-      return formatDate(startDate);
+      return formatDateFromUTC(startUTCStr);
     }
     
-    // Otherwise show the range
-    return `${formatDate(startDate)} → ${formatDate(endDate)}`;
+    // Otherwise show the range using UTC date parts (not converted to VN timezone)
+    return `${formatDateFromUTC(startUTCStr)} → ${formatDateFromUTC(endUTCStr)}`;
   } catch (error) {
     console.error("Error formatting date range:", error);
+    // Fallback: try to format using the original formatDate function
     return `${formatDate(startDate)} → ${formatDate(endDate)}`;
   }
 };
