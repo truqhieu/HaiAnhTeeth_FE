@@ -168,7 +168,15 @@ export const authApi = {
   changePassword: async (data: {
     currentPassword: string;
     newPassword: string;
+    confirmPassword?: string;
   }): Promise<ApiResponse<{ status: boolean; message: string }>> => {
+    // Map frontend field names to backend expected field names
+    const requestData = {
+      oldPassword: data.currentPassword,
+      newPassword: data.newPassword,
+      reNewPassword: data.confirmPassword || data.newPassword,
+    };
+    
     return authenticatedApiCall<{ status: boolean; message: string }>(
       "/auth/change-password",
       {
@@ -176,7 +184,7 @@ export const authApi = {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestData),
       },
     );
   },

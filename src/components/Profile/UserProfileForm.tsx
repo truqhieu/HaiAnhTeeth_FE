@@ -452,6 +452,7 @@ const UserProfileForm = ({
           const passwordResponse = await authApi.changePassword({
             currentPassword: currentPassword.trim(),
             newPassword: newPassword.trim(),
+            confirmPassword: confirmPassword.trim(),
           });
           if (!passwordResponse.success) {
             toast.error(passwordResponse.message || "Không thể đổi mật khẩu");
