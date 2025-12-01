@@ -188,7 +188,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
       const isToday = currentDate.toDateString() === new Date().toDateString();
       const isSelected = (startDateObj && dateStr === tempStartDate) || (endDateObj && dateStr === tempEndDate);
       const isInRange = startDateObj && endDateObj && dateStr > tempStartDate! && dateStr < tempEndDate!;
-      const isDisabled = currentDate < new Date(new Date().setHours(0, 0, 0, 0));
+      const isDisabled = false; // Allow selecting past dates for filtering
       
       let className = "h-10 w-10 flex items-center justify-center text-xs sm:text-sm rounded-lg cursor-pointer transition-all duration-200 font-medium ";
       
