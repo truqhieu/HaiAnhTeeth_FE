@@ -53,7 +53,7 @@ const Footer: React.FC = () => {
               >
                 <PhoneIcon className="w-5 h-5 mr-3 text-black flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <span className="text-black font-medium text-sm">
-                  033 828 1982
+                  033 828 1982c
                 </span>
               </a>
               <a
@@ -137,33 +137,6 @@ const Footer: React.FC = () => {
                 aria-label="Facebook"
               >
                 <FaFacebook className="w-6 h-6 text-[#1877F2] group-hover:text-white transition-colors" />
-              </a>
-              <a
-                href="https://www.youtube.com/@haianhteeth"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-12 h-12 bg-white border-2 border-white/20 rounded-full flex items-center justify-center hover:border-[#FF0000] hover:bg-[#FF0000] hover:text-white transition-all duration-300 group shadow-sm"
-                aria-label="YouTube"
-              >
-                <FaYoutube className="w-6 h-6 text-[#FF0000] group-hover:text-white transition-colors" />
-              </a>
-              <a
-                href="https://www.instagram.com/haianhteeth"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-12 h-12 bg-white border-2 border-white/20 rounded-full flex items-center justify-center hover:border-[#E4405F] hover:bg-gradient-to-br hover:from-[#833AB4] hover:via-[#E4405F] hover:to-[#F77737] hover:text-white transition-all duration-300 group shadow-sm"
-                aria-label="Instagram"
-              >
-                <FaInstagram className="w-6 h-6 text-[#E4405F] group-hover:text-white transition-colors" />
-              </a>
-              <a
-                href="https://www.tiktok.com/@haianhteeth"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-12 h-12 bg-white border-2 border-white/20 rounded-full flex items-center justify-center hover:border-black hover:bg-black hover:text-white transition-all duration-300 group shadow-sm"
-                aria-label="TikTok"
-              >
-                <FaTiktok className="w-6 h-6 text-black group-hover:text-white transition-colors" />
               </a>
             </div>
           </div>
