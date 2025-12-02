@@ -36,7 +36,7 @@ const AppNavbar = () => {
             href="tel:02473008866"
           >
             <PhoneIcon className="w-5 h-5" />
-            <span>Hỗ trợ tư vấn: 024 7300 8866</span>
+            <span>Hỗ trợ tư vấn: 033 828 1982</span>
           </a>
 
           {/* Right: Auth buttons */}
