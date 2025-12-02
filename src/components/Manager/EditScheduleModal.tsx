@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Input, Button, Form, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
+import { Button, Form, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { managerApi, ManagerDoctor, ManagerClinic } from "@/api";
@@ -169,7 +169,7 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
           handleClose();
         }
       }}
-      size="lg"
+      size="3xl"
       scrollBehavior="outside"
       classNames={{ base: "max-h-[90vh] rounded-2xl" }}
     >
@@ -264,93 +264,220 @@ const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 ))}
               </Select>
 
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                label="Giờ bắt đầu ca sáng"
-                type="time"
-                value={formData.workingHours.morningStart}
-                variant="bordered"
-                onValueChange={(value) => 
-                  setFormData(prev => ({
-                    ...prev,
-                    workingHours: {
-                      ...prev.workingHours,
-                      morningStart: value
-                    }
-                  }))
-                }
-              />
+            </div>
 
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                label="Giờ kết thúc ca sáng"
-                type="time"
-                value={formData.workingHours.morningEnd}
-                variant="bordered"
-                onValueChange={(value) => 
-                  setFormData(prev => ({
-                    ...prev,
-                    workingHours: {
-                      ...prev.workingHours,
-                      morningEnd: value
-                    }
-                  }))
-                }
-              />
+            {/* Row 2: Ca sáng và Ca chiều */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full mb-4">
+              {/* ⭐ Ca sáng */}
+              <div className="pr-4 md:pr-6">
+                <p className="text-sm font-semibold text-gray-700 mb-2">
+                  Ca sáng
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Bắt đầu ca sáng */}
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5 font-medium">
+                      Giờ bắt đầu
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.morningStart.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.workingHours.morningStart.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              morningStart: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.morningStart.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.workingHours.morningStart.split(':')[0] || '08';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              morningStart: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Kết thúc ca sáng */}
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5 font-medium">
+                      Giờ kết thúc
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.morningEnd.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.workingHours.morningEnd.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              morningEnd: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.morningEnd.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.workingHours.morningEnd.split(':')[0] || '12';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              morningEnd: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                label="Giờ bắt đầu ca chiều"
-                type="time"
-                value={formData.workingHours.afternoonStart}
-                variant="bordered"
-                onValueChange={(value) => 
-                  setFormData(prev => ({
-                    ...prev,
-                    workingHours: {
-                      ...prev.workingHours,
-                      afternoonStart: value
-                    }
-                  }))
-                }
-              />
+              {/* ⭐ Ca chiều */}
+              <div className="pl-4 md:pl-6">
+                <p className="text-sm font-semibold text-gray-700 mb-2">
+                  Ca chiều
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Bắt đầu ca chiều */}
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5 font-medium">
+                      Giờ bắt đầu
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.afternoonStart.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.workingHours.afternoonStart.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              afternoonStart: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.afternoonStart.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.workingHours.afternoonStart.split(':')[0] || '14';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              afternoonStart: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Kết thúc ca chiều */}
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5 font-medium">
+                      Giờ kết thúc
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.afternoonEnd.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.workingHours.afternoonEnd.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              afternoonEnd: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className="w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC]"
+                        value={formData.workingHours.afternoonEnd.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.workingHours.afternoonEnd.split(':')[0] || '18';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            workingHours: {
+                              ...prev.workingHours,
+                              afternoonEnd: timeInput
+                            }
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-              <Input
-                fullWidth
-                classNames={{
-                  base: "w-full",
-                  inputWrapper: "w-full"
-                }}
-                autoComplete="off"
-                label="Giờ kết thúc ca chiều"
-                type="time"
-                value={formData.workingHours.afternoonEnd}
-                variant="bordered"
-                onValueChange={(value) => 
-                  setFormData(prev => ({
-                    ...prev,
-                    workingHours: {
-                      ...prev.workingHours,
-                      afternoonEnd: value
-                    }
-                  }))
-                }
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
 
               <Select
                 fullWidth

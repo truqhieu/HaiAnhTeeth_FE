@@ -179,6 +179,7 @@ const AddScheduleModal: React.FC<AddScheduleModalProps> = ({
                 isInvalid={isDateInvalid}
                 errorMessage={isDateInvalid ? "Vui lòng chọn ngày" : ""}
                 onChange={(value) => handleInputChange("date", value)}
+                size="md"
               />
 
               <Select
