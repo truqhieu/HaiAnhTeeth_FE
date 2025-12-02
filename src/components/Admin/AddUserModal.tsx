@@ -53,25 +53,22 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
   const validateEmail = (value: string): boolean =>
     value.match(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i) !== null;
 
-  // Validate name: only letters and spaces (no numbers or special characters)
+  // Validate name: only letters and spaces (no numbers)
   const validateName = (value: string): { isValid: boolean; errorMessage: string } => {
     if (!value) {
       return { isValid: false, errorMessage: "Vui lòng nhập họ và tên" };
     }
-    
-    const trimmedValue = value.trim();
-    
-    // Check for numbers (0-9)
-    if (/[0-9]/.test(trimmedValue)) {
-      return { isValid: false, errorMessage: "Họ và tên không được chứa số hoặc ký tự đặc biệt" };
+    // Remove Vietnamese diacritics before validation so names with dấu are accepted
+    const normalizedValue = value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D");
+
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!nameRegex.test(normalizedValue)) {
+      return { isValid: false, errorMessage: "Họ và tên chỉ được chứa chữ cái, không được có số" };
     }
-    
-    // Check for special characters - block common special characters but allow all letters
-    // Only block: !@#$%^&*()_+={}[]|\\:;"'<>,.?/~`-
-    if (/[!@#$%^&*()_+={}[\]|\\:;"'<>,.?/~`-]/.test(trimmedValue)) {
-      return { isValid: false, errorMessage: "Họ và tên không được chứa số hoặc ký tự đặc biệt" };
-    }
-    
     return { isValid: true, errorMessage: "" };
   };
 

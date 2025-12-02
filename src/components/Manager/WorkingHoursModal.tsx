@@ -184,7 +184,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
             handleClose();
           }
         }}
-        size="2xl"
+        size="lg"
         scrollBehavior="outside"
         classNames={{ base: "max-h-[90vh] rounded-2xl" }}
         lang="vi-VN"
@@ -238,17 +238,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                             morningStart: timeInput
                           }));
                         }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                          const currentMinute = formData.morningStart.split(':')[1] || '00';
-                          // Pad hour to 2 digits only if there's a value
-                          const paddedHour = v ? v.padStart(2, '0') : '';
-                          const timeInput = paddedHour ? paddedHour + ':' + currentMinute : '';
-                          setFormData(prev => ({
-                            ...prev,
-                            morningStart: timeInput || '00:00'
-                          }));
-                        }}
                       />
                       <span className="font-semibold text-gray-600">:</span>
                       <input
@@ -266,17 +255,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                           setFormData(prev => ({
                             ...prev,
                             morningStart: timeInput
-                          }));
-                        }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                          const currentHour = formData.morningStart.split(':')[0] || '08';
-                          // Pad minute to 2 digits only if there's a value
-                          const paddedMinute = v ? v.padStart(2, '0') : '';
-                          const timeInput = currentHour && paddedMinute ? currentHour + ':' + paddedMinute : '';
-                          setFormData(prev => ({
-                            ...prev,
-                            morningStart: timeInput || '00:00'
                           }));
                         }}
                       />
@@ -313,17 +291,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                             morningEnd: timeInput
                           }));
                         }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                          const currentMinute = formData.morningEnd.split(':')[1] || '00';
-                          // Pad hour to 2 digits only if there's a value
-                          const paddedHour = v ? v.padStart(2, '0') : '';
-                          const timeInput = paddedHour ? paddedHour + ':' + currentMinute : '';
-                          setFormData(prev => ({
-                            ...prev,
-                            morningEnd: timeInput || '00:00'
-                          }));
-                        }}
                       />
                       <span className="font-semibold text-gray-600">:</span>
                       <input
@@ -341,17 +308,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                           setFormData(prev => ({
                             ...prev,
                             morningEnd: timeInput
-                          }));
-                        }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                          const currentHour = formData.morningEnd.split(':')[0] || '12';
-                          // Pad minute to 2 digits only if there's a value
-                          const paddedMinute = v ? v.padStart(2, '0') : '';
-                          const timeInput = currentHour && paddedMinute ? currentHour + ':' + paddedMinute : '';
-                          setFormData(prev => ({
-                            ...prev,
-                            morningEnd: timeInput || '00:00'
                           }));
                         }}
                       />
@@ -394,17 +350,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                             afternoonStart: timeInput
                           }));
                         }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                          const currentMinute = formData.afternoonStart.split(':')[1] || '00';
-                          // Pad hour to 2 digits only if there's a value
-                          const paddedHour = v ? v.padStart(2, '0') : '';
-                          const timeInput = paddedHour ? paddedHour + ':' + currentMinute : '';
-                          setFormData(prev => ({
-                            ...prev,
-                            afternoonStart: timeInput || '00:00'
-                          }));
-                        }}
                       />
                       <span className="font-semibold text-gray-600">:</span>
                       <input
@@ -422,17 +367,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                           setFormData(prev => ({
                             ...prev,
                             afternoonStart: timeInput
-                          }));
-                        }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                          const currentHour = formData.afternoonStart.split(':')[0] || '14';
-                          // Pad minute to 2 digits only if there's a value
-                          const paddedMinute = v ? v.padStart(2, '0') : '';
-                          const timeInput = currentHour && paddedMinute ? currentHour + ':' + paddedMinute : '';
-                          setFormData(prev => ({
-                            ...prev,
-                            afternoonStart: timeInput || '00:00'
                           }));
                         }}
                       />
@@ -469,17 +403,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                             afternoonEnd: timeInput
                           }));
                         }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                          const currentMinute = formData.afternoonEnd.split(':')[1] || '00';
-                          // Pad hour to 2 digits only if there's a value
-                          const paddedHour = v ? v.padStart(2, '0') : '';
-                          const timeInput = paddedHour ? paddedHour + ':' + currentMinute : '';
-                          setFormData(prev => ({
-                            ...prev,
-                            afternoonEnd: timeInput || '00:00'
-                          }));
-                        }}
                       />
                       <span className="font-semibold text-gray-600">:</span>
                       <input
@@ -497,17 +420,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                           setFormData(prev => ({
                             ...prev,
                             afternoonEnd: timeInput
-                          }));
-                        }}
-                        onBlur={(e) => {
-                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
-                          const currentHour = formData.afternoonEnd.split(':')[0] || '18';
-                          // Pad minute to 2 digits only if there's a value
-                          const paddedMinute = v ? v.padStart(2, '0') : '';
-                          const timeInput = currentHour && paddedMinute ? currentHour + ':' + paddedMinute : '';
-                          setFormData(prev => ({
-                            ...prev,
-                            afternoonEnd: timeInput || '00:00'
                           }));
                         }}
                       />
