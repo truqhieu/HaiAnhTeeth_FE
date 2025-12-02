@@ -1,7 +1,10 @@
 // API Configuration
-export const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://haianhteethbe-production.up.railway.app/api";
+// ⭐ TEMPORARY: Hardcoded to localhost for debugging AIBooking
+export const API_BASE_URL = "http://localhost:9999/api";
+// export const API_BASE_URL =
+//   import.meta.env.VITE_API_URL ||
+//   "https://haianhteethbe-production.up.railway.app/api";
+
 
 // API Response Types
 export interface ApiResponse<T = any> {
@@ -98,7 +101,6 @@ export const apiCall = async <T = any>(
       console.error("🌐 [CORS Error] This is likely a CORS issue. Check:");
       console.error("   1. Backend CORS config allows this origin");
       console.error("   2. Backend is running and accessible");
-      console.error("   3. Request URL:", url);
       console.error("   4. Origin:", typeof window !== 'undefined' ? window.location.origin : 'N/A');
       
       throw new Error(
