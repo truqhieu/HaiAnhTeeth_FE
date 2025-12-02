@@ -111,11 +111,37 @@ const ScheduleManagement = () => {
     fetchRooms();
   }, []);
 
-  // Filter doctors based on search term
-  const filteredDoctors = doctors.filter((doctor) =>
-    doctor.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter doctors based on search term and date range
+  const filteredDoctors = doctors.filter((doctor) => {
+    // Search filter
+    const matchesSearch = 
+      doctor.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doctor.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Date range filter
+    if (dateRange.startDate || dateRange.endDate) {
+      if (!doctor.workingHoursUpdatedAt) return false;
+      
+      const doctorDate = new Date(doctor.workingHoursUpdatedAt);
+      doctorDate.setHours(0, 0, 0, 0);
+      
+      if (dateRange.startDate) {
+        const startDate = new Date(dateRange.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        if (doctorDate < startDate) return false;
+      }
+      
+      if (dateRange.endDate) {
+        const endDate = new Date(dateRange.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        if (doctorDate > endDate) return false;
+      }
+    }
+    
+    return true;
+  });
 
   // Handle edit doctor working hours
   const handleEditDoctorWorkingHours = (doctorId: string, workingHours: any) => {
@@ -202,8 +228,9 @@ const ScheduleManagement = () => {
           {/* Date Range Picker */}
           <div className="relative flex-1 max-w-md">
             <DateRangePicker
-              value={dateRange}
-              onChange={({ startDate, endDate }) =>
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              onDateChange={(startDate, endDate) =>
                 setDateRange({ startDate, endDate })
               }
               placeholder="Chọn khoảng thời gian"
