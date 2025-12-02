@@ -111,11 +111,37 @@ const ScheduleManagement = () => {
     fetchRooms();
   }, []);
 
-  // Filter doctors based on search term
-  const filteredDoctors = doctors.filter((doctor) =>
-    doctor.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter doctors based on search term and date range
+  const filteredDoctors = doctors.filter((doctor) => {
+    // Search filter
+    const matchesSearch = 
+      doctor.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doctor.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+    
+    // Date range filter
+    if (dateRange.startDate || dateRange.endDate) {
+      if (!doctor.workingHoursUpdatedAt) return false;
+      
+      const doctorDate = new Date(doctor.workingHoursUpdatedAt);
+      doctorDate.setHours(0, 0, 0, 0);
+      
+      if (dateRange.startDate) {
+        const startDate = new Date(dateRange.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        if (doctorDate < startDate) return false;
+      }
+      
+      if (dateRange.endDate) {
+        const endDate = new Date(dateRange.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        if (doctorDate > endDate) return false;
+      }
+    }
+    
+    return true;
+  });
 
   // Handle edit doctor working hours
   const handleEditDoctorWorkingHours = (doctorId: string, workingHours: any) => {
@@ -151,11 +177,11 @@ const ScheduleManagement = () => {
     { key: "doctor", label: "Tên bác sĩ" },
     { key: "morning", label: "Ca sáng" },
     { key: "afternoon", label: "Ca chiều" },
-    { key: "updatedAt", label: "Thời gian cập nhật" },
+    { key: "updatedAt", label: "Thời gian bắt đầu làm việc" },
     { key: "actions", label: "Hành động" },
   ];
 
-  // Format date for display
+  // Format date for display (date only, no time)
   const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return "Chưa cập nhật";
     try {
@@ -164,8 +190,6 @@ const ScheduleManagement = () => {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
       });
     } catch (error) {
       return "Chưa cập nhật";
@@ -184,42 +208,44 @@ const ScheduleManagement = () => {
         </p>
       </div>
 
-      {/* Search and Filter Bar */}
-      <div className="mb-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search Input */}
-          <div className="flex-1">
+      {/* Controls */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-4 flex-1">
+          {/* Search */}
+          <div className="relative flex-1 max-w-md">
             <Input
-              placeholder="Tìm kiếm bác sĩ..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              startContent={<MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />}
               className="w-full"
+              placeholder="Tìm kiếm bác sĩ..."
+              startContent={
+                <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
+              }
+              value={searchTerm}
+              variant="bordered"
+              onValueChange={setSearchTerm}
             />
           </div>
 
           {/* Date Range Picker */}
-          <div className="flex-1 min-w-[260px]">
+          <div className="relative flex-1 max-w-md">
             <DateRangePicker
-              value={dateRange}
-              onChange={({ startDate, endDate }) =>
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              onDateChange={(startDate, endDate) =>
                 setDateRange({ startDate, endDate })
               }
               placeholder="Chọn khoảng thời gian"
             />
           </div>
-
-          {/* Add Button */}
-          <div className="flex-shrink-0">
-            <Button
-              color="primary"
-              startContent={<PlusIcon className="h-4 w-4" />}
-              onPress={handleAddSchedule}
-            >
-              Thêm lịch làm việc
-            </Button>
-          </div>
         </div>
+
+        {/* Add Button */}
+        <Button
+          className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-2"
+          startContent={<PlusIcon className="w-5 h-5" />}
+          onPress={handleAddSchedule}
+        >
+          Thêm lịch làm việc
+        </Button>
       </div>
 
       {/* Doctors Table */}
@@ -289,8 +315,8 @@ const ScheduleManagement = () => {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="text-sm text-gray-600">
+                  <TableCell className="align-middle">
+                    <div className="text-sm text-gray-600 text-left">
                       {formatDate(doctor.workingHoursUpdatedAt)}
                     </div>
                   </TableCell>

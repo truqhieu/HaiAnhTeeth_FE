@@ -1,18 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Input, Button, Form, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
+import { Button, Form, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import toast from "react-hot-toast";
 
 import { managerApi } from "@/api";
-
-// CSS to force 24-hour format display
-const timeInputStyle = `
-  input[type="time"] {
-    font-variant-numeric: tabular-nums;
-  }
-  input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.5);
-  }
-`;
 
 interface WorkingHoursModalProps {
   isOpen: boolean;
@@ -81,52 +71,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
       setShowValidation(false);
     }
   }, [isOpen, initialWorkingHours]);
-
-  const handleInputChange = (field: string, value: string) => {
-    // Remove any non-digit and colon characters
-    let cleanedValue = value.replace(/[^\d:]/g, "");
-    
-    // Auto-format as user types (HH:MM)
-    if (cleanedValue.length <= 2) {
-      // Just hours
-      cleanedValue = cleanedValue;
-    } else if (cleanedValue.length === 3) {
-      // Add colon after 2 digits: "14" -> "14:"
-      cleanedValue = cleanedValue.slice(0, 2) + ":" + cleanedValue.slice(2);
-    } else if (cleanedValue.length > 5) {
-      // Limit to 5 characters (HH:MM)
-      cleanedValue = cleanedValue.slice(0, 5);
-    } else if (cleanedValue.length === 4 && !cleanedValue.includes(":")) {
-      // Add colon: "1400" -> "14:00"
-      cleanedValue = cleanedValue.slice(0, 2) + ":" + cleanedValue.slice(2);
-    }
-    
-    // Validate format and ensure valid hours/minutes
-    if (cleanedValue && /^\d{1,2}:\d{0,2}$/.test(cleanedValue)) {
-      const [hours, minutes = ""] = cleanedValue.split(":");
-      const hourNum = parseInt(hours, 10);
-      const minuteNum = minutes ? parseInt(minutes, 10) : 0;
-      
-      // Validate hours (0-23)
-      if (hourNum > 23) {
-        cleanedValue = "23:" + (minutes || "00");
-      }
-      
-      // Validate minutes (0-59)
-      if (minuteNum > 59) {
-        cleanedValue = hours + ":59";
-      }
-      
-      // Pad minutes to 2 digits if needed
-      if (minutes && minutes.length === 1) {
-        cleanedValue = hours + ":" + minutes;
-      } else if (minutes && minutes.length === 2) {
-        cleanedValue = hours + ":" + minutes;
-      }
-    }
-    
-    setFormData((prev) => ({ ...prev, [field]: cleanedValue }));
-  };
 
   // Validation
   const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
@@ -232,9 +176,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
   if (!isOpen || !doctorId) return null;
 
   return (
-    <>
-      <style>{timeInputStyle}</style>
-      <Modal
+    <Modal
         isOpen={isOpen}
         isDismissable={false}
         onOpenChange={(open) => {
@@ -242,7 +184,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
             handleClose();
           }
         }}
-        size="md"
+        size="2xl"
         scrollBehavior="outside"
         classNames={{ base: "max-h-[90vh] rounded-2xl" }}
         lang="vi-VN"
@@ -263,181 +205,320 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
               </div>
             </ModalHeader>
 
-            <ModalBody className="px-4 py-4">
-              <Form autoComplete="off" className="space-y-5" onSubmit={handleFormSubmit}>
-            {/* Morning Shift */}
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-700">Ca sáng</p>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  fullWidth
-                  autoComplete="off"
-                  classNames={{
-                    base: "w-full",
-                    inputWrapper: "w-full",
-                  }}
-                  errorMessage={
-                    isMorningStartInvalid
-                      ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
-                      : isMorningTimeInvalid
-                      ? "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc"
-                      : undefined
-                  }
-                  isInvalid={isMorningStartInvalid || isMorningTimeInvalid}
-                  label="Bắt đầu *"
-                  placeholder="08:00"
-                  type="text"
-                  value={formData.morningStart}
-                  variant="bordered"
-                  maxLength={5}
-                  onValueChange={(value) => handleInputChange("morningStart", value)}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    const keyCode = e.keyCode || e.which;
-                    // Allow: backspace, delete, tab, escape, enter, colon
-                    if ([8, 9, 27, 13, 46, 58].indexOf(keyCode) !== -1 ||
-                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                      (keyCode === 65 && e.ctrlKey === true) ||
-                      (keyCode === 67 && e.ctrlKey === true) ||
-                      (keyCode === 86 && e.ctrlKey === true) ||
-                      (keyCode === 88 && e.ctrlKey === true) ||
-                      // Allow: home, end, left, right
-                      (keyCode >= 35 && keyCode <= 39)) {
-                      return;
-                    }
-                    // Ensure that it is a number and stop the keypress
-                    if ((e.shiftKey || (keyCode < 48 || keyCode > 57)) && (keyCode < 96 || keyCode > 105)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-
-                <Input
-                  fullWidth
-                  autoComplete="off"
-                  classNames={{
-                    base: "w-full",
-                    inputWrapper: "w-full",
-                  }}
-                  errorMessage={
-                    isMorningEndInvalid
-                      ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
-                      : undefined
-                  }
-                  isInvalid={isMorningEndInvalid}
-                  label="Kết thúc *"
-                  placeholder="12:00"
-                  type="text"
-                  value={formData.morningEnd}
-                  variant="bordered"
-                  maxLength={5}
-                  onValueChange={(value) => handleInputChange("morningEnd", value)}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    const keyCode = e.keyCode || e.which;
-                    // Allow: backspace, delete, tab, escape, enter, colon
-                    if ([8, 9, 27, 13, 46, 58].indexOf(keyCode) !== -1 ||
-                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                      (keyCode === 65 && e.ctrlKey === true) ||
-                      (keyCode === 67 && e.ctrlKey === true) ||
-                      (keyCode === 86 && e.ctrlKey === true) ||
-                      (keyCode === 88 && e.ctrlKey === true) ||
-                      // Allow: home, end, left, right
-                      (keyCode >= 35 && keyCode <= 39)) {
-                      return;
-                    }
-                    // Ensure that it is a number and stop the keypress
-                    if ((e.shiftKey || (keyCode < 48 || keyCode > 57)) && (keyCode < 96 || keyCode > 105)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
+            <ModalBody className="px-6 py-6">
+              <Form autoComplete="off" className="space-y-6" onSubmit={handleFormSubmit}>
+            {/* Row: Ca sáng và Ca chiều */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+              {/* ⭐ Ca sáng */}
+              <div className="pr-4 md:pr-6">
+                <p className="text-sm font-semibold text-gray-700 mb-2">
+                  Ca sáng
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Bắt đầu ca sáng */}
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5 font-medium">
+                      Giờ bắt đầu <span className="text-red-500">*</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className={`w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC] ${
+                          isMorningStartInvalid || isMorningTimeInvalid ? 'border-red-500' : ''
+                        }`}
+                        value={formData.morningStart.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.morningStart.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            morningStart: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.morningStart.split(':')[1] || '00';
+                          // Pad hour to 2 digits only if there's a value
+                          const paddedHour = v ? v.padStart(2, '0') : '';
+                          const timeInput = paddedHour ? paddedHour + ':' + currentMinute : '';
+                          setFormData(prev => ({
+                            ...prev,
+                            morningStart: timeInput || '00:00'
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className={`w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC] ${
+                          isMorningStartInvalid || isMorningTimeInvalid ? 'border-red-500' : ''
+                        }`}
+                        value={formData.morningStart.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.morningStart.split(':')[0] || '08';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            morningStart: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.morningStart.split(':')[0] || '08';
+                          // Pad minute to 2 digits only if there's a value
+                          const paddedMinute = v ? v.padStart(2, '0') : '';
+                          const timeInput = currentHour && paddedMinute ? currentHour + ':' + paddedMinute : '';
+                          setFormData(prev => ({
+                            ...prev,
+                            morningStart: timeInput || '00:00'
+                          }));
+                        }}
+                      />
+                    </div>
+                    {(isMorningStartInvalid || isMorningTimeInvalid) && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {isMorningStartInvalid
+                          ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
+                          : "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc"}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Kết thúc ca sáng */}
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5 font-medium">
+                      Giờ kết thúc <span className="text-red-500">*</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className={`w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC] ${
+                          isMorningEndInvalid ? 'border-red-500' : ''
+                        }`}
+                        value={formData.morningEnd.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.morningEnd.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            morningEnd: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.morningEnd.split(':')[1] || '00';
+                          // Pad hour to 2 digits only if there's a value
+                          const paddedHour = v ? v.padStart(2, '0') : '';
+                          const timeInput = paddedHour ? paddedHour + ':' + currentMinute : '';
+                          setFormData(prev => ({
+                            ...prev,
+                            morningEnd: timeInput || '00:00'
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className={`w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC] ${
+                          isMorningEndInvalid ? 'border-red-500' : ''
+                        }`}
+                        value={formData.morningEnd.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.morningEnd.split(':')[0] || '12';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            morningEnd: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.morningEnd.split(':')[0] || '12';
+                          // Pad minute to 2 digits only if there's a value
+                          const paddedMinute = v ? v.padStart(2, '0') : '';
+                          const timeInput = currentHour && paddedMinute ? currentHour + ':' + paddedMinute : '';
+                          setFormData(prev => ({
+                            ...prev,
+                            morningEnd: timeInput || '00:00'
+                          }));
+                        }}
+                      />
+                    </div>
+                    {isMorningEndInvalid && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Vui lòng nhập thời gian hợp lệ (HH:MM)
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* Afternoon Shift */}
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-700">Ca chiều</p>
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  fullWidth
-                  autoComplete="off"
-                  classNames={{
-                    base: "w-full",
-                    inputWrapper: "w-full",
-                  }}
-                  errorMessage={
-                    isAfternoonStartInvalid
-                      ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
-                      : isAfternoonTimeInvalid
-                      ? "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc"
-                      : undefined
-                  }
-                  isInvalid={isAfternoonStartInvalid || isAfternoonTimeInvalid}
-                  label="Bắt đầu *"
-                  placeholder="14:00"
-                  type="text"
-                  value={formData.afternoonStart}
-                  variant="bordered"
-                  maxLength={5}
-                  onValueChange={(value) => handleInputChange("afternoonStart", value)}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    const keyCode = e.keyCode || e.which;
-                    // Allow: backspace, delete, tab, escape, enter, colon
-                    if ([8, 9, 27, 13, 46, 58].indexOf(keyCode) !== -1 ||
-                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                      (keyCode === 65 && e.ctrlKey === true) ||
-                      (keyCode === 67 && e.ctrlKey === true) ||
-                      (keyCode === 86 && e.ctrlKey === true) ||
-                      (keyCode === 88 && e.ctrlKey === true) ||
-                      // Allow: home, end, left, right
-                      (keyCode >= 35 && keyCode <= 39)) {
-                      return;
-                    }
-                    // Ensure that it is a number and stop the keypress
-                    if ((e.shiftKey || (keyCode < 48 || keyCode > 57)) && (keyCode < 96 || keyCode > 105)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-
-                <Input
-                  fullWidth
-                  autoComplete="off"
-                  classNames={{
-                    base: "w-full",
-                    inputWrapper: "w-full",
-                  }}
-                  errorMessage={
-                    isAfternoonEndInvalid
-                      ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
-                      : undefined
-                  }
-                  isInvalid={isAfternoonEndInvalid}
-                  label="Kết thúc *"
-                  placeholder="18:00"
-                  type="text"
-                  value={formData.afternoonEnd}
-                  variant="bordered"
-                  maxLength={5}
-                  onValueChange={(value) => handleInputChange("afternoonEnd", value)}
-                  onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    const keyCode = e.keyCode || e.which;
-                    // Allow: backspace, delete, tab, escape, enter, colon
-                    if ([8, 9, 27, 13, 46, 58].indexOf(keyCode) !== -1 ||
-                      // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
-                      (keyCode === 65 && e.ctrlKey === true) ||
-                      (keyCode === 67 && e.ctrlKey === true) ||
-                      (keyCode === 86 && e.ctrlKey === true) ||
-                      (keyCode === 88 && e.ctrlKey === true) ||
-                      // Allow: home, end, left, right
-                      (keyCode >= 35 && keyCode <= 39)) {
-                      return;
-                    }
-                    // Ensure that it is a number and stop the keypress
-                    if ((e.shiftKey || (keyCode < 48 || keyCode > 57)) && (keyCode < 96 || keyCode > 105)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
+              {/* ⭐ Ca chiều */}
+              <div className="pl-4 md:pl-6">
+                <p className="text-sm font-semibold text-gray-700 mb-2">
+                  Ca chiều
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Bắt đầu ca chiều */}
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5 font-medium">
+                      Giờ bắt đầu <span className="text-red-500">*</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className={`w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC] ${
+                          isAfternoonStartInvalid || isAfternoonTimeInvalid ? 'border-red-500' : ''
+                        }`}
+                        value={formData.afternoonStart.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.afternoonStart.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonStart: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.afternoonStart.split(':')[1] || '00';
+                          // Pad hour to 2 digits only if there's a value
+                          const paddedHour = v ? v.padStart(2, '0') : '';
+                          const timeInput = paddedHour ? paddedHour + ':' + currentMinute : '';
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonStart: timeInput || '00:00'
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className={`w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC] ${
+                          isAfternoonStartInvalid || isAfternoonTimeInvalid ? 'border-red-500' : ''
+                        }`}
+                        value={formData.afternoonStart.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.afternoonStart.split(':')[0] || '14';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonStart: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.afternoonStart.split(':')[0] || '14';
+                          // Pad minute to 2 digits only if there's a value
+                          const paddedMinute = v ? v.padStart(2, '0') : '';
+                          const timeInput = currentHour && paddedMinute ? currentHour + ':' + paddedMinute : '';
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonStart: timeInput || '00:00'
+                          }));
+                        }}
+                      />
+                    </div>
+                    {(isAfternoonStartInvalid || isAfternoonTimeInvalid) && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {isAfternoonStartInvalid
+                          ? "Vui lòng nhập thời gian hợp lệ (HH:MM)"
+                          : "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc"}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Kết thúc ca chiều */}
+                  <div>
+                    <p className="text-xs text-gray-600 mb-1.5 font-medium">
+                      Giờ kết thúc <span className="text-red-500">*</span>
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Giờ"
+                        className={`w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC] ${
+                          isAfternoonEndInvalid ? 'border-red-500' : ''
+                        }`}
+                        value={formData.afternoonEnd.split(':')[0] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.afternoonEnd.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonEnd: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.afternoonEnd.split(':')[1] || '00';
+                          // Pad hour to 2 digits only if there's a value
+                          const paddedHour = v ? v.padStart(2, '0') : '';
+                          const timeInput = paddedHour ? paddedHour + ':' + currentMinute : '';
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonEnd: timeInput || '00:00'
+                          }));
+                        }}
+                      />
+                      <span className="font-semibold text-gray-600">:</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Phút"
+                        className={`w-14 text-center border px-2 py-1.5 rounded-lg text-sm focus:ring-2 focus:border-transparent focus:ring-[#39BDCC] ${
+                          isAfternoonEndInvalid ? 'border-red-500' : ''
+                        }`}
+                        value={formData.afternoonEnd.split(':')[1] || ''}
+                        onChange={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.afternoonEnd.split(':')[0] || '18';
+                          const timeInput = currentHour + ':' + v;
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonEnd: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentHour = formData.afternoonEnd.split(':')[0] || '18';
+                          // Pad minute to 2 digits only if there's a value
+                          const paddedMinute = v ? v.padStart(2, '0') : '';
+                          const timeInput = currentHour && paddedMinute ? currentHour + ':' + paddedMinute : '';
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonEnd: timeInput || '00:00'
+                          }));
+                        }}
+                      />
+                    </div>
+                    {isAfternoonEndInvalid && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Vui lòng nhập thời gian hợp lệ (HH:MM)
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
               </Form>
@@ -464,7 +545,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
           </>
         </ModalContent>
       </Modal>
-    </>
   );
 };
 

@@ -11,6 +11,7 @@ interface DateRangePickerProps {
   disabled?: boolean;
   label?: string;
   labelPlacement?: 'inside' | 'outside';
+  size?: 'sm' | 'md' | 'lg';
 }
 
 const formatDateValue = (date: Date) => {
@@ -28,7 +29,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   className = "",
   disabled = false,
   label,
-  labelPlacement = 'inside'
+  labelPlacement = 'inside',
+  size = 'md',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [tempStartDate, setTempStartDate] = useState<string | null>(startDate);
@@ -273,7 +275,7 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
         }
         className="cursor-pointer"
         variant="bordered"
-        size="lg"
+        size={size}
         isDisabled={disabled}
       />
       
