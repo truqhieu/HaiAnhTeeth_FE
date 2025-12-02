@@ -26,18 +26,12 @@ import toast from "react-hot-toast";
 
 import { AddScheduleModal, EditScheduleModal } from "@/components";
 import WorkingHoursModal from "@/components/Manager/WorkingHoursModal";
-import { DateRangePicker } from "@/components/Common";
 import {
   managerApi,
   ManagerSchedule,
   ManagerClinic,
 } from "@/api";
 import type { DoctorWithWorkingHours } from "@/api/manager";
-
-interface DateRange {
-  startDate: string | null;
-  endDate: string | null;
-}
 
 const ScheduleManagement = () => {
   // State for doctors
@@ -47,10 +41,6 @@ const ScheduleManagement = () => {
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange>({
-    startDate: null,
-    endDate: null,
-  });
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -111,37 +101,11 @@ const ScheduleManagement = () => {
     fetchRooms();
   }, []);
 
-  // Filter doctors based on search term and date range
-  const filteredDoctors = doctors.filter((doctor) => {
-    // Search filter
-    const matchesSearch = 
-      doctor.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doctor.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (!matchesSearch) return false;
-    
-    // Date range filter
-    if (dateRange.startDate || dateRange.endDate) {
-      if (!doctor.workingHoursUpdatedAt) return false;
-      
-      const doctorDate = new Date(doctor.workingHoursUpdatedAt);
-      doctorDate.setHours(0, 0, 0, 0);
-      
-      if (dateRange.startDate) {
-        const startDate = new Date(dateRange.startDate);
-        startDate.setHours(0, 0, 0, 0);
-        if (doctorDate < startDate) return false;
-      }
-      
-      if (dateRange.endDate) {
-        const endDate = new Date(dateRange.endDate);
-        endDate.setHours(23, 59, 59, 999);
-        if (doctorDate > endDate) return false;
-      }
-    }
-    
-    return true;
-  });
+  // Filter doctors based on search term
+  const filteredDoctors = doctors.filter((doctor) =>
+    doctor.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doctor.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Handle edit doctor working hours
   const handleEditDoctorWorkingHours = (doctorId: string, workingHours: any) => {
@@ -210,32 +174,18 @@ const ScheduleManagement = () => {
 
       {/* Controls */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Input
-              className="w-full"
-              placeholder="Tìm kiếm bác sĩ..."
-              startContent={
-                <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
-              }
-              value={searchTerm}
-              variant="bordered"
-              onValueChange={setSearchTerm}
-            />
-          </div>
-
-          {/* Date Range Picker */}
-          <div className="relative flex-1 max-w-md">
-            <DateRangePicker
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              onDateChange={(startDate, endDate) =>
-                setDateRange({ startDate, endDate })
-              }
-              placeholder="Chọn khoảng thời gian"
-            />
-          </div>
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Input
+            className="w-full"
+            placeholder="Tìm kiếm bác sĩ..."
+            startContent={
+              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />
+            }
+            value={searchTerm}
+            variant="bordered"
+            onValueChange={setSearchTerm}
+          />
         </div>
 
         {/* Add Button */}
