@@ -1,9 +1,7 @@
 // API Configuration
-// ⭐ TEMPORARY: Hardcoded to localhost for debugging AIBooking
-export const API_BASE_URL = "http://localhost:9999/api";
-// export const API_BASE_URL =
-//   import.meta.env.VITE_API_URL ||
-//   "https://haianhteethbe-production.up.railway.app/api";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://haianhteethbe-production.up.railway.app/api";
 
 
 // API Response Types
@@ -13,11 +11,13 @@ export interface ApiResponse<T = any> {
   data?: T;
 }
 
+
 // API Error Types
 export interface ApiError {
   message: string;
   status?: number;
 }
+
 
 // Generic API call function
 export const apiCall = async <T = any>(
@@ -27,7 +27,9 @@ export const apiCall = async <T = any>(
   try {
     const url = `${API_BASE_URL}${endpoint}`;
 
+
     console.log("🚀 Fetching:", url);
+
 
     console.log("🔍 [API Call] Full request details:", {
       url,
@@ -36,6 +38,7 @@ export const apiCall = async <T = any>(
       body: options.body,
       credentials: options.credentials,
     });
+
 
     const response = await fetch(url, {
       ...options,
@@ -47,9 +50,12 @@ export const apiCall = async <T = any>(
       },
     });
 
+
     console.log("🔍 [API Call] Response headers:", Object.fromEntries(response.headers.entries()));
 
+
     console.log("📡 Response status:", response.status, response.statusText);
+
 
     // ⭐ Xử lý 304 Not Modified - không có body, cần fetch lại với cache-busting
     if (response.status === 304) {
@@ -66,7 +72,7 @@ export const apiCall = async <T = any>(
           ...options.headers,
         },
       });
-      
+
       if (retryResponse.ok) {
         const result = await retryResponse.json();
         console.log("📦 [API Call] Retry response body:", result);
@@ -76,15 +82,19 @@ export const apiCall = async <T = any>(
       }
     }
 
+
     const result = await response.json();
 
+
     console.log("📦 Response body:", result);
+
 
     if (!response.ok) {
       throw new Error(
         result.message || `HTTP error! status: ${response.status}`,
       );
     }
+
 
     return result;
   } catch (error: any) {
@@ -95,14 +105,15 @@ export const apiCall = async <T = any>(
       stack: error.stack,
       cause: error.cause,
     });
-    
+
     // Check if it's a CORS error
     if (error.message?.includes('CORS') || error.message?.includes('Failed to fetch')) {
       console.error("🌐 [CORS Error] This is likely a CORS issue. Check:");
       console.error("   1. Backend CORS config allows this origin");
       console.error("   2. Backend is running and accessible");
+      console.error("   3. Request URL:");
       console.error("   4. Origin:", typeof window !== 'undefined' ? window.location.origin : 'N/A');
-      
+
       throw new Error(
         `Lỗi CORS: Không thể kết nối đến server. Vui lòng kiểm tra:\n` +
         `- Backend đang chạy không?\n` +
@@ -110,38 +121,31 @@ export const apiCall = async <T = any>(
         `- Kiểm tra console để xem log chi tiết`
       );
     }
-    
+
     throw new Error(error.message || "Lỗi kết nối đến server");
   }
 };
 
+
 // Authenticated API call function
 export const authenticatedApiCall = async <T = any>(
   endpoint: string,
-  options: RequestInit = {},
+  options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  // Get token from sessionStorage
-  const token = sessionStorage.getItem("authToken");
-
-  console.log("🔐 Auth check - Token exists?", !!token);
-
-  if (!token) {
-    console.error("❌ No token found in sessionStorage");
-    throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
-  }
-
-  console.log("✅ Token found, adding to headers");
-
   return apiCall<T>(endpoint, {
     ...options,
-    credentials: "include", // Include credentials for CORS
+    credentials: "include", // để browser tự gửi cookie
     headers: {
       "Content-Type": "application/json",
-      ...options.headers,
-      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
     },
   });
 };
+
+
+
+
+
 
 // Export auth API
 export { authApi } from "./auth";
@@ -154,30 +158,39 @@ export { availableSlotApi, getDoctorScheduleRange, validateAppointmentTime } fro
 // Export policy API
 export { policyApi } from "./policy";
 
+
 // Export admin API
 export { adminApi } from "./admin";
+
 
 // Export manager API
 export { managerApi } from "./manager";
 
+
 // Export complaint API
 export { complaintApi } from "./complaint";
+
 
 // Export leaveRequest API
 export { leaveRequestApi } from "./leaveRequest";
 
+
 // Export chat API
 export { chatApi } from "./chat";
+
 
 // Export notification API
 export { notificationApi } from "./notification";
 export { consultationInfoApi } from "./consultationInfo";
 
+
 // Export types
+
 
 // Lấy kiểu User từ auth.ts và thêm thuộc tính _id
 import type { User } from "./auth";
 export type AuthUser = User & { _id: string };
+
 
 export type {
   RegisterData,
@@ -253,4 +266,8 @@ export type {
   Message,
   Conversation,
 } from "./chat";
+
+
+
+
 
