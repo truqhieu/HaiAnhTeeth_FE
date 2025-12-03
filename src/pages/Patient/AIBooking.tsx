@@ -95,10 +95,50 @@ const AIBooking: React.FC = () => {
         setReservationExpiresAt(null);
       }
       
-      // Nếu appointment được tạo thành công, có thể navigate hoặc hiển thị thông báo
-      if (res.success && (res.data as any)?.appointment) {
-        // Appointment created successfully!
+      // ⭐ NEW: Check for payment requirement at TOP LEVEL (not inside appointment)
+      // Backend returns: { requirePayment: true, payment: { paymentId, QRurl, ... }, appointment: {...} }
+      const requiresPayment = (res.data as any)?.requirePayment || false;
+      const paymentInfo = (res.data as any)?.payment || null;
+      
+      // Nếu appointment được tạo thành công VÀ cần thanh toán
+      if (res.success && (res.data as any)?.appointment && requiresPayment && paymentInfo) {
+        // ⭐ Payment required - navigate to payment page
+        const paymentId = paymentInfo.paymentId || paymentInfo._id;
+        
+        if (paymentId) {
+          toast.success("Đặt lịch thành công! Đang chuyển đến trang thanh toán...");
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "bot",
+              text: "Mình đã tạo lịch tư vấn của bạn và chuyển đến trang thanh toán ngay bây giờ nhé!",
+            },
+          ]);
+          setConversationContext(null);
+          // ⭐ Delay navigation to allow message to be displayed
+          setTimeout(() => {
+            navigate(`/patient/payment/${paymentId}`);
+          }, 5); // 5 seconds delay for better UX
+          return;
+        }
+      }
+      
+      // Nếu appointment được tạo thành công NHƯNG KHÔNG cần thanh toán
+      if (res.success && (res.data as any)?.appointment && !requiresPayment) {
+        // Appointment created successfully without payment!
+        toast.success("Đặt lịch thành công!");
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "bot",
+            text: "Mình đã tạo lịch khám thành công! Bạn có thể xem trong mục 'Lịch khám của tôi'.",
+          },
+        ]);
         setConversationContext(null);
+        // ⭐ Delay navigation to allow message to be displayed
+        setTimeout(() => {
+          navigate("/patient/appointments");
+        }, 5000); // 5 seconds delay for better UX
         return;
       }
       
@@ -125,36 +165,6 @@ const AIBooking: React.FC = () => {
       if (!res.success && !botResponse) {
         throw new Error(res.message || "Không thể tạo lịch tự động");
       }
-
-      // Success - appointment created
-      toast.success("Đặt lịch thành công!");
-
-      const appointment: any = res.data?.appointment;
-      // Thử lấy paymentId từ nhiều cấu trúc khác nhau để an toàn
-      const paymentObj = appointment?.paymentId || appointment?.payment || null;
-      const paymentId: string | null = (paymentObj && (paymentObj._id || paymentObj.paymentId)) ? (paymentObj._id || paymentObj.paymentId) : (typeof paymentObj === 'string' ? paymentObj : null);
-      const paymentStatus: string | null = paymentObj?.status || null;
-
-      if (paymentId && (!paymentStatus || paymentStatus === "Pending")) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "bot",
-            text: "Mình đã tạo lịch tư vấn của bạn và chuyển đến trang thanh toán ngay bây giờ nhé!",
-          },
-        ]);
-        navigate(`/patient/payment/${paymentId}`);
-        return;
-      }
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "bot",
-          text: "Mình đã tạo lịch khám thành công! Bạn có thể xem trong mục 'Lịch khám của tôi'.",
-        },
-      ]);
-      navigate("/patient/appointments");
     } catch (e: any) {
       console.error("❌ [AI Booking] Error details:", {
         message: e.message,
