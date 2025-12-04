@@ -89,8 +89,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   const isRoleInvalid = canChangeRole && showValidation && !formData.role;
   
   // Password validation
-  const isPasswordInvalid = showValidation && formData.newPassword && formData.newPassword.length < 6;
-  const isConfirmPasswordInvalid = showValidation && formData.newPassword && formData.newPassword !== formData.confirmPassword;
+  const isPasswordInvalid = Boolean(showValidation && formData.newPassword && formData.newPassword.length < 6);
+  const isConfirmPasswordInvalid = Boolean(showValidation && formData.newPassword && formData.newPassword !== formData.confirmPassword);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
