@@ -1,9 +1,9 @@
 // API Configuration
-// ⭐ TEMPORARY: Hardcoded to localhost for debugging AIBooking
-export const API_BASE_URL = "http://localhost:9999/api";
-// export const API_BASE_URL =
-//   import.meta.env.VITE_API_URL ||
-//   "https://haianhteethbe-production.up.railway.app/api";
+// ⭐ Using environment variable for production deployment
+// export const API_BASE_URL = "http://localhost:9999/api";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://haianhteethbe-production.up.railway.app/api";
 
 
 // API Response Types

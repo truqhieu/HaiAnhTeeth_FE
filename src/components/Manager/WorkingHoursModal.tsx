@@ -184,7 +184,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
             handleClose();
           }
         }}
-        size="lg"
+        size="2xl"
         scrollBehavior="outside"
         classNames={{ base: "max-h-[90vh] rounded-2xl" }}
         lang="vi-VN"
@@ -238,6 +238,18 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                             morningStart: timeInput
                           }));
                         }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '');
+                          if (v && v.length === 1) {
+                            v = v.padStart(2, '0');
+                          }
+                          const currentMinute = formData.morningStart.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            morningStart: timeInput
+                          }));
+                        }}
                       />
                       <span className="font-semibold text-gray-600">:</span>
                       <input
@@ -284,6 +296,18 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                         value={formData.morningEnd.split(':')[0] || ''}
                         onChange={(e) => {
                           let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.morningEnd.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            morningEnd: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '');
+                          if (v && v.length === 1) {
+                            v = v.padStart(2, '0');
+                          }
                           const currentMinute = formData.morningEnd.split(':')[1] || '00';
                           const timeInput = v + ':' + currentMinute;
                           setFormData(prev => ({
@@ -350,6 +374,18 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                             afternoonStart: timeInput
                           }));
                         }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '');
+                          if (v && v.length === 1) {
+                            v = v.padStart(2, '0');
+                          }
+                          const currentMinute = formData.afternoonStart.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonStart: timeInput
+                          }));
+                        }}
                       />
                       <span className="font-semibold text-gray-600">:</span>
                       <input
@@ -396,6 +432,18 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
                         value={formData.afternoonEnd.split(':')[0] || ''}
                         onChange={(e) => {
                           let v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                          const currentMinute = formData.afternoonEnd.split(':')[1] || '00';
+                          const timeInput = v + ':' + currentMinute;
+                          setFormData(prev => ({
+                            ...prev,
+                            afternoonEnd: timeInput
+                          }));
+                        }}
+                        onBlur={(e) => {
+                          let v = e.target.value.replace(/[^0-9]/g, '');
+                          if (v && v.length === 1) {
+                            v = v.padStart(2, '0');
+                          }
                           const currentMinute = formData.afternoonEnd.split(':')[1] || '00';
                           const timeInput = v + ':' + currentMinute;
                           setFormData(prev => ({
