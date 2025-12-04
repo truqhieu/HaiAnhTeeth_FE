@@ -571,8 +571,8 @@ const PatientRequests: React.FC = () => {
             <Button 
               color="danger" 
               onClick={handleReject} 
-              isDisabled={!rejectReason.trim() || (selectedRequest && processingRequestId === selectedRequest._id)}
-              isLoading={selectedRequest ? processingRequestId === selectedRequest._id : false}
+              isDisabled={!rejectReason.trim() || Boolean(selectedRequest && processingRequestId === selectedRequest._id)}
+              isLoading={Boolean(selectedRequest && processingRequestId === selectedRequest._id)}
             >
               Từ chối
             </Button>

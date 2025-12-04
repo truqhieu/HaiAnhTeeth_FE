@@ -2229,8 +2229,8 @@ const AllAppointments = () => {
                     toast.success("Đặt lịch thành công!");
                     
                     // Log pricing info if available
-                    if (res.data?.pricing) {
-                      console.log('💰 Appointment pricing:', res.data.pricing);
+                    if ((res.data as any)?.pricing) {
+                      console.log('💰 Appointment pricing:', (res.data as any).pricing);
                     }
                     
                     setIsWalkInOpen(false);
@@ -2600,7 +2600,7 @@ const AllAppointments = () => {
                                   const [h, m] = walkInForm.userStartTimeInput.split(':');
                                   const hours = parseInt(h, 10);
                                   const minutes = parseInt(m, 10);
-                                  const totalMinutes = hours * 60 + minutes + selectedService!.durationMinutes;
+                                  const totalMinutes = hours * 60 + minutes + (selectedService?.durationMinutes || 0);
                                   const endHours = Math.floor(totalMinutes / 60) % 24;
                                   const endMinutes = totalMinutes % 60;
                                   
