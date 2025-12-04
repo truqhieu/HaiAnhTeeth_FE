@@ -294,16 +294,16 @@ const PatientRequests: React.FC = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 placeholder="Chọn trạng thái"
               >
-                <SelectItem key="all" value="all">
+                <SelectItem key="all">
                   Tất cả
                 </SelectItem>
-                <SelectItem key="Pending" value="Pending">
+                <SelectItem key="Pending">
                   Chờ xử lý
                 </SelectItem>
-                <SelectItem key="Approved" value="Approved">
+                <SelectItem key="Approved">
                   Đã duyệt
                 </SelectItem>
-                <SelectItem key="Rejected" value="Rejected">
+                <SelectItem key="Rejected">
                   Đã từ chối
                 </SelectItem>
               </Select>
@@ -317,13 +317,13 @@ const PatientRequests: React.FC = () => {
                 onChange={(e) => setTypeFilter(e.target.value)}
                 placeholder="Chọn loại yêu cầu"
               >
-                <SelectItem key="all" value="all">
+                <SelectItem key="all">
                   Tất cả
                 </SelectItem>
-                <SelectItem key="Reschedule" value="Reschedule">
+                <SelectItem key="Reschedule">
                   Đổi lịch hẹn
                 </SelectItem>
-                <SelectItem key="ChangeDoctor" value="ChangeDoctor">
+                <SelectItem key="ChangeDoctor">
                   Đổi bác sĩ
                 </SelectItem>
               </Select>
@@ -571,8 +571,8 @@ const PatientRequests: React.FC = () => {
             <Button 
               color="danger" 
               onClick={handleReject} 
-              isDisabled={!rejectReason.trim() || (selectedRequest && processingRequestId === selectedRequest._id)}
-              isLoading={selectedRequest ? processingRequestId === selectedRequest._id : false}
+              isDisabled={!rejectReason.trim() || Boolean(selectedRequest && processingRequestId === selectedRequest._id)}
+              isLoading={Boolean(selectedRequest && processingRequestId === selectedRequest._id)}
             >
               Từ chối
             </Button>

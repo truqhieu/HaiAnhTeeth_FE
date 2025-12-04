@@ -136,16 +136,6 @@ const LoginForm = () => {
             }}
           />
 
-          <div className="text-right">
-            <button
-              className="text-base text-[#39BDCC] hover:underline font-semibold"
-              type="button"
-              onClick={() => navigate("/reset-password")}
-            >
-              Quên mật khẩu?
-            </button>
-          </div>
-
           <Button
             className="w-full py-4 text-lg font-semibold text-white bg-[#39BDCC] hover:bg-[#2ca6b5] transition-all duration-300 rounded-xl"
             isDisabled={isLoading || !email || !password}
@@ -158,6 +148,17 @@ const LoginForm = () => {
           </Button>
         </Form>
 
+        {/* Forgot Password Link */}
+        <div className="mt-4 text-center">
+          <button
+            className="text-base text-[#39BDCC] hover:underline font-semibold"
+            type="button"
+            onClick={() => navigate("/forgot-password")}
+          >
+            Quên mật khẩu?
+          </button>
+        </div>
+
         {/* Signup and Links */}
         <div className="mt-6 space-y-3">
           <p className="text-center text-sm md:text-base text-gray-600">
@@ -167,15 +168,6 @@ const LoginForm = () => {
               onClick={() => navigate("/signup")}
             >
               Đăng ký ngay
-            </button>
-          </p>
-          <p className="text-center text-sm md:text-base text-gray-600">
-            Bạn quên mật khẩu?{" "}
-            <button
-              className="text-[#39BDCC] hover:underline font-semibold"
-              onClick={() => navigate("/forgot-password")}
-            >
-              Đặt lại mật khẩu
             </button>
           </p>
         </div>

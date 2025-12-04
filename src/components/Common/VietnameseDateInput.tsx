@@ -550,7 +550,10 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
         const minDateOnly = new Date(min);
         minDateOnly.setHours(0, 0, 0, 0);
         
-        if (parsed < minDateOnly) {
+        const parsedDateOnly = new Date(parsed);
+        parsedDateOnly.setHours(0, 0, 0, 0);
+        
+        if (parsedDateOnly < minDateOnly) {
           setValidationError("Ngày không được trước ngày tối thiểu cho phép");
           return;
         }
@@ -558,9 +561,18 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
     }
     if (maxDate) {
       const max = toDate(maxDate);
-      if (max && parsed > max) {
-        setValidationError("Ngày không được sau ngày tối đa cho phép");
-        return;
+      if (max) {
+        // Clone and set to midnight to compare dates only
+        const maxDateOnly = new Date(max);
+        maxDateOnly.setHours(0, 0, 0, 0);
+        
+        const parsedDateOnly = new Date(parsed);
+        parsedDateOnly.setHours(0, 0, 0, 0);
+        
+        if (parsedDateOnly > maxDateOnly) {
+          setValidationError("Ngày không được sau ngày tối đa cho phép");
+          return;
+        }
       }
     }
 

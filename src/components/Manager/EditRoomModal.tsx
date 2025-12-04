@@ -262,7 +262,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                   handleInputChange("assignedDoctorId", selectedKey || "");
                 }}
               >
-                <SelectItem key="" value="">
+                <SelectItem key="">
                   <span className="text-gray-500 italic">Không có bác sĩ</span>
                 </SelectItem>
                 {doctors.map((doctor) => (
