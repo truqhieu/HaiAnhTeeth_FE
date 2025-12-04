@@ -138,7 +138,7 @@ const Dashboard = () => {
     try {
       setIsLoading(true);
       const { start, end } = getMonthDateRange(selectedMonth);
-      
+
       const response = await managerApi.getDashboardStats(
         start.toISOString(),
         end.toISOString()
@@ -147,7 +147,7 @@ const Dashboard = () => {
       // Backend returns: { success: true, message: 'Doanh thu', result: {...} }
       // But ApiResponse wraps it in data, so check both
       const dashboardResult = (response as any).result || response.data?.result || response.data;
-      
+
       if (response.success && dashboardResult) {
         setDashboardData(dashboardResult);
       } else {
@@ -178,7 +178,7 @@ const Dashboard = () => {
       // Backend returns: { success: true, message: '...', result: {...} }
       // But ApiResponse wraps it in data, so check both
       const monthlyResult = (response as any).result || response.data?.result || response.data;
-      
+
       if (response.success && monthlyResult) {
         setMonthlyRevenueData(monthlyResult);
       } else {
@@ -197,14 +197,14 @@ const Dashboard = () => {
     try {
       setIsLoadingYearly(true);
       const { start, end } = getYearDateRange(selectedYear);
-      
+
       const response = await managerApi.getDashboardStats(
         start.toISOString(),
         end.toISOString()
       );
 
       const yearlyResult = (response as any).result || response.data?.result || response.data;
-      
+
       if (response.success && yearlyResult) {
         setYearlyData(yearlyResult);
       } else {
@@ -223,14 +223,14 @@ const Dashboard = () => {
     try {
       setIsLoadingQuarterly(true);
       const { start, end } = getQuarterDateRange(selectedQuarter.year, selectedQuarter.quarter);
-      
+
       const response = await managerApi.getDashboardStats(
         start.toISOString(),
         end.toISOString()
       );
 
       const quarterlyResult = (response as any).result || response.data?.result || response.data;
-      
+
       if (response.success && quarterlyResult) {
         setQuarterlyData(quarterlyResult);
       } else {
@@ -248,14 +248,14 @@ const Dashboard = () => {
   const fetchServiceRevenue = async (startDate?: string, endDate?: string) => {
     try {
       setIsLoadingServices(true);
-      
+
       const response = await managerApi.getServiceRevenueReport(
         startDate,
         endDate
       );
 
       const serviceResult = (response as any).result || response.data?.result || response.data;
-      
+
       if (response.success && serviceResult) {
         setServiceRevenueData(serviceResult);
       } else {
@@ -338,12 +338,12 @@ const Dashboard = () => {
       return;
     }
 
+    // Show loading toast
+    const loadingToast = toast.loading("Đang tạo PDF...");
+
     try {
       const { start, end } = getMonthDateRange(selectedMonth);
-      
-      // Show loading toast
-      const loadingToast = toast.loading("Đang tạo PDF...");
-      
+
       // Call backend PDF endpoint
       const blob = await managerApi.exportServiceRevenuePDF(
         start.toISOString(),
@@ -352,25 +352,25 @@ const Dashboard = () => {
 
       // Create download link
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = document.createElement('a');
       link.href = url;
-      
-      // Generate filename with date range
+
       const startDateStr = start.toISOString().split('T')[0];
       const endDateStr = end.toISOString().split('T')[0];
       link.download = `bao-cao-doanh-thu-dich-vu-${startDateStr}-${endDateStr}.pdf`;
-      
+
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       toast.dismiss(loadingToast);
       toast.success("Xuất PDF thành công!");
     } catch (error: any) {
       console.error("Error exporting PDF:", error);
+      toast.dismiss(loadingToast);
       toast.error("Lỗi khi xuất PDF: " + (error.message || "Unknown error"));
     }
   };
@@ -414,368 +414,368 @@ const Dashboard = () => {
         }}
       >
         <Tab key="specific" title="Doanh thu tháng cụ thể">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">
-              Doanh thu tháng cụ thể
-            </h2>
-            <p className="text-sm text-gray-600">
-              Xem chi tiết doanh thu và thống kê của một tháng
-            </p>
-          </div>
-          <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
-            <CalendarDaysIcon className="w-5 h-5 text-gray-400" />
-            <DatePicker
-              selected={selectedMonth}
-              onChange={(date) => setSelectedMonth(date || new Date())}
-              dateFormat="MM/yyyy"
-              showMonthYearPicker
-              locale="vi"
-              className="w-32 text-sm focus:outline-none bg-transparent"
-              placeholderText="Chọn tháng"
-            />
-          </div>
-        </div>
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                  Doanh thu tháng cụ thể
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Xem chi tiết doanh thu và thống kê của một tháng
+                </p>
+              </div>
+              <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                <CalendarDaysIcon className="w-5 h-5 text-gray-400" />
+                <DatePicker
+                  selected={selectedMonth}
+                  onChange={(date) => setSelectedMonth(date || new Date())}
+                  dateFormat="MM/yyyy"
+                  showMonthYearPicker
+                  locale="vi"
+                  className="w-32 text-sm focus:outline-none bg-transparent"
+                  placeholderText="Chọn tháng"
+                />
+              </div>
+            </div>
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#39BDCC]"></div>
-          </div>
-        )}
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#39BDCC]"></div>
+              </div>
+            )}
 
-        {/* Summary Cards */}
-        {!isLoading && dashboardData && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-            {/* Total Appointments */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    Tổng ca khám
-                  </p>
-                  <p className="text-3xl font-bold text-gray-900 mb-2">
-                    {(dashboardData.appointments?.total || 0).toLocaleString()}
-                  </p>
-                  <div className="flex items-center">
-                    <span className="text-xs text-gray-500 font-medium">
+            {/* Summary Cards */}
+            {!isLoading && dashboardData && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                  {/* Total Appointments */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600 mb-1">
+                          Tổng ca khám
+                        </p>
+                        <p className="text-3xl font-bold text-gray-900 mb-2">
+                          {(dashboardData.appointments?.total || 0).toLocaleString()}
+                        </p>
+                        <div className="flex items-center">
+                          <span className="text-xs text-gray-500 font-medium">
+                            Trong khoảng thời gian đã chọn
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <CalendarIcon className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Examination Appointments */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600 mb-1">
+                          Ca khám bệnh
+                        </p>
+                        <p className="text-3xl font-bold text-gray-900 mb-2">
+                          {(dashboardData.appointments?.examination || 0).toLocaleString()}
+                        </p>
+                        <div className="flex items-center">
+                          <span className="text-xs text-gray-500 font-medium">
+                            {(dashboardData.appointments?.total || 0) > 0
+                              ? `${(((dashboardData.appointments?.examination || 0) / (dashboardData.appointments?.total || 1)) * 100).toFixed(1)}% tổng số`
+                              : "Không có dữ liệu"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                        <CheckCircleIcon className="w-6 h-6 text-green-600" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Consultation Appointments */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600 mb-1">
+                          Ca tư vấn
+                        </p>
+                        <p className="text-3xl font-bold text-gray-900 mb-2">
+                          {(dashboardData.appointments?.consultation || 0).toLocaleString()}
+                        </p>
+                        <div className="flex items-center">
+                          <span className="text-xs text-gray-500 font-medium">
+                            {(dashboardData.appointments?.total || 0) > 0
+                              ? `${(((dashboardData.appointments?.consultation || 0) / (dashboardData.appointments?.total || 1)) * 100).toFixed(1)}% tổng số`
+                              : "Không có dữ liệu"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <CalendarDaysIcon className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Revenue Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  {/* Total Revenue */}
+                  <div className="bg-gradient-to-br from-[#39BDCC] to-[#2da5b3] rounded-xl shadow-sm p-6 text-white">
+                    <p className="text-sm font-medium mb-1 opacity-90">
+                      Tổng doanh thu
+                    </p>
+                    <p className="text-3xl font-bold mb-2">
+                      {formatCurrency(dashboardData.revenue?.total || 0)}
+                    </p>
+                    <p className="text-xs opacity-75">
                       Trong khoảng thời gian đã chọn
-                    </span>
+                    </p>
                   </div>
-                </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <CalendarIcon className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </div>
 
-            {/* Examination Appointments */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    Ca khám bệnh
-                  </p>
-                  <p className="text-3xl font-bold text-gray-900 mb-2">
-                    {(dashboardData.appointments?.examination || 0).toLocaleString()}
-                  </p>
-                  <div className="flex items-center">
-                    <span className="text-xs text-gray-500 font-medium">
-                      {(dashboardData.appointments?.total || 0) > 0
-                        ? `${(((dashboardData.appointments?.examination || 0) / (dashboardData.appointments?.total || 1)) * 100).toFixed(1)}% tổng số`
+                  {/* Examination Revenue */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <p className="text-sm font-medium text-gray-600 mb-1">
+                      Doanh thu khám bệnh
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 mb-2">
+                      {formatCurrency(dashboardData.revenue?.Examination || 0)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(dashboardData.revenue?.total || 0) > 0
+                        ? `${(((dashboardData.revenue?.Examination || 0) / (dashboardData.revenue?.total || 1)) * 100).toFixed(1)}% tổng doanh thu`
                         : "Không có dữ liệu"}
-                    </span>
+                    </p>
                   </div>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <CheckCircleIcon className="w-6 h-6 text-green-600" />
-                </div>
-              </div>
-            </div>
 
-            {/* Consultation Appointments */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-1">
-                    Ca tư vấn
-                  </p>
-                  <p className="text-3xl font-bold text-gray-900 mb-2">
-                    {(dashboardData.appointments?.consultation || 0).toLocaleString()}
-                  </p>
-                  <div className="flex items-center">
-                    <span className="text-xs text-gray-500 font-medium">
-                      {(dashboardData.appointments?.total || 0) > 0
-                        ? `${(((dashboardData.appointments?.consultation || 0) / (dashboardData.appointments?.total || 1)) * 100).toFixed(1)}% tổng số`
+                  {/* Consultation Revenue */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <p className="text-sm font-medium text-gray-600 mb-1">
+                      Doanh thu tư vấn
+                    </p>
+                    <p className="text-2xl font-bold text-gray-900 mb-2">
+                      {formatCurrency(dashboardData.revenue?.Consultation || 0)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {(dashboardData.revenue?.total || 0) > 0
+                        ? `${(((dashboardData.revenue?.Consultation || 0) / (dashboardData.revenue?.total || 1)) * 100).toFixed(1)}% tổng doanh thu`
                         : "Không có dữ liệu"}
-                    </span>
+                    </p>
                   </div>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <CalendarDaysIcon className="w-6 h-6 text-blue-600" />
+
+                {/* Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Appointment Status Chart */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Thống kê hình thức khám
+                      </h3>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-2xl font-bold text-gray-900">
+                          {(dashboardData.appointments?.total || 0).toLocaleString()}
+                        </p>
+                        <span className="text-sm text-gray-600">tổng ca khám</span>
+                      </div>
+                    </div>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart
+                        data={[
+                          {
+                            name: "Khám bệnh",
+                            value: dashboardData.appointments?.examination || 0,
+                            color: "#39BDCC",
+                          },
+                          {
+                            name: "Tư vấn",
+                            value: dashboardData.appointments?.consultation || 0,
+                            color: "#8B5CF6",
+                          },
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis
+                          dataKey="name"
+                          tick={{ fill: "#6B7280", fontSize: 12 }}
+                          axisLine={{ stroke: "#E5E7EB" }}
+                        />
+                        <YAxis
+                          tick={{ fill: "#6B7280", fontSize: 12 }}
+                          axisLine={{ stroke: "#E5E7EB" }}
+                          allowDecimals={false}
+                          tickFormatter={(value) => {
+                            return Math.round(value).toString();
+                          }}
+                        />
+
+                        <Bar
+                          dataKey="value"
+                          fill="#39BDCC"
+                          radius={[8, 8, 0, 0]}
+                          maxBarSize={60}
+                        >
+                          {[
+                            {
+                              name: "Khám bệnh",
+                              value: dashboardData.appointments?.examination || 0,
+                              color: "#39BDCC",
+                            },
+                            {
+                              name: "Tư vấn",
+                              value: dashboardData.appointments?.consultation || 0,
+                              color: "#8B5CF6",
+                            },
+                          ].map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Revenue Distribution Chart */}
+                  <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Phân bổ doanh thu theo dịch vụ
+                      </h3>
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-2xl font-bold text-gray-900">
+                          {formatCurrency(dashboardData.revenue?.total || 0)}
+                        </p>
+                        <span className="text-sm text-gray-600">tổng doanh thu</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height={250}>
+                        <PieChart>
+                          <Pie
+                            data={[
+                              {
+                                name: "Khám bệnh",
+                                value: dashboardData.revenue?.Examination || 0,
+                                color: "#39BDCC",
+                              },
+                              {
+                                name: "Tư vấn",
+                                value: dashboardData.revenue?.Consultation || 0,
+                                color: "#8B5CF6",
+                              },
+                            ]}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {[
+                              {
+                                name: "Khám bệnh",
+                                value: dashboardData.revenue?.Examination || 0,
+                                color: "#39BDCC",
+                              },
+                              {
+                                name: "Tư vấn",
+                                value: dashboardData.revenue?.Consultation || 0,
+                                color: "#8B5CF6",
+                              },
+                            ].map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number) => formatCurrency(value)}
+                          />
+                          <Legend
+                            verticalAlign="bottom"
+                            height={36}
+                            formatter={(value, entry: any) => (
+                              <span className="text-sm text-gray-700">
+                                {value} ({formatCurrency(entry.payload.value)})
+                              </span>
+                            )}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
-
-          {/* Revenue Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            {/* Total Revenue */}
-            <div className="bg-gradient-to-br from-[#39BDCC] to-[#2da5b3] rounded-xl shadow-sm p-6 text-white">
-              <p className="text-sm font-medium mb-1 opacity-90">
-                Tổng doanh thu
-              </p>
-              <p className="text-3xl font-bold mb-2">
-                {formatCurrency(dashboardData.revenue?.total || 0)}
-              </p>
-              <p className="text-xs opacity-75">
-                Trong khoảng thời gian đã chọn
-              </p>
-            </div>
-
-            {/* Examination Revenue */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <p className="text-sm font-medium text-gray-600 mb-1">
-                Doanh thu khám bệnh
-              </p>
-              <p className="text-2xl font-bold text-gray-900 mb-2">
-                {formatCurrency(dashboardData.revenue?.Examination || 0)}
-              </p>
-              <p className="text-xs text-gray-500">
-                {(dashboardData.revenue?.total || 0) > 0
-                  ? `${(((dashboardData.revenue?.Examination || 0) / (dashboardData.revenue?.total || 1)) * 100).toFixed(1)}% tổng doanh thu`
-                  : "Không có dữ liệu"}
-              </p>
-            </div>
-
-            {/* Consultation Revenue */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <p className="text-sm font-medium text-gray-600 mb-1">
-                Doanh thu tư vấn
-              </p>
-              <p className="text-2xl font-bold text-gray-900 mb-2">
-                {formatCurrency(dashboardData.revenue?.Consultation || 0)}
-              </p>
-              <p className="text-xs text-gray-500">
-                {(dashboardData.revenue?.total || 0) > 0
-                  ? `${(((dashboardData.revenue?.Consultation || 0) / (dashboardData.revenue?.total || 1)) * 100).toFixed(1)}% tổng doanh thu`
-                  : "Không có dữ liệu"}
-              </p>
-            </div>
-          </div>
-
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Appointment Status Chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Thống kê hình thức khám
-                </h3>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold text-gray-900">
-                    {(dashboardData.appointments?.total || 0).toLocaleString()}
-                  </p>
-                  <span className="text-sm text-gray-600">tổng ca khám</span>
-                </div>
-              </div>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart
-                  data={[
-                    {
-                      name: "Khám bệnh",
-                      value: dashboardData.appointments?.examination || 0,
-                      color: "#39BDCC",
-                    },
-                    {
-                      name: "Tư vấn",
-                      value: dashboardData.appointments?.consultation || 0,
-                      color: "#8B5CF6",
-                    },
-                  ]}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fill: "#6B7280", fontSize: 12 }}
-                    axisLine={{ stroke: "#E5E7EB" }}
-                  />
-                  <YAxis
-                    tick={{ fill: "#6B7280", fontSize: 12 }}
-                    axisLine={{ stroke: "#E5E7EB" }}
-                    allowDecimals={false}
-                    tickFormatter={(value) => {
-                      return Math.round(value).toString();
-                    }}
-                  />
-
-                  <Bar
-                    dataKey="value"
-                    fill="#39BDCC"
-                    radius={[8, 8, 0, 0]}
-                    maxBarSize={60}
-                  >
-                    {[
-                      {
-                        name: "Khám bệnh",
-                        value: dashboardData.appointments?.examination || 0,
-                        color: "#39BDCC",
-                      },
-                      {
-                        name: "Tư vấn",
-                        value: dashboardData.appointments?.consultation || 0,
-                        color: "#8B5CF6",
-                      },
-                    ].map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Revenue Distribution Chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Phân bổ doanh thu theo dịch vụ
-                </h3>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(dashboardData.revenue?.total || 0)}
-                  </p>
-                  <span className="text-sm text-gray-600">tổng doanh thu</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-center">
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        {
-                          name: "Khám bệnh",
-                          value: dashboardData.revenue?.Examination || 0,
-                          color: "#39BDCC",
-                        },
-                        {
-                          name: "Tư vấn",
-                          value: dashboardData.revenue?.Consultation || 0,
-                          color: "#8B5CF6",
-                        },
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {[
-                        {
-                          name: "Khám bệnh",
-                          value: dashboardData.revenue?.Examination || 0,
-                          color: "#39BDCC",
-                        },
-                        {
-                          name: "Tư vấn",
-                          value: dashboardData.revenue?.Consultation || 0,
-                          color: "#8B5CF6",
-                        },
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number) => formatCurrency(value)}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      formatter={(value, entry: any) => (
-                        <span className="text-sm text-gray-700">
-                          {value} ({formatCurrency(entry.payload.value)})
-                        </span>
-                      )}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-            </div>
-          </>
-        )}
-        </div>
         </Tab>
         <Tab key="compare" title="So sánh doanh thu giữa các tháng">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-1">
-            So sánh doanh thu giữa các tháng
-          </h2>
-          <p className="text-sm text-gray-600">
-            Biểu đồ so sánh doanh thu 12 tháng trong năm {monthlyRevenueData?.year || new Date().getFullYear()}
-          </p>
-        </div>
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-1">
+                So sánh doanh thu giữa các tháng
+              </h2>
+              <p className="text-sm text-gray-600">
+                Biểu đồ so sánh doanh thu 12 tháng trong năm {monthlyRevenueData?.year || new Date().getFullYear()}
+              </p>
+            </div>
 
-        {/* Loading State */}
-        {isLoadingMonthly && (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#39BDCC]"></div>
+            {/* Loading State */}
+            {isLoadingMonthly && (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#39BDCC]"></div>
+              </div>
+            )}
+
+            {/* Monthly Comparison Chart - Line Chart (Similar to gold price chart) */}
+            {!isLoadingMonthly && monthlyRevenueData && (
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart data={monthlyChartData} margin={{ top: 50, right: 30, left: 100, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fill: "#374151", fontSize: 12 }}
+                    axisLine={{ stroke: "#D1D5DB" }}
+                    tickLine={{ stroke: "#D1D5DB" }}
+                  />
+                  <YAxis
+                    tick={{ fill: "#374151", fontSize: 12 }}
+                    axisLine={{ stroke: "#D1D5DB" }}
+                    tickLine={{ stroke: "#D1D5DB" }}
+                    tickCount={8}
+                    tickFormatter={(value) => {
+                      return formatCurrencyNoSymbol(value);
+                    }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                    }}
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="doanhThu"
+                    stroke="#39BDCC"
+                    strokeWidth={2.5}
+                    dot={{ fill: "#39BDCC", r: 4 }}
+                    activeDot={{ r: 6 }}
+                    name="Doanh thu"
+                  >
+                    <LabelList
+                      dataKey="doanhThu"
+                      position="top"
+                      formatter={(value: any) => formatCurrencyNoSymbol(Number(value) || 0)}
+                      style={{ fill: "#374151", fontSize: 11, fontWeight: 500 }}
+                    />
+                  </Line>
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
-        )}
-
-        {/* Monthly Comparison Chart - Line Chart (Similar to gold price chart) */}
-        {!isLoadingMonthly && monthlyRevenueData && (
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={monthlyChartData} margin={{ top: 50, right: 30, left: 100, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis
-                dataKey="month"
-                tick={{ fill: "#374151", fontSize: 12 }}
-                axisLine={{ stroke: "#D1D5DB" }}
-                tickLine={{ stroke: "#D1D5DB" }}
-              />
-              <YAxis
-                tick={{ fill: "#374151", fontSize: 12 }}
-                axisLine={{ stroke: "#D1D5DB" }}
-                tickLine={{ stroke: "#D1D5DB" }}
-                tickCount={8}
-                tickFormatter={(value) => {
-                  return formatCurrencyNoSymbol(value);
-                }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                }}
-                formatter={(value: number) => formatCurrency(value)}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="doanhThu"
-                stroke="#39BDCC"
-                strokeWidth={2.5}
-                dot={{ fill: "#39BDCC", r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Doanh thu"
-              >
-                <LabelList
-                  dataKey="doanhThu"
-                  position="top"
-                  formatter={(value: any) => formatCurrencyNoSymbol(Number(value) || 0)}
-                  style={{ fill: "#374151", fontSize: 11, fontWeight: 500 }}
-                />
-              </Line>
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-        </div>
         </Tab>
 
         <Tab key="yearly" title="Thống kê năm">
