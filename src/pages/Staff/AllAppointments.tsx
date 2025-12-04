@@ -259,7 +259,7 @@ const AllAppointments = () => {
       if (res.success && res.data) {
         const doctorNames = res.data.map(doctor => doctor.fullName);
         setDoctors(doctorNames);
-        setWalkInDoctors(res.data);
+        setWalkInAvailableDoctors(res.data);
       }
     } catch (err: any) {
       console.error("Error fetching all doctors:", err);
@@ -346,7 +346,7 @@ const AllAppointments = () => {
       
       // ⭐ FIX: Pass staffUserId để backend loại trừ reserved slots của chính staff
       // Lấy staffUserId từ auth context
-      const staffUserId = user?.userId;
+      const staffUserId = user?._id || user?.id;
       
       const res = await getDoctorScheduleRange(
         doctorUserId, 
@@ -458,8 +458,7 @@ const AllAppointments = () => {
         walkInForm.doctorUserId,
         walkInForm.serviceId,
         walkInForm.date,
-        startISO,
-        walkInForm.email // ⭐ Pass email for conflict checking
+        startISO
       );
 
       if (!validateRes.success) {
@@ -475,9 +474,7 @@ const AllAppointments = () => {
         doctorScheduleId: walkInForm.doctorScheduleId,
         date: walkInForm.date,
         startTime: startISO,
-        appointmentFor: "other", // Staff always books for "other"
-        customerFullName: walkInForm.fullName,
-        customerEmail: walkInForm.email
+        appointmentFor: "other" // Staff always books for "other"
       });
 
       if (!reserveRes.success || !reserveRes.data) {
@@ -2215,7 +2212,7 @@ const AllAppointments = () => {
                     phoneNumber: walkInForm.phoneNumber,
                     serviceId: walkInForm.serviceId,
                     doctorUserId: walkInForm.doctorUserId,
-                    doctorScheduleId: walkInForm.doctorScheduleId,
+                    doctorScheduleId: walkInForm.doctorScheduleId || "",
                     selectedSlot: {
                       startTime: walkInForm.startTime!.toISOString(),
                       endTime: walkInForm.endTime!.toISOString()
@@ -2404,7 +2401,7 @@ const AllAppointments = () => {
                       }}
                     >
                       {walkInServices.map((service) => (
-                        <SelectItem key={service._id} value={service._id}>
+                        <SelectItem key={service._id}>
                           {service.serviceName}
                         </SelectItem>
                       ))}
@@ -2432,7 +2429,7 @@ const AllAppointments = () => {
                       }}
                     >
                       {walkInAvailableDoctors.map((doctor) => (
-                        <SelectItem key={doctor._id} value={doctor._id}>
+                        <SelectItem key={doctor._id}>
                           {doctor.fullName}
                         </SelectItem>
                       ))}
