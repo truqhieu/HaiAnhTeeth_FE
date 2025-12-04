@@ -175,7 +175,7 @@ const getCategoryLabel = (category: string) => CATEGORY_LABELS[category] || cate
                 }}
               >
                 {categories.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
+                  <SelectItem key={cat.value}>
                     {cat.label}
                   </SelectItem>
                 ))}
