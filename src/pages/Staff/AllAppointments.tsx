@@ -2171,7 +2171,63 @@ const AllAppointments = () => {
                 onSubmit={async (e) => {
                   e.preventDefault();
 
-                  // Validate
+                  // ⭐ FIX: Auto-process time input if user typed time but didn't blur (click submit immediately)
+                  let processedStartTime = walkInForm.startTime;
+                  let processedEndTime = walkInForm.endTime;
+                  let processedReservation = walkInReservation;
+
+                  if (walkInForm.userStartTimeInput && (!walkInForm.startTime || !walkInForm.endTime)) {
+                    const timeRegex = /^(\d{1,2}):(\d{1,2})$/;
+                    if (timeRegex.test(walkInForm.userStartTimeInput)) {
+                      const [hours, minutes] = walkInForm.userStartTimeInput.split(":");
+                      const h = parseInt(hours, 10);
+                      const m = parseInt(minutes, 10);
+                      
+                      // Validate time format
+                      if (h < 0 || h > 23) {
+                        toast.error("Giờ không hợp lệ. 00-23");
+                        return;
+                      }
+                      if (m < 0 || m > 59) {
+                        toast.error("Phút không hợp lệ. 00-59");
+                        return;
+                      }
+
+                      // Check if time is in available ranges
+                      if (!isTimeInWalkInRanges(walkInForm.userStartTimeInput)) {
+                        toast.error("Khung giờ này không nằm trong khoảng khả dụng.");
+                        return;
+                      }
+
+                      // Convert VN → UTC
+                      const dateObj = new Date((walkInForm.date || "") + "T00:00:00.000Z");
+                      const utcHours = h - 7;
+                      dateObj.setUTCHours(utcHours, m, 0, 0);
+                      const startISO = dateObj.toISOString();
+
+                      // ⭐ OPTIMIZED: Skip reservation during auto-submit, go straight to appointment creation
+                      // Calculate end time based on service duration
+                      const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
+                      const durationMinutes = selectedService?.durationMinutes || 30;
+                      const endTimeObj = new Date(dateObj);
+                      endTimeObj.setMinutes(endTimeObj.getMinutes() + durationMinutes);
+
+                      // Use processed values for submission
+                      processedStartTime = dateObj;
+                      processedEndTime = endTimeObj;
+                      processedReservation = null; // No reservation during auto-submit
+
+                      // Update state for UI feedback
+                      setWalkInForm(prev => ({
+                        ...prev,
+                        startTime: processedStartTime,
+                        endTime: processedEndTime,
+                      }));
+                      setWalkInTimeError(null);
+                    }
+                  }
+
+                  // Validate using processed values
                   const errors: Record<string, string> = {};
                   if (!walkInForm.fullName.trim()) errors.fullName = "Vui lòng nhập họ và tên";
                   if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(walkInForm.email.trim())) {
@@ -2183,7 +2239,7 @@ const AllAppointments = () => {
                   if (!walkInForm.date) errors.date = "Vui lòng chọn ngày";
                   if (!walkInForm.serviceId) errors.serviceId = "Vui lòng chọn dịch vụ";
                   if (!walkInForm.doctorUserId) errors.doctorUserId = "Vui lòng chọn bác sĩ";
-                  if (!walkInForm.startTime || !walkInForm.endTime) {
+                  if (!processedStartTime || !processedEndTime) {
                     errors.userStartTimeInput = "Vui lòng chọn giờ bắt đầu";
                   }
 
@@ -2204,11 +2260,11 @@ const AllAppointments = () => {
                       doctorUserId: walkInForm.doctorUserId,
                       doctorScheduleId: walkInForm.doctorScheduleId || "",
                       selectedSlot: {
-                        startTime: walkInForm.startTime!.toISOString(),
-                        endTime: walkInForm.endTime!.toISOString()
+                        startTime: processedStartTime!.toISOString(),
+                        endTime: processedEndTime!.toISOString()
                       },
                       notes: walkInForm.notes,
-                      reservedTimeslotId: walkInReservation?.timeslotId || null
+                      reservedTimeslotId: processedReservation?.timeslotId || null
                     };
 
                     console.log('📤 Sending walk-in appointment request:', payload);
