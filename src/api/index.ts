@@ -111,7 +111,6 @@ export const apiCall = async <T = any>(
       console.error("🌐 [CORS Error] This is likely a CORS issue. Check:");
       console.error("   1. Backend CORS config allows this origin");
       console.error("   2. Backend is running and accessible");
-      console.error("   3. Request URL:", url);
       console.error("   4. Origin:", typeof window !== 'undefined' ? window.location.origin : 'N/A');
 
       throw new Error(
