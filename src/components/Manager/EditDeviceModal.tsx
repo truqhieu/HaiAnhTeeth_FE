@@ -10,6 +10,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Tooltip,
 } from "@heroui/react";
 import toast from "react-hot-toast";
 
@@ -39,6 +40,7 @@ const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
 
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOriginallyExpired, setIsOriginallyExpired] = useState(false);
 
   const statusOptions = [
     { key: "Active", label: "Hoạt động" },
@@ -48,13 +50,20 @@ const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
   // Load device data when modal opens
   useEffect(() => {
     if (isOpen && device) {
+      const expireDate = device.expireDate.split("T")[0];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expireDateObj = new Date(expireDate);
+      const wasExpired = expireDateObj < today;
+      
       setFormData({
         name: device.name,
         description: device.description,
         purchaseDate: device.purchaseDate.split("T")[0],
-        expireDate: device.expireDate.split("T")[0],
+        expireDate: expireDate,
         status: device.status,
       });
+      setIsOriginallyExpired(wasExpired);
       setShowValidation(false);
     }
   }, [isOpen, device]);
@@ -62,6 +71,20 @@ const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  // Check if current expire date in form is valid (not expired)
+  const isCurrentExpireDateValid = () => {
+    if (!formData.expireDate) return false;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const expireDateObj = new Date(formData.expireDate);
+    
+    return expireDateObj >= today;
+  };
+
+  // Disable status field if device was originally expired AND current expire date is still not valid
+  const isStatusDisabled = isOriginallyExpired && !isCurrentExpireDateValid();
 
   // Validation
   const isNameInvalid =
@@ -273,25 +296,35 @@ const EditDeviceModal: React.FC<EditDeviceModalProps> = ({
                   onChange={(value) => handleInputChange("expireDate", value)}
                 />
 
-                <Select
-                  fullWidth
-                  classNames={{
-                    base: "w-full",
-                    trigger: "w-full",
-                  }}
-                  label="Trạng thái *"
-                  placeholder="Chọn trạng thái"
-                  selectedKeys={formData.status ? [formData.status] : []}
-                  variant="bordered"
-                  onSelectionChange={(keys) => {
-                    const selectedKey = Array.from(keys)[0] as "Active" | "Inactive";
-                    handleInputChange("status", selectedKey);
-                  }}
+                <Tooltip
+                  isDisabled={!isStatusDisabled}
+                  content="Không thể thay đổi trạng thái thiết bị đã hết hạn. Vui lòng cập nhật ngày hết hạn hợp lệ trước."
+                  placement="bottom"
+                  className="max-w-xs"
                 >
-                  {statusOptions.map((option) => (
-                    <SelectItem key={option.key}>{option.label}</SelectItem>
-                  ))}
-                </Select>
+                  <div className="w-full">
+                    <Select
+                      fullWidth
+                      classNames={{
+                        base: "w-full",
+                        trigger: "w-full",
+                      }}
+                      isDisabled={isStatusDisabled}
+                      label="Trạng thái *"
+                      placeholder="Chọn trạng thái"
+                      selectedKeys={formData.status ? [formData.status] : []}
+                      variant="bordered"
+                      onSelectionChange={(keys) => {
+                        const selectedKey = Array.from(keys)[0] as "Active" | "Inactive";
+                        handleInputChange("status", selectedKey);
+                      }}
+                    >
+                      {statusOptions.map((option) => (
+                        <SelectItem key={option.key}>{option.label}</SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+                </Tooltip>
               </div>
             </Form>
           </ModalBody>
