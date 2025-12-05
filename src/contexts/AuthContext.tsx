@@ -2,7 +2,10 @@ import type { AuthUser } from "@/api";
 import type { RootState, AppDispatch } from "@/store/index";
 
 
-import React, { createContext, useContext, useEffect } from "react";
+
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Spinner } from "@heroui/react";
 import { useDispatch, useSelector } from "react-redux";
 
 
@@ -68,7 +71,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     (state: RootState) => state.auth,
   );
 
-
   // Debug Redux state
   console.log("🔍 [AuthContext] Redux state:", {
     user: user ? { id: user._id, role: user.role, email: user.email, fullName: user.fullName } : null,
@@ -76,8 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
   });
 
-
-  // ⭐ STEP 4: Init auth bằng cách hỏi BE xem cookie còn không
+  // Initialize auth state from sessionStorage on mount
   useEffect(() => {
     let isMounted = true;
 
@@ -85,47 +86,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const initializeAuth = async () => {
       try {
         dispatch(setLoading(true));
-        console.log("🔍 [AuthContext] Bootstrap auth via /auth/profile");
 
+        // Try to restore from sessionStorage
+        const storedUser = sessionStorage.getItem("user");
+        const storedToken = sessionStorage.getItem("authToken");
 
-        // Gọi BE, browser sẽ tự gửi cookie nhờ credentials: "include"
-        const res = await authApi.getProfile();
+        console.log(
+          "🔍 [AuthContext] Restoring from sessionStorage:",
+          storedUser,
+        );
 
+        if (storedUser && storedToken && isMounted) {
+          const parsedUser = JSON.parse(storedUser) as AuthUser;
 
-        if (!isMounted) return;
+          console.log(
+            "🔍 [AuthContext] Parsed user emergencyContact:",
+            (parsedUser as any).emergencyContact,
+          );
+          // Normalize user data: ensure _id is set
+          const normalizedUser = normalizeUserData(parsedUser as AuthUser);
 
-
-        if (res.success && res.data?.user) {
-          const normalizedUser = normalizeUserData(res.data.user as AuthUser);
-
-
-          // Lưu user vào sessionStorage cho FE tiện dùng (menu, header, v.v.)
-          sessionStorage.setItem("user", JSON.stringify(normalizedUser));
-
-
-          console.log("🔍 [AuthContext] Profile OK, setAuth with user:", {
-            id: normalizedUser._id,
-            role: normalizedUser.role,
-            email: normalizedUser.email,
-          });
-
-
-          // Token ở Redux chỉ là info phụ, không dùng để auth nữa
-          dispatch(setAuth({ user: normalizedUser, token: "" }));
-        } else {
-          console.log("🔍 [AuthContext] No valid profile, clearAuth");
-          sessionStorage.removeItem("user");
+          console.log("🔍 [AuthContext] Restoring auth with user:", normalizedUser);
+          console.log("🔍 [AuthContext] Restoring auth with token:", storedToken);
+          
+          // Use setAuth instead of restoreAuth to ensure proper state update
+          dispatch(setAuth({ user: normalizedUser, token: storedToken }));
+          
+          console.log("🔍 [AuthContext] Dispatched setAuth for restore");
+        } else if (isMounted) {
+          console.log("🔍 [AuthContext] No stored auth found, clearing state");
           dispatch(clearAuth());
+          navigate("/"); // 🚀 Redirect to homepage when session invalid
         }
       } catch (error) {
         console.error("❌ [AuthContext] Error initializing auth via profile:", error);
         sessionStorage.removeItem("user");
         if (isMounted) {
           dispatch(clearAuth());
+          navigate("/"); // 🚀 Redirect to homepage when session expired
         }
       } finally {
         if (isMounted) {
           dispatch(setLoading(false));
+          setIsInitialized(true); // 🚀 Mark as initialized
         }
       }
     };
@@ -241,6 +244,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     userData: sessionUser ? JSON.parse(sessionUser) : null,
   });
 
+  // Force re-render when sessionStorage changes
+  React.useEffect(() => {
+    const handleStorageChange = () => {
+      const storedUser = sessionStorage.getItem("user");
+      const storedToken = sessionStorage.getItem("authToken");
+      
+      if (storedUser && storedToken && !user) {
+        console.log("🔍 [AuthContext] Storage changed, restoring auth");
+        const parsedUser = JSON.parse(storedUser) as AuthUser;
+        const normalizedUser = normalizeUserData(parsedUser as AuthUser);
+        dispatch(setAuth({ user: normalizedUser, token: storedToken }));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [dispatch, user]);
+
+  // Additional effect to check and restore auth immediately
+  React.useEffect(() => {
+    const storedUser = sessionStorage.getItem("user");
+    const storedToken = sessionStorage.getItem("authToken");
+    
+    if (storedUser && storedToken && !user) {
+      console.log("🔍 [AuthContext] Found stored auth but no user in state, restoring immediately");
+      const parsedUser = JSON.parse(storedUser) as AuthUser;
+      const normalizedUser = normalizeUserData(parsedUser as AuthUser);
+      dispatch(setAuth({ user: normalizedUser, token: storedToken }));
+    }
+  }, [dispatch, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

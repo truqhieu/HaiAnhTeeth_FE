@@ -102,7 +102,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
       const response = await managerApi.updateClinic(room.id, updateData);
 
       // Check cả status và success
-      if (response.status || response.success) {
+      if ((response.data as any)?.status || response.success) {
         // Handle assign/unassign doctor nếu có thay đổi
         const oldDoctorId = room.assignedDoctorId;
         const newDoctorId = formData.assignedDoctorId;
@@ -262,7 +262,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                   handleInputChange("assignedDoctorId", selectedKey || "");
                 }}
               >
-                <SelectItem key="" value="">
+                <SelectItem key="">
                   <span className="text-gray-500 italic">Không có bác sĩ</span>
                 </SelectItem>
                 {doctors.map((doctor) => (

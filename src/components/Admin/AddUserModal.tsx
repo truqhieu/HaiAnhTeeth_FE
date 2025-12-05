@@ -186,7 +186,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     return { isValid: true, errorMessage: "" };
   };
 
-  // Format date from yyyy-mm-dd to dd/mm/yyyy
+  // Format date from yyyy-mm-dd to dd/MM/yyyy for backend
   const formatDateToDDMMYYYY = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -268,7 +268,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Format date to dd/mm/yyyy before sending
+      // Format date to dd/MM/yyyy for backend validation
       const formattedDob = formatDateToDDMMYYYY(formData.dob);
 
       // Call API to create new user

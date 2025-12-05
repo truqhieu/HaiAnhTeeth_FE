@@ -171,7 +171,21 @@ const BirthDateInput = forwardRef<HTMLInputElement, BirthDateInputProps>(
     const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
       // Call react-datepicker's onClick to open calendar
       if (onClick) {
-        onClick(e as any);
+        onClick();
+      }
+    };
+    
+    const handleButtonClick = () => {
+      // Call react-datepicker's onClick to open calendar
+      if (onClick) {
+        onClick();
+      }
+    };
+    
+    const handleFocus = () => {
+      // Call react-datepicker's onClick to open calendar on focus
+      if (onClick) {
+        onClick();
       }
     };
     
@@ -191,7 +205,7 @@ const BirthDateInput = forwardRef<HTMLInputElement, BirthDateInputProps>(
         placeholder={placeholder || "dd/mm/yyyy"}
         onClick={handleClick}
         onChange={handleChange}
-        onFocus={handleClick}
+        onFocus={handleFocus}
         label="Ngày sinh"
         labelPlacement="outside"
         variant="bordered"
@@ -203,7 +217,7 @@ const BirthDateInput = forwardRef<HTMLInputElement, BirthDateInputProps>(
         startContent={
           <button
             type="button"
-            onClick={handleClick}
+            onClick={handleButtonClick}
             className="cursor-pointer"
             tabIndex={-1}
           >
@@ -503,9 +517,9 @@ const UserProfileForm = ({
               : {};
             
             (updatedUser as any).emergencyContact = {
-              name: sentEmergencyContact.name || backendContact.name || "",
-              phone: sentEmergencyContact.phone || backendContact.phone || "",
-              relationship: sentEmergencyContact.relationship || backendContact.relationship || "",
+              name: sentEmergencyContact.name || (backendContact as any).name || "",
+              phone: sentEmergencyContact.phone || (backendContact as any).phone || "",
+              relationship: sentEmergencyContact.relationship || (backendContact as any).relationship || "",
             };
           }
           
@@ -757,10 +771,14 @@ const UserProfileForm = ({
                   onChangeRaw={(e) => {
                     // Handle manual typing - format as user types
                     // Only format if it's not already in the correct format (to avoid interfering with calendar selection)
-                    const inputValue = e.target?.value;
+                    if (!e || !e.target) {
+                      return;
+                    }
+                    
+                    const inputValue = (e.target as HTMLInputElement).value;
                     
                     // Safety check
-                    if (!e.target || inputValue === undefined || inputValue === null) {
+                    if (inputValue === undefined || inputValue === null) {
                       return;
                     }
                     
@@ -780,11 +798,12 @@ const UserProfileForm = ({
                     
                     // Update the input value with formatted version
                     if (inputValue !== formatted) {
-                      const cursorPos = e.target.selectionStart || 0;
-                      e.target.value = formatted;
+                      const inputElement = e.target as HTMLInputElement;
+                      const cursorPos = inputElement.selectionStart || 0;
+                      inputElement.value = formatted;
                       const lengthDiff = formatted.length - (inputValue?.length || 0);
                       const newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, formatted.length));
-                      e.target.setSelectionRange(newCursorPos, newCursorPos);
+                      inputElement.setSelectionRange(newCursorPos, newCursorPos);
                     }
                     
                     // Update state for manual typing

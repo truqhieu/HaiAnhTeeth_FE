@@ -12,18 +12,12 @@ import {
   TableHeader,
   TableRow,
   Chip,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
   Tooltip,
 } from "@heroui/react";
 import {
   MagnifyingGlassIcon,
   PlusIcon,
   PencilIcon,
-  TrashIcon,
   CalendarIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
@@ -47,10 +41,7 @@ const DeviceManagement = () => {
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-  const [deviceToDelete, setDeviceToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     fetchDevices();
@@ -125,11 +116,6 @@ const DeviceManagement = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleDelete = (device: Device) => {
-    setDeviceToDelete({ id: device._id, name: device.name });
-    setIsDeleteModalOpen(true);
-  };
-
   const handleCloseAddModal = () => {
     setIsAddModalOpen(false);
   };
@@ -154,28 +140,6 @@ const DeviceManagement = () => {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deviceToDelete) return;
-
-    try {
-      setIsProcessing(true);
-
-      const response = await deviceApi.deleteDevice(deviceToDelete.id);
-
-      if (response.success) {
-        toast.success(response.message || "Xóa thiết bị thành công");
-        setIsDeleteModalOpen(false);
-        setDeviceToDelete(null);
-        fetchDevices();
-      } else {
-        toast.error(response.message || "Không thể xóa thiết bị");
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Đã xảy ra lỗi khi xóa thiết bị");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const getStatusColor = (status: string): "success" | "danger" => {
     return status === "Active" ? "success" : "danger";
@@ -193,6 +157,16 @@ const DeviceManagement = () => {
       month: "2-digit",
       day: "2-digit",
     });
+  };
+
+  const isDeviceExpired = (expireDate?: string): boolean => {
+    if (!expireDate) return false;
+    
+    const expireDateObj = new Date(expireDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to compare only dates
+    
+    return expireDateObj < today;
   };
 
   const columns = [
@@ -313,10 +287,13 @@ const DeviceManagement = () => {
                         <span className="font-medium">Mua:</span>
                         <span>{formatDate(device.purchaseDate)}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-gray-900 text-sm mt-1">
+                      <div className="flex items-center gap-2 text-sm mt-1">
                         <CalendarIcon className="w-4 h-4 text-red-500" />
                         <span className="font-medium">Hết hạn:</span>
-                        <span>{formatDate(device.expireDate)}</span>
+                        <span className={isDeviceExpired(device.expireDate) ? "text-red-600 font-semibold" : "text-gray-900"}>
+                          {formatDate(device.expireDate)}
+                          {isDeviceExpired(device.expireDate) && " (Đã hết hạn)"}
+                        </span>
                       </div>
                     </div>
                   </TableCell>
@@ -342,17 +319,6 @@ const DeviceManagement = () => {
                           <PencilIcon className="w-5 h-5" />
                         </Button>
                       </Tooltip>
-                      <Tooltip content="Xóa thiết bị">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                          className="min-w-8 h-8 text-red-600 hover:bg-red-50"
-                          onPress={() => handleDelete(device)}
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </Button>
-                      </Tooltip>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -376,59 +342,6 @@ const DeviceManagement = () => {
         onClose={handleCloseEditModal}
         onSuccess={handleEditSuccess}
       />
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isDismissable={!isProcessing}
-        isOpen={isDeleteModalOpen}
-        onOpenChange={setIsDeleteModalOpen}
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            Xác nhận xóa thiết bị
-          </ModalHeader>
-          <ModalBody>
-            {deviceToDelete && (
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <p className="text-gray-500">Tên thiết bị</p>
-                      <p className="font-medium text-gray-900">
-                        {deviceToDelete.name}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-gray-700">
-                  Bạn có chắc chắn muốn xóa thiết bị này? Hành động này không
-                  thể hoàn tác.
-                </p>
-              </div>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              color="default"
-              variant="light"
-              onPress={() => {
-                setIsDeleteModalOpen(false);
-                setDeviceToDelete(null);
-              }}
-            >
-              Hủy
-            </Button>
-            <Button
-              className="bg-red-600 text-white"
-              isLoading={isProcessing}
-              onPress={confirmDelete}
-            >
-              Xóa thiết bị
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
 
       {/* Pagination */}
       {!loading && total > 0 && (
