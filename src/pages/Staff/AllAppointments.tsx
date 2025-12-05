@@ -358,11 +358,20 @@ const AllAppointments = () => {
         staffUserId // ⭐ THÊM: Pass staffUserId để backend loại trừ reserved slots
       );
       
+      console.log('📅 [fetchWalkInScheduleRanges] Response:', {
+        success: res.success,
+        hasData: !!(res as any).data,
+        scheduleRanges: (res as any).data?.scheduleRanges,
+        scheduleRangesLength: (res as any).data?.scheduleRanges?.length,
+        message: (res as any).data?.message
+      });
+      
       if (res.success && (res as any).data) {
         const data: any = (res as any).data;
         setWalkInScheduleRanges(data.scheduleRanges || []);
         setWalkInDoctorScheduleId(data.doctorScheduleId || null);
       } else {
+        console.warn('⚠️ [fetchWalkInScheduleRanges] Backend returned error or no data:', res);
         setWalkInScheduleRanges(null);
         setWalkInDoctorScheduleId(null);
       }
@@ -2451,9 +2460,10 @@ const AllAppointments = () => {
                       <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
                         <p className="text-sm text-gray-600">Đang tải lịch bác sĩ...</p>
                       </div>
-                    ) : walkInScheduleRanges && Array.isArray(walkInScheduleRanges) ? (
+                    ) : walkInScheduleRanges && Array.isArray(walkInScheduleRanges) && walkInScheduleRanges.length > 0 ? (
                       <>
                         {/* Schedule Ranges Display - Match BookingModal UI */}
+                        {/* ⭐ LUÔN hiển thị cả 2 buổi (sáng và chiều) với status rõ ràng */}
                         <div className="p-3 bg-blue-50 border border-gray-200 rounded-lg">
                           <p className="text-xs text-gray-600 font-medium mb-2">
                             Khoảng thời gian khả dụng:
