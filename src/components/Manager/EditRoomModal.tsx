@@ -102,7 +102,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
       const response = await managerApi.updateClinic(room.id, updateData);
 
       // Check cả status và success
-      if (response.status || response.success) {
+      if ((response.data as any)?.status || response.success) {
         // Handle assign/unassign doctor nếu có thay đổi
         const oldDoctorId = room.assignedDoctorId;
         const newDoctorId = formData.assignedDoctorId;

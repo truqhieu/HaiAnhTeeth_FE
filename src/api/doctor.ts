@@ -89,12 +89,12 @@ export const doctorApi = {
     if (endDate) {
       queryParams.append("endDate", endDate);
     }
-    
+
     const query = queryParams.toString();
     const endpoint = query
       ? `/doctor/appointments-schedule?${query}`
       : `/doctor/appointments-schedule`;
-    
+
     return authenticatedApiCall<DoctorAppointment[]>(
       endpoint,
       {
@@ -163,16 +163,8 @@ export const doctorApi = {
   updateProfile: async (
     formData: FormData,
   ): Promise<ApiResponse<DoctorProfileInfo>> => {
-    const token = sessionStorage.getItem("authToken");
-    if (!token) {
-      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
-    }
-
     const response = await fetch(`${API_BASE_URL}/doctor/profile`, {
       method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       body: formData,
       credentials: "include",
     });

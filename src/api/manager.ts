@@ -771,17 +771,8 @@ export const managerApi = {
 
     const queryString = queryParams.toString();
     const endpoint = `/appointments/dashboard/service-revenue-report/pdf${queryString ? `?${queryString}` : ""}`;
-
-    const token = sessionStorage.getItem("authToken");
-    if (!token) {
-      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
-    }
-
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       credentials: "include",
     });
 

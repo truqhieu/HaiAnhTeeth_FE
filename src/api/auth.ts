@@ -1,5 +1,6 @@
 import { apiCall, authenticatedApiCall, ApiResponse } from "./index";
 
+
 // Auth Types
 export interface RegisterData {
   fullName: string;
@@ -9,20 +10,24 @@ export interface RegisterData {
   password: string;
 }
 
+
 export interface LoginData {
   email: string;
   password: string;
 }
 
+
 export interface ForgotPasswordData {
   email: string;
 }
+
 
 export interface ResetPasswordData {
   token: string;
   email: string;
   newPassword: string;
 }
+
 
 export interface User {
   _id?: string;
@@ -47,6 +52,7 @@ export interface User {
   };
 }
 
+
 export interface UpdateProfileData {
   fullName?: string;
   phoneNumber?: string;
@@ -60,10 +66,12 @@ export interface UpdateProfileData {
   };
 }
 
+
 export interface AuthResponse {
   user: User;
   token: string;
 }
+
 
 // Auth API Functions
 export const authApi = {
@@ -75,13 +83,16 @@ export const authApi = {
     });
   },
 
+
   // Login user
   login: async (data: LoginData): Promise<ApiResponse<AuthResponse>> => {
     return apiCall<AuthResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify(data),
+      credentials: "include",
     });
   },
+
 
   // Forgot password
   forgotPassword: async (data: ForgotPasswordData): Promise<ApiResponse> => {
@@ -91,6 +102,7 @@ export const authApi = {
     });
   },
 
+
   // Reset password
   resetPassword: async (data: ResetPasswordData): Promise<ApiResponse> => {
     return apiCall("/auth/reset-password", {
@@ -98,6 +110,7 @@ export const authApi = {
       body: JSON.stringify(data),
     });
   },
+
 
   // Verify email
   verifyEmail: async (
@@ -112,35 +125,44 @@ export const authApi = {
     );
   },
 
+
   // Get current user profile
   getProfile: async (): Promise<ApiResponse<{ user: User }>> => {
     return authenticatedApiCall<{ user: User }>("/auth/profile", {
       method: "GET",
+      credentials: "include",
     });
   },
+
 
   // Update user profile
   updateProfile: async (
     data: UpdateProfileData | FormData,
     isFormData = false,
   ): Promise<ApiResponse<{ user: User }>> => {
+    // ⭐ TRƯỜNG HỢP CÓ UPLOAD FILE (FormData)
     if (isFormData && data instanceof FormData) {
-      const token = sessionStorage.getItem("authToken");
-      if (!token) throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+      // ❌ KHÔNG dùng authToken nữa
+      // ✅ Chỉ cần credentials: 'include' để browser tự gửi cookie
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}/auth/profile`, {
+
+      const apiBase =
+        import.meta.env.VITE_API_URL ||
+        "https://haianhteethbe-production.up.railway.app/api";
+
+
+      const response = await fetch(`${apiBase}/auth/profile`, {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: data,
-        credentials: "include",
+        credentials: "include", // gửi cookie
+        body: data,             // FormData -> KHÔNG set Content-Type
       });
 
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Không thể cập nhật hồ sơ");
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.message || "Không thể cập nhật hồ sơ");
       }
+
 
       const result = (await response.json()) as ApiResponse<{ user: User }>;
       if (result.success && result.data) {
@@ -149,6 +171,8 @@ export const authApi = {
       return result;
     }
 
+
+    // ⭐ TRƯỜNG HỢP JSON (không upload file)
     const response = await authenticatedApiCall<{ user: User }>("/auth/profile", {
       method: "PATCH",
       headers: {
@@ -157,12 +181,17 @@ export const authApi = {
       body: JSON.stringify(data),
     });
 
+
     if (response.success && response.data) {
       sessionStorage.setItem("user", JSON.stringify(response.data.user));
     }
 
+
     return response;
   },
+
+
+
 
   // Change password (for authenticated users)
   changePassword: async (data: {
@@ -176,7 +205,7 @@ export const authApi = {
       newPassword: data.newPassword,
       reNewPassword: data.confirmPassword || data.newPassword,
     };
-    
+
     return authenticatedApiCall<{ status: boolean; message: string }>(
       "/auth/change-password",
       {
@@ -189,28 +218,51 @@ export const authApi = {
     );
   },
 
+
+
+
   // Logout (clear sessionStorage)
-  logout: (): void => {
-    sessionStorage.removeItem("authToken");
+  logout: async (): Promise<void> => {
+    try {
+      await apiCall("/auth/logout", {
+        method: "POST",
+        credentials: "include"
+      });
+    } catch (err) {
+      console.warn("Logout error:", err);
+    }
+
+
+    // Xoá user cache FE
     sessionStorage.removeItem("user");
   },
+
+
+
 
   // Get current user from sessionStorage
   getCurrentUser: (): User | null => {
     const userStr = sessionStorage.getItem("user");
 
+
     return userStr ? JSON.parse(userStr) : null;
   },
+
 
   // Get token from sessionStorage
   getToken: (): string | null => {
     return sessionStorage.getItem("authToken");
   },
 
+
   // Check if user is authenticated
   isAuthenticated: (): boolean => {
-    return !!sessionStorage.getItem("authToken");
+    const userStr = sessionStorage.getItem("user");
+    return !!userStr;
   },
+
+
+
 
   // getProfile: async (): Promise<ApiResponse<User>> => {
   //   return authenticatedApiCall<User>('/api/auth/profile', { // Thêm /api
@@ -218,3 +270,6 @@ export const authApi = {
   //   });
   // },
 };
+
+
+

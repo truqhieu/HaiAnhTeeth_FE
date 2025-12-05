@@ -101,14 +101,14 @@ export const patientRequestApi = {
       {
         method: "GET",
       }
-    );
+    ) as Promise<PatientRequestResponse>;
   },
 
   // Lấy chi tiết một yêu cầu
   getRequestById: async (requestId: string): Promise<SingleRequestResponse> => {
     return authenticatedApiCall(`/patient-requests/${requestId}`, {
       method: "GET",
-    });
+    }) as Promise<SingleRequestResponse>;
   },
 
   // Duyệt yêu cầu
@@ -117,7 +117,7 @@ export const patientRequestApi = {
   ): Promise<SingleRequestResponse> => {
     return authenticatedApiCall(`/patient-requests/${requestId}/approve`, {
       method: "PUT",
-    });
+    }) as Promise<SingleRequestResponse>;
   },
 
   // Từ chối yêu cầu
@@ -128,6 +128,6 @@ export const patientRequestApi = {
     return authenticatedApiCall(`/patient-requests/${requestId}/reject`, {
       method: "PUT",
       body: JSON.stringify({ reason }),
-    });
+    }) as Promise<SingleRequestResponse>;
   },
 };

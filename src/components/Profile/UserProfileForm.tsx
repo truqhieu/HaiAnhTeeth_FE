@@ -517,9 +517,9 @@ const UserProfileForm = ({
               : {};
             
             (updatedUser as any).emergencyContact = {
-              name: sentEmergencyContact.name || backendContact.name || "",
-              phone: sentEmergencyContact.phone || backendContact.phone || "",
-              relationship: sentEmergencyContact.relationship || backendContact.relationship || "",
+              name: sentEmergencyContact.name || (backendContact as any).name || "",
+              phone: sentEmergencyContact.phone || (backendContact as any).phone || "",
+              relationship: sentEmergencyContact.relationship || (backendContact as any).relationship || "",
             };
           }
           
