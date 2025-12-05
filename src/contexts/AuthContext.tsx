@@ -2,10 +2,14 @@ import type { AuthUser } from "@/api";
 import type { RootState, AppDispatch } from "@/store/index";
 
 
+
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Spinner } from "@heroui/react";
 import { useDispatch, useSelector } from "react-redux";
+
+
 
 
 import {
@@ -16,12 +20,18 @@ import {
 } from "@/store/slices/authSlice";
 
 
+
+
 import { authApi } from "@/api/auth";
+
+
 
 
 // Chuẩn hoá user
 const normalizeUserData = (userData: AuthUser): AuthUser => {
   const normalizedRole = userData.role ? userData.role.toLowerCase() : userData.role;
+
+
 
 
   const normalizedUser = {
@@ -32,10 +42,14 @@ const normalizeUserData = (userData: AuthUser): AuthUser => {
   };
 
 
+
+
   const phoneValue =
     (normalizedUser as AuthUser).phone ??
     (normalizedUser as AuthUser).phoneNumber ??
     "";
+
+
 
 
   return {
@@ -45,6 +59,8 @@ const normalizeUserData = (userData: AuthUser): AuthUser => {
       (normalizedUser as AuthUser).phoneNumber ?? phoneValue ?? undefined,
   };
 };
+
+
 
 
 interface AuthContextType {
@@ -57,7 +73,11 @@ interface AuthContextType {
 }
 
 
+
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+
 
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -72,6 +92,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [isInitialized, setIsInitialized] = useState<boolean>(false); // 🚀 Track initialization
 
 
+
+
   // Debug Redux state
   console.log("🔍 [AuthContext] Redux state:", {
     user: user ? { id: user._id, role: user.role, email: user.email, fullName: user.fullName } : null,
@@ -80,12 +102,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
 
+
+
   const navigate = useNavigate();
   const location = useLocation();
+
 
   // ⭐ STEP 4: Init auth bằng cách hỏi BE xem cookie còn không
   useEffect(() => {
     let isMounted = true;
+
+
 
 
     const initializeAuth = async () => {
@@ -94,19 +121,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log("🔍 [AuthContext] Bootstrap auth via /auth/profile");
 
 
+
+
         // Gọi BE, browser sẽ tự gửi cookie nhờ credentials: "include"
         const res = await authApi.getProfile();
 
 
+
+
         if (!isMounted) return;
+
+
 
 
         if (res.success && res.data?.user) {
           const normalizedUser = normalizeUserData(res.data.user as AuthUser);
 
 
+
+
           // Lưu user vào sessionStorage cho FE tiện dùng (menu, header, v.v.)
           sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+
+
 
 
           console.log("🔍 [AuthContext] Profile OK, setAuth with user:", {
@@ -116,16 +153,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           });
 
 
+
+
           // Token ở Redux chỉ là info phụ, không dùng để auth nữa
           dispatch(setAuth({ user: normalizedUser, token: "" }));
+
 
           // 🚀 AUTO REDIRECT logic
           const role = normalizedUser.role?.toLowerCase();
           const currentPath = location.pathname;
 
+
           // Nếu không phải patient và đang ở trang public (home hoặc login), thì redirect
           if (role && role !== "patient") {
             const isPublicPage = currentPath === "/" || currentPath === "/login";
+
 
             if (isPublicPage) {
               console.log(`🔍 [AuthContext] Auto redirecting ${role} to dashboard`);
@@ -136,6 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               else if (role === "nurse") navigate("/nurse/schedule");
             }
           }
+
 
         } else {
           console.log("🔍 [AuthContext] No valid profile, clearAuth");
@@ -159,7 +202,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
 
+
+
     initializeAuth();
+
+
 
 
     return () => {
@@ -168,15 +215,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [dispatch]);
 
 
+
+
   const login = (userData: AuthUser, token: string) => {
     const normalizedUser = normalizeUserData(userData);
+
+
 
 
     console.log("🔍 [AuthContext] Login called with user:", normalizedUser);
 
 
+
+
     // ⭐ KHÔNG lưu authToken nữa – chỉ lưu user
     sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+
+
 
 
     console.log("🔍 [AuthContext] Saved to sessionStorage:", {
@@ -184,16 +239,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
 
+
+
     // Redux vẫn giữ token nếu bạn cần dùng cho logic khác (nhưng không dùng cho auth nữa)
     dispatch(setAuth({ user: normalizedUser, token }));
+
+
 
 
     console.log("🔍 [AuthContext] Dispatched setAuth action");
   };
 
 
+
+
   const logout = () => {
     console.log("🔍 [AuthContext] Logout called");
+
+
 
 
     // Gọi BE để clear cookie (không chờ cũng được)
@@ -202,29 +265,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       .catch((err) => console.warn("⚠️ [AuthContext] Logout API error:", err));
 
 
+
+
     // Clear sessionStorage
     sessionStorage.removeItem("user");
 
 
+
+
     console.log("🔍 [AuthContext] Cleared sessionStorage");
+
+
 
 
     // Redux clear
     dispatch(clearAuth());
 
 
+
+
     console.log("🔍 [AuthContext] Dispatched clearAuth");
   };
+
+
 
 
   const updateUserInfo = (userData: AuthUser) => {
     const normalizedUser = normalizeUserData(userData);
 
 
+
+
     console.log(
       "🔍 [AuthContext] updateUserInfo called with emergencyContact:",
       (normalizedUser as any).emergencyContact,
     );
+
+
 
 
     // Update sessionStorage
@@ -235,12 +312,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     );
 
 
+
+
     // Update Redux
     dispatch(updateUser(normalizedUser));
 
 
+
+
     console.log("🔍 [AuthContext] Dispatched updateUser");
   };
+
+
 
 
   const value = {
@@ -253,6 +336,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
 
+
+
   // Debug logs
   console.log("🔍 [AuthContext] Current state:", {
     user: user ? { id: user._id, role: user.role, email: user.email, fullName: user.fullName } : null,
@@ -262,12 +347,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
 
+
+
   // Debug sessionStorage content
   const sessionUser = sessionStorage.getItem("user");
   console.log("🔍 [AuthContext] SessionStorage content:", {
     hasUser: !!sessionUser,
     userData: sessionUser ? JSON.parse(sessionUser) : null,
   });
+
 
   // 🚀 Show loading screen until initialized
   if (!isInitialized) {
@@ -278,12 +366,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   }
 
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 
+
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
+
 
 
   if (context === undefined) {
@@ -291,8 +384,16 @@ export const useAuth = () => {
   }
 
 
+
+
   return context;
 };
+
+
+
+
+
+
 
 
 
