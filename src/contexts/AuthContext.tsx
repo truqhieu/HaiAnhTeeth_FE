@@ -3,10 +3,13 @@ import type { RootState, AppDispatch } from "@/store/index";
 
 
 
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Spinner } from "@heroui/react";
 import { useDispatch, useSelector } from "react-redux";
+
+
 
 
 import {
@@ -17,12 +20,18 @@ import {
 } from "@/store/slices/authSlice";
 
 
+
+
 import { authApi } from "@/api/auth";
+
+
 
 
 // Chuẩn hoá user
 const normalizeUserData = (userData: AuthUser): AuthUser => {
   const normalizedRole = userData.role ? userData.role.toLowerCase() : userData.role;
+
+
 
 
   const normalizedUser = {
@@ -33,10 +42,14 @@ const normalizeUserData = (userData: AuthUser): AuthUser => {
   };
 
 
+
+
   const phoneValue =
     (normalizedUser as AuthUser).phone ??
     (normalizedUser as AuthUser).phoneNumber ??
     "";
+
+
 
 
   return {
@@ -46,6 +59,8 @@ const normalizeUserData = (userData: AuthUser): AuthUser => {
       (normalizedUser as AuthUser).phoneNumber ?? phoneValue ?? undefined,
   };
 };
+
+
 
 
 interface AuthContextType {
@@ -58,7 +73,11 @@ interface AuthContextType {
 }
 
 
+
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+
 
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
@@ -70,6 +89,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const { user, isAuthenticated, isLoading } = useSelector(
     (state: RootState) => state.auth,
   );
+  const [isInitialized, setIsInitialized] = useState<boolean>(false); // 🚀 Track initialization
+
+
+
 
   // Debug Redux state
   console.log("🔍 [AuthContext] Redux state:", {
@@ -78,43 +101,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
   });
 
-  // Initialize auth state from sessionStorage on mount
+
+
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+
+  // ⭐ STEP 4: Init auth bằng cách hỏi BE xem cookie còn không
   useEffect(() => {
     let isMounted = true;
+
+
 
 
     const initializeAuth = async () => {
       try {
         dispatch(setLoading(true));
+        console.log("🔍 [AuthContext] Bootstrap auth via /auth/profile");
 
-        // Try to restore from sessionStorage
-        const storedUser = sessionStorage.getItem("user");
-        const storedToken = sessionStorage.getItem("authToken");
 
-        console.log(
-          "🔍 [AuthContext] Restoring from sessionStorage:",
-          storedUser,
-        );
 
-        if (storedUser && storedToken && isMounted) {
-          const parsedUser = JSON.parse(storedUser) as AuthUser;
 
-          console.log(
-            "🔍 [AuthContext] Parsed user emergencyContact:",
-            (parsedUser as any).emergencyContact,
-          );
-          // Normalize user data: ensure _id is set
-          const normalizedUser = normalizeUserData(parsedUser as AuthUser);
+        // Gọi BE, browser sẽ tự gửi cookie nhờ credentials: "include"
+        const res = await authApi.getProfile();
 
-          console.log("🔍 [AuthContext] Restoring auth with user:", normalizedUser);
-          console.log("🔍 [AuthContext] Restoring auth with token:", storedToken);
-          
-          // Use setAuth instead of restoreAuth to ensure proper state update
-          dispatch(setAuth({ user: normalizedUser, token: storedToken }));
-          
-          console.log("🔍 [AuthContext] Dispatched setAuth for restore");
-        } else if (isMounted) {
-          console.log("🔍 [AuthContext] No stored auth found, clearing state");
+
+
+
+        if (!isMounted) return;
+
+
+
+
+        if (res.success && res.data?.user) {
+          const normalizedUser = normalizeUserData(res.data.user as AuthUser);
+
+
+
+
+          // Lưu user vào sessionStorage cho FE tiện dùng (menu, header, v.v.)
+          sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+
+
+
+
+          console.log("🔍 [AuthContext] Profile OK, setAuth with user:", {
+            id: normalizedUser._id,
+            role: normalizedUser.role,
+            email: normalizedUser.email,
+          });
+
+
+
+
+          // Token ở Redux chỉ là info phụ, không dùng để auth nữa
+          dispatch(setAuth({ user: normalizedUser, token: "" }));
+
+
+          // 🚀 AUTO REDIRECT logic
+          const role = normalizedUser.role?.toLowerCase();
+          const currentPath = location.pathname;
+
+
+          // Nếu không phải patient và đang ở trang public (home hoặc login), thì redirect
+          if (role && role !== "patient") {
+            const isPublicPage = currentPath === "/" || currentPath === "/login";
+
+
+            if (isPublicPage) {
+              console.log(`🔍 [AuthContext] Auto redirecting ${role} to dashboard`);
+              if (role === "admin") navigate("/admin/accounts");
+              else if (role === "manager") navigate("/manager/dashboard");
+              else if (role === "staff") navigate("/staff/dashboard");
+              else if (role === "doctor") navigate("/doctor/schedule");
+              else if (role === "nurse") navigate("/nurse/schedule");
+            }
+          }
+
+
+        } else {
+          console.log("🔍 [AuthContext] No valid profile, clearAuth");
+          sessionStorage.removeItem("user");
           dispatch(clearAuth());
           navigate("/"); // 🚀 Redirect to homepage when session invalid
         }
@@ -134,7 +202,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
 
+
+
     initializeAuth();
+
+
 
 
     return () => {
@@ -143,15 +215,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [dispatch]);
 
 
+
+
   const login = (userData: AuthUser, token: string) => {
     const normalizedUser = normalizeUserData(userData);
+
+
 
 
     console.log("🔍 [AuthContext] Login called with user:", normalizedUser);
 
 
+
+
     // ⭐ KHÔNG lưu authToken nữa – chỉ lưu user
     sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+
+
 
 
     console.log("🔍 [AuthContext] Saved to sessionStorage:", {
@@ -159,16 +239,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
 
+
+
     // Redux vẫn giữ token nếu bạn cần dùng cho logic khác (nhưng không dùng cho auth nữa)
     dispatch(setAuth({ user: normalizedUser, token }));
+
+
 
 
     console.log("🔍 [AuthContext] Dispatched setAuth action");
   };
 
 
+
+
   const logout = () => {
     console.log("🔍 [AuthContext] Logout called");
+
+
 
 
     // Gọi BE để clear cookie (không chờ cũng được)
@@ -177,29 +265,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       .catch((err) => console.warn("⚠️ [AuthContext] Logout API error:", err));
 
 
+
+
     // Clear sessionStorage
     sessionStorage.removeItem("user");
 
 
+
+
     console.log("🔍 [AuthContext] Cleared sessionStorage");
+
+
 
 
     // Redux clear
     dispatch(clearAuth());
 
 
+
+
     console.log("🔍 [AuthContext] Dispatched clearAuth");
   };
+
+
 
 
   const updateUserInfo = (userData: AuthUser) => {
     const normalizedUser = normalizeUserData(userData);
 
 
+
+
     console.log(
       "🔍 [AuthContext] updateUserInfo called with emergencyContact:",
       (normalizedUser as any).emergencyContact,
     );
+
+
 
 
     // Update sessionStorage
@@ -210,12 +312,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     );
 
 
+
+
     // Update Redux
     dispatch(updateUser(normalizedUser));
 
 
+
+
     console.log("🔍 [AuthContext] Dispatched updateUser");
   };
+
+
 
 
   const value = {
@@ -228,6 +336,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
 
+
+
   // Debug logs
   console.log("🔍 [AuthContext] Current state:", {
     user: user ? { id: user._id, role: user.role, email: user.email, fullName: user.fullName } : null,
@@ -237,6 +347,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
 
+
+
   // Debug sessionStorage content
   const sessionUser = sessionStorage.getItem("user");
   console.log("🔍 [AuthContext] SessionStorage content:", {
@@ -244,43 +356,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     userData: sessionUser ? JSON.parse(sessionUser) : null,
   });
 
-  // Force re-render when sessionStorage changes
-  React.useEffect(() => {
-    const handleStorageChange = () => {
-      const storedUser = sessionStorage.getItem("user");
-      const storedToken = sessionStorage.getItem("authToken");
-      
-      if (storedUser && storedToken && !user) {
-        console.log("🔍 [AuthContext] Storage changed, restoring auth");
-        const parsedUser = JSON.parse(storedUser) as AuthUser;
-        const normalizedUser = normalizeUserData(parsedUser as AuthUser);
-        dispatch(setAuth({ user: normalizedUser, token: storedToken }));
-      }
-    };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [dispatch, user]);
+  // 🚀 Show loading screen until initialized
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen bg-background">
+        <Spinner size="lg" label="Đang tải..." color="primary" />
+      </div>
+    );
+  }
 
-  // Additional effect to check and restore auth immediately
-  React.useEffect(() => {
-    const storedUser = sessionStorage.getItem("user");
-    const storedToken = sessionStorage.getItem("authToken");
-    
-    if (storedUser && storedToken && !user) {
-      console.log("🔍 [AuthContext] Found stored auth but no user in state, restoring immediately");
-      const parsedUser = JSON.parse(storedUser) as AuthUser;
-      const normalizedUser = normalizeUserData(parsedUser as AuthUser);
-      dispatch(setAuth({ user: normalizedUser, token: storedToken }));
-    }
-  }, [dispatch, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 
+
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
+
 
 
   if (context === undefined) {
@@ -288,8 +384,16 @@ export const useAuth = () => {
   }
 
 
+
+
   return context;
 };
+
+
+
+
+
+
 
 
 
