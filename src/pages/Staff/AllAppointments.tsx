@@ -25,7 +25,7 @@ import {
   Textarea,
   Tooltip,
 } from "@heroui/react";
-import { 
+import {
   MagnifyingGlassIcon,
   CalendarIcon,
   ClockIcon,
@@ -135,7 +135,7 @@ const AllAppointments = () => {
   // Reassign Doctor Modal states
   const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
   const [reassignAppointment, setReassignAppointment] = useState<Appointment | null>(null);
-  const [prefetchedDoctors, setPrefetchedDoctors] = useState<Array<{_id: string; fullName: string}>>([]);
+  const [prefetchedDoctors, setPrefetchedDoctors] = useState<Array<{ _id: string; fullName: string }>>([]);
   const [isPrefetchingDoctors, setIsPrefetchingDoctors] = useState(false);
 
   // Leave requests state - để check doctor có leave không
@@ -148,7 +148,7 @@ const AllAppointments = () => {
   // Walk-in modal states (restructured to match BookingModal)
   const [isWalkInOpen, setIsWalkInOpen] = useState(false);
   const [walkInSubmitting, setWalkInSubmitting] = useState(false);
-  
+
   // ⭐ NEW: Restructured form state for sequential flow
   const [walkInForm, setWalkInForm] = useState<{
     fullName: string;
@@ -175,19 +175,19 @@ const AllAppointments = () => {
     doctorScheduleId: null,
     notes: ""
   });
-  
+
   // ⭐ NEW: Reservation state (like BookingModal)
   const [walkInReservation, setWalkInReservation] = useState<{
     timeslotId: string;
     expiresAt: string;
     countdownSeconds: number;
   } | null>(null);
-  
+
   // ⭐ NEW: Available doctors (filtered by leave)
   const [walkInAvailableDoctors, setWalkInAvailableDoctors] = useState<Array<{ _id: string; fullName: string }>>([]);
   const [walkInLoadingDoctors, setWalkInLoadingDoctors] = useState(false);
   const [hasAttemptedDoctorFetch, setHasAttemptedDoctorFetch] = useState(false); // ⭐ Track if we've tried fetching
-  
+
   // ⭐ NEW: Schedule ranges
   const [walkInScheduleRanges, setWalkInScheduleRanges] = useState<any>(null);
   const [walkInServices, setWalkInServices] = useState<Array<{ _id: string; serviceName: string; durationMinutes?: number }>>([]);
@@ -291,7 +291,7 @@ const AllAppointments = () => {
   // ⭐ NEW: Fetch available doctors (filtered by date + service) - Backend already filters leave
   const fetchWalkInAvailableDoctors = async () => {
     const { date, serviceId } = walkInForm;
-    
+
     if (!date || !serviceId) {
       setWalkInAvailableDoctors([]);
       setHasAttemptedDoctorFetch(false);
@@ -301,11 +301,11 @@ const AllAppointments = () => {
     try {
       setWalkInLoadingDoctors(true);
       setHasAttemptedDoctorFetch(true); // ⭐ Mark that we've attempted
-      
+
       // Fetch available doctors for this date + service
       // ⭐ Backend already filters out doctors on leave, so we don't need to filter again
       const res = await availableDoctorApi.getByDate(serviceId, date);
-      
+
       if (!res.success || !res.data || !res.data.availableDoctors) {
         setWalkInAvailableDoctors([]);
         return;
@@ -316,10 +316,10 @@ const AllAppointments = () => {
         _id: doc.doctorId,
         fullName: doc.doctorName
       }));
-      
+
       console.log(`✅ [fetchWalkInAvailableDoctors] Found ${doctors.length} available doctors (backend already filtered leave)`);
       setWalkInAvailableDoctors(doctors);
-      
+
     } catch (e) {
       console.error("❌ Lỗi tải available doctors cho walk-in:", e);
       setWalkInAvailableDoctors([]);
@@ -343,21 +343,21 @@ const AllAppointments = () => {
       if (!silent) {
         setWalkInLoadingSchedule(true); // ⭐ Set loading state only if not silent
       }
-      
+
       // ⭐ FIX: Pass staffUserId để backend loại trừ reserved slots của chính staff
       // Lấy staffUserId từ auth context
       const staffUserId = user?._id || user?.id;
-      
+
       const res = await getDoctorScheduleRange(
-        doctorUserId, 
-        serviceId, 
-        date, 
+        doctorUserId,
+        serviceId,
+        date,
         "other",
         undefined, // customerFullName
         undefined, // customerEmail
         staffUserId // ⭐ THÊM: Pass staffUserId để backend loại trừ reserved slots
       );
-      
+
       if (res.success && (res as any).data) {
         const data: any = (res as any).data;
         setWalkInScheduleRanges(data.scheduleRanges || []);
@@ -495,7 +495,7 @@ const AllAppointments = () => {
       // Set reservation with countdown
       const expiresAt = reserveRes.data.expiresAt;
       const countdownSeconds = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
-      
+
       setWalkInReservation({
         timeslotId: reserveRes.data.timeslotId,
         expiresAt: expiresAt,
@@ -503,7 +503,7 @@ const AllAppointments = () => {
       });
 
       toast.success(`Đã giữ chỗ thành công! Còn ${countdownSeconds}s`);
-      
+
       // ⭐ Refetch schedule ranges silently to update available time display
       // Pass true to skip showing loading spinner (silent refresh)
       fetchWalkInScheduleRanges(true).catch(err => console.warn("Failed to refresh schedule:", err));
@@ -523,9 +523,9 @@ const AllAppointments = () => {
     const interval = setInterval(() => {
       setWalkInReservation(prev => {
         if (!prev) return null;
-        
+
         const newCountdown = prev.countdownSeconds - 1;
-        
+
         // Hết hạn → auto release
         if (newCountdown <= 0) {
           appointmentApi.releaseSlot({ timeslotId: prev.timeslotId })
@@ -537,7 +537,7 @@ const AllAppointments = () => {
             .catch(err => console.warn('Failed to release expired slot:', err));
           return null;
         }
-        
+
         return { ...prev, countdownSeconds: newCountdown };
       });
     }, 1000);
@@ -578,7 +578,7 @@ const AllAppointments = () => {
           // - Nếu không có replacedDoctorUserId → đã confirm hoặc chưa gán → hiển thị doctorUserId
           // Chỉ hiển thị bác sĩ mới sau khi patient confirm (khi replacedDoctorUserId = null)
           const doctorName = apt.doctorUserId?.fullName || "N/A";
-          
+
           // ⭐ QUAN TRỌNG: Để check leave, chúng ta cần check BÁC SĨ GỐC (doctorUserId)
           // vì đó là bác sĩ có leave request. Nếu đã gán bác sĩ mới (replacedDoctorUserId),
           // thì bác sĩ mới không có leave, nhưng bác sĩ gốc vẫn có leave.
@@ -588,7 +588,7 @@ const AllAppointments = () => {
             // doctorUserId có thể là object (populated) hoặc ObjectId
             if (typeof apt.doctorUserId === 'object') {
               // Nếu là object, lấy _id
-              doctorUserId = apt.doctorUserId._id?.toString() 
+              doctorUserId = apt.doctorUserId._id?.toString()
                 || apt.doctorUserId.toString();
             } else {
               doctorUserId = apt.doctorUserId.toString();
@@ -598,10 +598,10 @@ const AllAppointments = () => {
           // ⭐ hasReplacementDoctor chỉ = true khi đã confirm (replacedDoctorUserId = null)
           // Nếu có replacedDoctorUserId → chưa confirm → hasReplacementDoctor = false
           const hasReplacementDoctor = false; // Chỉ hiển thị bác sĩ mới sau khi confirm
-          
+
           // ⭐ hasPendingReplacement = true nếu có replacedDoctorUserId (chưa confirm)
           const hasPendingReplacement = Boolean(apt.replacedDoctorUserId);
-          
+
           // Debug log nếu có replacedDoctorUserId (chưa confirm)
           if (apt.replacedDoctorUserId) {
             console.log('🔍 [AllAppointments] Appointment with pending replacement (waiting for patient confirm):', {
@@ -624,15 +624,15 @@ const AllAppointments = () => {
             hasReplacementDoctor: hasReplacementDoctor,
             hasPendingReplacement: hasPendingReplacement,
             serviceName: apt.serviceId?.serviceName || "Chưa có",
-            startTime: apt.timeslotId?.startTime 
-              ? (apt.timeslotId.startTime instanceof Date 
-                  ? apt.timeslotId.startTime.toISOString() 
-                  : String(apt.timeslotId.startTime))
+            startTime: apt.timeslotId?.startTime
+              ? (apt.timeslotId.startTime instanceof Date
+                ? apt.timeslotId.startTime.toISOString()
+                : String(apt.timeslotId.startTime))
               : "",
-            endTime: apt.timeslotId?.endTime 
-              ? (apt.timeslotId.endTime instanceof Date 
-                  ? apt.timeslotId.endTime.toISOString() 
-                  : String(apt.timeslotId.endTime))
+            endTime: apt.timeslotId?.endTime
+              ? (apt.timeslotId.endTime instanceof Date
+                ? apt.timeslotId.endTime.toISOString()
+                : String(apt.timeslotId.endTime))
               : "",
             checkedInAt: apt.checkedInAt || "",
             createdAt: apt.createdAt || "",
@@ -667,7 +667,7 @@ const AllAppointments = () => {
         status: "Approved",
         limit: 1000,
       });
-      
+
       // Backend trả về: { success: true, data: LeaveRequest[], total, totalPages, ... }
       if (!res || !res.success || !res.data) {
         console.warn('⚠️ [fetchApprovedLeaves] Invalid response:', res);
@@ -677,7 +677,7 @@ const AllAppointments = () => {
 
       // res.data là array trực tiếp
       const leavesArray = Array.isArray(res.data) ? res.data : [];
-      
+
       if (leavesArray.length > 0) {
         const leaves = leavesArray.map((leave: any) => {
           // Extract userId - có thể là object với _id hoặc string
@@ -691,14 +691,14 @@ const AllAppointments = () => {
               userId = String(leave.userId);
             }
           }
-          
+
           return {
             userId: userId,
             startDate: leave.startDate,
             endDate: leave.endDate,
           };
         });
-        
+
         console.log('✅ [fetchApprovedLeaves] Loaded', leaves.length, 'approved leaves');
         setApprovedLeaves(leaves);
       } else {
@@ -724,24 +724,24 @@ const AllAppointments = () => {
         // Check xem có leave nào cover appointmentDate không
         const isOnLeaveByDate = approvedLeaves.some((leave) => {
           const leaveUserId = (leave.userId?.toString() || leave.userId || "").trim();
-          
+
           if (leaveUserId !== doctorId) {
             return false;
           }
 
           const leaveStart = new Date(leave.startDate);
           const leaveEnd = new Date(leave.endDate);
-          
+
           if (isNaN(leaveStart.getTime()) || isNaN(leaveEnd.getTime())) {
             return false;
           }
-          
+
           leaveStart.setHours(0, 0, 0, 0);
           leaveEnd.setHours(23, 59, 59, 999);
 
           return appointmentDate >= leaveStart && appointmentDate <= leaveEnd;
         });
-        
+
         // Nếu kiểm tra theo ngày cho kết quả, trả về ngay
         if (isOnLeaveByDate) {
           return true;
@@ -879,7 +879,7 @@ const AllAppointments = () => {
         .catch(err => {
           console.warn("⚠️ Failed to auto-release:", err);
         });
-      
+
       setWalkInReservation(null);
     }
 
@@ -891,7 +891,7 @@ const AllAppointments = () => {
       endTime: null
     }));
     setWalkInTimeError(null);
-    
+
     // Fetch schedule ranges when doctor selected
     fetchWalkInScheduleRanges();
   }, [walkInForm.doctorUserId, walkInForm.serviceId, walkInForm.date]);
@@ -915,21 +915,21 @@ const AllAppointments = () => {
   // ⭐ NEW: Reset service and doctor when date changes
   // Use ref to track previous date to avoid triggering on initial mount
   const prevWalkInDateRef = useRef<string | null>(null);
-  
+
   useEffect(() => {
     // Only reset if date actually changed (not initial set)
     if (prevWalkInDateRef.current !== null && prevWalkInDateRef.current !== walkInForm.date && walkInForm.date) {
       console.log('📅 [Date Changed] Resetting service and doctor selections');
       console.log('   Previous date:', prevWalkInDateRef.current);
       console.log('   New date:', walkInForm.date);
-      
+
       // Release reservation if exists
       if (walkInReservation) {
         appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
           .catch(err => console.warn("Failed to release on date change:", err));
         setWalkInReservation(null);
       }
-      
+
       // Reset form fields
       setWalkInForm(prev => ({
         ...prev,
@@ -940,7 +940,7 @@ const AllAppointments = () => {
         endTime: null,
         doctorScheduleId: null
       }));
-      
+
       // Clear errors and states
       setWalkInTimeError(null);
       setWalkInErrors(prev => {
@@ -954,7 +954,7 @@ const AllAppointments = () => {
       setWalkInAvailableDoctors([]);
       setHasAttemptedDoctorFetch(false);
     }
-    
+
     // Update ref for next comparison
     prevWalkInDateRef.current = walkInForm.date;
   }, [walkInForm.date, walkInReservation]);
@@ -967,7 +967,7 @@ const AllAppointments = () => {
       prevWalkInDateRef.current = null;
       return;
     }
-    
+
     // Only initialize date when modal first opens and date is empty
     if (!walkInForm.date) {
       const now = new Date();
@@ -975,7 +975,7 @@ const AllAppointments = () => {
       const mm = String(now.getMonth() + 1).padStart(2, "0");
       const dd = String(now.getDate()).padStart(2, "0");
       const iso = `${yyyy}-${mm}-${dd}`;
-      
+
       setWalkInForm(prev => ({ ...prev, date: iso }));
       // ⭐ Initialize prevRef with default date
       prevWalkInDateRef.current = iso;
@@ -1033,11 +1033,11 @@ const AllAppointments = () => {
         const aptDate = new Date(apt.startTime);
         const startDate = new Date(dateRange.startDate!);
         const endDate = new Date(dateRange.endDate!);
-        
+
         // Set time to start of day for comparison
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
-        
+
         return aptDate >= startDate && aptDate <= endDate;
       });
     } else if (dateRange.startDate) {
@@ -1062,11 +1062,11 @@ const AllAppointments = () => {
     // Nếu không có updatedAt/createdAt thì dùng startTime
     filtered.sort((a, b) => {
       // Ưu tiên updatedAt, nếu không có thì dùng createdAt, nếu không có thì dùng startTime
-      const timeA = a.updatedAt 
-        ? new Date(a.updatedAt).getTime() 
+      const timeA = a.updatedAt
+        ? new Date(a.updatedAt).getTime()
         : (a.createdAt ? new Date(a.createdAt).getTime() : (a.startTime ? new Date(a.startTime).getTime() : 0));
-      const timeB = b.updatedAt 
-        ? new Date(b.updatedAt).getTime() 
+      const timeB = b.updatedAt
+        ? new Date(b.updatedAt).getTime()
         : (b.createdAt ? new Date(b.createdAt).getTime() : (b.startTime ? new Date(b.startTime).getTime() : 0));
       // ⭐ Descending: mới nhất lên đầu (thời gian lớn hơn lên trước)
       return timeB - timeA;
@@ -1093,7 +1093,7 @@ const AllAppointments = () => {
   // ===== Confirm Cancel =====
   const handleConfirmCancel = async () => {
     if (!selectedAppointmentId) return;
-    
+
     if (!cancelReason.trim()) {
       toast.error("Vui lòng nhập lý do hủy!");
       return;
@@ -1128,7 +1128,7 @@ const AllAppointments = () => {
   const handleApprove = async (appointmentId: string) => {
     try {
       setProcessingId(appointmentId);
-      
+
       console.log("🔍 [AllAppointments] Approving appointment:", appointmentId);
 
       const res: ApiResponse<null> = await appointmentApi.reviewAppointment(
@@ -1154,29 +1154,29 @@ const AllAppointments = () => {
   // ===== Helper: Kiểm tra appointment có trong giờ làm việc không =====
   const isWithinWorkingHours = (appointment: Appointment): boolean => {
     if (!appointment.startTime) return false;
-    
+
     const appointmentDate = new Date(appointment.startTime);
     const now = new Date();
-    
+
     // Lấy ngày của appointment (chỉ phần ngày, không có giờ)
     const appointmentDateOnly = new Date(appointmentDate);
     appointmentDateOnly.setUTCHours(0, 0, 0, 0);
-    
+
     // Lấy giờ của appointment (VN time, UTC+7)
     const appointmentHour = (appointmentDate.getUTCHours() + 7) % 24;
-    
+
     // Nếu appointment vào buổi sáng (trước 12:00), endTime là 12:00
     // Nếu appointment vào buổi chiều (từ 12:00 trở đi), endTime là 18:00
     let scheduleEndHourVN = 18; // Mặc định buổi chiều
     if (appointmentHour < 12) {
       scheduleEndHourVN = 12; // Buổi sáng
     }
-    
+
     // Tạo endTime của buổi làm việc (VN time), sau đó convert sang UTC
     // VN time = UTC + 7, nên UTC = VN time - 7
     const scheduleEndDate = new Date(appointmentDateOnly);
     scheduleEndDate.setUTCHours(scheduleEndHourVN - 7, 0, 0, 0); // Convert VN time to UTC
-    
+
     // Kiểm tra xem hiện tại có trước endTime không
     return now < scheduleEndDate;
   };
@@ -1188,7 +1188,7 @@ const AllAppointments = () => {
   ) => {
     try {
       setProcessingId(appointmentId);
-      
+
       console.log("🔍 [AllAppointments] Updating status:", { appointmentId, newStatus });
 
       const res = await appointmentApi.updateAppointmentStatus(
@@ -1222,7 +1222,7 @@ const AllAppointments = () => {
     // Mở modal ngay lập tức
     setReassignAppointment(appointment);
     setIsReassignModalOpen(true);
-    
+
     // Pre-fetch danh sách bác sĩ trong background (modal đã mở)
     setIsPrefetchingDoctors(true);
     try {
@@ -1231,7 +1231,7 @@ const AllAppointments = () => {
         appointment.startTime,
         appointment.endTime
       );
-      
+
       if (response.success && response.data) {
         setPrefetchedDoctors(response.data.availableDoctors || []);
       } else {
@@ -1311,7 +1311,7 @@ const AllAppointments = () => {
   const formatTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    
+
     return date.toLocaleTimeString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
@@ -1332,7 +1332,7 @@ const AllAppointments = () => {
   const formatDateTime = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    
+
     const dateStr = date.toLocaleDateString('vi-VN');
     const timeStr = date.toLocaleTimeString('vi-VN', {
       hour: '2-digit',
@@ -1340,7 +1340,7 @@ const AllAppointments = () => {
       hour12: false,
       timeZone: 'Asia/Ho_Chi_Minh'
     });
-    
+
     return `${dateStr}, ${timeStr}`;
   };
 
@@ -1371,19 +1371,19 @@ const AllAppointments = () => {
     // 2. Loại là Consultation (có thanh toán)
     // 3. Có cancelReason
     // 4. KHÔNG phải No-Show (staff hủy)
-    if (!appointment || 
-        appointment.status !== "Cancelled" || 
-        appointment.type !== "Consultation" || 
-        !appointment.cancelReason) {
+    if (!appointment ||
+      appointment.status !== "Cancelled" ||
+      appointment.type !== "Consultation" ||
+      !appointment.cancelReason) {
       return false;
     }
 
     const cancelReason = appointment.cancelReason.toLowerCase();
-    const isNoShow = cancelReason.includes('no-show') || 
-                    cancelReason.includes('không đến') ||
-                    cancelReason.includes('không xuất hiện') ||
-                    cancelReason.includes('absent');
-    
+    const isNoShow = cancelReason.includes('no-show') ||
+      cancelReason.includes('không đến') ||
+      cancelReason.includes('không xuất hiện') ||
+      cancelReason.includes('absent');
+
     return !isNoShow;
   };
 
@@ -1393,21 +1393,11 @@ const AllAppointments = () => {
       setProcessingId(appointmentId);
       toast.loading("Đang tạo file PDF...", { id: "pdf-download" });
 
-      // Call API với authentication header
-      const token = sessionStorage.getItem("authToken");
-      
-      if (!token) {
-        toast.error("Token không tồn tại. Vui lòng đăng nhập lại.", { id: "pdf-download" });
-        return;
-      }
-      
       const API_URL = import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api";
-      
+
       const response = await fetch(`${API_URL}/appointments/${appointmentId}/visit-ticket/pdf`, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -1417,7 +1407,7 @@ const AllAppointments = () => {
 
       // Get PDF blob
       const blob = await response.blob();
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -1425,7 +1415,7 @@ const AllAppointments = () => {
       link.download = `phieu-kham-${appointmentId}.pdf`;
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
@@ -1444,9 +1434,9 @@ const AllAppointments = () => {
     try {
       setDetailLoading(true);
       setIsDetailOpen(true);
-      
+
       console.log("🔍 [AllAppointments] Getting appointment details:", appointmentId);
-      
+
       const res: ApiResponse<AppointmentDetailData> = await appointmentApi.getAppointmentDetails(appointmentId);
       if (res.success && res.data) {
         console.log("Detail data:", res.data);
@@ -1544,1143 +1534,1141 @@ const AllAppointments = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30">
       <div className="space-y-6 pr-6 pb-6">
-      {/* OLD WALK-IN MODAL COMPLETELY REMOVED - Using new redesigned modal below */}
-      {/* Cancel Appointment Modal */}
-      <Modal 
-        isOpen={isCancelModalOpen} 
-        onClose={closeCancelModal}
-        size="2xl"
-        classNames={{
-          base: "rounded-2xl",
-          header: "border-b border-gray-200",
-          footer: "border-t border-gray-200",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <div className="bg-red-100 rounded-full p-2">
-                <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Xác nhận hủy ca khám</h3>
-                <p className="text-sm text-gray-500 font-normal mt-1">
-                  Vui lòng nhập lý do hủy ca khám
-                </p>
-              </div>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <Textarea
-              label="Lý do hủy"
-              placeholder="Vui lòng nhập lý do hủy ca khám (bắt buộc)..."
-              value={cancelReason}
-              onValueChange={setCancelReason}
-              minRows={4}
-              maxRows={8}
-              size="lg"
-              variant="bordered"
-              isRequired
-              description="Lý do sẽ được gửi đến bệnh nhân"
-              classNames={{
-                input: "text-base",
-                label: "text-base font-semibold",
-              }}
-            />
-            
-            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex gap-3">
-                <ExclamationCircleIcon className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-amber-800">
-                  <p className="font-semibold mb-1">Lưu ý:</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Hành động này không thể hoàn tác</li>
-                    <li>Bệnh nhân sẽ nhận được thông báo về việc hủy</li>
-                    <li>Lý do hủy sẽ được lưu vào hệ thống</li>
-                  </ul>
+        {/* OLD WALK-IN MODAL COMPLETELY REMOVED - Using new redesigned modal below */}
+        {/* Cancel Appointment Modal */}
+        <Modal
+          isOpen={isCancelModalOpen}
+          onClose={closeCancelModal}
+          size="2xl"
+          classNames={{
+            base: "rounded-2xl",
+            header: "border-b border-gray-200",
+            footer: "border-t border-gray-200",
+          }}
+        >
+          <ModalContent>
+            <ModalHeader className="flex flex-col gap-1">
+              <div className="flex items-center gap-3">
+                <div className="bg-red-100 rounded-full p-2">
+                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Xác nhận hủy ca khám</h3>
+                  <p className="text-sm text-gray-500 font-normal mt-1">
+                    Vui lòng nhập lý do hủy ca khám
+                  </p>
                 </div>
               </div>
-            </div>
-          </ModalBody>
-          <ModalFooter className="gap-3">
-            <Button
-              color="default"
-              variant="flat"
-              onPress={closeCancelModal}
-              size="lg"
-              className="font-semibold"
-              isDisabled={processingId === selectedAppointmentId}
-            >
-              Đóng
-            </Button>
-            <Button
-              color="danger"
-              onPress={handleConfirmCancel}
-              size="lg"
-              className="font-semibold"
-              isDisabled={!cancelReason.trim() || processingId === selectedAppointmentId}
-              isLoading={processingId === selectedAppointmentId}
-            >
-              {processingId === selectedAppointmentId ? "Đang hủy..." : "Xác nhận hủy"}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Detail Modal */}
-      <Modal
-        isOpen={isDetailOpen}
-        onClose={closeDetailModal}
-        size="2xl"
-        classNames={{
-          base: "rounded-2xl",
-          header: "border-b border-gray-200",
-          footer: "border-t border-gray-200",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-3">
-            <InformationCircleIcon className="w-6 h-6 text-primary-600" />
-            <div>
-              <h3 className="text-xl font-bold text-gray-900">Chi tiết ca khám</h3>
-              <p className="text-sm text-gray-500">Thông tin và chi tiết hoàn tiền</p>
-            </div>
-          </ModalHeader>
-          <ModalBody>
-            {detailLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Spinner label="Đang tải chi tiết..." />
-              </div>
-            ) : detailData ? (
-              <div className="space-y-4">
-                <Card>
-                  <CardBody className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <p className="text-sm text-gray-500">Bệnh nhân</p>
-                        <p className="font-semibold text-lg">{detailData.patient?.fullName || "Chưa có"}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Bác sĩ</p>
-                        <p className="font-semibold text-lg">{detailData.doctor?.fullName || "Chưa có"}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Dịch vụ</p>
-                        <p className="font-semibold text-lg">{detailData.service?.serviceName || "Chưa có"}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Trạng thái</p>
-                        <Chip color={getStatusColor(detailData.status)} variant="flat" className="mt-1">
-                          {getStatusText(detailData.status)}
-                        </Chip>
-                      </div>
-                    </div>
-                    
-                    <div className="border-t pt-4">
-                      <p className="text-sm text-gray-500 mb-2">Thời gian khám</p>
-                      <p className="font-semibold text-lg">
-                        {formatDate(detailData.timeslot?.startTime || "")} từ {formatTime(detailData.timeslot?.startTime || "")} - {formatTime(detailData.timeslot?.endTime || "")}
-                      </p>
-                    </div>
-
-                    {detailData.type === 'Consultation' && detailData.bankInfo && (
-                      <div className="border-t pt-4">
-                        <p className="text-sm text-gray-500 mb-3">Thông tin hoàn tiền</p>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <p className="text-gray-500">Chủ tài khoản</p>
-                            <p className="font-semibold">{detailData.bankInfo?.accountHolderName || "-"}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Số tài khoản</p>
-                            <p className="font-semibold">{detailData.bankInfo?.accountNumber || "-"}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Ngân hàng</p>
-                            <p className="font-semibold">{detailData.bankInfo?.bankName || "-"}</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {detailData.status === 'Cancelled' && detailData.type === 'Consultation' && !shouldShowRefundButton(detailData) && (
-                      <div className="border-t pt-4">
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                          <div className="flex items-center">
-                            <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
-                            <p className="text-sm text-yellow-800">
-                              <strong>Lưu ý:</strong> Ca khám này bị hủy do không đến khám nên sẽ không được hoàn tiền .
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </CardBody>
-                </Card>
-              </div>
-            ) : (
-              <p className="text-center text-gray-500">Không có dữ liệu</p>
-            )}
-          </ModalBody>
-          <ModalFooter className="gap-3">
-            <Button variant="flat" onPress={closeDetailModal}>Đóng</Button>
-            {shouldShowRefundButton(detailData) && (
-              <Button color="success" onPress={handleMarkRefunded} isLoading={processingId === detailData?._id}>
-                Đã hoàn tiền
-              </Button>
-            )}
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Header - Outside card */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Quản lý ca khám</h1>
-        <p className="text-gray-600 mt-1 text-base">Theo dõi và quản lý tất cả các ca khám</p>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 bg-danger-50 border border-danger-200 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <XCircleIcon className="w-6 h-6 text-danger-600 flex-shrink-0" />
-            <p className="text-danger-700">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Table with Filters and Tabs */}
-      <Card className="shadow-lg border border-gray-100">
-        <CardBody className="p-0">
-          {/* Filters */}
-          <div className="px-6 py-6 border-b border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <Input
-                placeholder="Tìm kiếm bệnh nhân, dịch vụ..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                startContent={<MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />}
-                isClearable
-                onClear={() => setSearchText("")}
+            </ModalHeader>
+            <ModalBody className="py-6">
+              <Textarea
+                label="Lý do hủy"
+                placeholder="Vui lòng nhập lý do hủy ca khám (bắt buộc)..."
+                value={cancelReason}
+                onValueChange={setCancelReason}
+                minRows={4}
+                maxRows={8}
                 size="lg"
                 variant="bordered"
+                isRequired
+                description="Lý do sẽ được gửi đến bệnh nhân"
                 classNames={{
-                  inputWrapper: "border-2 hover:border-[#39BDCC] data-[focus=true]:border-[#39BDCC] h-14",
+                  input: "text-base",
+                  label: "text-base font-semibold",
                 }}
               />
 
-              <Select
-                placeholder="Chọn bác sĩ"
-                selectedKeys={selectedDoctor !== "all" ? new Set([selectedDoctor]) : new Set([])}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0];
-                  setSelectedDoctor(selected ? String(selected) : "all");
-                }}
+              <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex gap-3">
+                  <ExclamationCircleIcon className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-800">
+                    <p className="font-semibold mb-1">Lưu ý:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Hành động này không thể hoàn tác</li>
+                      <li>Bệnh nhân sẽ nhận được thông báo về việc hủy</li>
+                      <li>Lý do hủy sẽ được lưu vào hệ thống</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </ModalBody>
+            <ModalFooter className="gap-3">
+              <Button
+                color="default"
+                variant="flat"
+                onPress={closeCancelModal}
                 size="lg"
-                variant="bordered"
-                startContent={<UserGroupIcon className="w-5 h-5 text-gray-400" />}
+                className="font-semibold"
+                isDisabled={processingId === selectedAppointmentId}
+              >
+                Đóng
+              </Button>
+              <Button
+                color="danger"
+                onPress={handleConfirmCancel}
+                size="lg"
+                className="font-semibold"
+                isDisabled={!cancelReason.trim() || processingId === selectedAppointmentId}
+                isLoading={processingId === selectedAppointmentId}
+              >
+                {processingId === selectedAppointmentId ? "Đang hủy..." : "Xác nhận hủy"}
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Detail Modal */}
+        <Modal
+          isOpen={isDetailOpen}
+          onClose={closeDetailModal}
+          size="2xl"
+          classNames={{
+            base: "rounded-2xl",
+            header: "border-b border-gray-200",
+            footer: "border-t border-gray-200",
+          }}
+        >
+          <ModalContent>
+            <ModalHeader className="flex items-center gap-3">
+              <InformationCircleIcon className="w-6 h-6 text-primary-600" />
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Chi tiết ca khám</h3>
+                <p className="text-sm text-gray-500">Thông tin và chi tiết hoàn tiền</p>
+              </div>
+            </ModalHeader>
+            <ModalBody>
+              {detailLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Spinner label="Đang tải chi tiết..." />
+                </div>
+              ) : detailData ? (
+                <div className="space-y-4">
+                  <Card>
+                    <CardBody className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <p className="text-sm text-gray-500">Bệnh nhân</p>
+                          <p className="font-semibold text-lg">{detailData.patient?.fullName || "Chưa có"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Bác sĩ</p>
+                          <p className="font-semibold text-lg">{detailData.doctor?.fullName || "Chưa có"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Dịch vụ</p>
+                          <p className="font-semibold text-lg">{detailData.service?.serviceName || "Chưa có"}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Trạng thái</p>
+                          <Chip color={getStatusColor(detailData.status)} variant="flat" className="mt-1">
+                            {getStatusText(detailData.status)}
+                          </Chip>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-4">
+                        <p className="text-sm text-gray-500 mb-2">Thời gian khám</p>
+                        <p className="font-semibold text-lg">
+                          {formatDate(detailData.timeslot?.startTime || "")} từ {formatTime(detailData.timeslot?.startTime || "")} - {formatTime(detailData.timeslot?.endTime || "")}
+                        </p>
+                      </div>
+
+                      {detailData.type === 'Consultation' && detailData.bankInfo && (
+                        <div className="border-t pt-4">
+                          <p className="text-sm text-gray-500 mb-3">Thông tin hoàn tiền</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="text-gray-500">Chủ tài khoản</p>
+                              <p className="font-semibold">{detailData.bankInfo?.accountHolderName || "-"}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Số tài khoản</p>
+                              <p className="font-semibold">{detailData.bankInfo?.accountNumber || "-"}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Ngân hàng</p>
+                              <p className="font-semibold">{detailData.bankInfo?.bankName || "-"}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {detailData.status === 'Cancelled' && detailData.type === 'Consultation' && !shouldShowRefundButton(detailData) && (
+                        <div className="border-t pt-4">
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div className="flex items-center">
+                              <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                              </svg>
+                              <p className="text-sm text-yellow-800">
+                                <strong>Lưu ý:</strong> Ca khám này bị hủy do không đến khám nên sẽ không được hoàn tiền .
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </CardBody>
+                  </Card>
+                </div>
+              ) : (
+                <p className="text-center text-gray-500">Không có dữ liệu</p>
+              )}
+            </ModalBody>
+            <ModalFooter className="gap-3">
+              <Button variant="flat" onPress={closeDetailModal}>Đóng</Button>
+              {shouldShowRefundButton(detailData) && (
+                <Button color="success" onPress={handleMarkRefunded} isLoading={processingId === detailData?._id}>
+                  Đã hoàn tiền
+                </Button>
+              )}
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Header - Outside card */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Quản lý ca khám</h1>
+          <p className="text-gray-600 mt-1 text-base">Theo dõi và quản lý tất cả các ca khám</p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-danger-50 border border-danger-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <XCircleIcon className="w-6 h-6 text-danger-600 flex-shrink-0" />
+              <p className="text-danger-700">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Table with Filters and Tabs */}
+        <Card className="shadow-lg border border-gray-100">
+          <CardBody className="p-0">
+            {/* Filters */}
+            <div className="px-6 py-6 border-b border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <Input
+                  placeholder="Tìm kiếm bệnh nhân, dịch vụ..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  startContent={<MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />}
+                  isClearable
+                  onClear={() => setSearchText("")}
+                  size="lg"
+                  variant="bordered"
+                  classNames={{
+                    inputWrapper: "border-2 hover:border-[#39BDCC] data-[focus=true]:border-[#39BDCC] h-14",
+                  }}
+                />
+
+                <Select
+                  placeholder="Chọn bác sĩ"
+                  selectedKeys={selectedDoctor !== "all" ? new Set([selectedDoctor]) : new Set([])}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0];
+                    setSelectedDoctor(selected ? String(selected) : "all");
+                  }}
+                  size="lg"
+                  variant="bordered"
+                  startContent={<UserGroupIcon className="w-5 h-5 text-gray-400" />}
+                  classNames={{
+                    trigger: "border-2 hover:border-[#39BDCC] data-[focus=true]:border-[#39BDCC] h-14",
+                  }}
+                >
+                  {[{ key: "all", label: "Tất cả bác sĩ" }, ...doctors.map(d => ({ key: d, label: d }))].map((item) => (
+                    <SelectItem key={item.key}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </Select>
+
+                <DateRangePicker
+                  startDate={dateRange.startDate}
+                  endDate={dateRange.endDate}
+                  onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
+                  placeholder="Chọn khoảng thời gian"
+                  className="w-full"
+                />
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button color="primary" onPress={() => setIsWalkInOpen(true)} startContent={<UserPlusIcon className="w-5 h-5" />}>
+                  Đặt lịch cho bệnh nhân
+                </Button>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="px-6 py-6 border-b border-gray-200">
+              <Tabs
+                selectedKey={activeTab}
+                onSelectionChange={(key) => setActiveTab(String(key))}
+                size="lg"
+                variant="underlined"
                 classNames={{
-                  trigger: "border-2 hover:border-[#39BDCC] data-[focus=true]:border-[#39BDCC] h-14",
+                  tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
+                  cursor: "w-full bg-gray-900",
+                  tab: "max-w-fit px-4 h-12",
+                  tabContent: "group-data-[selected=true]:text-gray-900 font-semibold"
                 }}
               >
-                {[{ key: "all", label: "Tất cả bác sĩ" }, ...doctors.map(d => ({ key: d, label: d }))].map((item) => (
-                  <SelectItem key={item.key}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </Select>
-
-              <DateRangePicker
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-                onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
-                placeholder="Chọn khoảng thời gian"
-                className="w-full"
-              />
+                <Tab key="all" title={`Tất cả (${stats.total})`} />
+                <Tab
+                  key="Pending"
+                  title={
+                    <div className="relative flex items-center">
+                      <span>Chờ duyệt ({stats.pending})</span>
+                      {stats.pending > 0 && (
+                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                      )}
+                    </div>
+                  }
+                />
+                <Tab key="Approved" title={`Đã xác nhận (${stats.approved})`} />
+                <Tab key="CheckedIn" title={`Đã có mặt (${stats.checkedIn})`} />
+                <Tab key="InProgress" title={`Đang khám (${stats.inProgress})`} />
+                <Tab key="Completed" title={`Hoàn thành (${stats.completed})`} />
+                <Tab key="Cancelled" title={`Đã hủy (${stats.cancelled})`} />
+              </Tabs>
             </div>
-            <div className="mt-4 flex justify-end">
-              <Button color="primary" onPress={() => setIsWalkInOpen(true)} startContent={<UserPlusIcon className="w-5 h-5" />}>
-                Đặt lịch cho bệnh nhân
-              </Button>
-            </div>
-          </div>
 
-          {/* Tabs */}
-          <div className="px-6 py-6 border-b border-gray-200">
-            <Tabs
-              selectedKey={activeTab}
-              onSelectionChange={(key) => setActiveTab(String(key))}
-              size="lg"
-              variant="underlined"
+            {/* Table */}
+            <Table
+              aria-label="Bảng quản lý ca khám"
+              removeWrapper
               classNames={{
-                tabList: "gap-6 w-full relative rounded-none p-0 border-b border-divider",
-                cursor: "w-full bg-gray-900",
-                tab: "max-w-fit px-4 h-12",
-                tabContent: "group-data-[selected=true]:text-gray-900 font-semibold"
+                th: "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-bold text-sm uppercase tracking-wide",
+                td: "py-5 border-b border-gray-100",
               }}
             >
-              <Tab key="all" title={`Tất cả (${stats.total})`} />
-              <Tab 
-                key="Pending" 
-                title={
-                  <div className="relative flex items-center">
-                    <span>Chờ duyệt ({stats.pending})</span>
-                    {stats.pending > 0 && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
-                    )}
+              <TableHeader columns={columns}>
+                {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
+              </TableHeader>
+              <TableBody
+                items={currentAppointments}
+                emptyContent={
+                  <div className="text-center py-12">
+                    <ClockIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-gray-500 text-lg">Không có ca khám nào</p>
                   </div>
-                } 
-              />
-              <Tab key="Approved" title={`Đã xác nhận (${stats.approved})`} />
-              <Tab key="CheckedIn" title={`Đã có mặt (${stats.checkedIn})`} />
-              <Tab key="InProgress" title={`Đang khám (${stats.inProgress})`} />
-              <Tab key="Completed" title={`Hoàn thành (${stats.completed})`} />
-              <Tab key="Cancelled" title={`Đã hủy (${stats.cancelled})`} />
-            </Tabs>
-          </div>
+                }
+              >
+                {(appointment: Appointment) => (
+                  <TableRow key={appointment.id} className="hover:bg-blue-50/30 transition-colors duration-200">
+                    <TableCell>
+                      <span className="font-semibold text-gray-900">{formatDate(appointment.startTime)}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium text-gray-700">{formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-bold text-gray-900 text-base">{appointment.patientName}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Đặt lúc: {formatLocalDateTime(appointment.createdAt)}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        // ⭐ Nếu đã có bác sĩ thay thế, hiển thị tên bác sĩ thay thế (không hiển thị "Vắng mặt")
+                        if (appointment.hasReplacementDoctor) {
+                          return (
+                            <Chip variant="flat" color="default">
+                              {appointment.doctorName}
+                            </Chip>
+                          );
+                        }
 
-          {/* Table */}
-          <Table 
-            aria-label="Bảng quản lý ca khám"
-            removeWrapper
-            classNames={{
-              th: "bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-bold text-sm uppercase tracking-wide",
-              td: "py-5 border-b border-gray-100",
-            }}
-          >
-            <TableHeader columns={columns}>
-              {(column) => <TableColumn key={column.key}>{column.label}</TableColumn>}
-            </TableHeader>
-            <TableBody
-              items={currentAppointments}
-              emptyContent={
-                <div className="text-center py-12">
-                  <ClockIcon className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-gray-500 text-lg">Không có ca khám nào</p>
-                </div>
-              }
-            >
-              {(appointment: Appointment) => (
-                <TableRow key={appointment.id} className="hover:bg-blue-50/30 transition-colors duration-200">
-                  <TableCell>
-                    <span className="font-semibold text-gray-900">{formatDate(appointment.startTime)}</span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium text-gray-700">{formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}</span>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-bold text-gray-900 text-base">{appointment.patientName}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Đặt lúc: {formatLocalDateTime(appointment.createdAt)}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      // ⭐ Nếu đã có bác sĩ thay thế, hiển thị tên bác sĩ thay thế (không hiển thị "Vắng mặt")
-                      if (appointment.hasReplacementDoctor) {
-                        return (
+                        // ⭐ Nếu chưa có bác sĩ thay thế, kiểm tra xem bác sĩ gốc có on leave không
+                        const isOnLeave = isDoctorOnLeave(appointment);
+                        // ⭐ Chỉ hiển thị vắng mặt cho các ca đang chờ duyệt, đã approved, hoặc đã check-in
+                        // KHÔNG hiển thị cho các ca đã hoàn thành (Completed) hoặc đang tiến hành (InProgress)
+                        const allowedStatuses = ['Pending', 'Approved', 'CheckedIn'];
+                        const shouldShowAbsent = isOnLeave && allowedStatuses.includes(appointment.status);
+
+                        return shouldShowAbsent ? (
+                          <Chip variant="flat" color="danger">
+                            Vắng mặt
+                          </Chip>
+                        ) : (
                           <Chip variant="flat" color="default">
                             {appointment.doctorName}
                           </Chip>
                         );
-                      }
-                      
-                      // ⭐ Nếu chưa có bác sĩ thay thế, kiểm tra xem bác sĩ gốc có on leave không
-                      const isOnLeave = isDoctorOnLeave(appointment);
-                      // ⭐ Chỉ hiển thị vắng mặt cho các ca đang chờ duyệt, đã approved, hoặc đã check-in
-                      // KHÔNG hiển thị cho các ca đã hoàn thành (Completed) hoặc đang tiến hành (InProgress)
-                      const allowedStatuses = ['Pending', 'Approved', 'CheckedIn'];
-                      const shouldShowAbsent = isOnLeave && allowedStatuses.includes(appointment.status);
-                      
-                      return shouldShowAbsent ? (
-                        <Chip variant="flat" color="danger">
-                          Vắng mặt
-                        </Chip>
+                      })()}
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm font-medium text-gray-700">{appointment.serviceName}</p>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        color={getStatusColor(appointment.status)}
+                        variant="flat"
+                        size="lg"
+                        className="font-semibold"
+                      >
+                        {getStatusText(appointment.status)}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      {appointment.checkedInAt ? (
+                        <div className="text-sm">
+                          <p className="font-bold text-gray-900">{formatLocalDateTime(appointment.checkedInAt)}</p>
+                        </div>
                       ) : (
-                        <Chip variant="flat" color="default">
-                          {appointment.doctorName}
-                        </Chip>
-                      );
-                    })()}
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm font-medium text-gray-700">{appointment.serviceName}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      color={getStatusColor(appointment.status)}
-                      variant="flat"
-                      size="lg"
-                      className="font-semibold"
-                    >
-                      {getStatusText(appointment.status)}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    {appointment.checkedInAt ? (
-                      <div className="text-sm">
-                        <p className="font-bold text-gray-900">{formatLocalDateTime(appointment.checkedInAt)}</p>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-sm font-medium">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2 flex-wrap">
-                      {(() => {
-                        const isOnLeave = isDoctorOnLeave(appointment);
-                        if (isOnLeave) {
-                          return shouldShowReassignButton(appointment, isOnLeave) ? (
-                            <Tooltip content="Gán bác sĩ">
-                              <Button
-                                isIconOnly
-                                size="md"
-                                variant="light"
-                                className="text-purple-600 hover:bg-purple-50 transition-colors"
-                                onPress={() => openReassignModal(appointment)}
-                                isDisabled={processingId === appointment.id}
-                              >
-                                <UserPlusIcon className="w-5 h-5" />
-                              </Button>
-                            </Tooltip>
-                          ) : null;
-                        }
+                        <span className="text-gray-400 text-sm font-medium">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2 flex-wrap">
+                        {(() => {
+                          const isOnLeave = isDoctorOnLeave(appointment);
+                          if (isOnLeave) {
+                            return shouldShowReassignButton(appointment, isOnLeave) ? (
+                              <Tooltip content="Gán bác sĩ">
+                                <Button
+                                  isIconOnly
+                                  size="md"
+                                  variant="light"
+                                  className="text-purple-600 hover:bg-purple-50 transition-colors"
+                                  onPress={() => openReassignModal(appointment)}
+                                  isDisabled={processingId === appointment.id}
+                                >
+                                  <UserPlusIcon className="w-5 h-5" />
+                                </Button>
+                              </Tooltip>
+                            ) : null;
+                          }
 
-                        return (
-                          <>
-                            {appointment.status === "Pending" && (
-                              <>
-                                <Tooltip content="Xác nhận">
-                                  <Button
-                                    isIconOnly
-                                    size="md"
-                                    variant="light"
-                                    className="text-green-600 hover:bg-green-50 transition-colors"
-                                    onPress={() => handleApprove(appointment.id)}
-                                    isDisabled={processingId === appointment.id}
-                                    isLoading={processingId === appointment.id}
-                                  >
-                                    <CheckCircleIcon className="w-5 h-5" />
-                                  </Button>
-                                </Tooltip>
-                                <Tooltip content="Hủy">
-                                  <Button
-                                    isIconOnly
-                                    size="md"
-                                    variant="light"
-                                    className="text-red-600 hover:bg-red-50 transition-colors"
-                                    onPress={() => openCancelModal(appointment.id)}
-                                    isDisabled={processingId === appointment.id}
-                                  >
-                                    <XCircleIcon className="w-5 h-5" />
-                                  </Button>
-                                </Tooltip>
-                              </>
-                            )}
-                            {appointment.status === "Approved" && (
-                              <>
-                                {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám VÀ không phải Online */}
-                                {isAppointmentDateReached(appointment.startTime) && appointment.mode !== "Online" ? (
-                                  <Tooltip content="Có mặt">
-                                    <Button
-                                      isIconOnly
-                                      size="md"
-                                      variant="light"
-                                      className="text-blue-600 hover:bg-blue-50 transition-colors"
-                                      onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                                      isDisabled={processingId === appointment.id}
-                                      isLoading={processingId === appointment.id}
-                                    >
-                                      <CheckIcon className="w-5 h-5" />
-                                    </Button>
-                                  </Tooltip>
-                                ) : null}
-                                {/* ⭐ Không hiển thị nút No Show khi chỉ approved - chỉ hiển thị khi đã check-in */}
-                              </>
-                            )}
-                            {appointment.status === "CheckedIn" && (
-                              <Tooltip content="Vắng mặt">
-                                <Button
-                                  isIconOnly
-                                  size="md"
-                                  variant="light"
-                                  className="text-orange-600 hover:bg-orange-50 transition-colors"
-                                  onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
-                                  isDisabled={processingId === appointment.id}
-                                  isLoading={processingId === appointment.id}
-                                >
-                                  <XMarkIcon className="w-5 h-5" />
-                                </Button>
-                              </Tooltip>
-                            )}
-                            {/* ⭐ Chỉ cho phép check-in từ No-Show khi đã đến ngày và trong giờ làm việc */}
-                            {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && isAppointmentDateReached(appointment.startTime) && (
-                              <Tooltip content="Có mặt">
-                                <Button
-                                  isIconOnly
-                                  size="md"
-                                  variant="light"
-                                  className="text-blue-600 hover:bg-blue-50 transition-colors"
-                                  onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
-                                  isDisabled={processingId === appointment.id}
-                                  isLoading={processingId === appointment.id}
-                                >
-                                  <CheckIcon className="w-5 h-5" />
-                                </Button>
-                              </Tooltip>
-                            )}
-                            {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) ||
-                              (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
-                              <div className="flex gap-2">
-                                {appointment.status === "Completed" && !appointment.noTreatment && (
-                                  <Tooltip content="Xuất PDF">
+                          return (
+                            <>
+                              {appointment.status === "Pending" && (
+                                <>
+                                  <Tooltip content="Xác nhận">
                                     <Button
                                       isIconOnly
                                       size="md"
                                       variant="light"
                                       className="text-green-600 hover:bg-green-50 transition-colors"
-                                      onPress={() => handleDownloadPDF(appointment.id)}
+                                      onPress={() => handleApprove(appointment.id)}
                                       isDisabled={processingId === appointment.id}
                                       isLoading={processingId === appointment.id}
                                     >
-                                      <DocumentArrowDownIcon className="w-5 h-5" />
+                                      <CheckCircleIcon className="w-5 h-5" />
                                     </Button>
                                   </Tooltip>
-                                )}
-                                {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
-                                  <Tooltip content="Xem chi tiết">
+                                  <Tooltip content="Hủy">
                                     <Button
                                       isIconOnly
                                       size="md"
                                       variant="light"
-                                      className="text-blue-600 hover:bg-blue-50 transition-colors"
-                                      onPress={() => openDetailModal(appointment.id)}
+                                      className="text-red-600 hover:bg-red-50 transition-colors"
+                                      onPress={() => openCancelModal(appointment.id)}
+                                      isDisabled={processingId === appointment.id}
                                     >
-                                      <EyeIcon className="w-5 h-5" />
+                                      <XCircleIcon className="w-5 h-5" />
                                     </Button>
                                   </Tooltip>
-                                ) : null}
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardBody>
-      </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow">
-          <div className="text-sm text-gray-600 mb-4 sm:mb-0">
-            Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredAppointments.length)} trong tổng số {filteredAppointments.length} ca khám
-          </div>
-
-          <div className="flex items-center space-x-2">
-            {/* Previous button */}
-            <Button
-              isDisabled={currentPage === 1}
-              size="sm"
-              variant="bordered"
-              onPress={() => setCurrentPage(currentPage - 1)}
-            >
-              ←
-            </Button>
-
-            {/* Page numbers */}
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                className="min-w-8"
-                color={currentPage === page ? "primary" : "default"}
-                size="sm"
-                variant={currentPage === page ? "solid" : "bordered"}
-                onPress={() => setCurrentPage(page)}
-              >
-                {page}
-              </Button>
-            ))}
-
-            {/* Next button */}
-            <Button
-              isDisabled={currentPage === totalPages}
-              size="sm"
-              variant="bordered"
-              onPress={() => setCurrentPage(currentPage + 1)}
-            >
-              →
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Reassign Doctor Modal */}
-      {reassignAppointment && (
-        <ReassignDoctorModal
-          isOpen={isReassignModalOpen}
-          onClose={closeReassignModal}
-          onSuccess={handleReassignSuccess}
-          appointmentId={reassignAppointment.id}
-          currentDoctorName={reassignAppointment.doctorName}
-          startTime={reassignAppointment.startTime}
-          endTime={reassignAppointment.endTime}
-          prefetchedDoctors={prefetchedDoctors}
-        />
-      )}
-
-      {/* ⭐ Walk-in Modal - Staff creates appointment for walk-in patients */}
-      <Modal
-        isOpen={isWalkInOpen}
-        onClose={() => {
-          // Release reservation if exists
-          if (walkInReservation) {
-            appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
-              .catch(err => console.warn("Failed to release on close:", err));
-          }
-          setIsWalkInOpen(false);
-          // Reset form
-          setWalkInForm({
-            fullName: "",
-            email: "",
-            phoneNumber: "",
-            date: "",
-            serviceId: "",
-            doctorUserId: "",
-            userStartTimeInput: "",
-            startTime: null,
-            endTime: null,
-            doctorScheduleId: null,
-            notes: ""
-          });
-          setWalkInReservation(null);
-          setWalkInTimeError(null);
-          setWalkInErrors({});
-          setHasAttemptedDoctorFetch(false); // ⭐ Reset flag
-        }}
-        size="4xl"
-        scrollBehavior="inside"
-        isDismissable={false}
-        hideCloseButton={false}
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1 border-b bg-gradient-to-r from-[#39BDCC] to-[#32a8b5] text-white">
-            <h2 className="text-2xl font-bold">Đặt lịch cho bệnh nhân</h2>
-            <p className="text-sm font-normal opacity-90">Nhập thông tin bệnh nhân và chọn lịch khám</p>
-          </ModalHeader>
-          
-          <ModalBody className="py-6">
-            <form
-              id="walk-in-form"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                
-                // Validate
-                const errors: Record<string, string> = {};
-                if (!walkInForm.fullName.trim()) errors.fullName = "Vui lòng nhập họ và tên";
-                if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(walkInForm.email.trim())) {
-                  errors.email = "Email không hợp lệ";
-                }
-                if (walkInForm.phoneNumber.replace(/[^0-9]/g, "").length !== 10) {
-                  errors.phoneNumber = "Số điện thoại phải gồm 10 chữ số";
-                }
-                if (!walkInForm.date) errors.date = "Vui lòng chọn ngày";
-                if (!walkInForm.serviceId) errors.serviceId = "Vui lòng chọn dịch vụ";
-                if (!walkInForm.doctorUserId) errors.doctorUserId = "Vui lòng chọn bác sĩ";
-                if (!walkInForm.startTime || !walkInForm.endTime) {
-                  errors.userStartTimeInput = "Vui lòng chọn giờ bắt đầu";
-                }
-                
-                if (Object.keys(errors).length > 0) {
-                  setWalkInErrors(errors);
-                  toast.error("Vui lòng điền đầy đủ thông tin");
-                  return;
-                }
-                
-                try {
-                  setWalkInSubmitting(true);
-                  
-                  const payload = {
-                    fullName: walkInForm.fullName,
-                    email: walkInForm.email,
-                    phoneNumber: walkInForm.phoneNumber,
-                    serviceId: walkInForm.serviceId,
-                    doctorUserId: walkInForm.doctorUserId,
-                    doctorScheduleId: walkInForm.doctorScheduleId || "",
-                    selectedSlot: {
-                      startTime: walkInForm.startTime!.toISOString(),
-                      endTime: walkInForm.endTime!.toISOString()
-                    },
-                    notes: walkInForm.notes,
-                    reservedTimeslotId: walkInReservation?.timeslotId || null
-                  };
-                  
-                  console.log('📤 Sending walk-in appointment request:', payload);
-                  const res = await appointmentApi.createWalkIn(payload);
-                  console.log('📥 Walk-in appointment response:', res);
-                  
-                  if (res.success) {
-                    toast.success("Đặt lịch thành công!");
-                    
-                    // Log pricing info if available
-                    if ((res.data as any)?.pricing) {
-                      console.log('💰 Appointment pricing:', (res.data as any).pricing);
-                    }
-                    
-                    setIsWalkInOpen(false);
-                    refetchAllAppointments();
-                    
-                    // Reset form
-                    setWalkInForm({
-                      fullName: "",
-                      email: "",
-                      phoneNumber: "",
-                      date: "",
-                      serviceId: "",
-                      doctorUserId: "",
-                      userStartTimeInput: "",
-                      startTime: null,
-                      endTime: null,
-                      doctorScheduleId: null,
-                      notes: ""
-                    });
-                    setWalkInReservation(null);
-                  } else {
-                    console.error('❌ Walk-in appointment failed:', res);
-                    toast.error(res.message || "Đặt lịch thất bại");
-                  }
-                } catch (err: any) {
-                  console.error('❌ Walk-in appointment error:', err);
-                  console.error('   - Error message:', err.message);
-                  console.error('   - Error response:', err.response?.data);
-                  
-                  const errorMessage = err.response?.data?.message || err.message || "Có lỗi xảy ra khi đặt lịch";
-                  toast.error(errorMessage);
-                } finally {
-                  setWalkInSubmitting(false);
-                }
-              }}
-              className="space-y-6"
-            >
-              {/* Patient Info */}
-              <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-[#39BDCC] rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-gray-900">Thông tin bệnh nhân</h3>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm mb-1.5 font-medium text-gray-700">
-                      Họ và tên <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      value={walkInForm.fullName}
-                      onChange={(e) => {
-                        setWalkInForm(prev => ({ ...prev, fullName: e.target.value }));
-                        if (walkInErrors.fullName) {
-                          setWalkInErrors(prev => {
-                            const next = { ...prev };
-                            delete next.fullName;
-                            return next;
-                          });
-                        }
-                      }}
-                      onBlur={() => validateWalkInField("fullName")}
-                      placeholder="Nhập họ và tên"
-                      isInvalid={!!walkInErrors.fullName}
-                      errorMessage={walkInErrors.fullName}
-                      size="lg"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm mb-1.5 font-medium text-gray-700">
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="email"
-                      value={walkInForm.email}
-                      onChange={(e) => {
-                        setWalkInForm(prev => ({ ...prev, email: e.target.value }));
-                        if (walkInErrors.email) {
-                          setWalkInErrors(prev => {
-                            const next = { ...prev };
-                            delete next.email;
-                            return next;
-                          });
-                        }
-                      }}
-                      onBlur={() => validateWalkInField("email")}
-                      placeholder="example@email.com"
-                      isInvalid={!!walkInErrors.email}
-                      errorMessage={walkInErrors.email}
-                      size="lg"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm mb-1.5 font-medium text-gray-700">
-                      Số điện thoại <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="tel"
-                      value={walkInForm.phoneNumber}
-                      onChange={(e) => {
-                        setWalkInForm(prev => ({ ...prev, phoneNumber: e.target.value }));
-                        if (walkInErrors.phoneNumber) {
-                          setWalkInErrors(prev => {
-                            const next = { ...prev };
-                            delete next.phoneNumber;
-                            return next;
-                          });
-                        }
-                      }}
-                      onBlur={() => validateWalkInField("phoneNumber")}
-                      placeholder="0123456789"
-                      isInvalid={!!walkInErrors.phoneNumber}
-                      errorMessage={walkInErrors.phoneNumber}
-                      size="lg"
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              {/* Appointment Details */}
-              <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-1 h-6 bg-[#39BDCC] rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-gray-900">Thông tin lịch khám</h3>
-                </div>
-                
-                {/* Date, Service, Doctor - 3 COLUMNS */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Date - FIRST */}
-                  <div>
-                    <label className="block text-sm mb-1.5 font-medium text-gray-700">
-                      Ngày khám <span className="text-red-500">*</span>
-                    </label>
-                    <VietnameseDateInput
-                      value={walkInForm.date}
-                      onChange={(dateStr) => {
-                        setWalkInForm(prev => ({ ...prev, date: dateStr }));
-                      }}
-                      minDate={new Date()}
-                      className="w-full"
-                      inputWrapperClassName="border-2 border-gray-300 hover:border-[#39BDCC] data-[focus=true]:border-[#39BDCC] h-11 transition-colors"
-                    />
-                    {walkInErrors.date && (
-                      <p className="mt-1 text-xs text-red-600">{walkInErrors.date}</p>
-                    )}
-                  </div>
-                  
-                  {/* Service - SECOND (enabled after date) */}
-                  <div>
-                    <label className="block text-sm mb-1.5 font-medium text-gray-700">
-                      Dịch vụ <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      placeholder="Chọn dịch vụ"
-                      selectedKeys={walkInForm.serviceId ? new Set([walkInForm.serviceId]) : new Set([])}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0];
-                        setWalkInForm(prev => ({ ...prev, serviceId: selected ? String(selected) : "" }));
-                      }}
-                      isDisabled={!walkInForm.date}
-                      isInvalid={!!walkInErrors.serviceId}
-                      errorMessage={walkInErrors.serviceId}
-                      size="lg"
-                      classNames={{
-                        trigger: "h-11"
-                      }}
-                    >
-                      {walkInServices.map((service) => (
-                        <SelectItem key={service._id}>
-                          {service.serviceName}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                  </div>
-                  
-                  {/* Doctor - THIRD (enabled after service) */}
-                  <div>
-                    <label className="block text-sm mb-1.5 font-medium text-gray-700">
-                      Bác sĩ <span className="text-red-500">*</span>
-                    </label>
-                    <Select
-                      placeholder={walkInLoadingDoctors ? "Đang tải..." : "Chọn bác sĩ"}
-                      selectedKeys={walkInForm.doctorUserId ? new Set([walkInForm.doctorUserId]) : new Set([])}
-                      onSelectionChange={(keys) => {
-                        const selected = Array.from(keys)[0];
-                        setWalkInForm(prev => ({ ...prev, doctorUserId: selected ? String(selected) : "" }));
-                      }}
-                      isDisabled={!walkInForm.serviceId || walkInLoadingDoctors}
-                      isInvalid={!!walkInErrors.doctorUserId}
-                      errorMessage={walkInErrors.doctorUserId}
-                      size="lg"
-                      classNames={{
-                        trigger: "h-11"
-                      }}
-                    >
-                      {walkInAvailableDoctors.map((doctor) => (
-                        <SelectItem key={doctor._id}>
-                          {doctor.fullName}
-                        </SelectItem>
-                      ))}
-                    </Select>
-                    {/* Only show message when: has attempted fetch, has date, has service, not loading, and no doctors available */}
-                    {hasAttemptedDoctorFetch && walkInForm.date && walkInAvailableDoctors.length === 0 && walkInForm.serviceId && !walkInLoadingDoctors && (
-                      <p className="mt-1 text-xs text-orange-600">
-                        Không có bác sĩ khả dụng cho ngày này (có thể đang nghỉ phép)
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Time - FOURTH (enabled after doctor) */}
-                {walkInForm.doctorUserId && (
-                  <div className="space-y-3">
-                    {/* Loading state */}
-                    {walkInLoadingSchedule ? (
-                      <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
-                        <p className="text-sm text-gray-600">Đang tải lịch bác sĩ...</p>
+                                </>
+                              )}
+                              {appointment.status === "Approved" && (
+                                <>
+                                  {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám VÀ không phải Online */}
+                                  {isAppointmentDateReached(appointment.startTime) && appointment.mode !== "Online" ? (
+                                    <Tooltip content="Có mặt">
+                                      <Button
+                                        isIconOnly
+                                        size="md"
+                                        variant="light"
+                                        className="text-blue-600 hover:bg-blue-50 transition-colors"
+                                        onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                                        isDisabled={processingId === appointment.id}
+                                        isLoading={processingId === appointment.id}
+                                      >
+                                        <CheckIcon className="w-5 h-5" />
+                                      </Button>
+                                    </Tooltip>
+                                  ) : null}
+                                  {/* ⭐ Không hiển thị nút No Show khi chỉ approved - chỉ hiển thị khi đã check-in */}
+                                </>
+                              )}
+                              {appointment.status === "CheckedIn" && (
+                                <Tooltip content="Vắng mặt">
+                                  <Button
+                                    isIconOnly
+                                    size="md"
+                                    variant="light"
+                                    className="text-orange-600 hover:bg-orange-50 transition-colors"
+                                    onPress={() => handleUpdateStatus(appointment.id, "No-Show")}
+                                    isDisabled={processingId === appointment.id}
+                                    isLoading={processingId === appointment.id}
+                                  >
+                                    <XMarkIcon className="w-5 h-5" />
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              {/* ⭐ Chỉ cho phép check-in từ No-Show khi đã đến ngày và trong giờ làm việc */}
+                              {appointment.status === "No-Show" && isWithinWorkingHours(appointment) && isAppointmentDateReached(appointment.startTime) && (
+                                <Tooltip content="Có mặt">
+                                  <Button
+                                    isIconOnly
+                                    size="md"
+                                    variant="light"
+                                    className="text-blue-600 hover:bg-blue-50 transition-colors"
+                                    onPress={() => handleUpdateStatus(appointment.id, "CheckedIn")}
+                                    isDisabled={processingId === appointment.id}
+                                    isLoading={processingId === appointment.id}
+                                  >
+                                    <CheckIcon className="w-5 h-5" />
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              {(!["Pending", "Approved", "CheckedIn", "No-Show"].includes(appointment.status) ||
+                                (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
+                                  <div className="flex gap-2">
+                                    {appointment.status === "Completed" && !appointment.noTreatment && (
+                                      <Tooltip content="Xuất PDF">
+                                        <Button
+                                          isIconOnly
+                                          size="md"
+                                          variant="light"
+                                          className="text-green-600 hover:bg-green-50 transition-colors"
+                                          onPress={() => handleDownloadPDF(appointment.id)}
+                                          isDisabled={processingId === appointment.id}
+                                          isLoading={processingId === appointment.id}
+                                        >
+                                          <DocumentArrowDownIcon className="w-5 h-5" />
+                                        </Button>
+                                      </Tooltip>
+                                    )}
+                                    {appointment.status === "Cancelled" || appointment.status === "Refunded" ? (
+                                      <Tooltip content="Xem chi tiết">
+                                        <Button
+                                          isIconOnly
+                                          size="md"
+                                          variant="light"
+                                          className="text-blue-600 hover:bg-blue-50 transition-colors"
+                                          onPress={() => openDetailModal(appointment.id)}
+                                        >
+                                          <EyeIcon className="w-5 h-5" />
+                                        </Button>
+                                      </Tooltip>
+                                    ) : null}
+                                  </div>
+                                )}
+                            </>
+                          );
+                        })()}
                       </div>
-                    ) : walkInScheduleRanges && Array.isArray(walkInScheduleRanges) ? (
-                      <>
-                        {/* Schedule Ranges Display - Match BookingModal UI */}
-                        <div className="p-3 bg-blue-50 border border-gray-200 rounded-lg">
-                          <p className="text-xs text-gray-600 font-medium mb-2">
-                            Khoảng thời gian khả dụng:
-                          </p>
-                          <div className="space-y-2">
-                            {walkInScheduleRanges.map((range: any, index: number) => (
-                              <div key={index}>
-                                <p className="text-sm font-semibold text-[#39BDCC] mb-1">
-                                  {range.shift === "Morning" ? "Ca sáng" : "Ca chiều"}:
-                                </p>
-                                <p className="text-sm text-gray-700 ml-2">
-                                  {range.displayRange === 'Đã hết chỗ' ? (
-                                    <span className="text-red-600 font-medium">Đã hết chỗ</span>
-                                  ) : range.displayRange === 'Đã qua thời gian làm việc' ? (
-                                    <span className="text-red-600 font-medium">Đã qua thời gian làm việc</span>
-                                  ) : (
-                                    range.displayRange.split(', ').map((gap: string, gapIdx: number) => (
-                                      <span key={gapIdx}>
-                                        {gapIdx > 0 && <span className="mx-2">|</span>}
-                                        <span className="text-[#39BDCC] font-medium">{gap}</span>
-                                      </span>
-                                    ))
-                                  )}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        
-                        {/* Time Input and End Time Display - Grid Layout */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">
-                              Nhập giờ bắt đầu
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="Giờ"
-                                className={`w-16 text-center border px-3 py-2 rounded-lg ${
-                                  walkInTimeError ? "border-red-500" : "border-gray-300"
-                                }`}
-                                value={(walkInForm.userStartTimeInput || "").split(":")[0] || ""}
-                                onChange={(e) => {
-                                  let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
-                                  const currentMinute = (walkInForm.userStartTimeInput || "").split(":")[1] || "";
-                                  
-                                  // ⭐ If both hour and minute are empty, clear reservation and refetch schedule
-                                  if ((!v || v === "") && (!currentMinute || currentMinute === "")) {
-                                    if (walkInReservation) {
-                                      appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
-                                        .then(() => {
-                                          // Refetch schedule ranges to update available time display
-                                          fetchWalkInScheduleRanges();
-                                        })
-                                        .catch(err => console.warn("Failed to release slot:", err));
-                                      setWalkInReservation(null);
-                                    }
-                                  }
-                                  
-                                  setWalkInForm(prev => ({ ...prev, userStartTimeInput: v + ":" + currentMinute }));
-                                  setWalkInTimeError(null);
-                                }}
-                                onBlur={() => {
-                                  const [h, m] = (walkInForm.userStartTimeInput || "").split(":");
-                                  if (h && m && m.length >= 2) {
-                                    handleWalkInTimeBlur(h + ":" + m);
-                                  }
-                                }}
-                              />
-                              <span className="font-semibold">:</span>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                placeholder="Phút"
-                                className={`w-16 text-center border px-3 py-2 rounded-lg ${
-                                  walkInTimeError ? "border-red-500" : "border-gray-300"
-                                }`}
-                                value={(walkInForm.userStartTimeInput || "").split(":")[1] || ""}
-                                onChange={(e) => {
-                                  let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
-                                  const currentHour = (walkInForm.userStartTimeInput || "").split(":")[0] || "";
-                                  
-                                  // ⭐ If both hour and minute are empty, clear reservation and refetch schedule
-                                  if ((!currentHour || currentHour === "") && (!v || v === "")) {
-                                    if (walkInReservation) {
-                                      appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
-                                        .then(() => {
-                                          // Refetch schedule ranges to update available time display
-                                          fetchWalkInScheduleRanges();
-                                        })
-                                        .catch(err => console.warn("Failed to release slot:", err));
-                                      setWalkInReservation(null);
-                                    }
-                                  }
-                                  
-                                  setWalkInForm(prev => ({ ...prev, userStartTimeInput: currentHour + ":" + v }));
-                                  setWalkInTimeError(null);
-                                }}
-                                onBlur={() => {
-                                  const [h, m] = (walkInForm.userStartTimeInput || "").split(":");
-                                  if (h && m && m.length >= 2) {
-                                    handleWalkInTimeBlur(h + ":" + m);
-                                  }
-                                }}
-                              />
-                            </div>
-                            {walkInTimeError && (
-                              <p className="mt-1 text-xs text-red-600">{walkInTimeError}</p>
-                            )}
-                            {walkInReservation && walkInReservation.countdownSeconds > 0 && !walkInTimeError && (
-                              <p className="mt-1 text-xs text-[#39BDCC]">
-                                Đã giữ chỗ · Còn lại {walkInReservation.countdownSeconds}s
-                              </p>
-                            )}
-                          </div>
-
-                          {/* ⭐ Display predicted end time - matches patient booking modal exactly */}
-                          {walkInForm.userStartTimeInput &&
-                           walkInForm.serviceId &&
-                           !walkInTimeError &&
-                           /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/.test(walkInForm.userStartTimeInput) &&
-                           (() => {
-                             const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
-                             if (!selectedService || !selectedService.durationMinutes) return false;
-                             
-                             const [h, m] = walkInForm.userStartTimeInput.split(':');
-                             if (!h || !m || m.length < 2) return false;
-                             
-                             const hours = parseInt(h, 10);
-                             const minutes = parseInt(m, 10);
-                             if (isNaN(hours) || isNaN(minutes)) return false;
-                             
-                             return true;
-                           })() && (
-                            <div className="flex flex-col items-end text-right">
-                              <label className="block text-xs text-gray-600 mb-1">
-                                Thời gian kết thúc dự kiến
-                              </label>
-                              <div className="flex items-center gap-2 justify-end">
-                                {(() => {
-                                  const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
-                                  const [h, m] = walkInForm.userStartTimeInput.split(':');
-                                  const hours = parseInt(h, 10);
-                                  const minutes = parseInt(m, 10);
-                                  const totalMinutes = hours * 60 + minutes + (selectedService?.durationMinutes || 0);
-                                  const endHours = Math.floor(totalMinutes / 60) % 24;
-                                  const endMinutes = totalMinutes % 60;
-                                  
-                                  return (
-                                    <>
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        placeholder="Giờ"
-                                        className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
-                                        readOnly
-                                        value={String(endHours).padStart(2, '0')}
-                                      />
-                                      <span className="font-semibold">:</span>
-                                      <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        placeholder="Phút"
-                                        className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
-                                        readOnly
-                                        value={String(endMinutes).padStart(2, '0')}
-                                      />
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    ) : null}
-                  </div>
+                    </TableCell>
+                  </TableRow>
                 )}
+              </TableBody>
+            </Table>
+          </CardBody>
+        </Card>
 
-                
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm mb-1 font-medium text-gray-700">
-                    Ghi chú
-                  </label>
-                  <Textarea
-                    value={walkInForm.notes}
-                    onChange={(e) => setWalkInForm(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder="Ghi chú thêm (nếu có)"
-                    rows={3}
-                  />
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex flex-col sm:flex-row items-center justify-between bg-white p-4 rounded-lg shadow">
+            <div className="text-sm text-gray-600 mb-4 sm:mb-0">
+              Hiển thị {startIndex + 1} đến {Math.min(endIndex, filteredAppointments.length)} trong tổng số {filteredAppointments.length} ca khám
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {/* Previous button */}
+              <Button
+                isDisabled={currentPage === 1}
+                size="sm"
+                variant="bordered"
+                onPress={() => setCurrentPage(currentPage - 1)}
+              >
+                ←
+              </Button>
+
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  className="min-w-8"
+                  color={currentPage === page ? "primary" : "default"}
+                  size="sm"
+                  variant={currentPage === page ? "solid" : "bordered"}
+                  onPress={() => setCurrentPage(page)}
+                >
+                  {page}
+                </Button>
+              ))}
+
+              {/* Next button */}
+              <Button
+                isDisabled={currentPage === totalPages}
+                size="sm"
+                variant="bordered"
+                onPress={() => setCurrentPage(currentPage + 1)}
+              >
+                →
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Reassign Doctor Modal */}
+        {reassignAppointment && (
+          <ReassignDoctorModal
+            isOpen={isReassignModalOpen}
+            onClose={closeReassignModal}
+            onSuccess={handleReassignSuccess}
+            appointmentId={reassignAppointment.id}
+            currentDoctorName={reassignAppointment.doctorName}
+            startTime={reassignAppointment.startTime}
+            endTime={reassignAppointment.endTime}
+            prefetchedDoctors={prefetchedDoctors}
+          />
+        )}
+
+        {/* ⭐ Walk-in Modal - Staff creates appointment for walk-in patients */}
+        <Modal
+          isOpen={isWalkInOpen}
+          onClose={() => {
+            // Release reservation if exists
+            if (walkInReservation) {
+              appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
+                .catch(err => console.warn("Failed to release on close:", err));
+            }
+            setIsWalkInOpen(false);
+            // Reset form
+            setWalkInForm({
+              fullName: "",
+              email: "",
+              phoneNumber: "",
+              date: "",
+              serviceId: "",
+              doctorUserId: "",
+              userStartTimeInput: "",
+              startTime: null,
+              endTime: null,
+              doctorScheduleId: null,
+              notes: ""
+            });
+            setWalkInReservation(null);
+            setWalkInTimeError(null);
+            setWalkInErrors({});
+            setHasAttemptedDoctorFetch(false); // ⭐ Reset flag
+          }}
+          size="4xl"
+          scrollBehavior="inside"
+          isDismissable={false}
+          hideCloseButton={false}
+        >
+          <ModalContent>
+            <ModalHeader className="flex flex-col gap-1 border-b bg-gradient-to-r from-[#39BDCC] to-[#32a8b5] text-white">
+              <h2 className="text-2xl font-bold">Đặt lịch cho bệnh nhân</h2>
+              <p className="text-sm font-normal opacity-90">Nhập thông tin bệnh nhân và chọn lịch khám</p>
+            </ModalHeader>
+
+            <ModalBody className="py-6">
+              <form
+                id="walk-in-form"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+
+                  // Validate
+                  const errors: Record<string, string> = {};
+                  if (!walkInForm.fullName.trim()) errors.fullName = "Vui lòng nhập họ và tên";
+                  if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(walkInForm.email.trim())) {
+                    errors.email = "Email không hợp lệ";
+                  }
+                  if (walkInForm.phoneNumber.replace(/[^0-9]/g, "").length !== 10) {
+                    errors.phoneNumber = "Số điện thoại phải gồm 10 chữ số";
+                  }
+                  if (!walkInForm.date) errors.date = "Vui lòng chọn ngày";
+                  if (!walkInForm.serviceId) errors.serviceId = "Vui lòng chọn dịch vụ";
+                  if (!walkInForm.doctorUserId) errors.doctorUserId = "Vui lòng chọn bác sĩ";
+                  if (!walkInForm.startTime || !walkInForm.endTime) {
+                    errors.userStartTimeInput = "Vui lòng chọn giờ bắt đầu";
+                  }
+
+                  if (Object.keys(errors).length > 0) {
+                    setWalkInErrors(errors);
+                    toast.error("Vui lòng điền đầy đủ thông tin");
+                    return;
+                  }
+
+                  try {
+                    setWalkInSubmitting(true);
+
+                    const payload = {
+                      fullName: walkInForm.fullName,
+                      email: walkInForm.email,
+                      phoneNumber: walkInForm.phoneNumber,
+                      serviceId: walkInForm.serviceId,
+                      doctorUserId: walkInForm.doctorUserId,
+                      doctorScheduleId: walkInForm.doctorScheduleId || "",
+                      selectedSlot: {
+                        startTime: walkInForm.startTime!.toISOString(),
+                        endTime: walkInForm.endTime!.toISOString()
+                      },
+                      notes: walkInForm.notes,
+                      reservedTimeslotId: walkInReservation?.timeslotId || null
+                    };
+
+                    console.log('📤 Sending walk-in appointment request:', payload);
+                    const res = await appointmentApi.createWalkIn(payload);
+                    console.log('📥 Walk-in appointment response:', res);
+
+                    if (res.success) {
+                      toast.success("Đặt lịch thành công!");
+
+                      // Log pricing info if available
+                      if ((res.data as any)?.pricing) {
+                        console.log('💰 Appointment pricing:', (res.data as any).pricing);
+                      }
+
+                      setIsWalkInOpen(false);
+                      refetchAllAppointments();
+
+                      // Reset form
+                      setWalkInForm({
+                        fullName: "",
+                        email: "",
+                        phoneNumber: "",
+                        date: "",
+                        serviceId: "",
+                        doctorUserId: "",
+                        userStartTimeInput: "",
+                        startTime: null,
+                        endTime: null,
+                        doctorScheduleId: null,
+                        notes: ""
+                      });
+                      setWalkInReservation(null);
+                    } else {
+                      console.error('❌ Walk-in appointment failed:', res);
+                      toast.error(res.message || "Đặt lịch thất bại");
+                    }
+                  } catch (err: any) {
+                    console.error('❌ Walk-in appointment error:', err);
+                    console.error('   - Error message:', err.message);
+                    console.error('   - Error response:', err.response?.data);
+
+                    const errorMessage = err.response?.data?.message || err.message || "Có lỗi xảy ra khi đặt lịch";
+                    toast.error(errorMessage);
+                  } finally {
+                    setWalkInSubmitting(false);
+                  }
+                }}
+                className="space-y-6"
+              >
+                {/* Patient Info */}
+                <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-[#39BDCC] rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-gray-900">Thông tin bệnh nhân</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm mb-1.5 font-medium text-gray-700">
+                        Họ và tên <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        value={walkInForm.fullName}
+                        onChange={(e) => {
+                          setWalkInForm(prev => ({ ...prev, fullName: e.target.value }));
+                          if (walkInErrors.fullName) {
+                            setWalkInErrors(prev => {
+                              const next = { ...prev };
+                              delete next.fullName;
+                              return next;
+                            });
+                          }
+                        }}
+                        onBlur={() => validateWalkInField("fullName")}
+                        placeholder="Nhập họ và tên"
+                        isInvalid={!!walkInErrors.fullName}
+                        errorMessage={walkInErrors.fullName}
+                        size="lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm mb-1.5 font-medium text-gray-700">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="email"
+                        value={walkInForm.email}
+                        onChange={(e) => {
+                          setWalkInForm(prev => ({ ...prev, email: e.target.value }));
+                          if (walkInErrors.email) {
+                            setWalkInErrors(prev => {
+                              const next = { ...prev };
+                              delete next.email;
+                              return next;
+                            });
+                          }
+                        }}
+                        onBlur={() => validateWalkInField("email")}
+                        placeholder="example@email.com"
+                        isInvalid={!!walkInErrors.email}
+                        errorMessage={walkInErrors.email}
+                        size="lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm mb-1.5 font-medium text-gray-700">
+                        Số điện thoại <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="tel"
+                        value={walkInForm.phoneNumber}
+                        onChange={(e) => {
+                          setWalkInForm(prev => ({ ...prev, phoneNumber: e.target.value }));
+                          if (walkInErrors.phoneNumber) {
+                            setWalkInErrors(prev => {
+                              const next = { ...prev };
+                              delete next.phoneNumber;
+                              return next;
+                            });
+                          }
+                        }}
+                        onBlur={() => validateWalkInField("phoneNumber")}
+                        placeholder="0123456789"
+                        isInvalid={!!walkInErrors.phoneNumber}
+                        errorMessage={walkInErrors.phoneNumber}
+                        size="lg"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </form>
-          </ModalBody>
-          
-          <ModalFooter className="border-t">
-            <Button
-              variant="flat"
-              onPress={() => {
-                if (walkInReservation) {
-                  appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
-                    .catch(err => console.warn("Failed to release:", err));
-                }
-                setIsWalkInOpen(false);
-              }}
-            >
-              Hủy
-            </Button>
-            <Button
-              color="primary"
-              type="submit"
-              isLoading={walkInSubmitting}
-              isDisabled={walkInSubmitting}
-              onPress={() => {
-                // Trigger form submit
-                const form = document.getElementById('walk-in-form') as HTMLFormElement;
-                if (form) form.requestSubmit();
-              }}
-            >
-              {walkInSubmitting ? "Đang xử lý..." : "Xác nhận đặt lịch"}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+
+                {/* Appointment Details */}
+                <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-[#39BDCC] rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-gray-900">Thông tin lịch khám</h3>
+                  </div>
+
+                  {/* Date, Service, Doctor - 3 COLUMNS */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Date - FIRST */}
+                    <div>
+                      <label className="block text-sm mb-1.5 font-medium text-gray-700">
+                        Ngày khám <span className="text-red-500">*</span>
+                      </label>
+                      <VietnameseDateInput
+                        value={walkInForm.date}
+                        onChange={(dateStr) => {
+                          setWalkInForm(prev => ({ ...prev, date: dateStr }));
+                        }}
+                        minDate={new Date()}
+                        className="w-full"
+                        inputWrapperClassName="border-2 border-gray-300 hover:border-[#39BDCC] data-[focus=true]:border-[#39BDCC] h-11 transition-colors"
+                      />
+                      {walkInErrors.date && (
+                        <p className="mt-1 text-xs text-red-600">{walkInErrors.date}</p>
+                      )}
+                    </div>
+
+                    {/* Service - SECOND (enabled after date) */}
+                    <div>
+                      <label className="block text-sm mb-1.5 font-medium text-gray-700">
+                        Dịch vụ <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        placeholder="Chọn dịch vụ"
+                        selectedKeys={walkInForm.serviceId ? new Set([walkInForm.serviceId]) : new Set([])}
+                        onSelectionChange={(keys) => {
+                          const selected = Array.from(keys)[0];
+                          setWalkInForm(prev => ({ ...prev, serviceId: selected ? String(selected) : "" }));
+                        }}
+                        isDisabled={!walkInForm.date}
+                        isInvalid={!!walkInErrors.serviceId}
+                        errorMessage={walkInErrors.serviceId}
+                        size="lg"
+                        classNames={{
+                          trigger: "h-11"
+                        }}
+                      >
+                        {walkInServices.map((service) => (
+                          <SelectItem key={service._id}>
+                            {service.serviceName}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                    </div>
+
+                    {/* Doctor - THIRD (enabled after service) */}
+                    <div>
+                      <label className="block text-sm mb-1.5 font-medium text-gray-700">
+                        Bác sĩ <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        placeholder={walkInLoadingDoctors ? "Đang tải..." : "Chọn bác sĩ"}
+                        selectedKeys={walkInForm.doctorUserId ? new Set([walkInForm.doctorUserId]) : new Set([])}
+                        onSelectionChange={(keys) => {
+                          const selected = Array.from(keys)[0];
+                          setWalkInForm(prev => ({ ...prev, doctorUserId: selected ? String(selected) : "" }));
+                        }}
+                        isDisabled={!walkInForm.serviceId || walkInLoadingDoctors}
+                        isInvalid={!!walkInErrors.doctorUserId}
+                        errorMessage={walkInErrors.doctorUserId}
+                        size="lg"
+                        classNames={{
+                          trigger: "h-11"
+                        }}
+                      >
+                        {walkInAvailableDoctors.map((doctor) => (
+                          <SelectItem key={doctor._id}>
+                            {doctor.fullName}
+                          </SelectItem>
+                        ))}
+                      </Select>
+                      {/* Only show message when: has attempted fetch, has date, has service, not loading, and no doctors available */}
+                      {hasAttemptedDoctorFetch && walkInForm.date && walkInAvailableDoctors.length === 0 && walkInForm.serviceId && !walkInLoadingDoctors && (
+                        <p className="mt-1 text-xs text-orange-600">
+                          Không có bác sĩ khả dụng cho ngày này (có thể đang nghỉ phép)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Time - FOURTH (enabled after doctor) */}
+                  {walkInForm.doctorUserId && (
+                    <div className="space-y-3">
+                      {/* Loading state */}
+                      {walkInLoadingSchedule ? (
+                        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                          <p className="text-sm text-gray-600">Đang tải lịch bác sĩ...</p>
+                        </div>
+                      ) : walkInScheduleRanges && Array.isArray(walkInScheduleRanges) ? (
+                        <>
+                          {/* Schedule Ranges Display - Match BookingModal UI */}
+                          <div className="p-3 bg-blue-50 border border-gray-200 rounded-lg">
+                            <p className="text-xs text-gray-600 font-medium mb-2">
+                              Khoảng thời gian khả dụng:
+                            </p>
+                            <div className="space-y-2">
+                              {walkInScheduleRanges.map((range: any, index: number) => (
+                                <div key={index}>
+                                  <p className="text-sm font-semibold text-[#39BDCC] mb-1">
+                                    {range.shift === "Morning" ? "Ca sáng" : "Ca chiều"}:
+                                  </p>
+                                  <p className="text-sm text-gray-700 ml-2">
+                                    {range.displayRange === 'Đã hết chỗ' ? (
+                                      <span className="text-red-600 font-medium">Đã hết chỗ</span>
+                                    ) : range.displayRange === 'Đã qua thời gian làm việc' ? (
+                                      <span className="text-red-600 font-medium">Đã qua thời gian làm việc</span>
+                                    ) : (
+                                      range.displayRange.split(', ').map((gap: string, gapIdx: number) => (
+                                        <span key={gapIdx}>
+                                          {gapIdx > 0 && <span className="mx-2">|</span>}
+                                          <span className="text-[#39BDCC] font-medium">{gap}</span>
+                                        </span>
+                                      ))
+                                    )}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Time Input and End Time Display - Grid Layout */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Nhập giờ bắt đầu
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="Giờ"
+                                  className={`w-16 text-center border px-3 py-2 rounded-lg ${walkInTimeError ? "border-red-500" : "border-gray-300"
+                                    }`}
+                                  value={(walkInForm.userStartTimeInput || "").split(":")[0] || ""}
+                                  onChange={(e) => {
+                                    let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+                                    const currentMinute = (walkInForm.userStartTimeInput || "").split(":")[1] || "";
+
+                                    // ⭐ If both hour and minute are empty, clear reservation and refetch schedule
+                                    if ((!v || v === "") && (!currentMinute || currentMinute === "")) {
+                                      if (walkInReservation) {
+                                        appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
+                                          .then(() => {
+                                            // Refetch schedule ranges to update available time display
+                                            fetchWalkInScheduleRanges();
+                                          })
+                                          .catch(err => console.warn("Failed to release slot:", err));
+                                        setWalkInReservation(null);
+                                      }
+                                    }
+
+                                    setWalkInForm(prev => ({ ...prev, userStartTimeInput: v + ":" + currentMinute }));
+                                    setWalkInTimeError(null);
+                                  }}
+                                  onBlur={() => {
+                                    const [h, m] = (walkInForm.userStartTimeInput || "").split(":");
+                                    if (h && m && m.length >= 2) {
+                                      handleWalkInTimeBlur(h + ":" + m);
+                                    }
+                                  }}
+                                />
+                                <span className="font-semibold">:</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="Phút"
+                                  className={`w-16 text-center border px-3 py-2 rounded-lg ${walkInTimeError ? "border-red-500" : "border-gray-300"
+                                    }`}
+                                  value={(walkInForm.userStartTimeInput || "").split(":")[1] || ""}
+                                  onChange={(e) => {
+                                    let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+                                    const currentHour = (walkInForm.userStartTimeInput || "").split(":")[0] || "";
+
+                                    // ⭐ If both hour and minute are empty, clear reservation and refetch schedule
+                                    if ((!currentHour || currentHour === "") && (!v || v === "")) {
+                                      if (walkInReservation) {
+                                        appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
+                                          .then(() => {
+                                            // Refetch schedule ranges to update available time display
+                                            fetchWalkInScheduleRanges();
+                                          })
+                                          .catch(err => console.warn("Failed to release slot:", err));
+                                        setWalkInReservation(null);
+                                      }
+                                    }
+
+                                    setWalkInForm(prev => ({ ...prev, userStartTimeInput: currentHour + ":" + v }));
+                                    setWalkInTimeError(null);
+                                  }}
+                                  onBlur={() => {
+                                    const [h, m] = (walkInForm.userStartTimeInput || "").split(":");
+                                    if (h && m && m.length >= 2) {
+                                      handleWalkInTimeBlur(h + ":" + m);
+                                    }
+                                  }}
+                                />
+                              </div>
+                              {walkInTimeError && (
+                                <p className="mt-1 text-xs text-red-600">{walkInTimeError}</p>
+                              )}
+                              {walkInReservation && walkInReservation.countdownSeconds > 0 && !walkInTimeError && (
+                                <p className="mt-1 text-xs text-[#39BDCC]">
+                                  Đã giữ chỗ · Còn lại {walkInReservation.countdownSeconds}s
+                                </p>
+                              )}
+                            </div>
+
+                            {/* ⭐ Display predicted end time - matches patient booking modal exactly */}
+                            {walkInForm.userStartTimeInput &&
+                              walkInForm.serviceId &&
+                              !walkInTimeError &&
+                              /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/.test(walkInForm.userStartTimeInput) &&
+                              (() => {
+                                const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
+                                if (!selectedService || !selectedService.durationMinutes) return false;
+
+                                const [h, m] = walkInForm.userStartTimeInput.split(':');
+                                if (!h || !m || m.length < 2) return false;
+
+                                const hours = parseInt(h, 10);
+                                const minutes = parseInt(m, 10);
+                                if (isNaN(hours) || isNaN(minutes)) return false;
+
+                                return true;
+                              })() && (
+                                <div className="flex flex-col items-end text-right">
+                                  <label className="block text-xs text-gray-600 mb-1">
+                                    Thời gian kết thúc dự kiến
+                                  </label>
+                                  <div className="flex items-center gap-2 justify-end">
+                                    {(() => {
+                                      const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
+                                      const [h, m] = walkInForm.userStartTimeInput.split(':');
+                                      const hours = parseInt(h, 10);
+                                      const minutes = parseInt(m, 10);
+                                      const totalMinutes = hours * 60 + minutes + (selectedService?.durationMinutes || 0);
+                                      const endHours = Math.floor(totalMinutes / 60) % 24;
+                                      const endMinutes = totalMinutes % 60;
+
+                                      return (
+                                        <>
+                                          <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            placeholder="Giờ"
+                                            className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
+                                            readOnly
+                                            value={String(endHours).padStart(2, '0')}
+                                          />
+                                          <span className="font-semibold">:</span>
+                                          <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            placeholder="Phút"
+                                            className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
+                                            readOnly
+                                            value={String(endMinutes).padStart(2, '0')}
+                                          />
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                              )}
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  )}
+
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-sm mb-1 font-medium text-gray-700">
+                      Ghi chú
+                    </label>
+                    <Textarea
+                      value={walkInForm.notes}
+                      onChange={(e) => setWalkInForm(prev => ({ ...prev, notes: e.target.value }))}
+                      placeholder="Ghi chú thêm (nếu có)"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </form>
+            </ModalBody>
+
+            <ModalFooter className="border-t">
+              <Button
+                variant="flat"
+                onPress={() => {
+                  if (walkInReservation) {
+                    appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
+                      .catch(err => console.warn("Failed to release:", err));
+                  }
+                  setIsWalkInOpen(false);
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                color="primary"
+                type="submit"
+                isLoading={walkInSubmitting}
+                isDisabled={walkInSubmitting}
+                onPress={() => {
+                  // Trigger form submit
+                  const form = document.getElementById('walk-in-form') as HTMLFormElement;
+                  if (form) form.requestSubmit();
+                }}
+              >
+                {walkInSubmitting ? "Đang xử lý..." : "Xác nhận đặt lịch"}
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </div>
     </div>
   );
