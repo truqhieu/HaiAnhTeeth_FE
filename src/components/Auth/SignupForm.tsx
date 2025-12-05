@@ -236,10 +236,24 @@ const BirthdateInput = forwardRef<HTMLInputElement, BirthdateInputProps>(
     const hasValue = displayValue && displayValue.trim().length > 0;
     
     
-    const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    const handleClick = () => {
       // Call react-datepicker's onClick to open calendar
       if (onClick) {
-        onClick(e as any);
+        onClick();
+      }
+    };
+    
+    const handleButtonClick = () => {
+      // Call react-datepicker's onClick to open calendar
+      if (onClick) {
+        onClick();
+      }
+    };
+    
+    const handleFocus = () => {
+      // Call react-datepicker's onClick to open calendar on focus
+      if (onClick) {
+        onClick();
       }
     };
     
@@ -259,7 +273,7 @@ const BirthdateInput = forwardRef<HTMLInputElement, BirthdateInputProps>(
         placeholder={placeholder || "dd/mm/yyyy"}
         onClick={handleClick}
         onChange={handleChange}
-        onFocus={handleClick}
+        onFocus={handleFocus}
         label={
           <>
             Ngày sinh <span className="text-red-500">*</span>
@@ -278,7 +292,7 @@ const BirthdateInput = forwardRef<HTMLInputElement, BirthdateInputProps>(
         startContent={
           <button
             type="button"
-            onClick={handleClick}
+            onClick={handleButtonClick}
             className="cursor-pointer"
             tabIndex={-1}
           >
@@ -322,9 +336,34 @@ const SignupForm = () => {
   const [error, setError] = React.useState("");
   const [submitted, setSubmitted] = React.useState<any>(null);
   const [showValidation, setShowValidation] = React.useState(false);
+  const datePickerRef = React.useRef<any>(null);
 
   useEffect(() => {
     ensureSignupDatePickerPortal();
+    
+    // Add global click listener to close calendar when a date is selected
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if clicked element is a date in the calendar
+      if (target && target.classList && target.classList.contains('react-datepicker__day') && 
+          !target.classList.contains('react-datepicker__day--disabled') &&
+          !target.classList.contains('react-datepicker__day--outside-month')) {
+        // Close the calendar after the date is selected
+        setTimeout(() => {
+          if (datePickerRef.current && datePickerRef.current.setOpen) {
+            datePickerRef.current.setOpen(false);
+          }
+        }, 50);
+      }
+    };
+    
+    // Add listener to document
+    document.addEventListener('click', handleGlobalClick);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
   }, []);
 
   // Sync display value when birthdate changes (from calendar selection)
@@ -441,6 +480,7 @@ const SignupForm = () => {
       <Form autoComplete="off" className="space-y-5" onSubmit={onSubmit}>
         <Input
           fullWidth
+          autoComplete="off"
           errorMessage={isNameInvalid ? "Vui lòng nhập họ và tên" : ""}
           isInvalid={isNameInvalid}
           label={
@@ -456,6 +496,7 @@ const SignupForm = () => {
 
         <Input
           fullWidth
+          autoComplete="off"
           errorMessage={
             isEmailInvalid
               ? email === ""
@@ -497,6 +538,7 @@ const SignupForm = () => {
 
         <div className="w-full">
           <DatePicker
+            ref={datePickerRef}
             selected={parseDateValue(birthdate)}
             onChange={(date) => {
               // Handle calendar selection - this is called when user clicks a date in calendar
@@ -511,19 +553,17 @@ const SignupForm = () => {
                 setBirthdateDisplay("");
               }
             }}
-            onSelect={(date) => {
-              // This fires immediately when a date is selected from calendar
-              if (date && date instanceof Date && !isNaN(date.getTime())) {
-                const isoDate = formatDateToISO(date);
-                const displayDate = formatDateToDisplay(date);
-                setBirthdate(isoDate);
-                setBirthdateDisplay(displayDate);
-              }
-            }}
             strictParsing={false}
             dateFormat="dd/MM/yyyy"
             locale="vi"
             calendarStartDay={1}
+            maxDate={new Date()}
+            showYearDropdown
+            showMonthDropdown
+            dropdownMode="select"
+            scrollableYearDropdown
+            yearDropdownItemNumber={100}
+            allowSameDay
             showPopperArrow={false}
             popperPlacement="bottom-start"
             popperClassName="z-[9999]"
@@ -532,20 +572,17 @@ const SignupForm = () => {
             }}
             portalId={SIGNUP_DATE_PICKER_PORTAL_ID}
             wrapperClassName="w-full"
-            showYearDropdown
-            showMonthDropdown
-            dropdownMode="select"
-            scrollableYearDropdown
-            yearDropdownItemNumber={100}
-            maxDate={new Date()}
-            allowSameDay
             onChangeRaw={(e) => {
               // Handle manual typing - format as user types
               // Only format if it's not already in the correct format (to avoid interfering with calendar selection)
-              const inputValue = e.target?.value;
+              if (!e || !e.target) {
+                return;
+              }
+              
+              const inputValue = (e.target as HTMLInputElement).value;
               
               // Safety check
-              if (!e.target || inputValue === undefined || inputValue === null) {
+              if (inputValue === undefined || inputValue === null) {
                 return;
               }
               
@@ -565,11 +602,12 @@ const SignupForm = () => {
               
               // Update the input value with formatted version
               if (inputValue !== formatted) {
-                const cursorPos = e.target.selectionStart || 0;
-                e.target.value = formatted;
+                const inputElement = e.target as HTMLInputElement;
+                const cursorPos = inputElement.selectionStart || 0;
+                inputElement.value = formatted;
                 const lengthDiff = formatted.length - (inputValue?.length || 0);
                 const newCursorPos = Math.max(0, Math.min(cursorPos + lengthDiff, formatted.length));
-                e.target.setSelectionRange(newCursorPos, newCursorPos);
+                inputElement.setSelectionRange(newCursorPos, newCursorPos);
               }
               
               // Update state for manual typing
@@ -601,6 +639,7 @@ const SignupForm = () => {
 
         <Input
           fullWidth
+          autoComplete="new-password"
           errorMessage={
             isPasswordInvalid
               ? getPasswordErrors().map((e, i) => <div key={i}>{e}</div>)
@@ -621,6 +660,7 @@ const SignupForm = () => {
 
         <Input
           fullWidth
+          autoComplete="new-password"
           errorMessage={
             isConfirmPasswordInvalid
               ? !confirmPassword
