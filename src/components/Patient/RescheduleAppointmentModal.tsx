@@ -733,7 +733,7 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
       await appointmentApi.requestReschedule(appointmentId, {
         newStartTime: startUtc.toISOString(),
         newEndTime: endUtc.toISOString(),
-        reason: reason || "Yêu cầu đổi lịch hẹn",
+        reason: reason ,
         reservedTimeslotId: activeReservation.timeslotId
       });
       showToast("success", "Đã gửi yêu cầu đổi lịch. Đang chờ staff duyệt.", () => {

@@ -25,6 +25,14 @@ const ResetPassword = () => {
   >("idle");
   const [errorMessage, setErrorMessage] = React.useState("");
 
+  // Debug: Log URL parameters
+  React.useEffect(() => {
+    console.log("🔍 Reset Password Page - URL Parameters:");
+    console.log("  Token:", token);
+    console.log("  Email:", email);
+    console.log("  Full URL:", window.location.href);
+  }, [token, email]);
+
   // Xác thực mật khẩu
   const getPasswordErrors = (): string[] => {
     const errors: string[] = [];

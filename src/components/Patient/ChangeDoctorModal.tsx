@@ -76,7 +76,7 @@ const ChangeDoctorModal: React.FC<Props> = ({
       setSubmitting(true);
       await appointmentApi.requestChangeDoctor(appointmentId, {
         newDoctorUserId: selectedDoctorId,
-        reason: reason || 'Yêu cầu đổi bác sĩ'
+        reason: reason 
       });
       showToast("success", "Đã gửi yêu cầu đổi bác sĩ. Đang chờ staff duyệt.", () => {
         onSuccess();
