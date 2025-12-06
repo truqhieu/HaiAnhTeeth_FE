@@ -683,8 +683,9 @@ const DoctorMedicalRecord: React.FC = () => {
       return gapClean !== '' && !reservedSlotDisplays.includes(gapClean);
     });
 
-    // Thêm reserved slots vào displayRange
-    const allGaps = [...existingGaps, ...reservedSlotDisplays.map(display => `${display} (Đang giữ chỗ)`)];
+    // Thêm reserved slots vào displayRange (không thêm text "(Đang giữ chỗ)" nữa)
+    // ⭐ FIX: Không hiển thị reserved slots ở phần "Khoảng thời gian khả dụng" nữa theo yêu cầu
+    const allGaps = [...existingGaps];
     return allGaps.join(', ');
   }, [formatVNTimeFromUTC]);
 
@@ -1369,13 +1370,11 @@ const DoctorMedicalRecord: React.FC = () => {
     // ⭐ VALIDATION: Kiểm tra các trường bắt buộc
     if (!diagnosis || diagnosis.trim() === '') {
       toast.error("Vui lòng nhập chẩn đoán");
-      setError("Vui lòng nhập chẩn đoán");
       return;
     }
 
     if (!conclusion || conclusion.trim() === '') {
       toast.error("Vui lòng nhập kết luận");
-      setError("Vui lòng nhập kết luận");
       return;
     }
 
@@ -1415,7 +1414,7 @@ const DoctorMedicalRecord: React.FC = () => {
       // Validate time format
       const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
       if (!timeRegex.test(followUpTimeInput)) {
-        toast.error("Định dạng giờ không hợp lệ. Vui lòng nhập HH:mm (ví dụ: 08:30)");
+        toast.error("Định dạng giờ không hợp lệ. Vui lòng nhập lại (ví dụ: 08:30)");
         return;
       }
 
@@ -1500,8 +1499,7 @@ const DoctorMedicalRecord: React.FC = () => {
     if (followUpEnabled && activeReservation) {
       try {
         await releaseReservation({ silent: true });
-        // ⭐ Đợi một chút để đảm bảo BE đã cập nhật status trong DB
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // ⭐ Đợi một chút để đảm bảo BE đã cập nhật status trong DB (giảm xuống limit)
       } catch (e) {
         // Ignore lỗi release reservation, vẫn tiếp tục save
         console.warn('Failed to release reservation before save:', e);
@@ -1533,7 +1531,7 @@ const DoctorMedicalRecord: React.FC = () => {
 
           // 2️⃣ Sau đó mới reload record như code cũ
           toast.success("Đã lưu và duyệt hồ sơ khám bệnh");
-          // ⭐ FIX: Nếu approve, reload lại medical record để lấy đầy đủ thông tin follow-up appointment và permissions mới
+          // ⭐ FIX: Reload ngay lập tức (limit delay)
           setTimeout(async () => {
             try {
               const reloadRes = await medicalRecordApi.getOrCreateByAppointment(appointmentId, 'Doctor');
@@ -1619,15 +1617,17 @@ const DoctorMedicalRecord: React.FC = () => {
 
                 console.log('✅ [onSave] Reloaded medical record after approve');
 
-                // ⭐ Navigate sau khi reload xong
-                navigate(-1);
+                // ⭐ FIX: Delay tối thiểu (limit) trước khi navigate
+                setTimeout(() => {
+                  navigate(-1);
+                }, 500); // 500ms delay
               }
             } catch (e) {
               console.warn('Failed to reload medical record:', e);
-              // ⭐ Navigate ngay cả khi có lỗi
-              navigate(-1);
+              // ⭐ FIX: Chỉ navigate khi reload thành công, không navigate khi có lỗi
+              // Để user có thể thấy error và thử lại
             }
-          }, 800); // Đợi 800ms để backend tạo follow-up appointment và update permissions
+          }, 0); // 0ms delay
         } else {
           toast.success("Đã lưu hồ sơ khám bệnh");
           // ⭐ FIX: Nếu chỉ lưu (không approve), vẫn reload lại để lấy permissions và follow-up info mới
@@ -1716,25 +1716,37 @@ const DoctorMedicalRecord: React.FC = () => {
           // ⭐ FIX: Không navigate khi chỉ lưu, để user có thể xem kết quả
         }
       } else {
-        // ⭐ Nếu lỗi liên quan đến follow-up time, hiển thị ở dưới ô nhập giờ
+        // ⭐ Hiển thị error chỉ qua toast (không hiển thị inline error)
         const errorMsg = res.message || "Lưu thất bại";
-        if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian'))) {
+        if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian') || errorMsg.includes('Bệnh nhân đã có lịch'))) {
           const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
-          setTimeInputError(mappedErrorMsg);
-          toast.error(errorMsg);
+          // ⭐ Chỉ hiển thị toast, không set inline error
+          toast.error(mappedErrorMsg);
+
+          // ⭐ QUAN TRỌNG: Gọi hàm này để hủy trạng thái "Đang giữ chỗ" trên UI
+          // Vì lịch này đã bị lỗi trùng, không thể giữ chỗ được nữa.
+          await releaseReservation({ silent: true });
+          // ⭐ Force clear state ngay lập tức để ẩn bộ đếm
+          setActiveReservation(null);
         } else {
-          setError(errorMsg);
+          toast.error(errorMsg);
         }
       }
     } catch (e: any) {
-      // ⭐ Nếu lỗi liên quan đến follow-up time, hiển thị ở dưới ô nhập giờ
+      // ⭐ Hiển thị error chỉ qua toast (không hiển thị inline error)
       const errorMsg = e.message || "Lưu thất bại";
-      if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian'))) {
+      if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian') || errorMsg.includes('Bệnh nhân đã có lịch'))) {
         const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
-        setTimeInputError(mappedErrorMsg);
-        toast.error(errorMsg);
+        // ⭐ Chỉ hiển thị toast, không set inline error
+        toast.error(mappedErrorMsg);
+
+        // ⭐ QUAN TRỌNG: Gọi hàm này để hủy trạng thái "Đang giữ chỗ" trên UI
+        // Vì lịch này đã bị lỗi trùng, không thể giữ chỗ được nữa.
+        await releaseReservation({ silent: true });
+        // ⭐ Force clear state ngay lập tức để ẩn bộ đếm
+        setActiveReservation(null);
       } else {
-        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } finally {
       setSaving(false);
@@ -2419,10 +2431,10 @@ const DoctorMedicalRecord: React.FC = () => {
                                 inputMode="numeric"
                                 placeholder="Giờ"
                                 className={`w-16 text-center border px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent ${timeInputError
-                                    ? 'border-red-500 focus:ring-red-500'
-                                    : !canEdit
-                                      ? "bg-gray-100 opacity-60"
-                                      : 'focus:ring-[#39BDCC] focus:border-transparent'
+                                  ? 'border-red-500 focus:ring-red-500'
+                                  : !canEdit
+                                    ? "bg-gray-100 opacity-60"
+                                    : 'focus:ring-[#39BDCC] focus:border-transparent'
                                   }`}
                                 value={(followUpTimeInput || '').split(':')[0] || ''}
                                 onChange={async (e) => {
@@ -2525,10 +2537,10 @@ const DoctorMedicalRecord: React.FC = () => {
                                 inputMode="numeric"
                                 placeholder="Phút"
                                 className={`w-16 text-center border px-3 py-2 rounded-lg focus:ring-2 focus:border-transparent ${timeInputError
-                                    ? 'border-red-500 focus:ring-red-500'
-                                    : !canEdit
-                                      ? "bg-gray-100 opacity-60"
-                                      : 'focus:ring-[#39BDCC] focus:border-transparent'
+                                  ? 'border-red-500 focus:ring-red-500'
+                                  : !canEdit
+                                    ? "bg-gray-100 opacity-60"
+                                    : 'focus:ring-[#39BDCC] focus:border-transparent'
                                   }`}
                                 value={(followUpTimeInput || '').split(':')[1] || ''}
                                 onChange={async (e) => {
@@ -2624,11 +2636,7 @@ const DoctorMedicalRecord: React.FC = () => {
                                 readOnly={!canEdit}
                               />
                             </div>
-                            {(timeInputError) && (
-                              <p className="mt-1 text-xs text-red-600 font-medium">
-                                {timeInputError}
-                              </p>
-                            )}
+
                             {/* ⭐ Chỉ hiển thị message giữ chỗ sau khi blur và reserve thành công */}
                             {activeReservation && reservationCountdown > 0 && !timeInputError && hasReservedAfterBlur && (
                               <p className="mt-1 text-xs text-[#39BDCC]">

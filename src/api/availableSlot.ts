@@ -359,7 +359,7 @@ export const getDoctorScheduleRange = async (
     queryParams.append("serviceId", serviceId);
     queryParams.append("date", date);
     queryParams.append("appointmentFor", appointmentFor);
-    
+        
     if (customerFullName) {
       queryParams.append("customerFullName", encodeURIComponent(customerFullName));
     }
