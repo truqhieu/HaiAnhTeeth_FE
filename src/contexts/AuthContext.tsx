@@ -184,14 +184,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log("🔍 [AuthContext] No valid profile, clearAuth");
           sessionStorage.removeItem("user");
           dispatch(clearAuth());
-          navigate("/"); // 🚀 Redirect to homepage when session invalid
+          
+          // 🔐 ONLY redirect to home if NOT on a public page
+          const publicPages = ["/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+          const isPublicPage = publicPages.some(page => location.pathname.startsWith(page));
+          
+          if (!isPublicPage && location.pathname !== "/") {
+            console.log("🔍 [AuthContext] Not on public page, redirecting to home");
+            navigate("/");
+          }
         }
       } catch (error) {
         console.error("❌ [AuthContext] Error initializing auth via profile:", error);
         sessionStorage.removeItem("user");
         if (isMounted) {
           dispatch(clearAuth());
-          navigate("/"); // 🚀 Redirect to homepage when session expired
+          
+          // 🔐 ONLY redirect to home if NOT on a public page
+          const publicPages = ["/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+          const isPublicPage = publicPages.some(page => location.pathname.startsWith(page));
+          
+          if (!isPublicPage && location.pathname !== "/") {
+            console.log("🔍 [AuthContext] Not on public page, redirecting to home");
+            navigate("/");
+          }
         }
       } finally {
         if (isMounted) {
@@ -212,7 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       isMounted = false;
     };
-  }, [dispatch]);
+  }, [dispatch, location.pathname, navigate]);
 
 
 

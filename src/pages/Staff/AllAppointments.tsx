@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Table,
   TableHeader,
@@ -197,6 +197,9 @@ const AllAppointments = () => {
   const [walkInTimeError, setWalkInTimeError] = useState<string | null>(null);
   const [walkInErrors, setWalkInErrors] = useState<Record<string, string>>({});
 
+  // ⭐ PERFORMANCE: useRef for debouncing release slot API calls
+  const releaseSlotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Inline field validator for Walk-in form
   const validateWalkInField = (fieldName: string) => {
     const next: Record<string, string> = { ...walkInErrors };
@@ -289,7 +292,8 @@ const AllAppointments = () => {
   };
 
   // ⭐ NEW: Fetch available doctors (filtered by date + service) - Backend already filters leave
-  const fetchWalkInAvailableDoctors = async () => {
+  // ⭐ OPTIMIZED: Wrapped with useCallback to prevent re-creation on every render
+  const fetchWalkInAvailableDoctors = useCallback(async () => {
     const { date, serviceId } = walkInForm;
 
     if (!date || !serviceId) {
@@ -326,13 +330,14 @@ const AllAppointments = () => {
     } finally {
       setWalkInLoadingDoctors(false);
     }
-  };
+  }, [walkInForm.date, walkInForm.serviceId]);
 
 
   // Fetch available slots when doctor/service/date selected
   // Lấy scheduleRanges giống BookingModal (BE đã chuẩn hóa)
   // @param silent - If true, skip showing loading spinner (for background refresh)
-  const fetchWalkInScheduleRanges = async (silent: boolean = false) => {
+  // ⭐ OPTIMIZED: Wrapped with useCallback to prevent re-creation on every render
+  const fetchWalkInScheduleRanges = useCallback(async (silent: boolean = false) => {
     const { doctorUserId, serviceId, date } = walkInForm;
     if (!doctorUserId || !serviceId || !date) {
       setWalkInScheduleRanges(null);
@@ -375,7 +380,7 @@ const AllAppointments = () => {
         setWalkInLoadingSchedule(false); // ⭐ Clear loading state only if not silent
       }
     }
-  };
+  }, [walkInForm.doctorUserId, walkInForm.serviceId, walkInForm.date, user]);
 
   const isTimeInWalkInRanges = (timeInput: string): boolean => {
     if (!walkInScheduleRanges || !Array.isArray(walkInScheduleRanges)) return false;
@@ -396,7 +401,8 @@ const AllAppointments = () => {
   };
 
   // ⭐ NEW: Handle time input blur with SLOT RESERVATION (like BookingModal)
-  const handleWalkInTimeBlur = async (timeInput: string) => {
+  // ⭐ OPTIMIZED: Wrapped with useCallback to prevent re-creation on every render
+  const handleWalkInTimeBlur = useCallback(async (timeInput: string) => {
     if (!timeInput || !walkInForm.doctorUserId) {
       setWalkInForm(prev => ({ ...prev, endTime: null }));
       return;
@@ -502,7 +508,8 @@ const AllAppointments = () => {
         countdownSeconds: countdownSeconds
       });
 
-      toast.success(`Đã giữ chỗ thành công! Còn ${countdownSeconds}s`);
+      // ⭐ REMOVED: toast.success message for faster UX
+      // Countdown timer already indicates successful reservation
 
       // ⭐ Refetch schedule ranges silently to update available time display
       // Pass true to skip showing loading spinner (silent refresh)
@@ -512,7 +519,7 @@ const AllAppointments = () => {
       setWalkInTimeError(e.message || "Lỗi validate thời gian");
       setWalkInForm(prev => ({ ...prev, endTime: null }));
     }
-  };
+  }, [walkInForm.doctorUserId, walkInForm.serviceId, walkInForm.date, walkInForm.doctorScheduleId, walkInForm.startTime, walkInReservation, isTimeInWalkInRanges, fetchWalkInScheduleRanges]);
 
   // ⭐ Countdown timer for walk-in reservation
   useEffect(() => {
@@ -2548,17 +2555,79 @@ const AllAppointments = () => {
                                     let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
                                     const currentMinute = (walkInForm.userStartTimeInput || "").split(":")[1] || "";
 
-                                    // ⭐ If both hour and minute are empty, clear reservation and refetch schedule
-                                    if ((!v || v === "") && (!currentMinute || currentMinute === "")) {
+                                    // ⭐ LOGIC FROM BOOKINGMODAL: Release immediately when both hour and minute are empty
+                                    if ((!v || v === '') && (!currentMinute || currentMinute === '')) {
+                                      console.log('🔍 [DEBUG] Hour onChange - COMPLETELY EMPTY path triggered');
                                       if (walkInReservation) {
+                                        // Clear debounce timeout if any
+                                        if (releaseSlotTimeoutRef.current) {
+                                          clearTimeout(releaseSlotTimeoutRef.current);
+                                          releaseSlotTimeoutRef.current = null;
+                                        }
+                                        // Release immediately (no debounce)
                                         appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
                                           .then(() => {
-                                            // Refetch schedule ranges to update available time display
-                                            fetchWalkInScheduleRanges();
+                                            console.log('✅ Released reservation - time input cleared');
                                           })
                                           .catch(err => console.warn("Failed to release slot:", err));
                                         setWalkInReservation(null);
                                       }
+                                      // ⭐ FIX: Refetch schedule when time is completely cleared to show released slot
+                                      // This causes UI reload but ensures slot visibility
+                                      console.log('✅ [COMPLETELY EMPTY] Refetching schedule...');
+                                      fetchWalkInScheduleRanges().catch(err => console.warn('Failed to refresh:', err));
+                                      
+                                      setWalkInForm(prev => ({ 
+                                        ...prev, 
+                                        userStartTimeInput: v + ":" + currentMinute,
+                                        startTime: null, 
+                                        endTime: null 
+                                      }));
+                                      setWalkInTimeError(null);
+                                      return;
+                                    }
+
+                                    // ⭐ For partial input (still typing), debounce the release
+                                    const newTimeInput = v + ":" + currentMinute;
+                                    const oldTimeInput = walkInForm.userStartTimeInput || "";
+                                    
+                                    console.log(`🔍 [DEBUG] Hour onChange - DEBOUNCED path: newTimeInput="${newTimeInput}", oldTimeInput="${oldTimeInput}"`);
+                                    
+                                    if (newTimeInput !== oldTimeInput && walkInReservation) {
+                                      // Clear previous timeout
+                                      if (releaseSlotTimeoutRef.current) {
+                                        clearTimeout(releaseSlotTimeoutRef.current);
+                                      }
+                                      
+                                      // ⭐ FIX: Check if time will be cleared after this change
+                                      const willBeCleared = newTimeInput === ":" || newTimeInput === "" || !newTimeInput;
+                                      console.log(`🔍 [DEBUG] willBeCleared=${willBeCleared}`);
+                                      
+                                      // ⭐ CRITICAL: Capture reservation ID before it might be cleared
+                                      const reservationToRelease = walkInReservation.timeslotId;
+                                      
+                                      // Debounce release slot API call by 300ms
+                                      releaseSlotTimeoutRef.current = setTimeout(() => {
+                                        appointmentApi.releaseSlot({ timeslotId: reservationToRelease })
+                                          .then(() => {
+                                            console.log('✅ Released old reservation due to time change');
+                                            // ⭐ FIX: Clear reservation AFTER successful release
+                                            setWalkInReservation(null);
+                                            // ⭐ FIX: Refetch schedule if time was cleared
+                                            if (willBeCleared) {
+                                              console.log('✅ Time cleared (debounced path), refetching schedule...');
+                                              fetchWalkInScheduleRanges().catch(err => console.warn('Failed to refresh:', err));
+                                            }
+                                          })
+                                          .catch(err => {
+                                            console.warn("Failed to release slot:", err);
+                                            // Still clear reservation on error to avoid stuck state
+                                            setWalkInReservation(null);
+                                          });
+                                      }, 300);
+                                      
+                                      // Clear startTime/endTime to indicate time needs re-processing
+                                      setWalkInForm(prev => ({ ...prev, startTime: null, endTime: null }));
                                     }
 
                                     setWalkInForm(prev => ({ ...prev, userStartTimeInput: v + ":" + currentMinute }));
@@ -2583,17 +2652,80 @@ const AllAppointments = () => {
                                     let v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
                                     const currentHour = (walkInForm.userStartTimeInput || "").split(":")[0] || "";
 
-                                    // ⭐ If both hour and minute are empty, clear reservation and refetch schedule
-                                    if ((!currentHour || currentHour === "") && (!v || v === "")) {
+                                    // ⭐ LOGIC FROM BOOKINGMODAL: Release immediately when both hour and minute are empty
+                                    if ((!currentHour || currentHour === '') && (!v || v === '')) {
+                                      console.log('🔍 [DEBUG] Minute onChange - COMPLETELY EMPTY path triggered');
                                       if (walkInReservation) {
+                                        // Clear debounce timeout if any
+                                        if (releaseSlotTimeoutRef.current) {
+                                          clearTimeout(releaseSlotTimeoutRef.current);
+                                          releaseSlotTimeoutRef.current = null;
+                                        }
+                                        // Release immediately (no debounce)
                                         appointmentApi.releaseSlot({ timeslotId: walkInReservation.timeslotId })
                                           .then(() => {
-                                            // Refetch schedule ranges to update available time display
-                                            fetchWalkInScheduleRanges();
+                                            console.log('✅ Released reservation - time input cleared');
                                           })
                                           .catch(err => console.warn("Failed to release slot:", err));
                                         setWalkInReservation(null);
                                       }
+                                      // ⭐ FIX: Refetch schedule when time is completely cleared to show released slot
+                                      // This causes UI reload but ensures slot visibility
+                                      console.log('✅ [COMPLETELY EMPTY] Refetching schedule...');
+                                      fetchWalkInScheduleRanges().catch(err => console.warn('Failed to refresh:', err));
+                                      
+                                      
+                                      setWalkInForm(prev => ({ 
+                                        ...prev, 
+                                        userStartTimeInput: currentHour + ":" + v,
+                                        startTime: null, 
+                                        endTime: null 
+                                      }));
+                                      setWalkInTimeError(null);
+                                      return;
+                                    }
+
+                                    // ⭐ For partial input (still typing), debounce the release
+                                    const newTimeInput = currentHour + ":" + v;
+                                    const oldTimeInput = walkInForm.userStartTimeInput || "";
+                                    
+                                    console.log(`🔍 [DEBUG] Minute onChange - DEBOUNCED path: newTimeInput="${newTimeInput}", oldTimeInput="${oldTimeInput}"`);
+                                    
+                                    if (newTimeInput !== oldTimeInput && walkInReservation) {
+                                      // Clear previous timeout
+                                      if (releaseSlotTimeoutRef.current) {
+                                        clearTimeout(releaseSlotTimeoutRef.current);
+                                      }
+                                      
+                                      // ⭐ FIX: Check if time will be cleared after this change
+                                      const willBeCleared = newTimeInput === ":" || newTimeInput === "" || !newTimeInput;
+                                      console.log(`🔍 [DEBUG] willBeCleared=${willBeCleared}`);
+                                      
+                                      // ⭐ CRITICAL: Capture reservation ID before it might be cleared
+                                      const reservationToRelease = walkInReservation.timeslotId;
+                                      
+                                      // Debounce release slot API call by 300ms
+                                      releaseSlotTimeoutRef.current = setTimeout(() => {
+                                        appointmentApi.releaseSlot({ timeslotId: reservationToRelease })
+                                          .then(() => {
+                                            console.log('✅ Released old reservation due to time change');
+                                            // ⭐ FIX: Clear reservation AFTER successful release
+                                            setWalkInReservation(null);
+                                            // ⭐ FIX: Refetch schedule if time was cleared
+                                            if (willBeCleared) {
+                                              console.log('✅ Time cleared (debounced path), refetching schedule...');
+                                              fetchWalkInScheduleRanges().catch(err => console.warn('Failed to refresh:', err));
+                                            }
+                                          })
+                                          .catch(err => {
+                                            console.warn("Failed to release slot:", err);
+                                            // Still clear reservation on error to avoid stuck state
+                                            setWalkInReservation(null);
+                                          });
+                                      }, 300);
+                                      
+                                      // Clear startTime/endTime to indicate time needs re-processing
+                                      setWalkInForm(prev => ({ ...prev, startTime: null, endTime: null }));
                                     }
 
                                     setWalkInForm(prev => ({ ...prev, userStartTimeInput: currentHour + ":" + v }));

@@ -14,6 +14,7 @@ import {
 import { Avatar } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import Unauthorized from "@/components/Common/Unauthorized";
 
 interface StaffLayoutProps {
   children: React.ReactNode;
@@ -25,6 +26,11 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { unreadCount } = useNotifications();
+
+  // ⭐ AUTHORIZATION: Check if user is Staff or Manager
+  if (!user || (user.role?.toLowerCase() !== 'staff')) {
+    return <Unauthorized />;
+  }
 
   const handleLogout = () => {
     logout();

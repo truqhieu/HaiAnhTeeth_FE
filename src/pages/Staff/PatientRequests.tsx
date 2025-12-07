@@ -345,6 +345,7 @@ const PatientRequests: React.FC = () => {
               <TableColumn>Loại yêu cầu</TableColumn>
               <TableColumn>Thông tin hiện tại</TableColumn>
               <TableColumn>Yêu cầu thay đổi</TableColumn>
+              <TableColumn>Lý do</TableColumn>
               <TableColumn>Trạng thái</TableColumn>
               <TableColumn>Ngày tạo</TableColumn>
               <TableColumn>Thao tác</TableColumn>
@@ -401,6 +402,15 @@ const PatientRequests: React.FC = () => {
                         </div>
                         <div className="text-sm text-gray-500">Bác sĩ mới</div>
                       </div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {request.requestedData?.reason ? (
+                      <p className="text-sm text-gray-600 max-w-xs truncate" title={request.requestedData.reason}>
+                        {request.requestedData.reason}
+                      </p>
+                    ) : (
+                      <span className="text-gray-400 text-sm">Không có</span>
                     )}
                   </TableCell>
                   <TableCell>
