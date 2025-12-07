@@ -192,8 +192,8 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
                 src="/logo1.png"
               />
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Thêm blog mới</h2>
-                <p className="text-sm text-gray-600">Tạo bài viết blog mới</p>
+                <h2 className="text-2xl font-bold text-gray-900">Thêm bài viết mới</h2>
+                <p className="text-sm text-gray-600">Tạo bài viết mới</p>
               </div>
             </div>
           </ModalHeader>
@@ -226,7 +226,7 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
                 </>
               }
               minRows={2}
-              placeholder="Viết tóm tắt ngắn gọn về blog..."
+              placeholder="Viết tóm tắt ngắn gọn về bài viết..."
               value={formData.summary}
               variant="bordered"
               isInvalid={isSummaryInvalid}
@@ -244,7 +244,7 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
                 </>
               }
               minRows={3}
-              placeholder="Viết nội dung chi tiết về blog..."
+              placeholder="Viết nội dung chi tiết về bài viết..."
               value={formData.content}
               variant="bordered"
               isInvalid={isContentInvalid}
@@ -390,7 +390,7 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
               isLoading={isSubmitting}
               onPress={handleSubmit}
             >
-              Tạo blog
+              Thêm bài viết
             </Button>
           </ModalFooter>
         </>

@@ -11,7 +11,7 @@ interface DateRangePickerProps {
   disabled?: boolean;
   label?: string;
   labelPlacement?: 'inside' | 'outside';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg'  ;
 }
 
 const formatDateValue = (date: Date) => {

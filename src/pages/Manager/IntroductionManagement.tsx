@@ -25,7 +25,7 @@ import {
 import {
   MagnifyingGlassIcon,
   PlusIcon,
-  PencilSquareIcon,
+  PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
@@ -269,10 +269,10 @@ const IntroductionManagement = () => {
                               isIconOnly
                               size="sm"
                               variant="light"
-                              className="text-blue-600"
+                              className="min-w-8 h-8 text-blue-600 hover:bg-blue-50"
                               onPress={() => handleOpenEdit(item)}
                             >
-                              <PencilSquareIcon className="w-5 h-5" />
+                              <PencilIcon className="w-5 h-5" />
                             </Button>
                           </Tooltip>
                           <Tooltip content="Xóa">

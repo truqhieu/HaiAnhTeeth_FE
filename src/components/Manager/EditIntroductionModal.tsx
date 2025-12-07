@@ -108,9 +108,6 @@ const EditIntroductionModal: React.FC<EditIntroductionModalProps> = ({
     <Modal isOpen={isOpen} onClose={handleClose} size="lg" scrollBehavior="outside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
-          <p className="text-sm uppercase tracking-[0.2em] text-[#39BDCC] font-semibold">
-            Cập nhật
-          </p>
           <h2 className="text-2xl font-bold">Chỉnh sửa giới thiệu</h2>
           <p className="text-sm text-gray-500">
             Điều chỉnh nội dung hiển thị trên trang giới thiệu
@@ -199,7 +196,7 @@ const EditIntroductionModal: React.FC<EditIntroductionModalProps> = ({
             Hủy
           </Button>
           <Button color="primary" onPress={handleSubmit} isLoading={submitting}>
-            Lưu thay đổi
+            Cập nhật giới thiệu
           </Button>
         </ModalFooter>
       </ModalContent>

@@ -53,7 +53,7 @@ const Footer: React.FC = () => {
               >
                 <PhoneIcon className="w-5 h-5 mr-3 text-black flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <span className="text-black font-medium text-sm">
-                  033 828 1982c
+                  033 828 1982
                 </span>
               </a>
               <a

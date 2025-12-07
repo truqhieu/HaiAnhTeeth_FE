@@ -156,7 +156,7 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       current: location.pathname === "/manager/promotions",
     },
     {
-      name: "Quản lý tin tức",
+      name: "Quản lý bài viết",
       href: "/manager/blogs",
       icon: NewspaperIcon,
       current: location.pathname === "/manager/blogs",

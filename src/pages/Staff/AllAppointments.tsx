@@ -1788,6 +1788,7 @@ const AllAppointments = () => {
                   onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
                   placeholder="Chọn khoảng thời gian"
                   className="w-full"
+                  size="lg"
                 />
               </div>
               <div className="mt-4 flex justify-end">
