@@ -44,3 +44,5 @@ export const useScrollAnimation = (options: UseScrollAnimationOptions = {}) => {
   return { elementRef, isVisible };
 };
 
+
+
