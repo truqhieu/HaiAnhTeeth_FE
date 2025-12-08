@@ -184,12 +184,9 @@ const PromotionManagement = () => {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
-
-    return new Date(dateString).toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
+    const iso = new Date(dateString).toISOString().split("T")[0];
+    const [year, month, day] = iso.split("-");
+    return `${day}/${month}/${year}`;
   };
 
   const formatDiscount = (type: string, value: number) => {

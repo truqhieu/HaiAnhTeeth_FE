@@ -170,18 +170,17 @@ export const blogApi = {
       formData.append("endDate", data.endDate);
     }
 
-    // For FormData, we need to manually handle the request
+    // For FormData, we need to manually handle the request.
+    // Ưu tiên dùng cookie (credentials: "include"); nếu có token thì gửi kèm.
     const token = sessionStorage.getItem("authToken");
-    if (!token) {
-      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(`${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}/manager/blogs`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        // Don't set Content-Type for FormData, browser will set it with boundary
-      },
+      headers,
       body: formData,
       credentials: "include",
     });
@@ -219,18 +218,17 @@ export const blogApi = {
       formData.append("endDate", data.endDate || "");
     }
 
-    // For FormData, we need to manually handle the request
+    // For FormData, we need to manually handle the request.
+    // Ưu tiên cookie; nếu có token thì gửi kèm.
     const token = sessionStorage.getItem("authToken");
-    if (!token) {
-      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(`${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}/manager/blogs/${id}`, {
       method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        // Don't set Content-Type for FormData, browser will set it with boundary
-      },
+      headers,
       body: formData,
       credentials: "include",
     });

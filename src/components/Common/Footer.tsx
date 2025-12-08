@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { MapPinIcon, PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import { FaFacebook, FaYoutube, FaInstagram, FaTiktok } from "react-icons/fa";
 
@@ -75,16 +76,17 @@ const Footer: React.FC = () => {
             </h3>
             <ul className="space-y-2.5 mt-4 flex-grow">
               {[
-                "Giới thiệu về phòng khám",
-                "Tin tức",
-              ].map((item, index) => (
-                <li key={index}>
-                  <a
-                    href="#"
+                { label: "Giới thiệu về phòng khám", to: "/about" },
+                { label: "Tin tức", to: "/news" },
+              ].map((item) => (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                     className="text-black/80 hover:text-black hover:translate-x-1 inline-block transition-all duration-200 text-sm"
                   >
-                    {item}
-                  </a>
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
