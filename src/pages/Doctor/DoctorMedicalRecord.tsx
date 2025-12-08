@@ -487,17 +487,15 @@ const DoctorMedicalRecord: React.FC = () => {
 
       if (res.data) {
         console.log("🔍 [loadAvailableSlots] Data keys:", Object.keys(res.data));
-        console.log("🔍 [loadAvailableSlots] scheduleRanges:", res.data.scheduleRanges);
-        console.log("🔍 [loadAvailableSlots] scheduleRanges length:", res.data.scheduleRanges?.length);
+        console.log("🔍 [loadAvailableSlots] startTimes:", res.data.startTimes);
+        console.log("🔍 [loadAvailableSlots] startTimes length:", res.data.startTimes?.length);
 
-        if (res.data.scheduleRanges && Array.isArray(res.data.scheduleRanges)) {
-          console.log("🔍 [loadAvailableSlots] First range:", res.data.scheduleRanges[0]);
-          res.data.scheduleRanges.forEach((range, idx) => {
-            console.log(`   Range ${idx}:`, {
-              shiftDisplay: range.shiftDisplay,
-              displayRange: range.displayRange,
-              startTime: range.startTime,
-              endTime: range.endTime,
+        if (res.data.startTimes && Array.isArray(res.data.startTimes)) {
+          console.log("🔍 [loadAvailableSlots] First time:", res.data.startTimes[0]);
+          res.data.startTimes.forEach((timeSlot: any, idx: number) => {
+            console.log(`   TimeSlot ${idx}:`, {
+              time: timeSlot.time,
+              available: timeSlot.available,
             });
           });
         }
@@ -509,7 +507,7 @@ const DoctorMedicalRecord: React.FC = () => {
         const data = res.data as any;
 
         // ⭐ THÊM: Kiểm tra bác sĩ đang nghỉ phép
-        if ((!data.scheduleRanges || data.scheduleRanges.length === 0) &&
+        if ((!data.startTimes || data.startTimes.length === 0) &&
           data.message &&
           data.message.includes("nghỉ phép")) {
           setAvailableSlots([]);

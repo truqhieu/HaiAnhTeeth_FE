@@ -313,7 +313,14 @@ const DoctorChat = () => {
       });
 
       if (response.success && response.data) {
-        setMessages([...messages, response.data]);
+        // Transform Message to ChatMessage format
+        const chatMessage: ChatMessage = {
+          ...response.data,
+          appointmentId: typeof response.data.appointmentId === 'string' 
+            ? { _id: response.data.appointmentId, appointmentDate: '', status: '' }
+            : response.data.appointmentId as ChatMessage['appointmentId']
+        };
+        setMessages([...messages, chatMessage]);
         setNewMessage("");
         toast.success("Đã gửi tin nhắn");
         scrollToBottom();
@@ -537,14 +544,6 @@ const DoctorChat = () => {
                                       month: "long",
                                       day: "numeric",
                                     })}
-                                  </span>
-                                </div>
-                              )}
-                              {medicalRecord?.appointment?.date && (
-                                <div className="flex items-start gap-2">
-                                  <ClockIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                                  <span className="text-gray-900">
-                                    {new Date(medicalRecord.appointment.date).toLocaleDateString("vi-VN")}
                                   </span>
                                 </div>
                               )}
