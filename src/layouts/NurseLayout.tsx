@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarIcon,
@@ -21,8 +21,20 @@ const NurseLayout: React.FC<NurseLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { unreadCount } = useNotifications();
+
+  // Check quyền truy cập
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const normalizedRole = user.role?.toLowerCase();
+      if (normalizedRole !== "nurse") {
+        navigate("/unauthorized");
+      }
+    } else if (!isAuthenticated) {
+      // AuthContext sẽ xử lý redirect
+    }
+  }, [user, isAuthenticated, navigate]);
 
   const handleLogout = () => {
     logout();

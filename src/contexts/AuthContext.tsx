@@ -185,11 +185,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           sessionStorage.removeItem("user");
           dispatch(clearAuth());
           
-          // 🔐 ONLY redirect to home if NOT on a public page
-          const publicPages = ["/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+          // 🔐 ONLY redirect if on a protected page (requires auth)
+          const protectedPaths = ["/patient/", "/admin/", "/manager/", "/staff/", "/doctor/", "/nurse/"];
+          const publicPages = [
+            "/login", 
+            "/signup", 
+            "/forgot-password", 
+            "/reset-password", 
+            "/verify-email",
+            "/about",
+            "/services",
+            "/news",
+            "/promotions",
+            "/unauthorized"
+          ];
+          const isProtectedPage = protectedPaths.some(path => location.pathname.startsWith(path));
           const isPublicPage = publicPages.some(page => location.pathname.startsWith(page));
           
-          if (!isPublicPage && location.pathname !== "/") {
+          // Nếu đang ở trang home hoặc trang public, không redirect
+          if (location.pathname === "/" || isPublicPage) {
+            // Không làm gì, để user ở trang hiện tại
+            return;
+          }
+          
+          if (isProtectedPage) {
+            console.log("🔍 [AuthContext] On protected page without auth, redirecting to unauthorized");
+            navigate("/unauthorized");
+          } else {
             console.log("🔍 [AuthContext] Not on public page, redirecting to home");
             navigate("/");
           }
@@ -200,11 +222,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         if (isMounted) {
           dispatch(clearAuth());
           
-          // 🔐 ONLY redirect to home if NOT on a public page
-          const publicPages = ["/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+          // 🔐 ONLY redirect if on a protected page (requires auth)
+          const protectedPaths = ["/patient/", "/admin/", "/manager/", "/staff/", "/doctor/", "/nurse/"];
+          const publicPages = [
+            "/login", 
+            "/signup", 
+            "/forgot-password", 
+            "/reset-password", 
+            "/verify-email",
+            "/about",
+            "/services",
+            "/news",
+            "/promotions",
+            "/unauthorized"
+          ];
+          const isProtectedPage = protectedPaths.some(path => location.pathname.startsWith(path));
           const isPublicPage = publicPages.some(page => location.pathname.startsWith(page));
           
-          if (!isPublicPage && location.pathname !== "/") {
+          // Nếu đang ở trang home hoặc trang public, không redirect
+          if (location.pathname === "/" || isPublicPage) {
+            // Không làm gì, để user ở trang hiện tại
+            return;
+          }
+          
+          if (isProtectedPage) {
+            console.log("🔍 [AuthContext] On protected page without auth, redirecting to unauthorized");
+            navigate("/unauthorized");
+          } else {
             console.log("🔍 [AuthContext] Not on public page, redirecting to home");
             navigate("/");
           }

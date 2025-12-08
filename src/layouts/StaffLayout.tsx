@@ -33,8 +33,9 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
   }
 
   const handleLogout = () => {
-    logout();
+    // Redirect về home trước khi logout để tránh redirect đến unauthorized
     navigate("/");
+    logout();
   };
 
   const profilePath = "/staff/profile";
