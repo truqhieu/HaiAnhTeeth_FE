@@ -130,18 +130,18 @@ export const introductionApi = {
     formData.append("status", data.status);
     formData.append("thumbnailUrl", data.thumbnailFile);
 
+    // Ưu tiên cookie (credentials: "include"); nếu có token thì gửi kèm.
     const token = sessionStorage.getItem("authToken");
-    if (!token) {
-      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(
       `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}/manager/introductions`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: formData,
         credentials: "include",
       },
@@ -168,18 +168,18 @@ export const introductionApi = {
       formData.append("thumbnailUrl", data.thumbnailFile);
     }
 
+    // Ưu tiên cookie; nếu có token thì gửi kèm.
     const token = sessionStorage.getItem("authToken");
-    if (!token) {
-      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(
       `${import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api"}/manager/introductions/${id}`,
       {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: formData,
         credentials: "include",
       },
