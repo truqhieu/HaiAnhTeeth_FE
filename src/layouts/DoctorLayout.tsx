@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -24,11 +23,24 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { unreadCount } = useNotifications();
 
   // Unread chat count for doctor
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  // Check quyền truy cập
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const normalizedRole = user.role?.toLowerCase();
+      if (normalizedRole !== "doctor") {
+        navigate("/unauthorized");
+      }
+    } else if (!isAuthenticated && location.pathname.startsWith("/doctor/")) {
+      // Nếu không authenticated và đang ở trang doctor, redirect về home
+      navigate("/");
+    }
+  }, [user, isAuthenticated, navigate, location.pathname]);
 
   useEffect(() => {
     let isMounted = true;
@@ -58,8 +70,9 @@ const DoctorLayout: React.FC<DoctorLayoutProps> = ({ children }) => {
   }, []);
 
   const handleLogout = () => {
-    logout();
+    // Redirect về home trước khi logout để tránh redirect đến unauthorized
     navigate("/");
+    logout();
   };
 
   const profilePath = "/doctor/profile";

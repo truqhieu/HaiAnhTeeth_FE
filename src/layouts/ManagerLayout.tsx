@@ -30,15 +30,29 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   
   // State cho số lượng pending complaints và leave requests
   const [pendingComplaintsCount, setPendingComplaintsCount] = useState(0);
   const [pendingLeaveRequestsCount, setPendingLeaveRequestsCount] = useState(0);
 
+  // Check quyền truy cập
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const normalizedRole = user.role?.toLowerCase();
+      if (normalizedRole !== "manager") {
+        navigate("/unauthorized");
+      }
+    } else if (!isAuthenticated && location.pathname.startsWith("/manager/")) {
+      // Nếu không authenticated và đang ở trang manager, redirect về home
+      navigate("/");
+    }
+  }, [user, isAuthenticated, navigate, location.pathname]);
+
   const handleLogout = () => {
-    logout();
+    // Redirect về home trước khi logout để tránh redirect đến unauthorized
     navigate("/");
+    logout();
   };
 
   // Fetch pending counts khi component mount
@@ -156,7 +170,7 @@ const ManagerLayout: React.FC<ManagerLayoutProps> = ({ children }) => {
       current: location.pathname === "/manager/promotions",
     },
     {
-      name: "Quản lý tin tức",
+      name: "Quản lý bài viết",
       href: "/manager/blogs",
       icon: NewspaperIcon,
       current: location.pathname === "/manager/blogs",

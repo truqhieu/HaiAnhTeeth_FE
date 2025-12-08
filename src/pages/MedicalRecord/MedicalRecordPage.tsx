@@ -43,6 +43,20 @@ const MedicalRecordPage = () => {
     return age < 0 ? 0 : age;
   };
 
+  const getGenderText = (gender?: string | null): string => {
+    if (!gender) return '-';
+    switch (gender) {
+      case "Male":
+        return "Nam";
+      case "Female":
+        return "Nữ";
+      case "Other":
+        return "Khác";
+      default:
+        return gender;
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
       if (!appointmentId) {
@@ -147,7 +161,7 @@ const MedicalRecordPage = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600 font-medium">Giới tính</p>
-              <p className="text-gray-900 font-semibold">{display?.gender || '-'}</p>
+              <p className="text-gray-900 font-semibold">{getGenderText(display?.gender)}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 font-medium">Tuổi</p>

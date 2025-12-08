@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   UserIcon,
@@ -18,11 +18,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
+
+  // Check quyền truy cập
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const normalizedRole = user.role?.toLowerCase();
+      if (normalizedRole !== "admin") {
+        navigate("/unauthorized");
+      }
+    } else if (!isAuthenticated && location.pathname.startsWith("/admin/")) {
+      // Nếu không authenticated và đang ở trang admin, redirect về home
+      navigate("/");
+    }
+  }, [user, isAuthenticated, navigate, location.pathname]);
 
   const handleLogout = () => {
-    logout();
+    // Redirect về home trước khi logout để tránh redirect đến unauthorized
     navigate("/");
+    logout();
   };
 
   const navigation = [

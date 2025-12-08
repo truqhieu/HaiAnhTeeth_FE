@@ -35,6 +35,12 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
 
+  // Category mapping
+  const categoryMap: { [key: string]: string } = {
+    Examination: "Khám",
+    Consultation: "Tư vấn",
+  };
+
   // Fetch services when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -399,7 +405,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                               <div className="flex flex-col">
                                 <span className="text-sm font-medium">{service.serviceName}</span>
                                 <span className="text-xs text-gray-500">
-                                  {service.price.toLocaleString()}đ - {service.category}
+                                  {service.price.toLocaleString()}đ - {categoryMap[service.category] || service.category}
                                 </span>
                               </div>
                             </Checkbox>
