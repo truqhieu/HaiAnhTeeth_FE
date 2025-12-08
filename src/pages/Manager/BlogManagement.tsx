@@ -273,10 +273,12 @@ const BlogManagement = () => {
               setCategoryFilter(selected);
             }}
           >
-            <SelectItem key="all">Tất cả thể loại</SelectItem>
-            {CATEGORIES.map((cat) => (
-              <SelectItem key={cat.value}>{cat.label}</SelectItem>
-            ))}
+            <>
+              <SelectItem key="all" textValue="Tất cả thể loại">Tất cả thể loại</SelectItem>
+              {CATEGORIES.map((cat) => (
+                <SelectItem key={cat.value} textValue={cat.label}>{cat.label}</SelectItem>
+              ))}
+            </>
           </Select>
 
           {/* Status Filter */}

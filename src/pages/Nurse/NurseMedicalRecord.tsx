@@ -277,10 +277,12 @@ const NurseMedicalRecord: React.FC = () => {
     }
     setSaving(true);
     try {
+      // Convert prescriptions array to single prescription object (API expects object, not array)
+      const prescriptionData = prescriptions.length > 0 ? prescriptions[0] : { medicine: '', dosage: '', duration: '' };
       const res = await medicalRecordApi.updateMedicalRecordForNurse(appointmentId, {
         diagnosis,
         conclusion,
-        prescription: prescriptions, // ⭐ Gửi prescriptions array
+        prescription: prescriptionData,
         nurseNote,
       });
       if (res.success && res.data) {
