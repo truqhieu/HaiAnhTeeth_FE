@@ -126,6 +126,20 @@ const DoctorMedicalRecord: React.FC = () => {
     return age < 0 ? 0 : age;
   };
 
+  const getGenderText = (gender?: string | null): string => {
+    if (!gender) return '-';
+    switch (gender) {
+      case "Male":
+        return "Nam";
+      case "Female":
+        return "Nữ";
+      case "Other":
+        return "Khác";
+      default:
+        return gender;
+    }
+  };
+
   const formatDateTimeInputValue = (value?: string | Date | null): string => {
     if (!value) return "";
     const date = new Date(value);
@@ -1816,7 +1830,7 @@ const DoctorMedicalRecord: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-600 font-medium">Giới tính</p>
-              <p className="text-gray-900 font-semibold">{display?.gender || '-'}</p>
+              <p className="text-gray-900 font-semibold">{getGenderText(display?.gender)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 font-medium">Tuổi</p>
