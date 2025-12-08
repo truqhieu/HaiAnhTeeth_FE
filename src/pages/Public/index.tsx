@@ -89,11 +89,8 @@ const getCategoryLabel = (category: string) => CATEGORY_LABELS[category] || cate
         });
 
         if (response.status && Array.isArray(response.data)) {
-          // Loại bỏ blog có category "Promotions"
-          const filteredBlogs = response.data.filter(
-            (blog: any) => blog.category !== "Promotions"
-          );
-          setLatestBlogs(filteredBlogs.slice(0, 3));
+          // Hiển thị tất cả các blog posts bao gồm cả các danh mục khác
+          setLatestBlogs(response.data.slice(0, 3));
         } else {
           setLatestBlogs([]);
         }
