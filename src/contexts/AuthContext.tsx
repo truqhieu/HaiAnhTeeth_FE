@@ -216,8 +216,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             navigate("/");
           }
         }
-      } catch (error) {
-        console.error("❌ [AuthContext] Error initializing auth via profile:", error);
+      } catch (error: any) {
+        // ⭐ Don't log 401 errors as errors - they're expected when not authenticated
+        const isUnauthorizedError = error?.message?.includes("Không có token xác thực") || 
+                                   error?.message?.includes("401") ||
+                                   error?.message?.includes("Unauthorized");
+        
+        if (isUnauthorizedError) {
+          console.log("🔍 [AuthContext] Not authenticated (expected after logout or no session)");
+        } else {
+          console.error("❌ [AuthContext] Error initializing auth via profile:", error);
+        }
+        
         sessionStorage.removeItem("user");
         if (isMounted) {
           dispatch(clearAuth());
@@ -264,7 +274,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 
 
-    initializeAuth();
+    // ⭐ Chỉ chạy một lần khi component mount, không chạy lại khi pathname thay đổi
+    // Điều này tránh gọi /auth/profile không cần thiết khi navigate đến /login
+    if (!isInitialized) {
+      initializeAuth();
+    }
 
 
 
@@ -272,7 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       isMounted = false;
     };
-  }, [dispatch, location.pathname, navigate]);
+  }, [dispatch, navigate, isInitialized]); // ⭐ Loại bỏ location.pathname khỏi dependencies
 
 
 
