@@ -79,32 +79,78 @@ const BlogManagement = () => {
     try {
       setLoading(true);
 
-      const params: any = {
-        page: currentPage,
-        limit: itemsPerPage,
-        sort: "desc",
-      };
+      // Khi chọn "Tất cả trạng thái", fetch cả Published và Hidden rồi merge
+      if (statusFilter === "all") {
+        const [publishedRes, hiddenRes] = await Promise.all([
+          blogApi.getAllBlogs({
+            page: currentPage,
+            limit: itemsPerPage,
+            sort: "desc",
+            category: categoryFilter !== "all" ? categoryFilter : undefined,
+            status: "Published",
+            search: searchTerm.trim() || undefined,
+          }),
+          blogApi.getAllBlogs({
+            page: currentPage,
+            limit: itemsPerPage,
+            sort: "desc",
+            category: categoryFilter !== "all" ? categoryFilter : undefined,
+            status: "Hidden",
+            search: searchTerm.trim() || undefined,
+          }),
+        ]);
 
-      if (categoryFilter !== "all") {
-        params.category = categoryFilter;
-      }
+        // Merge và sort theo createdAt
+        const allBlogs = [
+          ...(publishedRes.data || []),
+          ...(hiddenRes.data || []),
+        ].sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA; // desc
+        });
 
-      if (statusFilter !== "all") {
-        params.status = statusFilter;
-      }
+        // Tính toán pagination cho merged results
+        const totalMerged = (publishedRes.total || 0) + (hiddenRes.total || 0);
+        const totalPagesMerged = Math.ceil(totalMerged / itemsPerPage);
+        
+        // Paginate merged results
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const paginatedBlogs = allBlogs.slice(startIndex, endIndex);
 
-      if (searchTerm.trim()) {
-        params.search = searchTerm.trim();
-      }
-
-      const response = await blogApi.getAllBlogs(params);
-
-      if (response.status && response.data) {
-        setBlogs(response.data);
-        setTotal(response.total || 0);
-        setTotalPages(response.totalPages || 1);
+        setBlogs(paginatedBlogs);
+        setTotal(totalMerged);
+        setTotalPages(totalPagesMerged);
       } else {
-        toast.error("Không thể tải danh sách blog");
+        // Khi chọn status cụ thể, fetch như bình thường
+        const params: any = {
+          page: currentPage,
+          limit: itemsPerPage,
+          sort: "desc",
+        };
+
+        if (categoryFilter !== "all") {
+          params.category = categoryFilter;
+        }
+
+        if (statusFilter !== "all") {
+          params.status = statusFilter;
+        }
+
+        if (searchTerm.trim()) {
+          params.search = searchTerm.trim();
+        }
+
+        const response = await blogApi.getAllBlogs(params);
+
+        if (response.status && response.data) {
+          setBlogs(response.data);
+          setTotal(response.total || 0);
+          setTotalPages(response.totalPages || 1);
+        } else {
+          toast.error("Không thể tải danh sách blog");
+        }
       }
     } catch (error) {
       console.error("❌ Error fetching blogs:", error);
