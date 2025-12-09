@@ -86,12 +86,20 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     showValidation && !formData.applyToAll && formData.applicableServices.length === 0,
   );
 
-  // Check if end date is after start date
+  // Check if end date is before start date
+  // Compare dates by setting time to 00:00:00 to avoid timezone issues
+  // Allow endDate to be equal to startDate (promotion can last 1 day)
   const isDateRangeInvalid = Boolean(
     showValidation &&
       formData.startDate &&
       formData.endDate &&
-      new Date(formData.endDate) <= new Date(formData.startDate),
+      (() => {
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        return end < start;
+      })(),
   );
 
   const today = new Date().toISOString().split("T")[0];
@@ -109,14 +117,26 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       !formData.endDate ||
       (formData.startDate &&
         formData.endDate &&
-        new Date(formData.endDate) <= new Date(formData.startDate)) ||
+        (() => {
+          const start = new Date(formData.startDate);
+          const end = new Date(formData.endDate);
+          start.setHours(0, 0, 0, 0);
+          end.setHours(0, 0, 0, 0);
+          return end < start;
+        })()) ||
       (!formData.applyToAll && formData.applicableServices.length === 0);
 
     if (hasErrors) {
       if (
         formData.startDate &&
         formData.endDate &&
-        new Date(formData.endDate) <= new Date(formData.startDate)
+        (() => {
+          const start = new Date(formData.startDate);
+          const end = new Date(formData.endDate);
+          start.setHours(0, 0, 0, 0);
+          end.setHours(0, 0, 0, 0);
+          return end < start;
+        })()
       ) {
         toast.error("Ngày kết thúc phải sau ngày bắt đầu");
       } else if (!formData.applyToAll && formData.applicableServices.length === 0) {
@@ -128,15 +148,16 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Convert date to ISO format and discountType
+      // Convert date to YYYY-MM-DD format (backend expects this format)
+      // VietnameseDateInput already returns YYYY-MM-DD format, so we can use it directly
       const createData: any = {
         title: formData.title.trim(),
         description: formData.description.trim(),
         discountType: formData.discountType === "Fixed" ? "Fix" : "Percent",
         discountValue: formData.discountValue,
         applyToAll: formData.applyToAll,
-        startDate: new Date(formData.startDate).toISOString(),
-        endDate: new Date(formData.endDate).toISOString(),
+        startDate: formData.startDate, // Already in YYYY-MM-DD format from VietnameseDateInput
+        endDate: formData.endDate,     // Already in YYYY-MM-DD format from VietnameseDateInput
       };
 
       // Only include serviceIds if not applying to all
@@ -336,7 +357,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                   isEndDateInvalid
                     ? "Vui lòng chọn ngày kết thúc"
                     : isDateRangeInvalid
-                    ? "Ngày kết thúc phải sau ngày bắt đầu"
+                    ? "Ngày kết thúc không được trước ngày bắt đầu"
                     : ""
                 }
                 onChange={(value) => handleInputChange("endDate", value)}

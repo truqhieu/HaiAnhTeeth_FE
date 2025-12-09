@@ -462,7 +462,7 @@ const PolicyManagement = () => {
                       isDisabled={isLoadingTitles}
                     >
                       {titleOptions.map((option) => (
-                        <SelectItem key={option.title} value={option.title}>
+                        <SelectItem key={option.title}>
                           {option.title === "Other" ? "Tiêu đề khác" : option.title}
                         </SelectItem>
                       ))}

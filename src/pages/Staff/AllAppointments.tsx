@@ -122,7 +122,7 @@ const AllAppointments = () => {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(5);
 
   // Danh sách unique doctors
   const [doctors, setDoctors] = useState<string[]>([]);

@@ -8,6 +8,7 @@ import {
   TableRow,
   TableCell,
   Spinner,
+  Pagination,
 } from "@heroui/react";
 import { 
   ClipboardDocumentListIcon, 
@@ -79,6 +80,8 @@ const Appointments = () => {
   const [policies, setPolicies] = useState<any[]>([]);
   const [rescheduleFor, setRescheduleFor] = useState<Appointment | null>(null);
   const [changeDoctorFor, setChangeDoctorFor] = useState<Appointment | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   // Fetch user appointments
   const refetchAppointments = async () => {
@@ -600,6 +603,16 @@ const Appointments = () => {
     return timeB - timeA;
   });
 
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(sortedAppointments.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAppointments = sortedAppointments.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, dateFilter, searchTerm, dateRange.startDate, dateRange.endDate]);
+
   const columns = [
     { key: "date", label: "Ngày, tháng, năm" },
     { key: "time", label: "Giờ bắt đầu" },
@@ -793,7 +806,7 @@ const Appointments = () => {
                   <p className="mt-1 text-sm text-gray-500">Bạn chưa có cuộc hẹn nào trong danh mục này.</p>
                 </div>
               }
-              items={sortedAppointments}
+              items={paginatedAppointments}
             >
               {(appointment) => (
                   <TableRow key={appointment.id} className="hover:bg-gray-50 transition-colors">
@@ -1050,21 +1063,30 @@ const Appointments = () => {
           </Table>
           </div>
 
-          {/* Results info */}
+          {/* Pagination and Results info */}
           {sortedAppointments.length > 0 && (
             <div className="px-6 py-6 border-t border-gray-200 bg-gray-50 rounded-b-xl w-full">
-              <div className="flex items-center justify-between">
-              <p className="text-base text-gray-600">
-                  Hiển thị <span className="font-medium">1</span> đến{" "}
-                  <span className="font-medium">{sortedAppointments.length}</span> trong{" "}
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-gray-600">
+                  Hiển thị{" "}
+                  <span className="font-medium">
+                    {sortedAppointments.length === 0 ? 0 : startIndex + 1}
+                  </span>{" "}
+                  đến{" "}
+                  <span className="font-medium">
+                    {Math.min(startIndex + paginatedAppointments.length, sortedAppointments.length)}
+                  </span>{" "}
+                  trong{" "}
                   <span className="font-medium">{sortedAppointments.length}</span> kết quả
                 </p>
-                <div className="flex items-center space-x-2 text-base text-gray-500">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Tổng cộng {appointments.length} cuộc hẹn</span>
-                </div>
+                <Pagination
+                  page={currentPage}
+                  total={totalPages}
+                  onChange={setCurrentPage}
+                  showControls
+                  color="primary"
+                  size="md"
+                />
               </div>
             </div>
           )}
