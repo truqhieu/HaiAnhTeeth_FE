@@ -262,19 +262,16 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                   handleInputChange("assignedDoctorId", selectedKey || "");
                 }}
               >
-                <SelectItem key="">
-                  <span className="text-gray-500 italic">Không có bác sĩ</span>
-                </SelectItem>
-                {doctors.map((doctor) => (
-                  <SelectItem key={doctor._id} textValue={doctor.fullName}>
-                    <div>
-                      <div className="font-medium">{doctor.fullName}</div>
-                      <div className="text-xs text-gray-500">
-                        {doctor.email}
-                      </div>
-                    </div>
+                <>
+                  <SelectItem key="" textValue="Không có bác sĩ">
+                    Không có bác sĩ
                   </SelectItem>
-                ))}
+                  {doctors.map((doctor) => (
+                    <SelectItem key={doctor._id} textValue={doctor.fullName}>
+                      {doctor.fullName}
+                    </SelectItem>
+                  ))}
+                </>
               </Select>
 
               <Select

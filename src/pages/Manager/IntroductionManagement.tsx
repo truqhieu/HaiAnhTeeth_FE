@@ -25,7 +25,7 @@ import {
 import {
   MagnifyingGlassIcon,
   PlusIcon,
-  PencilSquareIcon,
+  PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
@@ -155,46 +155,42 @@ const IntroductionManagement = () => {
         <p className="text-gray-600 mt-2">Kiểm soát các nội dung hiển thị tại trang “Giới thiệu”.</p>
       </div>
 
-      <Card>
-        <CardBody>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-            <div className="flex-1 flex flex-col gap-4 md:flex-row">
-              <Input
-                className="w-full md:flex-1"
-                placeholder="Tìm kiếm theo tiêu đề..."
-                startContent={<MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />}
-                value={searchTerm}
-                variant="bordered"
-                onValueChange={setSearchTerm}
-              />
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+        <div className="flex-1 flex flex-col gap-4 lg:flex-row lg:items-end">
+          <Input
+            className="w-full lg:flex-1"
+            placeholder="Tìm kiếm theo tiêu đề..."
+            startContent={<MagnifyingGlassIcon className="w-5 h-5 text-gray-400" />}
+            value={searchTerm}
+            variant="bordered"
+            onValueChange={setSearchTerm}
+          />
 
-              <Select
-                className="w-full md:w-48"
-                placeholder="Trạng thái"
-                selectedKeys={[statusFilter]}
-                variant="bordered"
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0] as "all" | Introduction["status"];
-                  setStatusFilter(selected);
-                }}
-              >
-                <SelectItem key="all">Tất cả trạng thái</SelectItem>
-                <SelectItem key="Published">Đang hiển thị</SelectItem>
-                <SelectItem key="Hidden">Đang ẩn</SelectItem>
-              </Select>
-            </div>
+          <Select
+            className="w-full sm:w-56 min-w-[220px] lg:flex-[0.6]"
+            placeholder="Trạng thái"
+            selectedKeys={[statusFilter]}
+            variant="bordered"
+            onSelectionChange={(keys) => {
+              const selected = Array.from(keys)[0] as "all" | Introduction["status"];
+              setStatusFilter(selected);
+              setPage(1);
+            }}
+          >
+            <SelectItem key="all">Tất cả trạng thái</SelectItem>
+            <SelectItem key="Published">Đang hiển thị</SelectItem>
+            <SelectItem key="Hidden">Đang ẩn</SelectItem>
+          </Select>
+        </div>
 
-            <Button
-              color="primary"
-              className="w-full lg:w-auto"
-              startContent={<PlusIcon className="w-5 h-5" />}
-              onPress={() => setIsAddOpen(true)}
-            >
-              Thêm giới thiệu
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
+        <Button
+          className="w-full lg:w-auto bg-blue-600 text-white hover:bg-blue-700"
+          startContent={<PlusIcon className="w-5 h-5" />}
+          onPress={() => setIsAddOpen(true)}
+        >
+          Thêm giới thiệu
+        </Button>
+      </div>
 
       <Card>
         <CardBody className="space-y-4">
@@ -269,10 +265,10 @@ const IntroductionManagement = () => {
                               isIconOnly
                               size="sm"
                               variant="light"
-                              className="text-blue-600"
+                              className="min-w-8 h-8 text-blue-600 hover:bg-blue-50"
                               onPress={() => handleOpenEdit(item)}
                             >
-                              <PencilSquareIcon className="w-5 h-5" />
+                              <PencilIcon className="w-5 h-5" />
                             </Button>
                           </Tooltip>
                           <Tooltip content="Xóa">

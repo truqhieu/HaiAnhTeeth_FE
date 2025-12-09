@@ -104,9 +104,6 @@ const AddIntroductionModal: React.FC<AddIntroductionModalProps> = ({
     <Modal isOpen={isOpen} onClose={handleClose} size="lg" scrollBehavior="outside">
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
-          <p className="text-sm uppercase tracking-[0.2em] text-[#39BDCC] font-semibold">
-            Giới thiệu
-          </p>
           <h2 className="text-2xl font-bold">Thêm nội dung mới</h2>
           <p className="text-sm text-gray-500">Chia sẻ câu chuyện, giá trị của phòng khám</p>
         </ModalHeader>
@@ -187,7 +184,7 @@ const AddIntroductionModal: React.FC<AddIntroductionModalProps> = ({
             Hủy
           </Button>
           <Button color="primary" onPress={handleSubmit} isLoading={submitting}>
-            Lưu giới thiệu
+            Thêm giới thiệu
           </Button>
         </ModalFooter>
       </ModalContent>

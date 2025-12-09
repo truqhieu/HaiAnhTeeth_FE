@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { MapPinIcon, PhoneIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
 import { FaFacebook, FaYoutube, FaInstagram, FaTiktok } from "react-icons/fa";
 
@@ -53,7 +54,7 @@ const Footer: React.FC = () => {
               >
                 <PhoneIcon className="w-5 h-5 mr-3 text-black flex-shrink-0 group-hover:scale-110 transition-transform" />
                 <span className="text-black font-medium text-sm">
-                  033 828 1982c
+                  033 828 1982
                 </span>
               </a>
               <a
@@ -75,50 +76,23 @@ const Footer: React.FC = () => {
             </h3>
             <ul className="space-y-2.5 mt-4 flex-grow">
               {[
-                "Giới thiệu về phòng khám",
-                "Chuyên khoa",
-                "Tin tức",
-                "Tuyển dụng",
-                "Hướng dẫn khám chữa bệnh",
-                "Bác sĩ tại phòng khám Yên Ninh",
-                "Bác sĩ tại phòng khám Phúc Trọng",
-              ].map((item, index) => (
-                <li key={index}>
-                  <a
-                    href="#"
+                { label: "Giới thiệu về phòng khám", to: "/about" },
+                { label: "Tin tức", to: "/news" },
+              ].map((item) => (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                     className="text-black/80 hover:text-black hover:translate-x-1 inline-block transition-all duration-200 text-sm"
                   >
-                    {item}
-                  </a>
+                    {item.label}
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Cột 3: Chăm sóc khách hàng */}
-          <div className="flex flex-col">
-            <h3 className="text-lg font-bold text-black mb-4 pb-2 border-b-2 border-black/20 inline-block">
-              Chăm sóc khách hàng
-            </h3>
-            <ul className="space-y-2.5 mt-4 flex-grow">
-              {[
-                "Chính sách bảo mật",
-                "Hướng dẫn thanh toán",
-                "Câu hỏi thường gặp",
-                "Phòng khám",
-                "Thông tin đặt lịch",
-              ].map((item, index) => (
-                <li key={index}>
-                  <a
-                    href="#"
-                    className="text-black/80 hover:text-black hover:translate-x-1 inline-block transition-all duration-200 text-sm"
-                  >
-                    {item}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+         
 
           {/* Cột 4: Kết nối với chúng tôi */}
           <div className="flex flex-col">

@@ -19,6 +19,9 @@ import {
   ClockIcon,
   VideoCameraIcon,
   BuildingOfficeIcon,
+  SparklesIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { chatApi, appointmentApi } from "@/api";
@@ -108,6 +111,7 @@ const Chat = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [doctorInfo, setDoctorInfo] = useState<DoctorInfo | null>(null);
   const [appointmentInfo, setAppointmentInfo] = useState<any>(null);
+  const [showAppointmentInfo, setShowAppointmentInfo] = useState(true);
 
   // Setup Socket.IO connection
   useEffect(() => {
@@ -293,7 +297,6 @@ const Chat = () => {
       if (response.success && response.data) {
         setMessages([...messages, response.data]);
         setNewMessage("");
-        toast.success("Đã gửi tin nhắn");
       } else {
         toast.error(response.message || "Không thể gửi tin nhắn");
       }
@@ -540,15 +543,35 @@ const Chat = () => {
                 {/* Appointment Info Card */}
                 {appointmentInfo && (
                   <Card className="mb-4 border border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm">
-                    <CardBody className="p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <ClipboardDocumentListIcon className="w-5 h-5 text-[#39BDCC]" />
-                        <h3 className="font-semibold text-gray-800">Thông tin ca khám</h3>
+                    <CardBody className="p-0">
+                      <div 
+                        className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-100/50 transition-colors"
+                        onClick={() => setShowAppointmentInfo(!showAppointmentInfo)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <ClipboardDocumentListIcon className="w-5 h-5 text-[#39BDCC]" />
+                          <h3 className="font-semibold text-gray-800">Thông tin ca khám</h3>
+                        </div>
+                        <button
+                          className="p-1 hover:bg-blue-200/50 rounded-full transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowAppointmentInfo(!showAppointmentInfo);
+                          }}
+                        >
+                          {showAppointmentInfo ? (
+                            <ChevronUpIcon className="w-5 h-5 text-[#39BDCC]" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 text-[#39BDCC]" />
+                          )}
+                        </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      {showAppointmentInfo && (
+                        <div className="px-4 pb-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                         {appointmentInfo.serviceId?.serviceName && (
                           <div className="flex items-start gap-2">
-                            <span className="font-medium text-gray-600">Dịch vụ:</span>
+                            <SparklesIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
                             <span className="text-gray-900">{appointmentInfo.serviceId.serviceName}</span>
                           </div>
                         )}
@@ -593,7 +616,9 @@ const Chat = () => {
                             </span>
                           </div>
                         )}
-                      </div>
+                          </div>
+                        </div>
+                      )}
                     </CardBody>
                   </Card>
                 )}

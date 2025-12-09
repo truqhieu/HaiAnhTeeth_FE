@@ -185,26 +185,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           sessionStorage.removeItem("user");
           dispatch(clearAuth());
           
-          // 🔐 ONLY redirect to home if NOT on a public page
-          const publicPages = ["/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+          // 🔐 ONLY redirect if on a protected page (requires auth)
+          const protectedPaths = ["/patient/", "/admin/", "/manager/", "/staff/", "/doctor/", "/nurse/"];
+          const publicPages = [
+            "/login", 
+            "/signup", 
+            "/forgot-password", 
+            "/reset-password", 
+            "/verify-email",
+            "/about",
+            "/services",
+            "/news",
+            "/promotions",
+            "/unauthorized"
+          ];
+          const isProtectedPage = protectedPaths.some(path => location.pathname.startsWith(path));
           const isPublicPage = publicPages.some(page => location.pathname.startsWith(page));
           
-          if (!isPublicPage && location.pathname !== "/") {
+          // Nếu đang ở trang home hoặc trang public, không redirect
+          if (location.pathname === "/" || isPublicPage) {
+            // Không làm gì, để user ở trang hiện tại
+            return;
+          }
+          
+          if (isProtectedPage) {
+            console.log("🔍 [AuthContext] On protected page without auth, redirecting to unauthorized");
+            navigate("/unauthorized");
+          } else {
             console.log("🔍 [AuthContext] Not on public page, redirecting to home");
             navigate("/");
           }
         }
-      } catch (error) {
-        console.error("❌ [AuthContext] Error initializing auth via profile:", error);
+      } catch (error: any) {
+        // ⭐ Don't log 401 errors as errors - they're expected when not authenticated
+        const isUnauthorizedError = error?.message?.includes("Không có token xác thực") || 
+                                   error?.message?.includes("401") ||
+                                   error?.message?.includes("Unauthorized");
+        
+        if (isUnauthorizedError) {
+          console.log("🔍 [AuthContext] Not authenticated (expected after logout or no session)");
+        } else {
+          console.error("❌ [AuthContext] Error initializing auth via profile:", error);
+        }
+        
         sessionStorage.removeItem("user");
         if (isMounted) {
           dispatch(clearAuth());
           
-          // 🔐 ONLY redirect to home if NOT on a public page
-          const publicPages = ["/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+          // 🔐 ONLY redirect if on a protected page (requires auth)
+          const protectedPaths = ["/patient/", "/admin/", "/manager/", "/staff/", "/doctor/", "/nurse/"];
+          const publicPages = [
+            "/login", 
+            "/signup", 
+            "/forgot-password", 
+            "/reset-password", 
+            "/verify-email",
+            "/about",
+            "/services",
+            "/news",
+            "/promotions",
+            "/unauthorized"
+          ];
+          const isProtectedPage = protectedPaths.some(path => location.pathname.startsWith(path));
           const isPublicPage = publicPages.some(page => location.pathname.startsWith(page));
           
-          if (!isPublicPage && location.pathname !== "/") {
+          // Nếu đang ở trang home hoặc trang public, không redirect
+          if (location.pathname === "/" || isPublicPage) {
+            // Không làm gì, để user ở trang hiện tại
+            return;
+          }
+          
+          if (isProtectedPage) {
+            console.log("🔍 [AuthContext] On protected page without auth, redirecting to unauthorized");
+            navigate("/unauthorized");
+          } else {
             console.log("🔍 [AuthContext] Not on public page, redirecting to home");
             navigate("/");
           }
@@ -220,7 +274,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 
 
-    initializeAuth();
+    // ⭐ Chỉ chạy một lần khi component mount, không chạy lại khi pathname thay đổi
+    // Điều này tránh gọi /auth/profile không cần thiết khi navigate đến /login
+    if (!isInitialized) {
+      initializeAuth();
+    }
 
 
 
@@ -228,7 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       isMounted = false;
     };
-  }, [dispatch, location.pathname, navigate]);
+  }, [dispatch, navigate, isInitialized]); // ⭐ Loại bỏ location.pathname khỏi dependencies
 
 
 
@@ -244,14 +302,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 
 
-    // ⭐ KHÔNG lưu authToken nữa – chỉ lưu user
+    // ⭐ Lưu user và token vào sessionStorage
+    // Token dùng làm fallback nếu cookie chưa được browser lưu kịp (incognito mode)
     sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+    sessionStorage.setItem("authToken", token); // ⭐ Lưu token để dùng làm fallback
 
 
 
 
     console.log("🔍 [AuthContext] Saved to sessionStorage:", {
       user: !!sessionStorage.getItem("user"),
+      token: !!sessionStorage.getItem("authToken"),
     });
 
 
@@ -285,6 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Clear sessionStorage
     sessionStorage.removeItem("user");
+    sessionStorage.removeItem("authToken"); // ⭐ Xóa token khi logout
 
 
 

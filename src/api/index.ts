@@ -28,16 +28,19 @@ export const apiCall = async <T = any>(
     const url = `${API_BASE_URL}${endpoint}`;
 
 
-    console.log("🚀 Fetching:", url);
-
-
-    console.log("🔍 [API Call] Full request details:", {
-      url,
-      method: options.method || "GET",
-      headers: options.headers,
-      body: options.body,
-      credentials: options.credentials,
-    });
+    // ⭐ Check if this is likely an auth check (profile endpoint) to reduce logging
+    const isAuthCheck = endpoint.includes("/auth/profile");
+    
+    if (!isAuthCheck) {
+      console.log("🚀 Fetching:", url);
+      console.log("🔍 [API Call] Full request details:", {
+        url,
+        method: options.method || "GET",
+        headers: options.headers,
+        body: options.body,
+        credentials: options.credentials,
+      });
+    }
 
 
     const response = await fetch(url, {
@@ -51,10 +54,13 @@ export const apiCall = async <T = any>(
     });
 
 
-    console.log("🔍 [API Call] Response headers:", Object.fromEntries(response.headers.entries()));
-
-
-    console.log("📡 Response status:", response.status, response.statusText);
+    // ⭐ Reduce logging for 401 errors (expected when not authenticated)
+    const isUnauthorized = response.status === 401;
+    
+    if (!isAuthCheck || !isUnauthorized) {
+      console.log("🔍 [API Call] Response headers:", Object.fromEntries(response.headers.entries()));
+      console.log("📡 Response status:", response.status, response.statusText);
+    }
 
 
     // ⭐ Xử lý 304 Not Modified - không có body, cần fetch lại với cache-busting
@@ -86,7 +92,22 @@ export const apiCall = async <T = any>(
     const result = await response.json();
 
 
-    console.log("📦 Response body:", result);
+    // ⭐ Only log response body for non-401 errors to reduce noise
+    if (!isUnauthorized) {
+      console.log("📦 Response body:", result);
+    }
+
+
+    // ⭐ Handle 401 Unauthorized gracefully - don't throw, return response
+    // This is expected when user is not authenticated (e.g., after logout)
+    if (isUnauthorized) {
+      // Silent handling - no error logging needed
+      return {
+        success: false,
+        message: result.message || "Không có token xác thực",
+        data: undefined,
+      } as ApiResponse<T>;
+    }
 
 
     if (!response.ok) {
@@ -131,13 +152,39 @@ export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
+  // ⭐ Fallback: Nếu có token trong sessionStorage, thêm Authorization header
+  // Điều này giúp xử lý trường hợp cookie chưa được browser lưu kịp (incognito mode)
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem("authToken") : null;
+  
+  // ⭐ Tạo headers object với type phù hợp
+  const headersObj: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  
+  // Merge với headers từ options nếu có
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        headersObj[key] = value;
+      });
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        headersObj[key] = value;
+      });
+    } else {
+      Object.assign(headersObj, options.headers);
+    }
+  }
+  
+  // ⭐ Thêm Authorization header nếu có token (fallback khi cookie chưa sẵn sàng)
+  if (token && !headersObj['Authorization']) {
+    headersObj['Authorization'] = `Bearer ${token}`;
+  }
+
   return apiCall<T>(endpoint, {
     ...options,
     credentials: "include", // để browser tự gửi cookie
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers: headersObj as HeadersInit,
   });
 };
 

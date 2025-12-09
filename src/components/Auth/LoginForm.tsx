@@ -8,7 +8,7 @@ import { authApi } from "@/api";
 
 const LoginForm = () => {
   const navigate = useNavigate();
-  const { login, updateUser } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
@@ -40,23 +40,13 @@ const LoginForm = () => {
 
         login(loginUser as any, response.data.token);
 
-        try {
-          const profileResponse = await authApi.getProfile();
-
-          if (profileResponse.success && profileResponse.data?.user) {
-            const normalizedUser = {
-              ...profileResponse.data.user,
-              _id:
-                profileResponse.data.user._id ||
-                profileResponse.data.user.id ||
-                "",
-            };
-
-            updateUser(normalizedUser as any);
-          }
-        } catch (profileError) {
-          console.warn("Could not load full profile:", profileError);
-        }
+        // ⭐ Bỏ phần gọi getProfile() ngay sau login
+        // Lý do: 
+        // 1. Cookie có thể chưa được browser lưu kịp trong incognito mode
+        // 2. AuthContext sẽ tự động gọi getProfile() khi initialize và có cookie
+        // 3. Data từ login response đã đủ để set auth state ban đầu
+        // 
+        // Nếu cần update user info đầy đủ, AuthContext sẽ tự xử lý sau khi cookie đã được lưu
 
         const role = response.data.user.role?.toLowerCase();
 

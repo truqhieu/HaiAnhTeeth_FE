@@ -96,7 +96,11 @@ export const medicalRecordApi = {
         medicine?: string;
         dosage?: string;
         duration?: string;
-      };
+      } | Array<{
+        medicine: string;
+        dosage: string;
+        duration: string;
+      }>;
       nurseNote?: string;
       patientAge?: number | null;
       address?: string;

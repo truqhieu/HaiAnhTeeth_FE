@@ -49,8 +49,8 @@ const RoomManagement = () => {
     try {
       const response = await managerApi.getAvailableDoctors();
 
-      if (response.success && response.data) {
-        setDoctors(response.data);
+      if (response.success && response.data && response.data.data) {
+        setDoctors(response.data.data);
       }
     } catch (error: any) {
       console.error("Error fetching doctors:", error);

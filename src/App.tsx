@@ -52,9 +52,9 @@ import NurseMedicalRecord from "@/pages/Nurse/NurseMedicalRecord";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BookingModalProvider } from "@/contexts/BookingModalContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
-import MedicalRecordPage from "@/pages/MedicalRecord/MedicalRecordPage";
 import DoctorMedicalRecord from "@/pages/Doctor/DoctorMedicalRecord";
 import FloatingAIAssistant from "@/components/Common/FloatingAIAssistant";
+import Unauthorized from "@/components/Common/Unauthorized";
 function App() {
   return (
     <AuthProvider>
@@ -82,6 +82,7 @@ function App() {
           <Route element={<SignupPage />} path="/signup" />
           <Route element={<ForgotPassWord />} path="/forgot-password" />
           <Route element={<ResetPassword />} path="/reset-password" />
+          <Route element={<Unauthorized />} path="/unauthorized" />
           {/* Admin */}
           <Route
             element={
@@ -170,7 +171,6 @@ function App() {
                     element={<NurseMedicalRecord />}
                     path="medical-record/:appointmentId"
                   />
-                  <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
                   <Route element={<NotificationsPage />} path="notifications" />
                   <Route element={<NurseProfileSettings />} path="profile" />
                 </Routes>

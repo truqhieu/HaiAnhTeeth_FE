@@ -208,7 +208,7 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
                 src="/logo1.png"
               />
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Chỉnh sửa blog</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Chỉnh sửa bài viết</h2>
                 <p className="text-sm text-gray-600">{blog?.title}</p>
               </div>
             </div>
@@ -412,7 +412,7 @@ const EditBlogModal: React.FC<EditBlogModalProps> = ({
                 isLoading={isSubmitting}
                 onPress={handleSubmit}
               >
-                Cập nhật
+                Cập nhật bài viết
               </Button>
             </div>
           </ModalFooter>
