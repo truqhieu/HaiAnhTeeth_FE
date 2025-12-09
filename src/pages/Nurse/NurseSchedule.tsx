@@ -416,7 +416,7 @@ const NurseSchedule = () => {
       case "Expired":
         return "Đã hết hạn";
       case "No-Show":
-        return "Không đến";
+        return "Vắng mặt";
       default:
         return status;
     }

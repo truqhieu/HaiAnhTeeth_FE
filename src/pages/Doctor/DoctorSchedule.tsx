@@ -29,8 +29,12 @@ import {
   BuildingOfficeIcon,
   DocumentTextIcon,
   ArrowRightIcon,
+  XMarkIcon,
+  CheckIcon,
+  CheckCircleIcon,
+  ArrowUturnLeftIcon,
 } from "@heroicons/react/24/outline";
-import { doctorApi, type DoctorAppointment } from "@/api";
+import { doctorApi, appointmentApi, type DoctorAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -335,7 +339,7 @@ const DoctorSchedule = () => {
       case "Expired":
         return "Đã hết hạn";
       case "No-Show":
-        return "Không đến";
+        return "Vắng mặt";
       default:
         return status;
     }
@@ -351,9 +355,9 @@ const DoctorSchedule = () => {
     // - History: hiển thị Completed, Expired, No-Show
     if (activeTab === "upcoming") {
       filtered = filtered.filter(apt => {
-        // Chỉ hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là của ngày hôm nay
+        // Hiển thị các ca có trạng thái Approved, CheckedIn, InProgress HOẶC No-Show (chỉ cho ngày hôm nay)
         const isToday = isTodayAppointment(apt.appointmentDate);
-        const isValidStatus = apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress";
+        const isValidStatus = apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress" || apt.status === "No-Show";
         return isValidStatus && isToday;
       });
     } else if (activeTab === "future") {
@@ -364,6 +368,7 @@ const DoctorSchedule = () => {
         return isValidStatus && isFuture;
       });
     } else if (activeTab === "history") {
+      // ⭐ Hiển thị tất cả ca khám đã hoàn thành, hết hạn, hoặc vắng mặt (bao gồm cả Online)
       filtered = filtered.filter(apt => apt.status === "Completed" || apt.status === "Expired" || apt.status === "No-Show");
     }
 
@@ -646,6 +651,27 @@ const DoctorSchedule = () => {
   const handleViewMedicalRecord = async (appointmentId: string) => {
     toast.success("Đang chuyển đến hồ sơ khám bệnh...");
     navigate(`/doctor/medical-record/${appointmentId}`);
+  };
+
+  const handleUpdateStatus = async (appointmentId: string, status: "No-Show" | "Completed" | "CheckedIn") => {
+    try {
+      const statusText = status === "No-Show" ? "Vắng mặt" : status === "Completed" ? "Hoàn thành" : "Đã có mặt";
+      const res = await appointmentApi.updateAppointmentStatus(appointmentId, status);
+      
+      if (res.success) {
+        toast.success(`Đã cập nhật trạng thái: ${statusText}`);
+        // Refetch appointments để cập nhật UI
+        const currentDateRange = dateRangeRef.current;
+        fetchAppointments(currentDateRange.startDate || undefined, currentDateRange.endDate || undefined, true, false);
+        // Cũng refetch allAppointmentsForStats để cập nhật stats
+        fetchAppointments(null, null, true, true);
+      } else {
+        toast.error(res.message || `Lỗi khi cập nhật trạng thái: ${statusText}`);
+      }
+    } catch (err: any) {
+      console.error("Error updating appointment status:", err);
+      toast.error(err.message || "Lỗi khi cập nhật trạng thái");
+    }
   };
   return (
     <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
@@ -996,6 +1022,61 @@ const DoctorSchedule = () => {
                         </Button>
                       </div>
                     )}
+                    {/* ⭐ Hiển thị nút hành động cho ca khám trực tuyến */}
+                    {appointment.mode === "Online" && (
+                      <>
+                        {/* Nếu status là Approved hoặc CheckedIn: hiển thị nút Vắng mặt và Hoàn thành */}
+                        {(appointment.status === "Approved" || appointment.status === "CheckedIn") && (
+                          <div className="flex gap-2">
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              color="danger"
+                              onPress={() => handleUpdateStatus(appointment.appointmentId, "No-Show")}
+                              title="Vắng mặt (No-Show)"
+                            >
+                              <XMarkIcon className="w-5 h-5" />
+                            </Button>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              color="success"
+                              onPress={() => handleUpdateStatus(appointment.appointmentId, "Completed")}
+                              title="Hoàn thành (Completed)"
+                            >
+                              <CheckIcon className="w-5 h-5" />
+                            </Button>
+                          </div>
+                        )}
+                        {/* ⭐ Nếu status là No-Show: hiển thị nút Xác nhận và Hoàn thành */}
+                        {appointment.status === "No-Show" && (
+                          <div className="flex gap-2">
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              color="success"
+                              onPress={() => handleUpdateStatus(appointment.appointmentId, "Approved")}
+                              title="Xác nhận (Approved)"
+                            >
+                              <CheckCircleIcon className="w-5 h-5" />
+                            </Button>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              color="success"
+                              onPress={() => handleUpdateStatus(appointment.appointmentId, "Completed")}
+                              title="Hoàn thành (Completed)"
+                            >
+                              <CheckIcon className="w-5 h-5" />
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}                   
                   </div>
                 </TableCell>
                 </TableRow>
