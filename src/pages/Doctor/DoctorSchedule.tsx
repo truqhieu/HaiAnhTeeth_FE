@@ -29,12 +29,8 @@ import {
   BuildingOfficeIcon,
   DocumentTextIcon,
   ArrowRightIcon,
-  XMarkIcon,
-  CheckIcon,
-  CheckCircleIcon,
-  ArrowUturnLeftIcon,
 } from "@heroicons/react/24/outline";
-import { doctorApi, appointmentApi, type DoctorAppointment } from "@/api";
+import { doctorApi, type DoctorAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { DateRangePicker } from "@/components/Common";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -180,18 +176,13 @@ const DoctorSchedule = () => {
     prevDateRangeRef.current = { startDate: currentStartDate, endDate: currentEndDate };
     dateRangeRef.current = { startDate: currentStartDate, endDate: currentEndDate };
     
-    // ⭐ FIX: Ưu tiên dateRange nếu có (trừ tab "history" vì history cần fetch tất cả)
     if (currentTab === "history") {
       // Khi chọn tab "history", fetch tất cả lịch sử (không giới hạn date range)
       // Truyền null để BE lấy tất cả appointments không filter theo date
       // updateStats = false để không ghi đè allAppointmentsForStats
       fetchAppointments(null, null, false, false);
-    } else if (currentStartDate && currentEndDate) {
-      // ⭐ Nếu có dateRange, ưu tiên dùng dateRange để fetch (bất kể tab nào)
-      // updateStats = false để không ghi đè allAppointmentsForStats
-      fetchAppointments(currentStartDate, currentEndDate, false, false);
     } else if (currentTab === "future") {
-      // Khi chọn tab "future" và không có dateRange, fetch từ ngày mai đến chủ nhật tuần sau
+      // Khi chọn tab "future", fetch từ ngày mai đến chủ nhật tuần sau
       const today = getTodayInVietnam();
       const todayDate = new Date(today);
       
@@ -212,12 +203,16 @@ const DoctorSchedule = () => {
       // updateStats = false để không ghi đè allAppointmentsForStats
       fetchAppointments(tomorrowStr, nextSundayStr, false, false);
     } else if (currentTab === "upcoming") {
-      // ⭐ Tab "Các ca khám hôm nay": Fetch appointments của ngày hôm nay (khi không có dateRange)
+      // ⭐ FIX: Tab "Các ca khám hôm nay": Fetch appointments của ngày hôm nay
       const today = getTodayInVietnam();
       // updateStats = false để không ghi đè allAppointmentsForStats
       fetchAppointments(today, today, false, false);
-    } else {
-      // Khi không có dateRange và không phải các tab đặc biệt, fetch mặc định (2 tuần)
+    } else if (currentStartDate && currentEndDate) {
+      // Chỉ fetch khi cả startDate và endDate đều có giá trị
+      // updateStats = false để không ghi đè allAppointmentsForStats
+      fetchAppointments(currentStartDate, currentEndDate, false, false);
+    } else if (!currentStartDate && !currentEndDate) {
+      // Khi clear date range, fetch lại mặc định (2 tuần)
       // updateStats = false để không ghi đè allAppointmentsForStats
       fetchAppointments(undefined, undefined, false, false);
     }
@@ -229,21 +224,6 @@ const DoctorSchedule = () => {
   useEffect(() => {
     dateRangeRef.current = dateRange;
   }, [dateRange]);
-
-  // ⭐ Debounce search text để tránh filter quá nhiều lần khi user đang gõ
-  useEffect(() => {
-    // Nếu searchText rỗng, clear ngay lập tức không cần debounce
-    if (!searchText || searchText.trim() === "") {
-      setDebouncedSearchText("");
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      setDebouncedSearchText(searchText);
-    }, 300); // Debounce 300ms
-
-    return () => clearTimeout(timeoutId);
-  }, [searchText]);
 
   // ⭐ Refetch appointments khi quay lại từ trang edit medical record
   useEffect(() => {
@@ -321,30 +301,6 @@ const DoctorSchedule = () => {
     return aptDateStr >= tomorrowStr && aptDateStr <= nextSundayStr;
   }, [getTodayInVietnam]);
 
-  // ⭐ Helper functions - phải định nghĩa trước khi sử dụng trong useMemo
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "Approved":
-        return "Đã xác nhận";
-      case "CheckedIn":
-        return "Đã có mặt";
-      case "InProgress":
-        return "Đang trong ca khám";
-      case "Completed":
-        return "Hoàn thành";
-      case "Finalized":
-        return "Đã kết thúc";
-      case "Cancelled":
-        return "Ca khám đã hủy";
-      case "Expired":
-        return "Đã hết hạn";
-      case "No-Show":
-        return "Vắng mặt";
-      default:
-        return status;
-    }
-  };
-
   // Sử dụng useMemo để tính toán filtered appointments - tránh re-render không cần thiết
   const filteredAppointments = useMemo(() => {
     let filtered = [...appointments];
@@ -355,9 +311,9 @@ const DoctorSchedule = () => {
     // - History: hiển thị Completed, Expired, No-Show
     if (activeTab === "upcoming") {
       filtered = filtered.filter(apt => {
-        // Hiển thị các ca có trạng thái Approved, CheckedIn, InProgress HOẶC No-Show (chỉ cho ngày hôm nay)
+        // Chỉ hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là của ngày hôm nay
         const isToday = isTodayAppointment(apt.appointmentDate);
-        const isValidStatus = apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress" || apt.status === "No-Show";
+        const isValidStatus = apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress";
         return isValidStatus && isToday;
       });
     } else if (activeTab === "future") {
@@ -368,119 +324,44 @@ const DoctorSchedule = () => {
         return isValidStatus && isFuture;
       });
     } else if (activeTab === "history") {
-      // ⭐ Hiển thị tất cả ca khám đã hoàn thành, hết hạn, hoặc vắng mặt (bao gồm cả Online)
       filtered = filtered.filter(apt => apt.status === "Completed" || apt.status === "Expired" || apt.status === "No-Show");
     }
 
     // Filter by search text (sử dụng debounced search text)
-    if (debouncedSearchText && debouncedSearchText.trim()) {
-      const searchLower = debouncedSearchText.toLowerCase().trim();
-      
-      // Helper function để normalize text (loại bỏ dấu tiếng Việt)
-      const normalizeText = (text: string): string => {
-        if (!text || typeof text !== 'string') return "";
-        return text
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "") // Loại bỏ dấu
-          .replace(/đ/g, "d")
-          .replace(/Đ/g, "D");
-      };
-      
-      const searchNormalized = normalizeText(searchLower);
-      
+    if (debouncedSearchText) {
+      const searchLower = debouncedSearchText.toLowerCase();
       filtered = filtered.filter(apt => {
-        try {
-          // Tìm theo tên bệnh nhân
-          let matchesPatient = false;
-          if (apt.patientName && typeof apt.patientName === 'string') {
-            const patientNameLower = apt.patientName.toLowerCase();
-            const patientNameNormalized = normalizeText(apt.patientName);
-            matchesPatient = patientNameLower.includes(searchLower) || patientNameNormalized.includes(searchNormalized);
-          }
-          
-          // Tìm theo tên dịch vụ
-          let matchesService = false;
-          if (apt.serviceName && typeof apt.serviceName === 'string') {
-            const serviceNameLower = apt.serviceName.toLowerCase();
-            const serviceNameNormalized = normalizeText(apt.serviceName);
-            matchesService = serviceNameLower.includes(searchLower) || serviceNameNormalized.includes(searchNormalized);
-          }
-          
-          // Tìm theo dịch vụ bổ sung
-          let matchesAdditionalService = false;
-          if (apt.additionalServiceNames && Array.isArray(apt.additionalServiceNames)) {
-            matchesAdditionalService = apt.additionalServiceNames.some(s => {
-              if (!s || typeof s !== 'string') return false;
-              const serviceLower = s.toLowerCase();
-              const serviceNormalized = normalizeText(s);
-              return serviceLower.includes(searchLower) || serviceNormalized.includes(searchNormalized);
-            });
-          }
-          
-          const matchesBasic = matchesPatient || matchesService || matchesAdditionalService;
-          
-          // Tìm theo trạng thái (text search)
-          const statusText = getStatusText(apt.status).toLowerCase();
-          const matchesStatus = statusText.includes(searchLower);
+        // Tìm theo tên bệnh nhân, dịch vụ
+        const matchesBasic = 
+          apt.patientName.toLowerCase().includes(searchLower) ||
+          (apt.serviceName.toLowerCase().includes(searchLower) ||
+          (apt.additionalServiceNames && apt.additionalServiceNames.some(s => s.toLowerCase().includes(searchLower))));
+        
+        // Tìm theo trạng thái (text search)
+        const statusText = getStatusText(apt.status).toLowerCase();
+        const matchesStatus = statusText.includes(searchLower);
 
-          // Tìm theo ngày hiển thị tiếng Việt
-          let appointmentDateVi = "";
-          if (apt.appointmentDate) {
-            try {
-              const date = new Date(apt.appointmentDate);
-              if (!isNaN(date.getTime())) {
-                appointmentDateVi = date.toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase();
-              }
-            } catch (e) {
-              // Ignore date parsing errors
-            }
-          }
-          
-          // Tìm theo giờ (startTime và endTime có thể là "HH:mm" hoặc ISO string)
-          const startTimeStr = apt.startTime ? apt.startTime.toLowerCase() : "";
-          const endTimeStr = apt.endTime ? apt.endTime.toLowerCase() : "";
-          
-          // Tìm trong cả format hiển thị (nếu có formatDate được dùng)
-          let startTimeVi = "";
-          if (apt.startTime) {
-            try {
-              // Thử parse như ISO string trước
-              const time = new Date(apt.startTime);
-              if (!isNaN(time.getTime())) {
-                startTimeVi = time.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase();
-              } else {
-                // Nếu không phải ISO, dùng trực tiếp string
-                startTimeVi = apt.startTime.toLowerCase();
-              }
-            } catch (e) {
-              // Nếu parse fail, dùng trực tiếp string
-              startTimeVi = apt.startTime.toLowerCase();
-            }
-          }
-          
-          const matchesDate = appointmentDateVi.includes(searchLower) || 
-                             startTimeStr.includes(searchLower) || 
-                             endTimeStr.includes(searchLower) ||
-                             startTimeVi.includes(searchLower);
-          
-          // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
-          if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
-            // Khi search "đang trong ca khám", chỉ hiển thị InProgress, không hiển thị CheckedIn
-            return apt.status === 'InProgress';
-          }
-          if (searchLower.includes('đã có mặt') || searchLower.includes('đã nhận') || searchLower.includes('check-in')) {
-            // Khi search "đã có mặt", chỉ hiển thị CheckedIn
-            return apt.status === 'CheckedIn';
-          }
-          
-          // Nếu không có keyword đặc biệt, tìm theo basic search hoặc status text
-          return matchesBasic || matchesStatus || matchesDate;
-        } catch (error) {
-          // Nếu có lỗi trong quá trình filter, bỏ qua appointment này
-          console.error("Error filtering appointment:", error, apt);
-          return false;
+        // Tìm theo ngày/giờ hiển thị tiếng Việt
+        const appointmentDateVi = apt.appointmentDate
+          ? new Date(apt.appointmentDate).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+          : "";
+        const startTimeVi = apt.startTime
+          ? new Date(apt.startTime).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }).toLowerCase()
+          : "";
+        const matchesDate = appointmentDateVi.includes(searchLower) || startTimeVi.includes(searchLower);
+        
+        // Tìm theo các từ khóa đặc biệt - nếu search chứa keyword thì chỉ match với status tương ứng
+        if (searchLower.includes('đang trong ca khám') || searchLower.includes('inprogress')) {
+          // Khi search "đang trong ca khám", chỉ hiển thị InProgress, không hiển thị CheckedIn
+          return apt.status === 'InProgress';
         }
+        if (searchLower.includes('đã có mặt') || searchLower.includes('đã nhận') || searchLower.includes('check-in')) {
+          // Khi search "đã có mặt", chỉ hiển thị CheckedIn
+          return apt.status === 'CheckedIn';
+        }
+        
+        // Nếu không có keyword đặc biệt, tìm theo basic search hoặc status text
+        return matchesBasic || matchesStatus || matchesDate;
       });
     }
 
@@ -560,6 +441,29 @@ const DoctorSchedule = () => {
         return "danger";
       default:
         return "default";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "Approved":
+        return "Đã xác nhận";
+      case "CheckedIn":
+        return "Đã có mặt";
+      case "InProgress":
+        return "Đang trong ca khám";
+      case "Completed":
+        return "Hoàn thành";
+      case "Finalized":
+        return "Đã kết thúc";
+      case "Cancelled":
+        return "Ca khám đã hủy";
+      case "Expired":
+        return "Đã hết hạn";
+      case "No-Show":
+        return "Không đến";
+      default:
+        return status;
     }
   };
 
@@ -652,27 +556,6 @@ const DoctorSchedule = () => {
     toast.success("Đang chuyển đến hồ sơ khám bệnh...");
     navigate(`/doctor/medical-record/${appointmentId}`);
   };
-
-  const handleUpdateStatus = async (appointmentId: string, status: "No-Show" | "Completed" | "CheckedIn" | "Approved") => {
-    try {
-      const statusText = status === "No-Show" ? "Vắng mặt" : status === "Completed" ? "Hoàn thành" : status === "Approved" ? "Đã xác nhận" : "Đã có mặt";
-      const res = await appointmentApi.updateAppointmentStatus(appointmentId, status);
-      
-      if (res.success) {
-        toast.success(`Đã cập nhật trạng thái: ${statusText}`);
-        // Refetch appointments để cập nhật UI
-        const currentDateRange = dateRangeRef.current;
-        fetchAppointments(currentDateRange.startDate || undefined, currentDateRange.endDate || undefined, true, false);
-        // Cũng refetch allAppointmentsForStats để cập nhật stats
-        fetchAppointments(null, null, true, true);
-      } else {
-        toast.error(res.message || `Lỗi khi cập nhật trạng thái: ${statusText}`);
-      }
-    } catch (err: any) {
-      console.error("Error updating appointment status:", err);
-      toast.error(err.message || "Lỗi khi cập nhật trạng thái");
-    }
-  };
   return (
     <div className="space-y-6 p-4 max-w-[1600px] mx-auto">
       {/* Header */}
@@ -757,7 +640,7 @@ const DoctorSchedule = () => {
               endDate={dateRange.endDate}
               onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
               placeholder="Chọn khoảng thời gian"
-              className="w-full text-gray-500"
+              className="w-full"
             />
 
             <Select
@@ -773,7 +656,7 @@ const DoctorSchedule = () => {
               startContent={<VideoCameraIcon className="w-5 h-5 text-gray-400" />}
             >
               <SelectItem key="all">Tất cả hình thức</SelectItem>
-              <SelectItem key="Online" startContent={<VideoCameraIcon className="w-4 h-4 t" />}>
+              <SelectItem key="Online" startContent={<VideoCameraIcon className="w-4 h-4" />}>
                 Trực tuyến
               </SelectItem>
               <SelectItem key="Offline" startContent={<BuildingOfficeIcon className="w-4 h-4" />}>
@@ -879,7 +762,9 @@ const DoctorSchedule = () => {
                         <CalendarIcon className="w-5 h-5 text-gray-400" />
                         <span className="font-medium">{formatDate(appointment.appointmentDate)}</span>
                       </div>
-
+                      <p className="text-xs text-gray-500 ml-7">
+                        {formatDateTime(appointment.appointmentDate)}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -1022,61 +907,6 @@ const DoctorSchedule = () => {
                         </Button>
                       </div>
                     )}
-                    {/* ⭐ Hiển thị nút hành động cho ca khám trực tuyến */}
-                    {appointment.mode === "Online" && (
-                      <>
-                        {/* Nếu status là Approved hoặc CheckedIn: hiển thị nút Vắng mặt và Hoàn thành */}
-                        {(appointment.status === "Approved" || appointment.status === "CheckedIn") && (
-                          <div className="flex gap-2">
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="flat"
-                              color="danger"
-                              onPress={() => handleUpdateStatus(appointment.appointmentId, "No-Show")}
-                              title="Vắng mặt (No-Show)"
-                            >
-                              <XMarkIcon className="w-5 h-5" />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="flat"
-                              color="success"
-                              onPress={() => handleUpdateStatus(appointment.appointmentId, "Completed")}
-                              title="Hoàn thành (Completed)"
-                            >
-                              <CheckIcon className="w-5 h-5" />
-                            </Button>
-                          </div>
-                        )}
-                        {/* ⭐ Nếu status là No-Show: hiển thị nút Xác nhận và Hoàn thành */}
-                        {appointment.status === "No-Show" && (
-                          <div className="flex gap-2">
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="flat"
-                              color="success"
-                              onPress={() => handleUpdateStatus(appointment.appointmentId, "Approved")}
-                              title="Xác nhận (Approved)"
-                            >
-                              <CheckCircleIcon className="w-5 h-5" />
-                            </Button>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="flat"
-                              color="success"
-                              onPress={() => handleUpdateStatus(appointment.appointmentId, "Completed")}
-                              title="Hoàn thành (Completed)"
-                            >
-                              <CheckIcon className="w-5 h-5" />
-                            </Button>
-                          </div>
-                        )}
-                      </>
-                    )}                   
                   </div>
                 </TableCell>
                 </TableRow>

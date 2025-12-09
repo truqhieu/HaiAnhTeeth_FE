@@ -58,6 +58,12 @@ const PolicyManagement = () => {
     status: "Active",
   });
 
+  // Title options state
+  const [titleOptions, setTitleOptions] = useState<Array<{ title: string }>>([]);
+  const [selectedTitleType, setSelectedTitleType] = useState<string>("");
+  const [customTitle, setCustomTitle] = useState<string>("");
+  const [isLoadingTitles, setIsLoadingTitles] = useState(false);
+
   // Fetch policies
   const fetchPolicies = async () => {
     try {
@@ -81,8 +87,23 @@ const PolicyManagement = () => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter]);
 
+  // Fetch title options
+  const fetchTitleOptions = async () => {
+    try {
+      setIsLoadingTitles(true);
+      const response = await policyApi.listTitle();
+      if (response.success && Array.isArray(response.data)) {
+        setTitleOptions(response.data);
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Không thể tải danh sách tiêu đề");
+    } finally {
+      setIsLoadingTitles(false);
+    }
+  };
+
   // Handle open modal for create
-  const handleOpenCreate = () => {
+  const handleOpenCreate = async () => {
     setEditingPolicy(null);
     setFormData({
       title: "",
@@ -90,11 +111,14 @@ const PolicyManagement = () => {
       active: true,
       status: "Active",
     });
+    setSelectedTitleType("");
+    setCustomTitle("");
+    await fetchTitleOptions();
     onOpen();
   };
 
   // Handle open modal for edit
-  const handleOpenEdit = (policy: Policy) => {
+  const handleOpenEdit = async (policy: Policy) => {
     setEditingPolicy(policy);
     setFormData({
       title: policy.title,
@@ -102,6 +126,24 @@ const PolicyManagement = () => {
       active: policy.active,
       status: policy.status,
     });
+    // Fetch title options first
+    const response = await policyApi.listTitle();
+    if (response.success && Array.isArray(response.data)) {
+      setTitleOptions(response.data);
+      const options = response.data;
+      const titleExists = options.some(opt => opt.title === policy.title);
+      if (titleExists) {
+        setSelectedTitleType(policy.title);
+        setCustomTitle("");
+      } else {
+        setSelectedTitleType("Other");
+        setCustomTitle(policy.title);
+      }
+    } else {
+      // Default to Other if can't determine
+      setSelectedTitleType("Other");
+      setCustomTitle(policy.title);
+    }
     onOpen();
   };
 
@@ -110,18 +152,44 @@ const PolicyManagement = () => {
     setIsDeleteOpen(true);
   };
 
+  // Handle title selection change
+  const handleTitleChange = (value: string) => {
+    setSelectedTitleType(value);
+    if (value === "Other") {
+      setCustomTitle("");
+      setFormData({ ...formData, title: "" });
+    } else {
+      setCustomTitle("");
+      setFormData({ ...formData, title: value });
+    }
+  };
+
+  // Handle custom title input change
+  const handleCustomTitleChange = (value: string) => {
+    setCustomTitle(value);
+    setFormData({ ...formData, title: value });
+  };
+
   // Handle submit (create or update)
   const handleSubmit = async () => {
-    if (!formData.title.trim() || !formData.description.trim()) {
+    // Get final title value
+    const finalTitle = selectedTitleType === "Other" ? customTitle.trim() : selectedTitleType;
+    
+    if (!finalTitle || !formData.description.trim()) {
       toast.error("Vui lòng nhập đầy đủ thông tin");
       return;
     }
+
+    const submitData = {
+      ...formData,
+      title: finalTitle,
+    };
 
     try {
       setIsSubmitting(true);
       if (editingPolicy) {
         // Update
-        const response = await policyApi.updatePolicy(editingPolicy._id, formData);
+        const response = await policyApi.updatePolicy(editingPolicy._id, submitData);
         if (response.success) {
           toast.success("Cập nhật chính sách thành công");
           fetchPolicies();
@@ -129,7 +197,7 @@ const PolicyManagement = () => {
         }
       } else {
         // Create
-        const response = await policyApi.createPolicy(formData);
+        const response = await policyApi.createPolicy(submitData);
         if (response.success) {
           toast.success("Tạo chính sách thành công");
           fetchPolicies();
@@ -359,6 +427,9 @@ const PolicyManagement = () => {
         isDismissable={false}
         onOpenChange={(open) => {
           if (!open) {
+            // Reset title-related states when closing
+            setSelectedTitleType("");
+            setCustomTitle("");
             onClose();
           }
         }}
@@ -376,16 +447,37 @@ const PolicyManagement = () => {
               </ModalHeader>
               <ModalBody>
                 <div className="space-y-4">
-                  <Input
-                    label="Tiêu đề"
-                    placeholder="Nhập tiêu đề chính sách"
-                    value={formData.title}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, title: value })
-                    }
-                    isRequired
-                    size="lg"
-                  />
+                  <div className="space-y-2">
+                    <Select
+                      label="Tiêu đề"
+                      placeholder="Chọn tiêu đề chính sách"
+                      selectedKeys={selectedTitleType ? [selectedTitleType] : []}
+                      onSelectionChange={(keys) => {
+                        const selected = Array.from(keys)[0] as string;
+                        handleTitleChange(selected || "");
+                      }}
+                      isRequired
+                      size="lg"
+                      isLoading={isLoadingTitles}
+                      isDisabled={isLoadingTitles}
+                    >
+                      {titleOptions.map((option) => (
+                        <SelectItem key={option.title} value={option.title}>
+                          {option.title === "Other" ? "Tiêu đề khác" : option.title}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                    {selectedTitleType === "Other" && (
+                      <Input
+                        label="Nhập tiêu đề tùy chỉnh"
+                        placeholder="Nhập tiêu đề chính sách"
+                        value={customTitle}
+                        onValueChange={handleCustomTitleChange}
+                        isRequired
+                        size="lg"
+                      />
+                    )}
+                  </div>
 
                   <Textarea
                     label="Mô tả"
