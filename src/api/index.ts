@@ -156,20 +156,35 @@ export const authenticatedApiCall = async <T = any>(
   // Điều này giúp xử lý trường hợp cookie chưa được browser lưu kịp (incognito mode)
   const token = typeof window !== 'undefined' ? sessionStorage.getItem("authToken") : null;
   
-  const headers: HeadersInit = {
+  // ⭐ Tạo headers object với type phù hợp
+  const headersObj: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers || {}),
   };
   
+  // Merge với headers từ options nếu có
+  if (options.headers) {
+    if (options.headers instanceof Headers) {
+      options.headers.forEach((value, key) => {
+        headersObj[key] = value;
+      });
+    } else if (Array.isArray(options.headers)) {
+      options.headers.forEach(([key, value]) => {
+        headersObj[key] = value;
+      });
+    } else {
+      Object.assign(headersObj, options.headers);
+    }
+  }
+  
   // ⭐ Thêm Authorization header nếu có token (fallback khi cookie chưa sẵn sàng)
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (token && !headersObj['Authorization']) {
+    headersObj['Authorization'] = `Bearer ${token}`;
   }
 
   return apiCall<T>(endpoint, {
     ...options,
     credentials: "include", // để browser tự gửi cookie
-    headers,
+    headers: headersObj as HeadersInit,
   });
 };
 
