@@ -502,6 +502,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   handleInputChange("dob", value);
                   handleBlur("dob");
                 }}
+                size="md"
               />
 
               <Select

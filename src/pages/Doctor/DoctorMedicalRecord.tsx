@@ -87,6 +87,19 @@ const DoctorMedicalRecord: React.FC = () => {
   const lockReason = !canEdit ? permissions?.doctor?.reason || null : null;
   const canApprove = canEdit && !isFinalized;
 
+  // ⭐ Lọc đơn thuốc rỗng: khi đã duyệt (Finalized) thì ẩn đơn rỗng, khi chưa duyệt (Draft) thì hiển thị tất cả
+  const displayedPrescriptions = useMemo(() => {
+    if (isFinalized) {
+      // Khi đã duyệt: chỉ hiển thị đơn thuốc có ít nhất một trường không rỗng
+      return prescriptions.filter(
+        (p) => p.medicine.trim() !== "" || p.dosage.trim() !== "" || p.duration.trim() !== ""
+      );
+    } else {
+      // Khi chưa duyệt: hiển thị tất cả đơn thuốc (kể cả rỗng)
+      return prescriptions;
+    }
+  }, [prescriptions, isFinalized]);
+
   // Reservation helper functions
   const clearReservationTimer = useCallback(() => {
     if (reservationTimerRef.current) {
@@ -2067,12 +2080,18 @@ const DoctorMedicalRecord: React.FC = () => {
         <CardBody className="px-6 pb-4">
           <div className="space-y-4">
             {/* ⭐ Hiển thị danh sách đơn thuốc */}
-            {prescriptions.length === 0 && !canEdit ? (
+            {displayedPrescriptions.length === 0 && !canEdit ? (
               <div className="text-center text-gray-500 py-4">
                 Chưa có đơn thuốc
               </div>
             ) : (
-              prescriptions.map((prescription, index) => (
+              displayedPrescriptions.map((prescription, displayedIndex) => {
+                // ⭐ Tìm index trong mảng prescriptions gốc để cập nhật đúng
+                const originalIndex = prescriptions.findIndex(
+                  (p) => p === prescription
+                );
+                const index = originalIndex >= 0 ? originalIndex : displayedIndex;
+                return (
                 <div key={index} className="flex items-start gap-3 p-4 bg-white rounded-lg border border-gray-200">
                   {/* ⭐ 3 trường hiển thị theo hàng ngang */}
                   <div className="flex-1 grid grid-cols-3 gap-3">
@@ -2150,7 +2169,7 @@ const DoctorMedicalRecord: React.FC = () => {
                   </div>
 
                   {/* ⭐ Nút xóa đơn thuốc (chỉ hiển thị khi có thể edit và có nhiều hơn 1 đơn) */}
-                  {canEdit && prescriptions.length > 1 && (
+                  {canEdit && displayedPrescriptions.length > 1 && (
                     <Button
                       isIconOnly
                       color="danger"
@@ -2166,7 +2185,8 @@ const DoctorMedicalRecord: React.FC = () => {
                     </Button>
                   )}
                 </div>
-              ))
+                );
+              })
             )}
 
             {/* ⭐ Nút thêm đơn thuốc mới - Icon dấu cộng ở góc phải dưới */}
@@ -2850,5 +2870,4 @@ const DoctorMedicalRecord: React.FC = () => {
 };
 
 export default DoctorMedicalRecord;
-
 

@@ -22,6 +22,7 @@ import {
   BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import { doctorApi, type AppointmentDetail } from "@/api";
+import { formatTime } from "@/utils/dateUtils";
 
 interface AppointmentDetailModalProps {
   isOpen: boolean;
@@ -110,7 +111,6 @@ const AppointmentDetailModal = ({
     if (!dateString || dateString === "Chưa có") return "Chưa có";
     const date = new Date(dateString);
     return date.toLocaleDateString("vi-VN", {
-      weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -215,7 +215,7 @@ const AppointmentDetailModal = ({
                           <div className="flex items-center gap-2 flex-1">
                             <ClockIcon className="w-5 h-5 text-gray-400" />
                             <span className="text-gray-700 font-semibold">
-                              {appointment.startTime} - {appointment.endTime}
+                              {appointment.startTimeFormatted || (appointment.startTime ? formatTime(appointment.startTime) : "Chưa có")} - {appointment.endTimeFormatted || (appointment.endTime ? formatTime(appointment.endTime) : "Chưa có")}
                             </span>
                           </div>
                         </div>

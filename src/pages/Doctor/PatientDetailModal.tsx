@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Thêm import này
 import {
   Modal,
   ModalContent,
@@ -21,7 +20,6 @@ import {
   CalendarDaysIcon,
   ExclamationTriangleIcon,
   CheckBadgeIcon,
-  DocumentTextIcon, // Thêm icon này
 } from "@heroicons/react/24/outline";
 import { doctorApi, type PatientDetail } from "@/api";
 
@@ -36,7 +34,6 @@ const PatientDetailModal = ({
   onClose,
   appointmentId,
 }: PatientDetailModalProps) => {
-  const navigate = useNavigate(); // Thêm hook này
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [patient, setPatient] = useState<PatientDetail | null>(null);
@@ -80,14 +77,6 @@ const PatientDetailModal = ({
       setError(err.message || "Lỗi khi tải thông tin bệnh nhân");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Thêm hàm xử lý mở hồ sơ khám bệnh
-  const handleOpenMedicalRecord = () => {
-    if (appointmentId) {
-      onClose(); // Đóng modal trước
-      navigate(`/doctor/medical-record/${appointmentId}`); // Chuyển đến trang hồ sơ với appointmentId
     }
   };
 
@@ -143,23 +132,9 @@ const PatientDetailModal = ({
         {(onClose) => (
           <>
             <ModalHeader className="flex flex-col gap-1 bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">Hồ sơ bệnh nhân</h3>
-                  <p className="text-sm text-gray-600 font-normal">Thông tin chi tiết về bệnh nhân</p>
-                </div>
-                {/* Nút mở hồ sơ khám bệnh */}
-                {patient && currentPatientId && (
-                  <Button
-                    color="primary"
-                    variant="shadow"
-                    startContent={<DocumentTextIcon className="w-5 h-5" />}
-                    onPress={handleOpenMedicalRecord}
-                    className="font-semibold"
-                  >
-                    Mở hồ sơ khám bệnh
-                  </Button>
-                )}
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">Hồ sơ bệnh nhân</h3>
+                <p className="text-sm text-gray-600 font-normal">Thông tin chi tiết về bệnh nhân</p>
               </div>
             </ModalHeader>
             <ModalBody className="py-6">
