@@ -1438,6 +1438,27 @@ const DoctorMedicalRecord: React.FC = () => {
       const utcHours = vnHours - 7;
       followUpDateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
 
+      // ⭐ Client-side validation for time availability before saving
+      // Check if time is in available ranges
+      const rangeResult = isTimeInAvailableRanges(followUpTimeInput);
+      if (!rangeResult.isValid) {
+        setTimeInputError("Khung giờ này không khả dụng. Vui lòng chọn thời gian trong khoảng thời gian khả dụng.");
+        return;
+      }
+
+      // Check duration
+      const validatedHours = rangeResult.overrideHours ?? vnHours;
+      const validatedMinutes = rangeResult.overrideMinutes ?? vnMinutes;
+      const startTotalMin = validatedHours * 60 + validatedMinutes;
+      const endLimitMinutes = rangeResult.rangeEndVNMinutes ?? null;
+      if (endLimitMinutes != null) {
+        const endTotalMin = startTotalMin + serviceDuration;
+        if (endTotalMin > endLimitMinutes) {
+          setTimeInputError(`Thời gian bạn chọn không đáp ứng đủ thời gian cho dịch vụ này (${serviceDuration} phút). Vui lòng chọn giờ khác.`);
+          return;
+        }
+      }
+
       console.log('🔍 [onSave] followUpDateObj after setUTCHours:', {
         iso: followUpDateObj.toISOString(),
         utc: {
@@ -1456,10 +1477,10 @@ const DoctorMedicalRecord: React.FC = () => {
         }
       });
 
-      if (Number.isNaN(followUpDateObj.getTime())) {
-        toast.error("Thời gian tái khám không hợp lệ");
-        return;
-      }
+      // if (Number.isNaN(followUpDateObj.getTime())) {
+      //   toast.error("Thời gian tái khám không hợp lệ");
+      //   return;
+      // }
 
       // Validate: Ngày tái khám phải lớn hơn ngày của ca khám hiện tại
       if (currentAppointment?.startTime) {
@@ -1718,8 +1739,8 @@ const DoctorMedicalRecord: React.FC = () => {
         const errorMsg = res.message || "Lưu thất bại";
         if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian') || errorMsg.includes('Bệnh nhân đã có lịch'))) {
           const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
-          // ⭐ Chỉ hiển thị toast, không set inline error
-          toast.error(mappedErrorMsg);
+          // ⭐ Set inline error thay vì toast
+          setTimeInputError(mappedErrorMsg);
 
           // ⭐ QUAN TRỌNG: Gọi hàm này để hủy trạng thái "Đang giữ chỗ" trên UI
           // Vì lịch này đã bị lỗi trùng, không thể giữ chỗ được nữa.
@@ -1735,8 +1756,8 @@ const DoctorMedicalRecord: React.FC = () => {
       const errorMsg = e.message || "Lưu thất bại";
       if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian') || errorMsg.includes('Bệnh nhân đã có lịch'))) {
         const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
-        // ⭐ Chỉ hiển thị toast, không set inline error
-        toast.error(mappedErrorMsg);
+        // ⭐ Set inline error thay vì toast
+        setTimeInputError(mappedErrorMsg);
 
         // ⭐ QUAN TRỌNG: Gọi hàm này để hủy trạng thái "Đang giữ chỗ" trên UI
         // Vì lịch này đã bị lỗi trùng, không thể giữ chỗ được nữa.
@@ -2631,6 +2652,12 @@ const DoctorMedicalRecord: React.FC = () => {
                                 readOnly={!canEdit}
                               />
                             </div>
+
+                            {timeInputError && (
+                              <p className="mt-1 text-xs text-red-500 font-medium">
+                                {timeInputError}
+                              </p>
+                            )}
 
                             {/* ⭐ Chỉ hiển thị message giữ chỗ sau khi blur và reserve thành công */}
                             {activeReservation && reservationCountdown > 0 && !timeInputError && hasReservedAfterBlur && (
