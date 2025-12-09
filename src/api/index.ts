@@ -152,13 +152,24 @@ export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
+  // ⭐ Fallback: Nếu có token trong sessionStorage, thêm Authorization header
+  // Điều này giúp xử lý trường hợp cookie chưa được browser lưu kịp (incognito mode)
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem("authToken") : null;
+  
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+  
+  // ⭐ Thêm Authorization header nếu có token (fallback khi cookie chưa sẵn sàng)
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   return apiCall<T>(endpoint, {
     ...options,
     credentials: "include", // để browser tự gửi cookie
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
+    headers,
   });
 };
 

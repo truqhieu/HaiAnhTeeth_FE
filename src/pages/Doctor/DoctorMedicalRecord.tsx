@@ -5,7 +5,7 @@ import { doctorApi, type AppointmentDetail } from "@/api/doctor";
 import { getDoctorScheduleRangeForFollowUp, validateAppointmentTime } from "@/api/availableSlot";
 import { appointmentApi } from "@/api/appointment";
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
-import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon, PlusIcon, TrashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon, PlusIcon, TrashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
@@ -1800,9 +1800,6 @@ const DoctorMedicalRecord: React.FC = () => {
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-              <UserIcon className="w-5 h-5 text-white" />
-            </div>
             <h3 className="text-lg font-bold text-gray-900">Thông tin bệnh nhân</h3>
           </div>
         </CardHeader>

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
-import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, ChevronDownIcon, XMarkIcon, ArrowLeftIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, ChevronDownIcon, XMarkIcon, ArrowLeftIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { appointmentApi } from "@/api/appointment";
 
@@ -277,12 +277,11 @@ const NurseMedicalRecord: React.FC = () => {
     }
     setSaving(true);
     try {
-      // Convert prescriptions array to single prescription object (API expects object, not array)
-      const prescriptionData = prescriptions.length > 0 ? prescriptions[0] : { medicine: '', dosage: '', duration: '' };
+      // ⭐ Gửi toàn bộ prescriptions array (backend hỗ trợ cả array và object)
       const res = await medicalRecordApi.updateMedicalRecordForNurse(appointmentId, {
         diagnosis,
         conclusion,
-        prescription: prescriptionData,
+        prescription: prescriptions, // Gửi toàn bộ array thay vì chỉ phần tử đầu
         nurseNote,
       });
       if (res.success && res.data) {
@@ -369,9 +368,6 @@ const NurseMedicalRecord: React.FC = () => {
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-              <UserIcon className="w-5 h-5 text-white" />
-            </div>
             <h3 className="text-lg font-bold text-gray-900">Thông tin bệnh nhân</h3>
           </div>
         </CardHeader>
