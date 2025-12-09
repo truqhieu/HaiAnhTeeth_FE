@@ -54,6 +54,8 @@ interface Appointment {
   noTreatment?: boolean;
   createdAt?: string; // ⭐ THÊM: Thời gian tạo để sắp xếp
   updatedAt?: string; // ⭐ THÊM: Thời gian cập nhật để sắp xếp
+  hasPendingReschedule?: boolean; // ⭐ THÊM: Có yêu cầu đổi lịch pending không
+  hasPendingChangeDoctor?: boolean; // ⭐ THÊM: Có yêu cầu đổi bác sĩ pending không
 }
 
 const Appointments = () => {
@@ -165,6 +167,8 @@ const Appointments = () => {
             noTreatment: !!apt.noTreatment,
             createdAt: apt.createdAt || apt.startTime || "", // ⭐ Thêm createdAt để sắp xếp (fallback về startTime)
             updatedAt: apt.updatedAt || apt.createdAt || apt.startTime || "", // ⭐ Thêm updatedAt để sắp xếp
+            hasPendingReschedule: apt.hasPendingReschedule || false, // ⭐ THÊM: Pending reschedule request
+            hasPendingChangeDoctor: apt.hasPendingChangeDoctor || false, // ⭐ THÊM: Pending change doctor request
           };
         },
       );
@@ -944,11 +948,18 @@ const Appointments = () => {
                         {/* Đổi lịch hẹn - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
                         {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
                         <button
-                            className="p-2.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            title="Đổi lịch hẹn"
+                            className={`p-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 ${
+                              appointment.hasPendingReschedule
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-blue-500"
+                            }`}
+                            title={appointment.hasPendingReschedule ? "Vui lòng chờ staff duyệt đơn đổi lịch hẹn của bạn" : "Đổi lịch hẹn"}
                           onClick={() => {
-                              setRescheduleFor(appointment);
+                              if (!appointment.hasPendingReschedule) {
+                                setRescheduleFor(appointment);
+                              }
                           }}
+                          disabled={appointment.hasPendingReschedule}
                         >
                             <ArrowPathIcon className="w-5 h-5" />
                         </button>
@@ -957,11 +968,18 @@ const Appointments = () => {
                         {/* Đổi bác sĩ - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
                         {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
                           <button
-                            className="p-2.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
-                            title="Đổi bác sĩ"
+                            className={`p-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 ${
+                              appointment.hasPendingChangeDoctor
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-green-100 text-green-700 hover:bg-green-200 focus:ring-green-500"
+                            }`}
+                            title={appointment.hasPendingChangeDoctor ? "Vui lòng chờ staff duyệt đơn đổi bác sĩ của bạn" : "Đổi bác sĩ"}
                             onClick={() => {
-                              setChangeDoctorFor(appointment);
+                              if (!appointment.hasPendingChangeDoctor) {
+                                setChangeDoctorFor(appointment);
+                              }
                             }}
+                            disabled={appointment.hasPendingChangeDoctor}
                           >
                             <UserPlusIcon className="w-5 h-5" />
                           </button>

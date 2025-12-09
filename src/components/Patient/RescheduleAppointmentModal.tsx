@@ -657,6 +657,7 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
     }
   };
 
+
   // ⭐ Countdown timer for reservation - giống BookingModal
   useEffect(() => {
     if (!activeReservation) {
@@ -702,20 +703,21 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
   }, [activeReservation]);
 
   const handleSubmit = async () => {
-    // ⭐ FIX: Nếu đã có activeReservation, skip validation với availableGaps
-    // vì slot đã reserved không còn trong availableGaps nữa
-    if (!validateTime(selectedStartTime, { skipGapValidation: !!activeReservation })) {
-      return;
-    }
-
     if (!serviceInfo) {
       setValidationError("Không xác định được thời lượng dịch vụ.");
       return;
     }
 
-    // ⭐ Kiểm tra xem có active reservation không
-    if (!activeReservation) {
-      setValidationError("Vui lòng chờ giữ chỗ hoàn tất trước khi gửi yêu cầu.");
+    // ⭐ Validate thời gian input
+    if (!selectedStartTime) {
+      setValidationError("Vui lòng nhập thời gian bắt đầu.");
+      return;
+    }
+
+    // ⭐ Validate format
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+    if (!timeRegex.test(selectedStartTime)) {
+      setValidationError("Định dạng thời gian không hợp lệ. Vui lòng nhập HH:mm (ví dụ: 08:30)");
       return;
     }
 
@@ -729,13 +731,53 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
 
     try {
       setSubmitting(true);
+      setValidationError("");
 
+      // ⭐ Kiểm tra xem có activeReservation và còn hạn không
+      // Nếu có reservation nhưng đã hết hạn (reservationCountdown <= 0), không gửi reservedTimeslotId
+      // để backend tự tạo timeslot mới
+      let validReservedTimeslotId: string | undefined = undefined;
+      
+      if (activeReservation && reservationCountdown > 0) {
+        // Reservation còn hạn, sử dụng timeslotId
+        validReservedTimeslotId = activeReservation.timeslotId;
+        console.log("✅ [RescheduleAppointmentModal] Using valid reservation:", validReservedTimeslotId);
+      } else if (activeReservation && reservationCountdown <= 0) {
+        // Reservation đã hết hạn, không gửi để backend tự tạo mới
+        console.log("⚠️ [RescheduleAppointmentModal] Reservation expired, backend will create new timeslot");
+      } else {
+        // Không có reservation, validate với backend trước
+        console.log("🔄 [RescheduleAppointmentModal] No reservation, validating time before submit...");
+        
+        if (!doctorUserId || !serviceId) {
+          setValidationError("Thiếu thông tin bác sĩ hoặc dịch vụ.");
+          setSubmitting(false);
+          return;
+        }
+
+        const validateRes = await validateAppointmentTime(
+          doctorUserId,
+          serviceId,
+          date,
+          startUtc.toISOString()
+        );
+
+        if (!validateRes.success) {
+          const errorMsg = validateRes.message || "Thời gian không hợp lệ";
+          setValidationError(errorMsg);
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // ⭐ Submit reschedule request
       await appointmentApi.requestReschedule(appointmentId, {
         newStartTime: startUtc.toISOString(),
         newEndTime: endUtc.toISOString(),
-        reason: reason ,
-        reservedTimeslotId: activeReservation.timeslotId
+        reason: reason,
+        reservedTimeslotId: validReservedTimeslotId
       });
+      
       showToast("success", "Đã gửi yêu cầu đổi lịch. Đang chờ staff duyệt.", () => {
         onSuccess();
         onClose();
@@ -857,7 +899,13 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
                             </span>
                           </div>
                           <span className={`text-sm ${visual.time}`}>
-                            {hasGaps ? range.displayRange : "Đã hết chỗ"}
+                            {range.displayRange === 'Đã hết chỗ' ? (
+                              <span className="font-medium">Đã hết chỗ</span>
+                            ) : range.displayRange === 'Đã qua thời gian làm việc' ? (
+                              <span className="font-medium">Đã qua thời gian làm việc</span>
+                            ) : (
+                              range.displayRange
+                            )}
                           </span>
                         </div>
                       </div>
@@ -1105,15 +1153,16 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
                       {validationError}
                     </p>
                   )}
-                  {/* ⭐ Chỉ hiển thị message giữ chỗ sau khi blur và reserve thành công */}
+                  {/* ⭐ Chỉ hiển thị message giữ chỗ sau khi blur và reserve thành công, NHƯNG không hiển thị khi đang submit */}
                   {(() => {
-                    const shouldShow = activeReservation && reservationCountdown > 0 && !validationError && hasReservedAfterBlur;
+                    const shouldShow = activeReservation && reservationCountdown > 0 && !validationError && hasReservedAfterBlur && !submitting;
                     if (process.env.NODE_ENV === 'development') {
                       console.log("🔍 [RescheduleAppointmentModal] Message display check:", {
                         activeReservation: !!activeReservation,
                         reservationCountdown,
                         validationError: !!validationError,
                         hasReservedAfterBlur,
+                        submitting,
                         shouldShow
                       });
                     }
@@ -1193,6 +1242,11 @@ const RescheduleAppointmentModal: React.FC<Props> = ({
             isDisabled={!selectedStartTime || !!validationError}
             isLoading={submitting}
             onClick={handleSubmit}
+            onMouseDown={(e) => {
+              // ⭐ Prevent blur event on input fields when clicking submit button
+              // This prevents handleTimeInputBlur from being triggered
+              e.preventDefault();
+            }}
           >
             Gửi yêu cầu
           </Button>
