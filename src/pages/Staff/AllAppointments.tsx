@@ -1928,6 +1928,30 @@ const AllAppointments = () => {
                     <TableCell>
                       <div className="flex gap-2 flex-wrap">
                         {(() => {
+                          // ⭐ QUAN TRỌNG: Ca khám Online do bác sĩ quản lý, staff không có quyền thao tác
+                          // Chỉ hiển thị nút hành động cho ca khám Offline
+                          if (appointment.mode === "Online") {
+                            // Chỉ cho phép xem chi tiết nếu đã hủy hoặc hoàn tiền
+                            if (appointment.status === "Cancelled" || appointment.status === "Refunded") {
+                              return (
+                                <Tooltip content="Xem chi tiết">
+                                  <Button
+                                    isIconOnly
+                                    size="md"
+                                    variant="light"
+                                    className="text-blue-600 hover:bg-blue-50 transition-colors"
+                                    onPress={() => openDetailModal(appointment.id)}
+                                  >
+                                    <EyeIcon className="w-5 h-5" />
+                                  </Button>
+                                </Tooltip>
+                              );
+                            }
+                            // Không hiển thị nút nào khác cho ca khám Online
+                            return null;
+                          }
+
+                          // ⭐ Logic cho ca khám Offline (giữ nguyên)
                           const isOnLeave = isDoctorOnLeave(appointment);
                           if (isOnLeave) {
                             return shouldShowReassignButton(appointment, isOnLeave) ? (
@@ -1979,8 +2003,8 @@ const AllAppointments = () => {
                               )}
                               {appointment.status === "Approved" && (
                                 <>
-                                  {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám VÀ không phải Online */}
-                                  {isAppointmentDateReached(appointment.startTime) && appointment.mode !== "Online" ? (
+                                  {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám */}
+                                  {isAppointmentDateReached(appointment.startTime) ? (
                                     <Tooltip content="Có mặt">
                                       <Button
                                         isIconOnly
@@ -1995,7 +2019,6 @@ const AllAppointments = () => {
                                       </Button>
                                     </Tooltip>
                                   ) : null}
-                                  {/* ⭐ Không hiển thị nút No Show khi chỉ approved - chỉ hiển thị khi đã check-in */}
                                 </>
                               )}
                               {appointment.status === "CheckedIn" && (

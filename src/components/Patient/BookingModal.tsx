@@ -793,7 +793,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         formData.doctorUserId,
         formData.serviceId,
         formData.date,
-        startTimeISO
+        startTimeISO,
+        formData.appointmentFor,
+        formData.fullName,
+        formData.email
       );
 
       if (!validateRes.success) {
