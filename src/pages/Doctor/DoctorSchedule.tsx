@@ -653,9 +653,9 @@ const DoctorSchedule = () => {
     navigate(`/doctor/medical-record/${appointmentId}`);
   };
 
-  const handleUpdateStatus = async (appointmentId: string, status: "No-Show" | "Completed" | "CheckedIn") => {
+  const handleUpdateStatus = async (appointmentId: string, status: "No-Show" | "Completed" | "CheckedIn" | "Approved") => {
     try {
-      const statusText = status === "No-Show" ? "Vắng mặt" : status === "Completed" ? "Hoàn thành" : "Đã có mặt";
+      const statusText = status === "No-Show" ? "Vắng mặt" : status === "Completed" ? "Hoàn thành" : status === "Approved" ? "Đã xác nhận" : "Đã có mặt";
       const res = await appointmentApi.updateAppointmentStatus(appointmentId, status);
       
       if (res.success) {
