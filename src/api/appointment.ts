@@ -181,7 +181,7 @@ export const appointmentApi = {
    */
   updateAppointmentStatus: async (
     appointmentId: string,
-    status: "CheckedIn" | "InProgress" | "Completed" | "Cancelled" | "No-Show",
+    status: "Approved" | "CheckedIn" | "InProgress" | "Completed" | "Cancelled" | "No-Show",
   ): Promise<ApiResponse<any>> => {
     const payload = { status };
     console.log("🔍 [API] Update status payload:", { appointmentId, payload });
