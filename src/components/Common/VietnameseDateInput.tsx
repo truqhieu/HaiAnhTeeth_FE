@@ -361,10 +361,6 @@ const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
   const handleClick = () => {
     triggerCalendar();
   };
-  
-  const handleFocus = () => {
-    triggerCalendar();
-  };
     
     // React-datepicker passes 'value' prop when using customInput  
     // We need to ensure placeholder shows when value is empty
@@ -384,7 +380,6 @@ const CalendarInput = forwardRef<HTMLInputElement, CalendarInputProps>(
         value={finalValue ?? ""}
         placeholder={placeholder || "dd/mm/yyyy"}
         onClick={handleClick}
-        onFocus={handleFocus}
         variant="bordered"
         size={size}
         isInvalid={isInvalid}
@@ -481,6 +476,8 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
   const [internalValue, setInternalValue] = useState("");
   const [validationError, setValidationError] = useState<string | undefined>(undefined);
   const lastValueRef = useRef<string>("");
+  const datePickerRef = useRef<any>(null);
+  const isClosingRef = useRef(false);
 
   useEffect(() => {
     if (!value) {
@@ -502,6 +499,32 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
       setInternalValue("");
     }
   }, [value]);
+
+  // Add global click listener to close calendar when a date is selected
+  useEffect(() => {
+    const handleGlobalClick = (e: Event) => {
+      const target = e.target as HTMLElement;
+      // Check if clicked element is a date in the calendar
+      if (target && target.classList && target.classList.contains('react-datepicker__day') && 
+          !target.classList.contains('react-datepicker__day--disabled') &&
+          !target.classList.contains('react-datepicker__day--outside-month')) {
+        // Close the calendar after the date is selected
+        setTimeout(() => {
+          if (datePickerRef.current && datePickerRef.current.setOpen) {
+            datePickerRef.current.setOpen(false);
+          }
+        }, 50);
+      }
+    };
+    
+    // Add listener to document with capture phase to ensure it runs even in modals
+    document.addEventListener('click', handleGlobalClick, true);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('click', handleGlobalClick, true);
+    };
+  }, []);
 
   const commitManualValue = () => {
     const trimmed = internalValue.trim();
@@ -619,6 +642,7 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
 
   const inputComponent = (
     <DatePicker
+      ref={datePickerRef}
       selected={selected}
       onChange={(date) => {
         onChange?.(formatToISO(date));
@@ -626,18 +650,42 @@ const VietnameseDateInput: React.FC<VietnameseDateInputProps> = ({
         if (date && date instanceof Date && !isNaN(date.getTime())) {
           setInternalValue(formatDisplayDate(date));
           setValidationError(undefined); // Clear validation error when valid date selected
+          // Close calendar with a flag to prevent re-opening
+          isClosingRef.current = true;
+          setTimeout(() => {
+            if (datePickerRef.current && datePickerRef.current.setOpen) {
+              datePickerRef.current.setOpen(false);
+            }
+            // Reset flag after a delay
+            setTimeout(() => {
+              isClosingRef.current = false;
+            }, 300);
+          }, 100);
         } else if (date === null) {
           setInternalValue("");
           setValidationError(undefined);
         }
       }}
       onSelect={(date) => {
-        // This fires immediately when a date is selected from calendar
+        // This fires when a date is clicked in the calendar
         if (date && date instanceof Date && !isNaN(date.getTime())) {
-          const isoDate = formatToISO(date);
-          onChange?.(isoDate);
-          setInternalValue(formatDisplayDate(date));
-          setValidationError(undefined); // Clear validation error when valid date selected
+          // Close calendar with a flag to prevent re-opening
+          isClosingRef.current = true;
+          setTimeout(() => {
+            if (datePickerRef.current && datePickerRef.current.setOpen) {
+              datePickerRef.current.setOpen(false);
+            }
+            // Reset flag after a delay
+            setTimeout(() => {
+              isClosingRef.current = false;
+            }, 300);
+          }, 100);
+        }
+      }}
+      onInputClick={() => {
+        // Prevent opening if we're in the process of closing
+        if (isClosingRef.current) {
+          return false;
         }
       }}
       strictParsing={false}
