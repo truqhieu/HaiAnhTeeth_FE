@@ -302,14 +302,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
 
 
-    // ⭐ KHÔNG lưu authToken nữa – chỉ lưu user
+    // ⭐ Lưu user và token vào sessionStorage
+    // Token dùng làm fallback nếu cookie chưa được browser lưu kịp (incognito mode)
     sessionStorage.setItem("user", JSON.stringify(normalizedUser));
+    sessionStorage.setItem("authToken", token); // ⭐ Lưu token để dùng làm fallback
 
 
 
 
     console.log("🔍 [AuthContext] Saved to sessionStorage:", {
       user: !!sessionStorage.getItem("user"),
+      token: !!sessionStorage.getItem("authToken"),
     });
 
 
@@ -343,6 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     // Clear sessionStorage
     sessionStorage.removeItem("user");
+    sessionStorage.removeItem("authToken"); // ⭐ Xóa token khi logout
 
 
 

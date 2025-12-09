@@ -142,9 +142,6 @@ const PatientDetailModalNurse = ({
                   {/* Patient Header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-                        <UserIcon className="w-8 h-8 text-white" />
-                      </div>
                       <div>
                         <h2 className="text-2xl font-bold text-gray-900">{patient.fullName}</h2>
                         <div className="flex gap-2 mt-2">
