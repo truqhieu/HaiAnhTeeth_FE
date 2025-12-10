@@ -1,6 +1,6 @@
-import type { ApiResponse } from "./index";
+import type { ApiResponse } from "./client";
 
-import { authenticatedApiCall } from "./index";
+import { authenticatedApiCall } from "./client";
 
 export interface LeaveRequest {
   _id: string;

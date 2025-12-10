@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse } from "./index";
+import { authenticatedApiCall, ApiResponse } from "./client";
 
 // Admin Types
 export interface AdminUser {
