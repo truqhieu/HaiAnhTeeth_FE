@@ -82,10 +82,15 @@ const EditIntroductionModal: React.FC<EditIntroductionModalProps> = ({
     if (!title.trim() || !summary.trim()) return;
 
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       setSubmitting(true);
       const response = await introductionApi.updateIntroduction(introduction._id, {
-        title: title.trim(),
-        summary: summary.trim(),
+        title: normalizeText(title),
+        summary: normalizeText(summary),
         status,
         thumbnailFile: thumbnailFile ?? undefined,
       });

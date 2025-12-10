@@ -124,9 +124,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         return;
       }
 
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       // Prepare data for API call - only include phone if it's not empty
       const updateData: any = {
-        fullName: formData.name,
+        fullName: normalizeText(formData.name),
         email: formData.email.trim(),
       };
 

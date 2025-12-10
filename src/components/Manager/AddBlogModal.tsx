@@ -110,10 +110,15 @@ const AddBlogModal: React.FC<AddBlogModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       const createData: any = {
-        title: formData.title.trim(),
-        summary: formData.summary.trim(),
-        content: formData.content.trim(),
+        title: normalizeText(formData.title),
+        summary: normalizeText(formData.summary),
+        content: normalizeText(formData.content),
         category: formData.category,
         status: formData.status,
         thumbnailFile: thumbnailFile,

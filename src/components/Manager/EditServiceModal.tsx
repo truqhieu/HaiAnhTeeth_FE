@@ -122,10 +122,15 @@ const EditServiceModal: React.FC<EditServiceModalProps> = ({
         throw new Error("Không tìm thấy ID dịch vụ");
       }
 
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       // Prepare data for API call
       const updateData = {
-        serviceName: formData.name.trim(),
-        description: formData.description.trim(),
+        serviceName: normalizeText(formData.name),
+        description: normalizeText(formData.description),
         price: Number(formData.price),
         durationMinutes: Number(formData.duration),
         category: categoryReverseMap[formData.category] as

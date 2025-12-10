@@ -65,6 +65,11 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       Number(formData.duration) <= 0);
   const isCategoryInvalid = showValidation && !formData.category;
 
+  // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+  const normalizeText = (text: string): string => {
+    return text.trim().replace(/\s+/g, ' ');
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -95,9 +100,10 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
 
     try {
       // Prepare data for API call
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
       const createData = {
-        serviceName: formData.name.trim(),
-        description: formData.description.trim(),
+        serviceName: normalizeText(formData.name),
+        description: normalizeText(formData.description),
         price: Number(formData.price),
         durationMinutes: Number(formData.duration),
         category: categoryReverseMap[formData.category] as

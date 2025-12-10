@@ -170,10 +170,15 @@ const PolicyManagement = () => {
     setFormData({ ...formData, title: value });
   };
 
+  // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+  const normalizeText = (text: string): string => {
+    return text.trim().replace(/\s+/g, ' ');
+  };
+
   // Handle submit (create or update)
   const handleSubmit = async () => {
     // Get final title value
-    const finalTitle = selectedTitleType === "Other" ? customTitle.trim() : selectedTitleType;
+    const finalTitle = selectedTitleType === "Other" ? normalizeText(customTitle) : selectedTitleType;
     
     if (!finalTitle || !formData.description.trim()) {
       toast.error("Vui lòng nhập đầy đủ thông tin");
@@ -183,6 +188,7 @@ const PolicyManagement = () => {
     const submitData = {
       ...formData,
       title: finalTitle,
+      description: normalizeText(formData.description),
     };
 
     try {

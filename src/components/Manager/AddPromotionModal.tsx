@@ -148,11 +148,16 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       // Convert date to YYYY-MM-DD format (backend expects this format)
       // VietnameseDateInput already returns YYYY-MM-DD format, so we can use it directly
       const createData: any = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
+        title: normalizeText(formData.title),
+        description: normalizeText(formData.description),
         discountType: formData.discountType === "Fixed" ? "Fix" : "Percent",
         discountValue: formData.discountValue,
         applyToAll: formData.applyToAll,
