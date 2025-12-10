@@ -1,4 +1,4 @@
-import { apiCall, authenticatedApiCall, ApiResponse } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse } from "./client";
 
 export interface ConsultationForm {
   _id: string;

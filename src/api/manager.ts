@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse, API_BASE_URL } from "./index";
+import { authenticatedApiCall, ApiResponse, API_BASE_URL } from "./client";
 
 // Manager Service Types
 export interface ManagerService {
