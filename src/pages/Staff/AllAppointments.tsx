@@ -1670,6 +1670,9 @@ const AllAppointments = () => {
                           <Chip color={getStatusColor(detailData.status)} variant="flat" className="mt-1">
                             {getStatusText(detailData.status)}
                           </Chip>
+                          {detailData.status === "Completed" && detailData.noTreatment && (
+                            <p className="text-xs text-gray-500 mt-1 font-medium">Không cần khám</p>
+                          )}
                         </div>
                       </div>
 
@@ -1915,6 +1918,11 @@ const AllAppointments = () => {
                       >
                         {getStatusText(appointment.status)}
                       </Chip>
+                      {appointment.status === "Completed" && appointment.noTreatment && (
+                        <p className="text-xs text-gray-500 mt-1 font-medium">
+                          Không cần khám
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell>
                       {appointment.checkedInAt ? (

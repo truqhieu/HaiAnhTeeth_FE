@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
@@ -31,20 +31,6 @@ const NurseMedicalRecord: React.FC = () => {
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const canEdit = permissions?.nurse?.canEdit ?? true;
   const lockReason = !canEdit ? permissions?.nurse?.reason || null : null;
-  const isFinalized = permissions?.recordStatus === "Finalized";
-
-  // ⭐ Lọc đơn thuốc rỗng: khi đã duyệt (Finalized) thì ẩn đơn rỗng, khi chưa duyệt (Draft) thì hiển thị tất cả
-  const displayedPrescriptions = useMemo(() => {
-    if (isFinalized) {
-      // Khi đã duyệt: chỉ hiển thị đơn thuốc có ít nhất một trường không rỗng
-      return prescriptions.filter(
-        (p) => p.medicine.trim() !== "" || p.dosage.trim() !== "" || p.duration.trim() !== ""
-      );
-    } else {
-      // Khi chưa duyệt: hiển thị tất cả đơn thuốc (kể cả rỗng)
-      return prescriptions;
-    }
-  }, [prescriptions, isFinalized]);
 
   const mapAdditionalServices = (services: any[] | undefined | null) =>
     (services || [])
@@ -291,24 +277,13 @@ const NurseMedicalRecord: React.FC = () => {
     }
     setSaving(true);
     try {
-      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
-      const normalizeText = (text: string): string => {
-        return text.trim().replace(/\s+/g, ' ');
-      };
-
-      // Normalize prescriptions array
-      const normalizedPrescriptions = prescriptions.map((p) => ({
-        medicine: normalizeText(p.medicine),
-        dosage: normalizeText(p.dosage),
-        duration: normalizeText(p.duration),
-      }));
-
-      // ⭐ Gửi toàn bộ prescriptions array (backend hỗ trợ cả array và object)
+      // Convert prescriptions array to single prescription object (API expects object, not array)
+      const prescriptionData = prescriptions.length > 0 ? prescriptions[0] : { medicine: '', dosage: '', duration: '' };
       const res = await medicalRecordApi.updateMedicalRecordForNurse(appointmentId, {
-        diagnosis: normalizeText(diagnosis),
-        conclusion: normalizeText(conclusion),
-        prescription: normalizedPrescriptions, // Gửi toàn bộ array đã normalize
-        nurseNote: normalizeText(nurseNote),
+        diagnosis,
+        conclusion,
+        prescription: prescriptionData,
+        nurseNote,
       });
       if (res.success && res.data) {
         setRecord(res.data);
@@ -646,18 +621,12 @@ const NurseMedicalRecord: React.FC = () => {
         <CardBody className="px-6 pb-4">
           <div className="space-y-4">
             {/* ⭐ Hiển thị danh sách đơn thuốc */}
-            {displayedPrescriptions.length === 0 && !canEdit ? (
+            {prescriptions.length === 0 && !canEdit ? (
               <div className="text-center text-gray-500 py-4">
                 Chưa có đơn thuốc
               </div>
             ) : (
-              displayedPrescriptions.map((prescription, displayedIndex) => {
-                // ⭐ Tìm index trong mảng prescriptions gốc để cập nhật đúng
-                const originalIndex = prescriptions.findIndex(
-                  (p) => p === prescription
-                );
-                const index = originalIndex >= 0 ? originalIndex : displayedIndex;
-                return (
+              prescriptions.map((prescription, index) => (
               <div key={index} className="flex items-start gap-3 p-4 bg-white rounded-lg border border-gray-200">
                 {/* ⭐ 3 trường hiển thị theo hàng ngang */}
                 <div className="flex-1 grid grid-cols-3 gap-3">
@@ -735,7 +704,7 @@ const NurseMedicalRecord: React.FC = () => {
                 </div>
                 
                 {/* ⭐ Nút xóa đơn thuốc (chỉ hiển thị khi có thể edit và có nhiều hơn 1 đơn) */}
-                {canEdit && displayedPrescriptions.length > 1 && (
+                {canEdit && prescriptions.length > 1 && (
                   <Button
                     isIconOnly
                     color="danger"
@@ -748,11 +717,10 @@ const NurseMedicalRecord: React.FC = () => {
                     className="mt-6"
                   >
                     <TrashIcon className="w-5 h-5" />
-                    </Button>
+                  </Button>
                 )}
               </div>
-              );
-              })
+              ))
             )}
             
             {/* ⭐ Nút thêm đơn thuốc mới - Icon dấu cộng ở góc phải dưới */}
@@ -837,4 +805,5 @@ const NurseMedicalRecord: React.FC = () => {
 };
 
 export default NurseMedicalRecord;
+
 
