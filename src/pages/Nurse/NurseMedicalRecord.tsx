@@ -291,12 +291,24 @@ const NurseMedicalRecord: React.FC = () => {
     }
     setSaving(true);
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
+      // Normalize prescriptions array
+      const normalizedPrescriptions = prescriptions.map((p) => ({
+        medicine: normalizeText(p.medicine),
+        dosage: normalizeText(p.dosage),
+        duration: normalizeText(p.duration),
+      }));
+
       // ⭐ Gửi toàn bộ prescriptions array (backend hỗ trợ cả array và object)
       const res = await medicalRecordApi.updateMedicalRecordForNurse(appointmentId, {
-        diagnosis,
-        conclusion,
-        prescription: prescriptions, // Gửi toàn bộ array thay vì chỉ phần tử đầu
-        nurseNote,
+        diagnosis: normalizeText(diagnosis),
+        conclusion: normalizeText(conclusion),
+        prescription: normalizedPrescriptions, // Gửi toàn bộ array đã normalize
+        nurseNote: normalizeText(nurseNote),
       });
       if (res.success && res.data) {
         setRecord(res.data);

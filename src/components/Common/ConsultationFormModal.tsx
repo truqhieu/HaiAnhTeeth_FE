@@ -36,9 +36,14 @@ const ConsultationFormModal: React.FC<ConsultationFormModalProps> = ({ isOpen, o
     if (isNameInvalid || isPhoneInvalid || isEmailInvalid) return;
 
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       setSubmitting(true);
       const res = await consultationInfoApi.create({
-        name: name.trim(),
+        name: normalizeText(name),
         phone: phone.trim(),
         email: email.trim(),
       });

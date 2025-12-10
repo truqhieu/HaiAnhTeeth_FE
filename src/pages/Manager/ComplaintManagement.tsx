@@ -212,10 +212,15 @@ const ComplaintManagement = () => {
     if (!selectedComplaint || !finalAction) return;
 
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       setIsProcessing(true);
 
       // Nếu không có response text, dùng message mặc định cho Rejected
-      const finalResponseText = responseText.trim() || 
+      const finalResponseText = normalizeText(responseText) || 
         (finalAction === "Rejected" ? "Khiếu nại không được chấp nhận" : "");
 
       const response = await complaintApi.handleComplaint(
