@@ -32,7 +32,6 @@ export interface AppointmentDetail {
   startTimeFormatted?: string; // Formatted time string (HH:mm) for display
   endTime: string | null; // ISO string
   endTimeFormatted?: string; // Formatted time string (HH:mm) for display
-  noTreatment?: boolean;
 }
 
 export interface PatientDetail {
