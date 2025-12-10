@@ -87,6 +87,13 @@ const Appointments = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<Appointment | null>(null);
   const [policies, setPolicies] = useState<any[]>([]);
+  const [refundData, setRefundData] = useState<{
+    isEligibleForRefund: boolean;
+    hoursUntilAppointment: number | null;
+    cancellationThresholdHours: number;
+    refundMessage: string;
+    requiresBankInfo: boolean;
+  } | null>(null);
   const [rescheduleFor, setRescheduleFor] = useState<Appointment | null>(null);
   const [changeDoctorFor, setChangeDoctorFor] = useState<Appointment | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -375,23 +382,52 @@ const Appointments = () => {
     });
   };
 
-  // Hủy ca khám sau khi đã xác nhận trong modal
-  const processCancelAppointment = async (appointment: Appointment) => {
+
+  // ⭐ Mở modal hủy lịch - phân biệt Consultation và Examination
+  const handleCancelAppointment = async (appointment: Appointment) => {
+    // ⭐ Nếu là Examination/FollowUp: Hiển thị modal xác nhận đơn giản
+    if (appointment.type === 'Examination' || appointment.type === 'FollowUp') {
+      setConfirmCancelState({ open: true, appointment });
+      return;
+    }
+
+    // ⭐ Nếu là Consultation: Gọi API để lấy policies và refund data
     try {
       setIsProcessingCancel(true);
 
-      // Không bật loading toàn trang khi mở popup
-      // Gọi API hủy ca khám
       const response = await appointmentApi.cancelAppointment(appointment.id);
       
+      console.log('🔍 [Appointments] Full response:', response);
+      console.log('🔍 [Appointments] response.data:', response.data);
+      console.log('🔍 [Appointments] response.data.data:', response.data?.data);
+      console.log('🔍 [Appointments] isEligibleForRefund:', response.data?.isEligibleForRefund);
+      console.log('🔍 [Appointments] data.isEligibleForRefund:', response.data?.data?.isEligibleForRefund);
+      
       if (response.data?.requiresConfirmation) {
-        // Nếu là Consultation, hiển thị modal xác nhận với policies
+        // Hiển thị modal chi tiết với policies và bankInfo
         setAppointmentToCancel(appointment);
-        setPolicies(response.data.policies || []);
-        setIsCancelModalOpen(true);
+        // ⭐ FIX: Access nested data from response.data.data
+        const responseData = response.data.data || response.data;
+        setPolicies(responseData.policies || []);
+        
+        const refundDataToSet = {
+          isEligibleForRefund: responseData.isEligibleForRefund || false,
+          hoursUntilAppointment: responseData.hoursUntilAppointment || null,
+          cancellationThresholdHours: responseData.cancellationThresholdHours || 24,
+          refundMessage: responseData.refundMessage || "",
+          requiresBankInfo: responseData.requiresBankInfo || false,
+        };
+        
+        console.log('🔍 [Appointments] Setting refundData:', refundDataToSet);
+        setRefundData(refundDataToSet);
+        
+        // ⭐ Đợi state update xong rồi mới mở modal (fix async state issue)
+        setTimeout(() => {
+          console.log('🔍 [Appointments] Opening modal...');
+          setIsCancelModalOpen(true);
+        }, 0);
       } else {
-        // Nếu là Examination, hủy trực tiếp
-        toast.success("Đã hủy lịch khám thành công");
+        toast.success(response.message || "Đã hủy lịch khám thành công");
         refetchAppointments();
       }
     } catch (error: any) {
@@ -399,13 +435,28 @@ const Appointments = () => {
       toast.error(error.message || "Không thể hủy lịch hẹn");
     } finally {
       setIsProcessingCancel(false);
-      setConfirmCancelState({ open: false, appointment: null });
     }
   };
 
-  // Mở modal confirm khi người dùng bấm Hủy
-  const handleCancelAppointment = (appointment: Appointment) => {
-    setConfirmCancelState({ open: true, appointment });
+  // ⭐ Xác nhận hủy Examination/FollowUp (từ modal đơn giản)
+  const confirmSimpleCancel = async () => {
+    if (!confirmCancelState.appointment) return;
+
+    try {
+      setIsProcessingCancel(true);
+      const response = await appointmentApi.cancelAppointment(confirmCancelState.appointment.id);
+      
+      if (!response.data?.requiresConfirmation) {
+        toast.success(response.message || "Đã hủy lịch khám thành công");
+        refetchAppointments();
+        setConfirmCancelState({ open: false, appointment: null });
+      }
+    } catch (error: any) {
+      console.error('Error canceling appointment:', error);
+      toast.error(error.message || "Không thể hủy lịch hẹn");
+    } finally {
+      setIsProcessingCancel(false);
+    }
   };
 
   // Hàm xác nhận hủy lịch tư vấn (sau khi hiển thị popup)
@@ -1134,13 +1185,15 @@ const Appointments = () => {
           setIsCancelModalOpen(false);
           setAppointmentToCancel(null);
           setPolicies([]);
+          setRefundData(null); // ⭐ Clear refund data khi đóng modal
         }}
         appointment={appointmentToCancel}
         policies={policies}
+        refundData={refundData} // ⭐ Truyền refund data từ backend
         onConfirmCancel={handleConfirmCancel}
       />
 
-      {/* Confirm hủy lịch (dùng modal của heroui) */}
+      {/* ⭐ Modal xác nhận đơn giản cho Examination/FollowUp */}
       <Modal
         isOpen={confirmCancelState.open}
         onClose={() => setConfirmCancelState({ open: false, appointment: null })}
@@ -1164,11 +1217,7 @@ const Appointments = () => {
             </Button>
             <Button
               color="danger"
-              onPress={() => {
-                if (confirmCancelState.appointment) {
-                  processCancelAppointment(confirmCancelState.appointment);
-                }
-              }}
+              onPress={confirmSimpleCancel}
               isLoading={isProcessingCancel}
             >
               Hủy lịch
@@ -1176,6 +1225,7 @@ const Appointments = () => {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
     </div>
   );
 };

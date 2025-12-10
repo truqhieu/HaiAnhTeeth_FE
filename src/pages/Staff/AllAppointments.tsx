@@ -84,10 +84,12 @@ interface AppointmentDetailData {
   status: string;
   type: string;
   mode: string;
+  appointmentFor?: string; // ⭐ THÊM: 'self' hoặc 'other' để biết đặt cho ai
   service?: { serviceName?: string; price?: number } | null;
   additionalServiceIds?: Array<{ serviceName?: string; price?: number }> | null; // ⭐ THÊM: Dịch vụ bổ sung cho ca tái khám
-  doctor?: { fullName?: string } | null;
-  patient?: { fullName?: string } | null;
+  doctor?: { fullName?: string; phoneNumber?: string } | null; // ⭐ THÊM: phoneNumber cho doctor
+  patient?: { fullName?: string; phoneNumber?: string } | null; // ⭐ THÊM: phoneNumber cho patient
+  customer?: { fullName?: string; phoneNumber?: string } | null; // ⭐ THÊM: Thông tin customer khi đặt cho người khác
   timeslot?: { startTime?: string; endTime?: string } | null;
   noTreatment?: boolean; // ⭐ THÊM: Trường noTreatment
   bankInfo?: {
@@ -1519,8 +1521,8 @@ const AllAppointments = () => {
       if (res.success) {
         toast.success("Đã đánh dấu hoàn tiền");
         await refetchAllAppointments();
-        // cập nhật trong modal
-        setDetailData(prev => prev ? { ...prev, status: "Refunded" } : prev);
+        // Đóng modal sau khi thành công
+        closeDetailModal();
       } else {
         toast.error(res.message || "Cập nhật thất bại");
       }
@@ -1701,7 +1703,19 @@ const AllAppointments = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <p className="text-sm text-gray-500">Bệnh nhân</p>
-                          <p className="font-semibold text-lg">{detailData.patient?.fullName || "Chưa có"}</p>
+                          <p className="font-semibold text-lg">
+                            {detailData.appointmentFor === 'other' && detailData.customer
+                              ? detailData.customer.fullName
+                              : detailData.patient?.fullName || "Chưa có"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Số điện thoại</p>
+                          <p className="font-semibold text-lg">
+                            {detailData.appointmentFor === 'other' && detailData.customer
+                              ? (detailData.customer.phoneNumber || "Chưa có")
+                              : (detailData.patient?.phoneNumber || "Chưa có")}
+                          </p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Bác sĩ</p>
