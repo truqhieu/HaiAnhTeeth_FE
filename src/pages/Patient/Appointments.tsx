@@ -8,15 +8,23 @@ import {
   TableRow,
   TableCell,
   Spinner,
+  Pagination,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
 } from "@heroui/react";
-import { 
-  ClipboardDocumentListIcon, 
+import {
+  ClipboardDocumentListIcon,
   ChatBubbleLeftRightIcon,
   CheckCircleIcon,
   XCircleIcon,
   ArrowPathIcon,
   UserPlusIcon,
-  XMarkIcon
+  XMarkIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
@@ -24,6 +32,7 @@ import { appointmentApi } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
 import CancelAppointmentModal from "@/components/Patient/CancelAppointmentModal";
 import { DateRangePicker, RescheduleAppointmentModal, ChangeDoctorModal } from "@/components/Common";
+import { useBookingModal } from "@/contexts/BookingModalContext";
 
 interface Appointment {
   id: string;
@@ -54,6 +63,8 @@ interface Appointment {
   noTreatment?: boolean;
   createdAt?: string; // ⭐ THÊM: Thời gian tạo để sắp xếp
   updatedAt?: string; // ⭐ THÊM: Thời gian cập nhật để sắp xếp
+  hasPendingReschedule?: boolean; // ⭐ THÊM: Có yêu cầu đổi lịch pending không
+  hasPendingChangeDoctor?: boolean; // ⭐ THÊM: Có yêu cầu đổi bác sĩ pending không
 }
 
 const Appointments = () => {
@@ -61,6 +72,7 @@ const Appointments = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const hasRefetchedRef = useRef(false); // ⭐ Track xem đã refetch sau khi booking chưa
+  const { openBookingModal } = useBookingModal();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   // ⭐ Tránh nháy “Không có ca khám” khi vừa điều hướng: bật loading mặc định
   const [loading, setLoading] = useState(true);
@@ -77,6 +89,13 @@ const Appointments = () => {
   const [policies, setPolicies] = useState<any[]>([]);
   const [rescheduleFor, setRescheduleFor] = useState<Appointment | null>(null);
   const [changeDoctorFor, setChangeDoctorFor] = useState<Appointment | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+  const [confirmCancelState, setConfirmCancelState] = useState<{
+    open: boolean;
+    appointment: Appointment | null;
+  }>({ open: false, appointment: null });
+  const [isProcessingCancel, setIsProcessingCancel] = useState(false);
 
   // Fetch user appointments
   const refetchAppointments = async () => {
@@ -165,6 +184,8 @@ const Appointments = () => {
             noTreatment: !!apt.noTreatment,
             createdAt: apt.createdAt || apt.startTime || "", // ⭐ Thêm createdAt để sắp xếp (fallback về startTime)
             updatedAt: apt.updatedAt || apt.createdAt || apt.startTime || "", // ⭐ Thêm updatedAt để sắp xếp
+            hasPendingReschedule: apt.hasPendingReschedule || false, // ⭐ THÊM: Pending reschedule request
+            hasPendingChangeDoctor: apt.hasPendingChangeDoctor || false, // ⭐ THÊM: Pending change doctor request
           };
         },
       );
@@ -354,9 +375,11 @@ const Appointments = () => {
     });
   };
 
-  // Hàm xử lý hủy ca khám với logic khác nhau cho Examination/Consultation
-  const handleCancelAppointment = async (appointment: Appointment) => {
+  // Hủy ca khám sau khi đã xác nhận trong modal
+  const processCancelAppointment = async (appointment: Appointment) => {
     try {
+      setIsProcessingCancel(true);
+
       // Không bật loading toàn trang khi mở popup
       // Gọi API hủy ca khám
       const response = await appointmentApi.cancelAppointment(appointment.id);
@@ -374,7 +397,15 @@ const Appointments = () => {
     } catch (error: any) {
       console.error('Error canceling appointment:', error);
       toast.error(error.message || "Không thể hủy lịch hẹn");
+    } finally {
+      setIsProcessingCancel(false);
+      setConfirmCancelState({ open: false, appointment: null });
     }
+  };
+
+  // Mở modal confirm khi người dùng bấm Hủy
+  const handleCancelAppointment = (appointment: Appointment) => {
+    setConfirmCancelState({ open: true, appointment });
   };
 
   // Hàm xác nhận hủy lịch tư vấn (sau khi hiển thị popup)
@@ -596,6 +627,16 @@ const Appointments = () => {
     return timeB - timeA;
   });
 
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(sortedAppointments.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAppointments = sortedAppointments.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, dateFilter, searchTerm, dateRange.startDate, dateRange.endDate]);
+
   const columns = [
     { key: "date", label: "Ngày, tháng, năm" },
     { key: "time", label: "Giờ bắt đầu" },
@@ -629,18 +670,28 @@ const Appointments = () => {
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {/* Title Section */}
         <div className="mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800">Ca khám của tôi</h1>
+                <p className="text-gray-600 mt-1">
+                  Quản lý và theo dõi các cuộc hẹn khám bệnh của bạn
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800">Ca khám của tôi</h1>
-              <p className="text-gray-600 mt-1">
-                Quản lý và theo dõi các cuộc hẹn khám bệnh của bạn
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={openBookingModal}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-lg shadow-lg text-white bg-gradient-to-r from-[#39BDCC] to-[#2da5b3] hover:shadow-xl hover:brightness-110 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#39BDCC]"
+            >
+              <CalendarDaysIcon className="w-5 h-5 mr-2" />
+              Đặt lịch
+            </button>
           </div>
         </div>
         {rescheduleFor && (
@@ -789,7 +840,7 @@ const Appointments = () => {
                   <p className="mt-1 text-sm text-gray-500">Bạn chưa có cuộc hẹn nào trong danh mục này.</p>
                 </div>
               }
-              items={sortedAppointments}
+              items={paginatedAppointments}
             >
               {(appointment) => (
                   <TableRow key={appointment.id} className="hover:bg-gray-50 transition-colors">
@@ -944,11 +995,18 @@ const Appointments = () => {
                         {/* Đổi lịch hẹn - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
                         {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
                         <button
-                            className="p-2.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            title="Đổi lịch hẹn"
+                            className={`p-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 ${
+                              appointment.hasPendingReschedule
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-blue-100 text-blue-700 hover:bg-blue-200 focus:ring-blue-500"
+                            }`}
+                            title={appointment.hasPendingReschedule ? "Vui lòng chờ staff duyệt đơn đổi lịch hẹn của bạn" : "Đổi lịch hẹn"}
                           onClick={() => {
-                              setRescheduleFor(appointment);
+                              if (!appointment.hasPendingReschedule) {
+                                setRescheduleFor(appointment);
+                              }
                           }}
+                          disabled={appointment.hasPendingReschedule}
                         >
                             <ArrowPathIcon className="w-5 h-5" />
                         </button>
@@ -957,11 +1015,18 @@ const Appointments = () => {
                         {/* Đổi bác sĩ - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
                         {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
                           <button
-                            className="p-2.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
-                            title="Đổi bác sĩ"
+                            className={`p-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 ${
+                              appointment.hasPendingChangeDoctor
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-green-100 text-green-700 hover:bg-green-200 focus:ring-green-500"
+                            }`}
+                            title={appointment.hasPendingChangeDoctor ? "Vui lòng chờ staff duyệt đơn đổi bác sĩ của bạn" : "Đổi bác sĩ"}
                             onClick={() => {
-                              setChangeDoctorFor(appointment);
+                              if (!appointment.hasPendingChangeDoctor) {
+                                setChangeDoctorFor(appointment);
+                              }
                             }}
+                            disabled={appointment.hasPendingChangeDoctor}
                           >
                             <UserPlusIcon className="w-5 h-5" />
                           </button>
@@ -1032,21 +1097,30 @@ const Appointments = () => {
           </Table>
           </div>
 
-          {/* Results info */}
+          {/* Pagination and Results info */}
           {sortedAppointments.length > 0 && (
             <div className="px-6 py-6 border-t border-gray-200 bg-gray-50 rounded-b-xl w-full">
-              <div className="flex items-center justify-between">
-              <p className="text-base text-gray-600">
-                  Hiển thị <span className="font-medium">1</span> đến{" "}
-                  <span className="font-medium">{sortedAppointments.length}</span> trong{" "}
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <p className="text-sm text-gray-600">
+                  Hiển thị{" "}
+                  <span className="font-medium">
+                    {sortedAppointments.length === 0 ? 0 : startIndex + 1}
+                  </span>{" "}
+                  đến{" "}
+                  <span className="font-medium">
+                    {Math.min(startIndex + paginatedAppointments.length, sortedAppointments.length)}
+                  </span>{" "}
+                  trong{" "}
                   <span className="font-medium">{sortedAppointments.length}</span> kết quả
                 </p>
-                <div className="flex items-center space-x-2 text-base text-gray-500">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Tổng cộng {appointments.length} cuộc hẹn</span>
-                </div>
+                <Pagination
+                  page={currentPage}
+                  total={totalPages}
+                  onChange={setCurrentPage}
+                  showControls
+                  color="primary"
+                  size="md"
+                />
               </div>
             </div>
           )}
@@ -1065,6 +1139,43 @@ const Appointments = () => {
         policies={policies}
         onConfirmCancel={handleConfirmCancel}
       />
+
+      {/* Confirm hủy lịch (dùng modal của heroui) */}
+      <Modal
+        isOpen={confirmCancelState.open}
+        onClose={() => setConfirmCancelState({ open: false, appointment: null })}
+        hideCloseButton
+        placement="center"
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">Xác nhận hủy lịch hẹn</ModalHeader>
+          <ModalBody>
+            <p>
+              Bạn có chắc chắn muốn hủy lịch hẹn này? Hành động này không thể hoàn tác.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="light"
+              onPress={() => setConfirmCancelState({ open: false, appointment: null })}
+              disabled={isProcessingCancel}
+            >
+              Để sau
+            </Button>
+            <Button
+              color="danger"
+              onPress={() => {
+                if (confirmCancelState.appointment) {
+                  processCancelAppointment(confirmCancelState.appointment);
+                }
+              }}
+              isLoading={isProcessingCancel}
+            >
+              Hủy lịch
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

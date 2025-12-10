@@ -1,4 +1,4 @@
-import { apiCall, authenticatedApiCall, ApiResponse } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse } from "./client";
 
 // Blog Interface
 export interface Blog {

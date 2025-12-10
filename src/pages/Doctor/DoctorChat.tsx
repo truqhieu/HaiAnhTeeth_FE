@@ -19,9 +19,13 @@ import {
   ClockIcon,
   VideoCameraIcon,
   BuildingOfficeIcon,
+  SparklesIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { chatApi, type DoctorConversation } from "@/api/chat";
+import { doctorApi, type AppointmentDetail } from "@/api/doctor";
 import { useAuth } from "@/contexts/AuthContext";
 import { io, Socket } from "socket.io-client";
 
@@ -110,6 +114,7 @@ const DoctorChat = () => {
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [appointmentInfo, setAppointmentInfo] = useState<any>(null);
+  const [showAppointmentInfo, setShowAppointmentInfo] = useState(true);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -178,6 +183,7 @@ const DoctorChat = () => {
 
   useEffect(() => {
     if (selectedPatient) {
+      setShowAppointmentInfo(true); // Reset về mở khi chọn patient mới
       fetchMessages(selectedPatient.appointmentId);
     }
   }, [selectedPatient]);
@@ -277,9 +283,30 @@ const DoctorChat = () => {
             setMedicalRecord(null);
           }
 
-          // Lấy appointment info
+          // Lấy appointment info từ response
           const appointmentData = responseData.appointment || responseData.data?.appointment;
-          if (appointmentData) {
+          
+          // Fetch thêm thông tin chi tiết appointment nếu cần
+          if (appointmentId) {
+            try {
+              const appointmentDetailRes = await doctorApi.getAppointmentDetail(appointmentId);
+              if (appointmentDetailRes.success && appointmentDetailRes.data) {
+                setAppointmentInfo(appointmentDetailRes.data);
+              } else if (appointmentData) {
+                // Fallback về data từ chat API nếu không lấy được detail
+                setAppointmentInfo(appointmentData);
+              } else {
+                setAppointmentInfo(null);
+              }
+            } catch (err) {
+              console.warn("Could not fetch appointment detail, using basic info:", err);
+              if (appointmentData) {
+                setAppointmentInfo(appointmentData);
+              } else {
+                setAppointmentInfo(null);
+              }
+            }
+          } else if (appointmentData) {
             setAppointmentInfo(appointmentData);
           } else {
             setAppointmentInfo(null);
@@ -306,6 +333,8 @@ const DoctorChat = () => {
     try {
       setSendingMessage(true);
 
+      // Chat: chỉ trim đầu/cuối để giữ nguyên formatting (line breaks, multiple spaces)
+      // Không normalize như các form khác vì chat cần preserve user formatting
       const response = await chatApi.sendMessage({
         receiverId: selectedPatient._id,
         appointmentId: selectedPatient.appointmentId,
@@ -313,9 +342,15 @@ const DoctorChat = () => {
       });
 
       if (response.success && response.data) {
-        setMessages([...messages, response.data]);
+        // Transform Message to ChatMessage format
+        const chatMessage: ChatMessage = {
+          ...response.data,
+          appointmentId: typeof response.data.appointmentId === 'string' 
+            ? { _id: response.data.appointmentId, appointmentDate: '', status: '' }
+            : response.data.appointmentId as ChatMessage['appointmentId']
+        };
+        setMessages([...messages, chatMessage]);
         setNewMessage("");
-        toast.success("Đã gửi tin nhắn");
         scrollToBottom();
       } else {
         toast.error(response.message || "Không thể gửi tin nhắn");
@@ -521,34 +556,83 @@ const DoctorChat = () => {
                       {/* Appointment Info Card */}
                       {appointmentInfo && (
                         <Card className="mb-4 border border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 shadow-sm">
-                          <CardBody className="p-4">
-                            <div className="flex items-center gap-2 mb-3">
-                              <ClipboardDocumentListIcon className="w-5 h-5 text-[#39BDCC]" />
-                              <h3 className="font-semibold text-gray-800">Thông tin ca khám</h3>
+                          <CardBody className="p-0">
+                            <div 
+                              className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-100/50 transition-colors"
+                              onClick={() => setShowAppointmentInfo(!showAppointmentInfo)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <ClipboardDocumentListIcon className="w-5 h-5 text-[#39BDCC]" />
+                                <h3 className="font-semibold text-gray-800">Thông tin ca khám</h3>
+                              </div>
+                              <button
+                                className="p-1 hover:bg-blue-200/50 rounded-full transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowAppointmentInfo(!showAppointmentInfo);
+                                }}
+                              >
+                                {showAppointmentInfo ? (
+                                  <ChevronUpIcon className="w-5 h-5 text-[#39BDCC]" />
+                                ) : (
+                                  <ChevronDownIcon className="w-5 h-5 text-[#39BDCC]" />
+                                )}
+                              </button>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                              {appointmentInfo.appointmentDate && (
-                                <div className="flex items-start gap-2">
-                                  <CalendarIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                                  <span className="text-gray-900">
-                                    {new Date(appointmentInfo.appointmentDate).toLocaleDateString("vi-VN", {
-                                      weekday: "long",
-                                      year: "numeric",
-                                      month: "long",
-                                      day: "numeric",
-                                    })}
-                                  </span>
+                            {showAppointmentInfo && (
+                              <div className="px-4 pb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                  {appointmentInfo.serviceName && (
+                                    <div className="flex items-start gap-2">
+                                      <SparklesIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                                      <span className="text-gray-900">{appointmentInfo.serviceName}</span>
+                                    </div>
+                                  )}
+                                  {(appointmentInfo.timeslotId?.startTime || appointmentInfo.appointmentDate) && (
+                                    <div className="flex items-start gap-2">
+                                      <CalendarIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                                      <span className="text-gray-900">
+                                        {new Date(appointmentInfo.timeslotId?.startTime || appointmentInfo.appointmentDate).toLocaleDateString("vi-VN", {
+                                          weekday: "long",
+                                          year: "numeric",
+                                          month: "long",
+                                          day: "numeric",
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {((appointmentInfo.timeslotId?.startTime && appointmentInfo.timeslotId?.endTime) || 
+                                    (appointmentInfo.startTime && appointmentInfo.endTime)) && (
+                                    <div className="flex items-start gap-2">
+                                      <ClockIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                                      <span className="text-gray-900">
+                                        {new Date(appointmentInfo.timeslotId?.startTime || appointmentInfo.startTime).toLocaleTimeString("vi-VN", {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}{" "}
+                                        -{" "}
+                                        {new Date(appointmentInfo.timeslotId?.endTime || appointmentInfo.endTime).toLocaleTimeString("vi-VN", {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {appointmentInfo.mode && (
+                                    <div className="flex items-start gap-2">
+                                      {appointmentInfo.mode === "Online" ? (
+                                        <VideoCameraIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                                      ) : (
+                                        <BuildingOfficeIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                                      )}
+                                      <span className="text-gray-900">
+                                        {appointmentInfo.mode === "Online" ? "Trực tuyến" : "Tại phòng khám"}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                              {medicalRecord?.appointment?.date && (
-                                <div className="flex items-start gap-2">
-                                  <ClockIcon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                                  <span className="text-gray-900">
-                                    {new Date(medicalRecord.appointment.date).toLocaleDateString("vi-VN")}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
+                              </div>
+                            )}
                           </CardBody>
                         </Card>
                       )}

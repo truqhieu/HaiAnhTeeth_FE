@@ -87,15 +87,29 @@ const LeaveRequestPage = () => {
       return;
     }
 
+    // Get today's date in Vietnam timezone for comparison
+    const getTodayInVietnamDate = () => {
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      const todayStr = formatter.format(now);
+      const [year, month, day] = todayStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    };
+
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const now = new Date();
+    const todayVN = getTodayInVietnamDate();
 
-    now.setHours(0, 0, 0, 0);
     start.setHours(0, 0, 0, 0);
     end.setHours(0, 0, 0, 0);
+    todayVN.setHours(0, 0, 0, 0);
 
-    if (start < now) {
+    if (start < todayVN) {
       toast.error("Ngày bắt đầu phải từ hôm nay trở đi");
 
       return;
@@ -271,8 +285,19 @@ const formatDateRange = (startDate?: string, endDate?: string): string => {
     { key: "approver", label: "Người duyệt" },
   ];
 
-  // Get today's date in YYYY-MM-DD format for min attribute
-  const today = new Date().toISOString().split("T")[0];
+  // Get today's date in YYYY-MM-DD format for min attribute (using Vietnam timezone)
+  const getTodayInVietnam = () => {
+    const now = new Date();
+    // Use Intl.DateTimeFormat to get today's date in Vietnam timezone
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    return formatter.format(now);
+  };
+  const today = getTodayInVietnam();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">

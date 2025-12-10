@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse } from "./index";
+import { authenticatedApiCall, ApiResponse } from "./client";
 
 export interface Doctor {
   _id: string;

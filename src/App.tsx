@@ -171,7 +171,6 @@ function App() {
                     element={<NurseMedicalRecord />}
                     path="medical-record/:appointmentId"
                   />
-                  <Route path="medical-record/:appointmentId" element={<NurseMedicalRecord />} />
                   <Route element={<NotificationsPage />} path="notifications" />
                   <Route element={<NurseProfileSettings />} path="profile" />
                 </Routes>

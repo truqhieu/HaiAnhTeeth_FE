@@ -121,12 +121,17 @@ const ReassignDoctorModal: React.FC<ReassignDoctorModalProps> = ({
       }
 
       try {
+        // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+        const normalizeText = (text: string): string => {
+          return text.trim().replace(/\s+/g, ' ');
+        };
+
         setIsSubmitting(true);
 
         const response = await appointmentApi.reviewAppointment(
           appointmentId,
           "cancel",
-          reason.trim()
+          normalizeText(reason)
         );
 
         if (response.success) {

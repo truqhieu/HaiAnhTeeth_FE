@@ -5,7 +5,7 @@ import { doctorApi, type AppointmentDetail } from "@/api/doctor";
 import { getDoctorScheduleRangeForFollowUp, validateAppointmentTime } from "@/api/availableSlot";
 import { appointmentApi } from "@/api/appointment";
 import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
-import { UserIcon, BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon, PlusIcon, TrashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, XMarkIcon, ChevronDownIcon, PlusIcon, TrashIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { registerLocale } from "react-datepicker";
@@ -86,6 +86,19 @@ const DoctorMedicalRecord: React.FC = () => {
   const isFinalized = permissions?.recordStatus === "Finalized";
   const lockReason = !canEdit ? permissions?.doctor?.reason || null : null;
   const canApprove = canEdit && !isFinalized;
+
+  // ⭐ Lọc đơn thuốc rỗng: khi đã duyệt (Finalized) thì ẩn đơn rỗng, khi chưa duyệt (Draft) thì hiển thị tất cả
+  const displayedPrescriptions = useMemo(() => {
+    if (isFinalized) {
+      // Khi đã duyệt: chỉ hiển thị đơn thuốc có ít nhất một trường không rỗng
+      return prescriptions.filter(
+        (p) => p.medicine.trim() !== "" || p.dosage.trim() !== "" || p.duration.trim() !== ""
+      );
+    } else {
+      // Khi chưa duyệt: hiển thị tất cả đơn thuốc (kể cả rỗng)
+      return prescriptions;
+    }
+  }, [prescriptions, isFinalized]);
 
   // Reservation helper functions
   const clearReservationTimer = useCallback(() => {
@@ -487,17 +500,15 @@ const DoctorMedicalRecord: React.FC = () => {
 
       if (res.data) {
         console.log("🔍 [loadAvailableSlots] Data keys:", Object.keys(res.data));
-        console.log("🔍 [loadAvailableSlots] scheduleRanges:", res.data.scheduleRanges);
-        console.log("🔍 [loadAvailableSlots] scheduleRanges length:", res.data.scheduleRanges?.length);
+        console.log("🔍 [loadAvailableSlots] startTimes:", res.data.startTimes);
+        console.log("🔍 [loadAvailableSlots] startTimes length:", res.data.startTimes?.length);
 
-        if (res.data.scheduleRanges && Array.isArray(res.data.scheduleRanges)) {
-          console.log("🔍 [loadAvailableSlots] First range:", res.data.scheduleRanges[0]);
-          res.data.scheduleRanges.forEach((range, idx) => {
-            console.log(`   Range ${idx}:`, {
-              shiftDisplay: range.shiftDisplay,
-              displayRange: range.displayRange,
-              startTime: range.startTime,
-              endTime: range.endTime,
+        if (res.data.startTimes && Array.isArray(res.data.startTimes)) {
+          console.log("🔍 [loadAvailableSlots] First time:", res.data.startTimes[0]);
+          res.data.startTimes.forEach((timeSlot: any, idx: number) => {
+            console.log(`   TimeSlot ${idx}:`, {
+              time: timeSlot.time,
+              available: timeSlot.available,
             });
           });
         }
@@ -509,7 +520,7 @@ const DoctorMedicalRecord: React.FC = () => {
         const data = res.data as any;
 
         // ⭐ THÊM: Kiểm tra bác sĩ đang nghỉ phép
-        if ((!data.scheduleRanges || data.scheduleRanges.length === 0) &&
+        if ((!data.startTimes || data.startTimes.length === 0) &&
           data.message &&
           data.message.includes("nghỉ phép")) {
           setAvailableSlots([]);
@@ -1440,6 +1451,27 @@ const DoctorMedicalRecord: React.FC = () => {
       const utcHours = vnHours - 7;
       followUpDateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
 
+      // ⭐ Client-side validation for time availability before saving
+      // Check if time is in available ranges
+      const rangeResult = isTimeInAvailableRanges(followUpTimeInput);
+      if (!rangeResult.isValid) {
+        setTimeInputError("Khung giờ này không khả dụng. Vui lòng chọn thời gian trong khoảng thời gian khả dụng.");
+        return;
+      }
+
+      // Check duration
+      const validatedHours = rangeResult.overrideHours ?? vnHours;
+      const validatedMinutes = rangeResult.overrideMinutes ?? vnMinutes;
+      const startTotalMin = validatedHours * 60 + validatedMinutes;
+      const endLimitMinutes = rangeResult.rangeEndVNMinutes ?? null;
+      if (endLimitMinutes != null) {
+        const endTotalMin = startTotalMin + serviceDuration;
+        if (endTotalMin > endLimitMinutes) {
+          setTimeInputError(`Thời gian bạn chọn không đáp ứng đủ thời gian cho dịch vụ này (${serviceDuration} phút). Vui lòng chọn giờ khác.`);
+          return;
+        }
+      }
+
       console.log('🔍 [onSave] followUpDateObj after setUTCHours:', {
         iso: followUpDateObj.toISOString(),
         utc: {
@@ -1458,10 +1490,10 @@ const DoctorMedicalRecord: React.FC = () => {
         }
       });
 
-      if (Number.isNaN(followUpDateObj.getTime())) {
-        toast.error("Thời gian tái khám không hợp lệ");
-        return;
-      }
+      // if (Number.isNaN(followUpDateObj.getTime())) {
+      //   toast.error("Thời gian tái khám không hợp lệ");
+      //   return;
+      // }
 
       // Validate: Ngày tái khám phải lớn hơn ngày của ca khám hiện tại
       if (currentAppointment?.startTime) {
@@ -1508,15 +1540,27 @@ const DoctorMedicalRecord: React.FC = () => {
 
     setSaving(true);
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
+      // Normalize prescriptions array
+      const normalizedPrescriptions = prescriptions.map((p) => ({
+        medicine: normalizeText(p.medicine),
+        dosage: normalizeText(p.dosage),
+        duration: normalizeText(p.duration),
+      }));
+
       const payload: any = {
-        diagnosis,
-        conclusion,
-        prescription: prescriptions, // ⭐ Gửi prescriptions array
-        nurseNote,
+        diagnosis: normalizeText(diagnosis),
+        conclusion: normalizeText(conclusion),
+        prescription: normalizedPrescriptions, // ⭐ Gửi prescriptions array đã normalize
+        nurseNote: normalizeText(nurseNote),
         approve: approve,
         followUpRequired: followUpEnabled,
         followUpDate: followUpEnabled ? followUpDateISO : null,
-        followUpNote: followUpEnabled ? followUpNote : '',
+        followUpNote: followUpEnabled ? normalizeText(followUpNote) : '',
       };
 
       const res = await medicalRecordApi.updateMedicalRecordForDoctor(appointmentId, payload);
@@ -1720,8 +1764,8 @@ const DoctorMedicalRecord: React.FC = () => {
         const errorMsg = res.message || "Lưu thất bại";
         if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian') || errorMsg.includes('Bệnh nhân đã có lịch'))) {
           const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
-          // ⭐ Chỉ hiển thị toast, không set inline error
-          toast.error(mappedErrorMsg);
+          // ⭐ Set inline error thay vì toast
+          setTimeInputError(mappedErrorMsg);
 
           // ⭐ QUAN TRỌNG: Gọi hàm này để hủy trạng thái "Đang giữ chỗ" trên UI
           // Vì lịch này đã bị lỗi trùng, không thể giữ chỗ được nữa.
@@ -1737,8 +1781,8 @@ const DoctorMedicalRecord: React.FC = () => {
       const errorMsg = e.message || "Lưu thất bại";
       if (followUpEnabled && (errorMsg.includes('trùng') || errorMsg.includes('Khung giờ') || errorMsg.includes('thời gian') || errorMsg.includes('Bệnh nhân đã có lịch'))) {
         const mappedErrorMsg = mapErrorMessageForDoctor(errorMsg);
-        // ⭐ Chỉ hiển thị toast, không set inline error
-        toast.error(mappedErrorMsg);
+        // ⭐ Set inline error thay vì toast
+        setTimeInputError(mappedErrorMsg);
 
         // ⭐ QUAN TRỌNG: Gọi hàm này để hủy trạng thái "Đang giữ chỗ" trên UI
         // Vì lịch này đã bị lỗi trùng, không thể giữ chỗ được nữa.
@@ -1802,9 +1846,6 @@ const DoctorMedicalRecord: React.FC = () => {
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
         <CardHeader className="pb-0 pt-4 px-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
-              <UserIcon className="w-5 h-5 text-white" />
-            </div>
             <h3 className="text-lg font-bold text-gray-900">Thông tin bệnh nhân</h3>
           </div>
         </CardHeader>
@@ -2051,12 +2092,18 @@ const DoctorMedicalRecord: React.FC = () => {
         <CardBody className="px-6 pb-4">
           <div className="space-y-4">
             {/* ⭐ Hiển thị danh sách đơn thuốc */}
-            {prescriptions.length === 0 && !canEdit ? (
+            {displayedPrescriptions.length === 0 && !canEdit ? (
               <div className="text-center text-gray-500 py-4">
                 Chưa có đơn thuốc
               </div>
             ) : (
-              prescriptions.map((prescription, index) => (
+              displayedPrescriptions.map((prescription, displayedIndex) => {
+                // ⭐ Tìm index trong mảng prescriptions gốc để cập nhật đúng
+                const originalIndex = prescriptions.findIndex(
+                  (p) => p === prescription
+                );
+                const index = originalIndex >= 0 ? originalIndex : displayedIndex;
+                return (
                 <div key={index} className="flex items-start gap-3 p-4 bg-white rounded-lg border border-gray-200">
                   {/* ⭐ 3 trường hiển thị theo hàng ngang */}
                   <div className="flex-1 grid grid-cols-3 gap-3">
@@ -2134,7 +2181,7 @@ const DoctorMedicalRecord: React.FC = () => {
                   </div>
 
                   {/* ⭐ Nút xóa đơn thuốc (chỉ hiển thị khi có thể edit và có nhiều hơn 1 đơn) */}
-                  {canEdit && prescriptions.length > 1 && (
+                  {canEdit && displayedPrescriptions.length > 1 && (
                     <Button
                       isIconOnly
                       color="danger"
@@ -2150,7 +2197,8 @@ const DoctorMedicalRecord: React.FC = () => {
                     </Button>
                   )}
                 </div>
-              ))
+                );
+              })
             )}
 
             {/* ⭐ Nút thêm đơn thuốc mới - Icon dấu cộng ở góc phải dưới */}
@@ -2637,6 +2685,12 @@ const DoctorMedicalRecord: React.FC = () => {
                               />
                             </div>
 
+                            {timeInputError && (
+                              <p className="mt-1 text-xs text-red-500 font-medium">
+                                {timeInputError}
+                              </p>
+                            )}
+
                             {/* ⭐ Chỉ hiển thị message giữ chỗ sau khi blur và reserve thành công */}
                             {activeReservation && reservationCountdown > 0 && !timeInputError && hasReservedAfterBlur && (
                               <p className="mt-1 text-xs text-[#39BDCC]">
@@ -2828,5 +2882,3 @@ const DoctorMedicalRecord: React.FC = () => {
 };
 
 export default DoctorMedicalRecord;
-
-

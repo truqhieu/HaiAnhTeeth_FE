@@ -1,4 +1,4 @@
-import { apiCall, authenticatedApiCall, ApiResponse } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse } from "./client";
 
 export interface Policy {
   _id: string;
@@ -73,5 +73,12 @@ export const policyApi = {
     return await authenticatedApiCall(`/policies/${id}`, {
       method: "DELETE",
     });
+  },
+
+  /**
+   * Lấy danh sách tiêu đề chính sách
+   */
+  listTitle: async (): Promise<PolicyResponse> => {
+    return await authenticatedApiCall("/policies/title");
   },
 };

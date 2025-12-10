@@ -64,6 +64,11 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
   const isNameInvalid = showValidation && !formData.name.trim();
   const isDescriptionInvalid = showValidation && !formData.description.trim();
 
+  // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+  const normalizeText = (text: string): string => {
+    return text.trim().replace(/\s+/g, ' ');
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -89,9 +94,10 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
       }
 
       // Prepare data for API call
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
       const updateData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
+        name: normalizeText(formData.name),
+        description: normalizeText(formData.description),
         status:
           formData.status === "active"
             ? ("Active" as const)
@@ -262,19 +268,16 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
                   handleInputChange("assignedDoctorId", selectedKey || "");
                 }}
               >
-                <SelectItem key="">
-                  <span className="text-gray-500 italic">Không có bác sĩ</span>
-                </SelectItem>
-                {doctors.map((doctor) => (
-                  <SelectItem key={doctor._id} textValue={doctor.fullName}>
-                    <div>
-                      <div className="font-medium">{doctor.fullName}</div>
-                      <div className="text-xs text-gray-500">
-                        {doctor.email}
-                      </div>
-                    </div>
+                <>
+                  <SelectItem key="" textValue="Không có bác sĩ">
+                    Không có bác sĩ
                   </SelectItem>
-                ))}
+                  {doctors.map((doctor) => (
+                    <SelectItem key={doctor._id} textValue={doctor.fullName}>
+                      {doctor.fullName}
+                    </SelectItem>
+                  ))}
+                </>
               </Select>
 
               <Select

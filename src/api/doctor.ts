@@ -1,4 +1,4 @@
-import { apiCall, authenticatedApiCall, ApiResponse, API_BASE_URL } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse, API_BASE_URL } from "./client";
 
 export interface DoctorAppointment {
   appointmentId: string;

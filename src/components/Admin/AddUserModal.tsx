@@ -233,6 +233,11 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
     }));
   };
 
+  // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+  const normalizeText = (text: string): string => {
+    return text.trim().replace(/\s+/g, ' ');
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -272,15 +277,16 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
       const formattedDob = formatDateToDDMMYYYY(formData.dob);
 
       // Call API to create new user
+      // Normalize text fields: name, address, specialization
       const response = await adminApi.createAccount({
-        fullName: formData.name,
-        email: formData.email,
+        fullName: normalizeText(formData.name),
+        email: formData.email.trim(),
         passwordHash: formData.password,
         role: formData.role,
         phoneNumber: formData.phone,
-        address: formData.address,
+        address: normalizeText(formData.address),
         dob: formattedDob,
-        specialization: formData.specialization || undefined,
+        specialization: formData.specialization ? normalizeText(formData.specialization) : undefined,
         yearsOfExperience: formData.yearsOfExperience ? parseInt(formData.yearsOfExperience) : undefined,
       });
 
@@ -502,6 +508,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({
                   handleInputChange("dob", value);
                   handleBlur("dob");
                 }}
+                size="md"
               />
 
               <Select

@@ -793,7 +793,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         formData.doctorUserId,
         formData.serviceId,
         formData.date,
-        startTimeISO
+        startTimeISO,
+        formData.appointmentFor,
+        formData.fullName,
+        formData.email
       );
 
       if (!validateRes.success) {
@@ -1127,10 +1130,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
     setErrorMessage(null);
     setTimeInputError(null);
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       const payload = {
-        fullName: formData.fullName,
-        email: formData.email,
-        phoneNumber: formData.phoneNumber,
+        fullName: formData.appointmentFor === "other" ? normalizeText(formData.fullName) : formData.fullName,
+        email: formData.email.trim(),
+        phoneNumber: formData.phoneNumber.trim(),
         appointmentFor: formData.appointmentFor,
         serviceId: formData.serviceId,
         doctorUserId: formData.doctorUserId,
@@ -1139,7 +1147,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
           startTime: formData.startTime.toISOString(),
           endTime: formData.endTime.toISOString(),
         },
-        notes: formData.notes,
+        notes: normalizeText(formData.notes),
         reservedTimeslotId: activeReservation?.timeslotId || null,
       };
 

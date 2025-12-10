@@ -297,7 +297,7 @@ const ScheduleManagement = () => {
 
       {/* Add Schedule Modal */}
       <AddScheduleModal
-        doctors={doctors}
+        doctors={doctors.map(d => ({ ...d, role: 'doctor' }))}
         isOpen={isAddModalOpen}
         rooms={rooms}
         onClose={() => setIsAddModalOpen(false)}
@@ -310,8 +310,28 @@ const ScheduleManagement = () => {
       {/* Edit Schedule Modal */}
       {selectedScheduleForEdit && (
         <EditScheduleModal
-          schedule={selectedScheduleForEdit}
-          doctors={doctors}
+          schedule={{
+            id: selectedScheduleForEdit._id,
+            date: selectedScheduleForEdit.date,
+            shift: selectedScheduleForEdit.shift,
+            shiftName: selectedScheduleForEdit.shift === 'Morning' ? 'Ca sáng' : 'Ca chiều',
+            doctorName: typeof selectedScheduleForEdit.doctorUserId === 'object' && selectedScheduleForEdit.doctorUserId?.fullName 
+              ? selectedScheduleForEdit.doctorUserId.fullName 
+              : '',
+            doctorId: typeof selectedScheduleForEdit.doctorUserId === 'object' && selectedScheduleForEdit.doctorUserId?._id 
+              ? selectedScheduleForEdit.doctorUserId._id 
+              : String(selectedScheduleForEdit.doctorUserId),
+            roomName: typeof selectedScheduleForEdit.roomId === 'object' && selectedScheduleForEdit.roomId?.name 
+              ? selectedScheduleForEdit.roomId.name 
+              : '',
+            roomId: typeof selectedScheduleForEdit.roomId === 'object' && selectedScheduleForEdit.roomId?._id 
+              ? selectedScheduleForEdit.roomId._id 
+              : String(selectedScheduleForEdit.roomId || ''),
+            maxSlots: selectedScheduleForEdit.maxSlots,
+            status: selectedScheduleForEdit.status.toLowerCase() as "available" | "unavailable" | "booked" | "cancelled",
+            workingHours: selectedScheduleForEdit.workingHours,
+          }}
+          doctors={doctors.map(d => ({ ...d, role: 'doctor' }))}
           isOpen={isEditModalOpen}
           rooms={rooms}
           onClose={() => {

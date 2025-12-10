@@ -127,11 +127,16 @@ const Complaints = () => {
     }
 
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       setSubmitting(true);
 
       const response = await complaintApi.createComplaint({
-        title: title.trim(),
-        description: content.trim(),
+        title: normalizeText(title),
+        description: normalizeText(content),
         appointmentId: selectedAppointment,
       });
 

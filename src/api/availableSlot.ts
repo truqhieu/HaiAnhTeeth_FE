@@ -485,6 +485,9 @@ export const validateAppointmentTime = async (
   serviceId: string,
   date: string,
   startTime: string,
+  appointmentFor: 'self' | 'other' = 'self',
+  customerFullName?: string,
+  customerEmail?: string,
 ): Promise<CheckStartTimeResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -492,6 +495,14 @@ export const validateAppointmentTime = async (
     queryParams.append("serviceId", serviceId);
     queryParams.append("date", date);
     queryParams.append("startTime", startTime);
+    queryParams.append("appointmentFor", appointmentFor);
+    
+    if (customerFullName) {
+      queryParams.append("customerFullName", customerFullName);
+    }
+    if (customerEmail) {
+      queryParams.append("customerEmail", customerEmail);
+    }
 
     const query = queryParams.toString();
     const endpoint = `/available-slots/validate-appointment-time?${query}`;

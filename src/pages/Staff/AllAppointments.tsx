@@ -122,7 +122,7 @@ const AllAppointments = () => {
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(5);
 
   // Danh sách unique doctors
   const [doctors, setDoctors] = useState<string[]>([]);
@@ -1670,6 +1670,9 @@ const AllAppointments = () => {
                           <Chip color={getStatusColor(detailData.status)} variant="flat" className="mt-1">
                             {getStatusText(detailData.status)}
                           </Chip>
+                          {detailData.status === "Completed" && detailData.noTreatment && (
+                            <p className="text-xs text-gray-500 mt-1 font-medium">Không cần khám</p>
+                          )}
                         </div>
                       </div>
 
@@ -1915,6 +1918,11 @@ const AllAppointments = () => {
                       >
                         {getStatusText(appointment.status)}
                       </Chip>
+                      {appointment.status === "Completed" && appointment.noTreatment && (
+                        <p className="text-xs text-gray-500 mt-1 font-medium">
+                          Không cần khám
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell>
                       {appointment.checkedInAt ? (
@@ -1928,6 +1936,61 @@ const AllAppointments = () => {
                     <TableCell>
                       <div className="flex gap-2 flex-wrap">
                         {(() => {
+                          // ⭐ Ca khám Online: Staff có thể xác nhận hoặc từ chối khi ở trạng thái Pending
+                          if (appointment.mode === "Online") {
+                            // Hiển thị nút xác nhận/từ chối cho ca khám Pending
+                            if (appointment.status === "Pending") {
+                              return (
+                                <>
+                                  <Tooltip content="Xác nhận">
+                                    <Button
+                                      isIconOnly
+                                      size="md"
+                                      variant="light"
+                                      className="text-green-600 hover:bg-green-50 transition-colors"
+                                      onPress={() => handleApprove(appointment.id)}
+                                      isDisabled={processingId === appointment.id}
+                                      isLoading={processingId === appointment.id}
+                                    >
+                                      <CheckCircleIcon className="w-5 h-5" />
+                                    </Button>
+                                  </Tooltip>
+                                  <Tooltip content="Từ chối">
+                                    <Button
+                                      isIconOnly
+                                      size="md"
+                                      variant="light"
+                                      className="text-red-600 hover:bg-red-50 transition-colors"
+                                      onPress={() => openCancelModal(appointment.id)}
+                                      isDisabled={processingId === appointment.id}
+                                    >
+                                      <XCircleIcon className="w-5 h-5" />
+                                    </Button>
+                                  </Tooltip>
+                                </>
+                              );
+                            }
+                            // Chỉ cho phép xem chi tiết nếu đã hủy hoặc hoàn tiền
+                            if (appointment.status === "Cancelled" || appointment.status === "Refunded") {
+                              return (
+                                <Tooltip content="Xem chi tiết">
+                                  <Button
+                                    isIconOnly
+                                    size="md"
+                                    variant="light"
+                                    className="text-blue-600 hover:bg-blue-50 transition-colors"
+                                    onPress={() => openDetailModal(appointment.id)}
+                                  >
+                                    <EyeIcon className="w-5 h-5" />
+                                  </Button>
+                                </Tooltip>
+                              );
+                            }
+                            // Không hiển thị nút nào khác cho ca khám Online ở các trạng thái khác
+                            return null;
+                          }
+
+                          // ⭐ Logic cho ca khám Offline (giữ nguyên)
                           const isOnLeave = isDoctorOnLeave(appointment);
                           if (isOnLeave) {
                             return shouldShowReassignButton(appointment, isOnLeave) ? (
@@ -1979,8 +2042,8 @@ const AllAppointments = () => {
                               )}
                               {appointment.status === "Approved" && (
                                 <>
-                                  {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám VÀ không phải Online */}
-                                  {isAppointmentDateReached(appointment.startTime) && appointment.mode !== "Online" ? (
+                                  {/* ⭐ Chỉ hiển thị nút check-in khi đã đến ngày của ca khám */}
+                                  {isAppointmentDateReached(appointment.startTime) ? (
                                     <Tooltip content="Có mặt">
                                       <Button
                                         isIconOnly
@@ -1995,7 +2058,6 @@ const AllAppointments = () => {
                                       </Button>
                                     </Tooltip>
                                   ) : null}
-                                  {/* ⭐ Không hiển thị nút No Show khi chỉ approved - chỉ hiển thị khi đã check-in */}
                                 </>
                               )}
                               {appointment.status === "CheckedIn" && (
