@@ -74,4 +74,11 @@ export const policyApi = {
       method: "DELETE",
     });
   },
+
+  /**
+   * Lấy danh sách tiêu đề chính sách
+   */
+  listTitle: async (): Promise<PolicyResponse> => {
+    return await authenticatedApiCall("/policies/title");
+  },
 };
