@@ -1928,9 +1928,40 @@ const AllAppointments = () => {
                     <TableCell>
                       <div className="flex gap-2 flex-wrap">
                         {(() => {
-                          // ⭐ QUAN TRỌNG: Ca khám Online do bác sĩ quản lý, staff không có quyền thao tác
-                          // Chỉ hiển thị nút hành động cho ca khám Offline
+                          // ⭐ Ca khám Online: Staff có thể xác nhận hoặc từ chối khi ở trạng thái Pending
                           if (appointment.mode === "Online") {
+                            // Hiển thị nút xác nhận/từ chối cho ca khám Pending
+                            if (appointment.status === "Pending") {
+                              return (
+                                <>
+                                  <Tooltip content="Xác nhận">
+                                    <Button
+                                      isIconOnly
+                                      size="md"
+                                      variant="light"
+                                      className="text-green-600 hover:bg-green-50 transition-colors"
+                                      onPress={() => handleApprove(appointment.id)}
+                                      isDisabled={processingId === appointment.id}
+                                      isLoading={processingId === appointment.id}
+                                    >
+                                      <CheckCircleIcon className="w-5 h-5" />
+                                    </Button>
+                                  </Tooltip>
+                                  <Tooltip content="Từ chối">
+                                    <Button
+                                      isIconOnly
+                                      size="md"
+                                      variant="light"
+                                      className="text-red-600 hover:bg-red-50 transition-colors"
+                                      onPress={() => openCancelModal(appointment.id)}
+                                      isDisabled={processingId === appointment.id}
+                                    >
+                                      <XCircleIcon className="w-5 h-5" />
+                                    </Button>
+                                  </Tooltip>
+                                </>
+                              );
+                            }
                             // Chỉ cho phép xem chi tiết nếu đã hủy hoặc hoàn tiền
                             if (appointment.status === "Cancelled" || appointment.status === "Refunded") {
                               return (
@@ -1947,7 +1978,7 @@ const AllAppointments = () => {
                                 </Tooltip>
                               );
                             }
-                            // Không hiển thị nút nào khác cho ca khám Online
+                            // Không hiển thị nút nào khác cho ca khám Online ở các trạng thái khác
                             return null;
                           }
 
