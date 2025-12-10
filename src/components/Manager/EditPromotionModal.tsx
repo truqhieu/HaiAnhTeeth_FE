@@ -160,15 +160,21 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Convert date to ISO format and discountType
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
+      // Convert date to YYYY-MM-DD format (backend expects this format)
+      // VietnameseDateInput already returns YYYY-MM-DD format, so we can use it directly
       const updateData: any = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
+        title: normalizeText(formData.title),
+        description: normalizeText(formData.description),
         discountType: formData.discountType === "Fixed" ? "Fix" : "Percent",
         discountValue: formData.discountValue,
         applyToAll: formData.applyToAll,
-        startDate: new Date(formData.startDate).toISOString(),
-        endDate: new Date(formData.endDate).toISOString(),
+        startDate: formData.startDate, // Already in YYYY-MM-DD format from VietnameseDateInput
+        endDate: formData.endDate,     // Already in YYYY-MM-DD format from VietnameseDateInput
       };
 
       // Only include serviceIds if not applying to all

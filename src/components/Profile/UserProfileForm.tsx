@@ -405,17 +405,22 @@ const UserProfileForm = ({
 
     setIsLoading(true);
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       const formData = new FormData();
       
       // Only append fields that have values (allow partial updates)
       if (fullName.trim()) {
-        formData.append("fullName", fullName.trim());
+        formData.append("fullName", normalizeText(fullName));
       }
       if (phone.trim()) {
         formData.append("phoneNumber", phone.trim());
       }
       if (address.trim()) {
-        formData.append("address", address.trim());
+        formData.append("address", normalizeText(address));
       }
       if (gender) {
         formData.append("gender", gender);
@@ -428,7 +433,7 @@ const UserProfileForm = ({
         // Emergency contact is now completely optional - send whatever fields are filled
         // If all fields are empty, send empty object to clear existing data
         const emergencyContactData = {
-          name: emergencyName.trim() || "",
+          name: normalizeText(emergencyName) || "",
           phone: emergencyPhone.trim() || "",
           relationship: emergencyRelationship.trim() || "",
         };

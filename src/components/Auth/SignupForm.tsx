@@ -430,9 +430,14 @@ const SignupForm = () => {
 
       const genderMap: Record<string, string> = { Nam: "Male", Nữ: "Female" };
 
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       const response = await authApi.register({
-        fullName: name,
-        email,
+        fullName: normalizeText(name),
+        email: email.trim(),
         gender: genderMap[gender] || gender,
         dateOfBirth: formattedBirthdate,
         password,

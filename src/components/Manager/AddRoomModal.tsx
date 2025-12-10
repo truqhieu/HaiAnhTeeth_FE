@@ -38,6 +38,11 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
   const isNameInvalid = showValidation && !formData.name.trim();
   const isDescriptionInvalid = showValidation && !formData.description.trim();
 
+  // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+  const normalizeText = (text: string): string => {
+    return text.trim().replace(/\s+/g, ' ');
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -59,9 +64,10 @@ const AddRoomModal: React.FC<AddRoomModalProps> = ({
 
     try {
       // Prepare data for API call (chỉ name và description theo backend)
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
       const createData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
+        name: normalizeText(formData.name),
+        description: normalizeText(formData.description),
       };
 
       // Gọi API tạo mới

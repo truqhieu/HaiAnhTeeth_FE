@@ -26,6 +26,11 @@ const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
   const [showValidation, setShowValidation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+  const normalizeText = (text: string): string => {
+    return text.trim().replace(/\s+/g, ' ');
+  };
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -46,7 +51,13 @@ const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
     showValidation &&
       formData.purchaseDate &&
       formData.expireDate &&
-      new Date(formData.expireDate) <= new Date(formData.purchaseDate),
+      (() => {
+        const start = new Date(formData.purchaseDate);
+        const end = new Date(formData.expireDate);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        return end <= start;
+      })(),
   );
 
   const handleSubmit = async () => {
@@ -60,13 +71,25 @@ const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
       !formData.expireDate ||
       (formData.purchaseDate &&
         formData.expireDate &&
-        new Date(formData.expireDate) <= new Date(formData.purchaseDate));
+        (() => {
+          const start = new Date(formData.purchaseDate);
+          const end = new Date(formData.expireDate);
+          start.setHours(0, 0, 0, 0);
+          end.setHours(0, 0, 0, 0);
+          return end <= start;
+        })());
 
     if (hasErrors) {
       if (
         formData.purchaseDate &&
         formData.expireDate &&
-        new Date(formData.expireDate) <= new Date(formData.purchaseDate)
+        (() => {
+          const start = new Date(formData.purchaseDate);
+          const end = new Date(formData.expireDate);
+          start.setHours(0, 0, 0, 0);
+          end.setHours(0, 0, 0, 0);
+          return end <= start;
+        })()
       ) {
         toast.error("Ngày hết hạn phải lớn hơn ngày mua thiết bị");
       }
@@ -77,9 +100,10 @@ const AddDeviceModal: React.FC<AddDeviceModalProps> = ({
 
     try {
       // Prepare data for API call
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
       const createData = {
-        name: formData.name.trim(),
-        description: formData.description.trim(),
+        name: normalizeText(formData.name),
+        description: normalizeText(formData.description),
         purchaseDate: formData.purchaseDate,
         expireDate: formData.expireDate,
       };

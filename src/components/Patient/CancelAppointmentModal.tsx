@@ -136,6 +136,11 @@ const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
     setBankErrors(prev => ({ ...prev, bankName: "" }));
   };
 
+  // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+  const normalizeText = (text: string): string => {
+    return text.trim().replace(/\s+/g, ' ');
+  };
+
   const validateBankFields = () => {
     const errors = { accountHolderName: "", accountNumber: "", bankName: "" } as typeof bankErrors;
     if (!bankInfo.accountHolderName.trim()) {
@@ -169,8 +174,14 @@ const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      const bankInfoToSend = refundStatus.canRefund ? bankInfo : undefined;
-      await onConfirmCancel(true, cancelReason, bankInfoToSend);
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizedCancelReason = normalizeText(cancelReason);
+      const bankInfoToSend = refundStatus.canRefund ? {
+        accountHolderName: normalizeText(bankInfo.accountHolderName),
+        accountNumber: bankInfo.accountNumber.trim(),
+        bankName: normalizeText(bankInfo.bankName),
+      } : undefined;
+      await onConfirmCancel(true, normalizedCancelReason, bankInfoToSend);
       setCancelReason('');
       setBankInfo({ accountHolderName: "", accountNumber: "", bankName: "" });
       setBankErrors({ accountHolderName: "", accountNumber: "", bankName: "" });
