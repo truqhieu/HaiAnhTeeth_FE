@@ -159,11 +159,16 @@ const PatientRequests: React.FC = () => {
     }
 
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
       setProcessingRequestId(selectedRequest._id);
       
       const response = await patientRequestApi.rejectRequest(
         selectedRequest._id,
-        rejectReason,
+        normalizeText(rejectReason),
       );
 
       if (response.success) {

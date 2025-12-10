@@ -288,6 +288,8 @@ const Chat = () => {
     try {
       setSendingMessage(true);
       
+      // Chat: chỉ trim đầu/cuối để giữ nguyên formatting (line breaks, multiple spaces)
+      // Không normalize như các form khác vì chat cần preserve user formatting
       const response = await chatApi.sendMessage({
         receiverId: doctorIdFromUrl,
         appointmentId: appointmentIdFromUrl,

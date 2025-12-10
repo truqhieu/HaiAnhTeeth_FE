@@ -1540,15 +1540,27 @@ const DoctorMedicalRecord: React.FC = () => {
 
     setSaving(true);
     try {
+      // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
+      const normalizeText = (text: string): string => {
+        return text.trim().replace(/\s+/g, ' ');
+      };
+
+      // Normalize prescriptions array
+      const normalizedPrescriptions = prescriptions.map((p) => ({
+        medicine: normalizeText(p.medicine),
+        dosage: normalizeText(p.dosage),
+        duration: normalizeText(p.duration),
+      }));
+
       const payload: any = {
-        diagnosis,
-        conclusion,
-        prescription: prescriptions, // ⭐ Gửi prescriptions array
-        nurseNote,
+        diagnosis: normalizeText(diagnosis),
+        conclusion: normalizeText(conclusion),
+        prescription: normalizedPrescriptions, // ⭐ Gửi prescriptions array đã normalize
+        nurseNote: normalizeText(nurseNote),
         approve: approve,
         followUpRequired: followUpEnabled,
         followUpDate: followUpEnabled ? followUpDateISO : null,
-        followUpNote: followUpEnabled ? followUpNote : '',
+        followUpNote: followUpEnabled ? normalizeText(followUpNote) : '',
       };
 
       const res = await medicalRecordApi.updateMedicalRecordForDoctor(appointmentId, payload);
