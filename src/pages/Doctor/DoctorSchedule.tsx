@@ -18,6 +18,7 @@ import {
   Tabs,
   Tab,
   Pagination,
+  Tooltip,
 } from "@heroui/react";
 import { 
   EyeIcon, 
@@ -29,6 +30,8 @@ import {
   BuildingOfficeIcon,
   DocumentTextIcon,
   ArrowRightIcon,
+  XMarkIcon,
+  CheckIcon,
 } from "@heroicons/react/24/outline";
 import { doctorApi, type DoctorAppointment } from "@/api";
 import { useAuth } from "@/contexts/AuthContext";
@@ -306,21 +309,29 @@ const DoctorSchedule = () => {
     let filtered = [...appointments];
 
     // Tab logic:
-    // - Các ca khám hôm nay: hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là của ngày hôm nay
-    // - Các ca khám sắp tới: hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là từ ngày mai trở đi
-    // - History: hiển thị Completed, Expired, No-Show
+    // - Các ca khám hôm nay: hiển thị các ca có trạng thái Approved, CheckedIn, InProgress VÀ là của ngày hôm nay
+    //   + Với ca khám Online: cũng hiển thị No-Show
+    // - Các ca khám sắp tới: hiển thị các ca có trạng thái Approved, CheckedIn, InProgress VÀ là từ ngày mai trở đi
+    //   + Với ca khám Online: cũng hiển thị No-Show
+    // - History: hiển thị Completed, Expired, No-Show (cho cả Online và Offline)
     if (activeTab === "upcoming") {
       filtered = filtered.filter(apt => {
-        // Chỉ hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là của ngày hôm nay
         const isToday = isTodayAppointment(apt.appointmentDate);
-        const isValidStatus = apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress";
+        // Với ca khám Online: hiển thị Approved, CheckedIn, InProgress, No-Show
+        // Với ca khám Offline: chỉ hiển thị Approved, CheckedIn, InProgress
+        const isValidStatus = apt.mode === "Online"
+          ? (apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress" || apt.status === "No-Show")
+          : (apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress");
         return isValidStatus && isToday;
       });
     } else if (activeTab === "future") {
       filtered = filtered.filter(apt => {
-        // Chỉ hiển thị các ca có trạng thái Approved, CheckedIn hoặc InProgress VÀ là từ ngày mai trở đi
         const isFuture = isFutureAppointment(apt.appointmentDate);
-        const isValidStatus = apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress";
+        // Với ca khám Online: hiển thị Approved, CheckedIn, InProgress, No-Show
+        // Với ca khám Offline: chỉ hiển thị Approved, CheckedIn, InProgress
+        const isValidStatus = apt.mode === "Online"
+          ? (apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress" || apt.status === "No-Show")
+          : (apt.status === "Approved" || apt.status === "CheckedIn" || apt.status === "InProgress");
         return isValidStatus && isFuture;
       });
     } else if (activeTab === "history") {
@@ -497,16 +508,24 @@ const DoctorSchedule = () => {
     const historyStatuses = ["Completed", "Expired", "No-Show"];
     return {
       total: allAppointmentsForStats.length,
-      // ⭐ Đếm số ca khám hôm nay (Approved, CheckedIn hoặc InProgress và là của ngày hôm nay)
+      // ⭐ Đếm số ca khám hôm nay
+      // - Online: Approved, CheckedIn, InProgress, No-Show
+      // - Offline: Approved, CheckedIn, InProgress
       upcoming: allAppointmentsForStats.filter(a => {
         const isToday = isTodayAppointment(a.appointmentDate);
-        const isValidStatus = a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress";
+        const isValidStatus = a.mode === "Online"
+          ? (a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress" || a.status === "No-Show")
+          : (a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress");
         return isValidStatus && isToday;
       }).length,
-      // ⭐ Đếm số ca khám sắp tới (Approved, CheckedIn hoặc InProgress và là từ ngày mai trở đi)
+      // ⭐ Đếm số ca khám sắp tới
+      // - Online: Approved, CheckedIn, InProgress, No-Show
+      // - Offline: Approved, CheckedIn, InProgress
       future: allAppointmentsForStats.filter(a => {
         const isFuture = isFutureAppointment(a.appointmentDate);
-        const isValidStatus = a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress";
+        const isValidStatus = a.mode === "Online"
+          ? (a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress" || a.status === "No-Show")
+          : (a.status === "Approved" || a.status === "CheckedIn" || a.status === "InProgress");
         return isValidStatus && isFuture;
       }).length,
       history: allAppointmentsForStats.filter(a => historyStatuses.includes(a.status)).length,
@@ -552,6 +571,80 @@ const DoctorSchedule = () => {
 
   // Không hiển thị full-page loading nữa, chỉ hiển thị skeleton hoặc để table hiển thị với loading state
   
+  // ⭐ Handler: Đánh dấu bệnh nhân vắng mặt (No-Show)
+  const handleMarkNoShow = async (appointmentId: string) => {
+    try {
+      toast.loading('Đang cập nhật...', { id: 'no-show' });
+      
+      // Gọi API updateAppointmentStatus với status 'No-Show'
+      const { appointmentApi } = await import('@/api');
+      const res = await appointmentApi.updateAppointmentStatus(appointmentId, 'No-Show');
+      
+      if (res.success) {
+        toast.success('Đã đánh dấu bệnh nhân vắng mặt', { id: 'no-show' });
+        // Refresh appointments - fetch lại với date range hiện tại
+        const currentDateRange = dateRangeRef.current;
+        await fetchAppointments(currentDateRange.startDate || undefined, currentDateRange.endDate || undefined, false, false);
+        // Cũng refresh stats
+        await fetchAppointments(null, null, true, true);
+      } else {
+        toast.error(res.message || 'Không thể cập nhật trạng thái', { id: 'no-show' });
+      }
+    } catch (error: any) {
+      console.error('Error marking no-show:', error);
+      toast.error(error.message || 'Lỗi khi đánh dấu vắng mặt', { id: 'no-show' });
+    }
+  };
+
+  // ⭐ Handler: Xác nhận lại ca khám đã vắng mặt (No-Show → Approved)
+  const handleApproveNoShow = async (appointmentId: string) => {
+    try {
+      toast.loading('Đang xác nhận...', { id: 'approve-noshow' });
+      
+      // Gọi API updateAppointmentStatus với status 'Approved'
+      const { appointmentApi } = await import('@/api');
+      const res = await appointmentApi.updateAppointmentStatus(appointmentId, 'Approved');
+      
+      if (res.success) {
+        toast.success('Đã xác nhận ca khám', { id: 'approve-noshow' });
+        // Refresh appointments - fetch lại với date range hiện tại
+        const currentDateRange = dateRangeRef.current;
+        await fetchAppointments(currentDateRange.startDate || undefined, currentDateRange.endDate || undefined, false, false);
+        // Cũng refresh stats
+        await fetchAppointments(null, null, true, true);
+      } else {
+        toast.error(res.message || 'Không thể cập nhật trạng thái', { id: 'approve-noshow' });
+      }
+    } catch (error: any) {
+      console.error('Error approving no-show:', error);
+      toast.error(error.message || 'Lỗi khi xác nhận ca khám', { id: 'approve-noshow' });
+    }
+  };
+
+  // ⭐ Handler: Hoàn thành ca khám trực tuyến (không cần hồ sơ khám bệnh)
+  const handleCompleteOnlineAppointment = async (appointmentId: string) => {
+    try {
+      toast.loading('Đang hoàn thành ca khám...', { id: 'complete-online' });
+      
+      // Gọi API updateAppointmentStatus với status 'Completed'
+      const { appointmentApi } = await import('@/api');
+      const res = await appointmentApi.updateAppointmentStatus(appointmentId, 'Completed');
+      
+      if (res.success) {
+        toast.success('Đã hoàn thành ca khám', { id: 'complete-online' });
+        // Refresh appointments
+        const currentDateRange = dateRangeRef.current;
+        await fetchAppointments(currentDateRange.startDate || undefined, currentDateRange.endDate || undefined, false, false);
+        await fetchAppointments(null, null, true, true);
+      } else {
+        toast.error(res.message || 'Không thể cập nhật trạng thái', { id: 'complete-online' });
+      }
+    } catch (error: any) {
+      console.error('Error completing online appointment:', error);
+      toast.error(error.message || 'Lỗi khi hoàn thành ca khám', { id: 'complete-online' });
+    }
+  };
+
   const handleViewMedicalRecord = async (appointmentId: string) => {
     toast.success("Đang chuyển đến hồ sơ khám bệnh...");
     navigate(`/doctor/medical-record/${appointmentId}`);
@@ -821,7 +914,7 @@ const DoctorSchedule = () => {
                       >
                         {getStatusText(appointment.status)}
                       </Chip>
-                      {/* Indicator cho medical record status */}
+                      {/* Indicator cho medical record status - chỉ hiển thị cho ca khám Offline */}
                       {appointment.noTreatment ? (
                         <Chip
                           size="sm"
@@ -832,7 +925,8 @@ const DoctorSchedule = () => {
                           Không cần khám
                         </Chip>
                       ) : (
-                        (appointment.status === "InProgress" || appointment.status === "Completed") && (
+                        // Chỉ hiển thị medical record status cho ca khám Offline
+                        appointment.mode === "Offline" && (appointment.status === "InProgress" || appointment.status === "Completed") && (
                           appointment.medicalRecordStatus === "Finalized" ? (
                             <Chip
                               size="sm"
@@ -867,45 +961,129 @@ const DoctorSchedule = () => {
                   </TableCell>
                   <TableCell>
                   <div className="flex gap-2 flex-wrap">
-                    <div className="flex gap-2">
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="flat"
-                        color="primary"
-                        onPress={() => handleViewAppointment(appointment.appointmentId)}
-                        title="Xem chi tiết ca khám"
-                      >
-                        <EyeIcon className="w-5 h-5" />
-                      </Button>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="flat"
-                        color="secondary"
-                        onPress={() => handleViewPatient(appointment.appointmentId)}
-                        title="Xem chi tiết bệnh nhân"
-                      >
-                        <UserIcon className="w-5 h-5" />
-                      </Button>
-                    </div>
-                    {/* Ẩn nút hồ sơ khi status là Approved hoặc CheckedIn; chỉ hiển thị khi InProgress hoặc Completed */}
-                    {appointment.status !== "Approved" && 
-                     appointment.status !== "CheckedIn" && 
-                     (appointment.status === "InProgress" || appointment.status === "Completed") &&
-                     !appointment.noTreatment && (
-                      <div className="relative">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="flat"
-                          color="success"
-                          onPress={() => handleViewMedicalRecord(appointment.appointmentId)}
-                          title="Xem hồ sơ khám bệnh"
-                        >
-                          <DocumentTextIcon className="w-5 h-5" />
-                        </Button>
-                      </div>
+                    {/* ⭐ Logic riêng cho ca khám Online */}
+                    {appointment.mode === "Online" ? (
+                      <>
+                        {/* Nút xem chi tiết luôn hiển thị */}
+                        <Tooltip content="Xem chi tiết">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            onPress={() => handleViewAppointment(appointment.appointmentId)}
+                            title="Xem chi tiết ca khám"
+                          >
+                            <EyeIcon className="w-5 h-5" />
+                          </Button>
+                        </Tooltip>
+                        
+                        {/* Nút xem bệnh nhân luôn hiển thị */}
+                        <Tooltip content="Xem bệnh nhân">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            color="secondary"
+                            onPress={() => handleViewPatient(appointment.appointmentId)}
+                            title="Xem chi tiết bệnh nhân"
+                          >
+                            <UserIcon className="w-5 h-5" />
+                          </Button>
+                        </Tooltip>
+
+                        {/* Nút Vắng mặt - chỉ hiển thị khi Approved hoặc CheckedIn */}
+                        {(appointment.status === "Approved" || appointment.status === "CheckedIn") && (
+                          <Tooltip content="Vắng mặt">
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              color="warning"
+                              onPress={() => handleMarkNoShow(appointment.appointmentId)}
+                              title="Đánh dấu vắng mặt"
+                            >
+                              <XMarkIcon className="w-5 h-5" />
+                            </Button>
+                          </Tooltip>
+                        )}
+
+                        {/* Nút Hoàn thành - chỉ hiển thị khi Approved hoặc CheckedIn */}
+                        {(appointment.status === "Approved" || appointment.status === "CheckedIn") && (
+                          <Tooltip content="Hoàn thành">
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              color="success"
+                              onPress={() => handleCompleteOnlineAppointment(appointment.appointmentId)}
+                              title="Hoàn thành ca khám"
+                            >
+                              <CheckIcon className="w-5 h-5" />
+                            </Button>
+                          </Tooltip>
+                        )}
+
+                        {/* Nút Xác nhận - chỉ hiển thị khi No-Show */}
+                        {appointment.status === "No-Show" && (
+                          <Tooltip content="Xác nhận">
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              color="success"
+                              onPress={() => handleApproveNoShow(appointment.appointmentId)}
+                              title="Xác nhận ca khám"
+                            >
+                              <CheckIcon className="w-5 h-5" />
+                            </Button>
+                          </Tooltip>
+                        )}
+                      </>
+                    ) : (
+                      /* ⭐ Logic cho ca khám Offline (giữ nguyên) */
+                      <>
+                        <div className="flex gap-2">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            onPress={() => handleViewAppointment(appointment.appointmentId)}
+                            title="Xem chi tiết ca khám"
+                          >
+                            <EyeIcon className="w-5 h-5" />
+                          </Button>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            color="secondary"
+                            onPress={() => handleViewPatient(appointment.appointmentId)}
+                            title="Xem chi tiết bệnh nhân"
+                          >
+                            <UserIcon className="w-5 h-5" />
+                          </Button>
+                        </div>
+                        {/* Ẩn nút hồ sơ khi status là Approved hoặc CheckedIn; chỉ hiển thị khi InProgress hoặc Completed */}
+                        {appointment.status !== "Approved" && 
+                         appointment.status !== "CheckedIn" && 
+                         (appointment.status === "InProgress" || appointment.status === "Completed") &&
+                         !appointment.noTreatment && (
+                          <div className="relative">
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              color="success"
+                              onPress={() => handleViewMedicalRecord(appointment.appointmentId)}
+                              title="Xem hồ sơ khám bệnh"
+                            >
+                              <DocumentTextIcon className="w-5 h-5" />
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </TableCell>
