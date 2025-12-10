@@ -54,6 +54,7 @@ import toast from "react-hot-toast";
 interface Appointment {
   id: string;
   status: string;
+  type?: string; // ⭐ THÊM: Type của appointment (Consultation, Examination, FollowUp)
   patientName: string;
   doctorName: string;
   doctorUserId?: string; // Thêm doctorUserId để check leave
@@ -61,6 +62,7 @@ interface Appointment {
   hasReplacementDoctor?: boolean; // ⭐ Đã có bác sĩ thay thế được confirm (replacedDoctorUserId = null)
   hasPendingReplacement?: boolean; // ⭐ Có bác sĩ thay thế đang chờ patient confirm (replacedDoctorUserId != null)
   serviceName: string;
+  allServices?: string[]; // ⭐ THÊM: Tất cả dịch vụ (serviceId + additionalServiceIds) cho ca tái khám
   startTime: string;
   endTime: string;
   checkedInAt: string;
@@ -83,9 +85,11 @@ interface AppointmentDetailData {
   type: string;
   mode: string;
   service?: { serviceName?: string; price?: number } | null;
+  additionalServiceIds?: Array<{ serviceName?: string; price?: number }> | null; // ⭐ THÊM: Dịch vụ bổ sung cho ca tái khám
   doctor?: { fullName?: string } | null;
   patient?: { fullName?: string } | null;
   timeslot?: { startTime?: string; endTime?: string } | null;
+  noTreatment?: boolean; // ⭐ THÊM: Trường noTreatment
   bankInfo?: {
     accountHolderName?: string | null;
     accountNumber?: string | null;
@@ -621,9 +625,50 @@ const AllAppointments = () => {
             });
           }
 
+          // ⭐ THÊM: Lấy tất cả dịch vụ cho ca tái khám (serviceId + additionalServiceIds)
+          const allServices: string[] = [];
+          const mainService = apt.serviceId?.serviceName;
+          if (mainService) {
+            allServices.push(mainService);
+          }
+          
+          // Nếu là ca tái khám, thêm các dịch vụ bổ sung
+          if (apt.type === 'FollowUp') {
+            // Ưu tiên sử dụng additionalServiceNames nếu có (backend đã map sẵn)
+            if (apt.additionalServiceNames && Array.isArray(apt.additionalServiceNames) && apt.additionalServiceNames.length > 0) {
+              apt.additionalServiceNames.forEach((serviceName: string) => {
+                if (serviceName && !allServices.includes(serviceName)) {
+                  allServices.push(serviceName);
+                }
+              });
+            } 
+            // Nếu không có additionalServiceNames, thử lấy từ additionalServiceIds
+            else if (apt.additionalServiceIds && Array.isArray(apt.additionalServiceIds)) {
+              apt.additionalServiceIds.forEach((service: any) => {
+                let serviceName: string | null = null;
+                
+                // Nếu là object đã được populate, lấy serviceName
+                if (typeof service === 'object' && service !== null) {
+                  serviceName = service.serviceName || service.name || null;
+                } 
+                // Nếu là string, có thể là ID - bỏ qua (không hiển thị ID)
+                else if (typeof service === 'string') {
+                  // Nếu là ID, không thêm vào danh sách
+                  console.warn('⚠️ [AllAppointments] additionalServiceIds contains ID instead of populated object:', service);
+                  return;
+                }
+                
+                if (serviceName && !allServices.includes(serviceName)) {
+                  allServices.push(serviceName);
+                }
+              });
+            }
+          }
+
           return {
             id: apt._id,
             status: apt.status,
+            type: apt.type || "Examination", // ⭐ THÊM: Type của appointment
             patientName: patientName,
             doctorName: doctorName,
             doctorUserId: doctorUserId, // Thêm doctorUserId
@@ -631,6 +676,7 @@ const AllAppointments = () => {
             hasReplacementDoctor: hasReplacementDoctor,
             hasPendingReplacement: hasPendingReplacement,
             serviceName: apt.serviceId?.serviceName || "Chưa có",
+            allServices: allServices.length > 0 ? allServices : undefined, // ⭐ THÊM: Tất cả dịch vụ
             startTime: apt.timeslotId?.startTime
               ? (apt.timeslotId.startTime instanceof Date
                 ? apt.timeslotId.startTime.toISOString()
@@ -1663,7 +1709,32 @@ const AllAppointments = () => {
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Dịch vụ</p>
-                          <p className="font-semibold text-lg">{detailData.service?.serviceName || "Chưa có"}</p>
+                          {/* ⭐ Hiển thị tất cả dịch vụ cho ca tái khám */}
+                          {detailData.type === "FollowUp" && detailData.additionalServiceIds && detailData.additionalServiceIds.length > 0 ? (
+                            <div className="space-y-1 mt-1">
+                              {detailData.service?.serviceName && (
+                                <p className="font-semibold text-lg">{detailData.service.serviceName}</p>
+                              )}
+                              {detailData.additionalServiceIds.map((service, index) => (
+                                <p key={index} className="font-semibold text-lg">
+                                  {service.serviceName || "Chưa có"}
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="font-semibold text-lg">{detailData.service?.serviceName || "Chưa có"}</p>
+                          )}
+                          {/* ⭐ Badge hiển thị trạng thái tái khám */}
+                          {detailData.type === "FollowUp" && (
+                            <Chip
+                              size="sm"
+                              variant="flat"
+                              color="primary"
+                              className="mt-2"
+                            >
+                              Tái khám
+                            </Chip>
+                          )}
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Trạng thái</p>
@@ -1907,7 +1978,31 @@ const AllAppointments = () => {
                       })()}
                     </TableCell>
                     <TableCell>
-                      <p className="text-sm font-medium text-gray-700">{appointment.serviceName}</p>
+                      <div className="space-y-1">
+                        {/* ⭐ Hiển thị tất cả dịch vụ cho ca tái khám */}
+                        {appointment.type === "FollowUp" && appointment.allServices && appointment.allServices.length > 0 ? (
+                          <div className="space-y-1">
+                            {appointment.allServices.map((service, index) => (
+                              <p key={index} className="text-sm font-medium text-gray-700">
+                                {service}
+                              </p>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm font-medium text-gray-700">{appointment.serviceName}</p>
+                        )}
+                        {/* ⭐ Badge hiển thị trạng thái tái khám */}
+                        {appointment.type === "FollowUp" && (
+                          <Chip
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            className="mt-1"
+                          >
+                            Tái khám
+                          </Chip>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Chip
