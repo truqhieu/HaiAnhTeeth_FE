@@ -28,6 +28,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
     applicableServices: [] as string[],
     startDate: "",
     endDate: "",
+    status: "",
   });
 
   const [showValidation, setShowValidation] = useState(false);
@@ -72,6 +73,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
         applicableServices: serviceIds, // ✅ Now always array of string IDs
         startDate: promotion.startDate.split("T")[0],
         endDate: promotion.endDate.split("T")[0],
+        status: promotion.status,
       });
     }
   }, [promotion]);
@@ -115,13 +117,14 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
   const isServicesInvalid = Boolean(
     showValidation && !formData.applyToAll && formData.applicableServices.length === 0,
   );
+  const isStatusInvalid = Boolean(showValidation && !formData.status);
 
-  // Check if end date is after start date
+  // Check if end date is before start date (same-day is allowed)
   const isDateRangeInvalid = Boolean(
     showValidation &&
       formData.startDate &&
       formData.endDate &&
-      new Date(formData.endDate) <= new Date(formData.startDate),
+      new Date(formData.endDate) < new Date(formData.startDate),
   );
 
   const today = new Date().toISOString().split("T")[0];
@@ -132,6 +135,15 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
     setShowValidation(true);
 
     // Check if there are any errors
+    const allowedStatusesForUpdate = ["Active", "Inactive", "Upcoming"];
+
+    // Nếu status không hợp lệ cho update, chặn ngay và báo toast (BE cũng sẽ báo nhưng làm sớm để UX tốt hơn)
+    if (!allowedStatusesForUpdate.includes(formData.status)) {
+      toast.error("Chỉ được cập nhật trạng thái thành Active, Inactive hoặc Upcoming");
+      setShowValidation(true);
+      return;
+    }
+
     const hasErrors =
       !formData.title.trim() ||
       !formData.description.trim() ||
@@ -139,18 +151,19 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
       (formData.discountType === "Percent" && formData.discountValue > 100) ||
       !formData.startDate ||
       !formData.endDate ||
+      !formData.status ||
       (formData.startDate &&
         formData.endDate &&
-        new Date(formData.endDate) <= new Date(formData.startDate)) ||
+        new Date(formData.endDate) < new Date(formData.startDate)) ||
       (!formData.applyToAll && formData.applicableServices.length === 0);
 
     if (hasErrors) {
       if (
         formData.startDate &&
         formData.endDate &&
-        new Date(formData.endDate) <= new Date(formData.startDate)
+        new Date(formData.endDate) < new Date(formData.startDate)
       ) {
-        toast.error("Ngày kết thúc phải sau ngày bắt đầu");
+        toast.error("Ngày kết thúc không được trước ngày bắt đầu");
       } else if (!formData.applyToAll && formData.applicableServices.length === 0) {
         toast.error("Vui lòng chọn ít nhất một dịch vụ");
       }
@@ -175,6 +188,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
         applyToAll: formData.applyToAll,
         startDate: formData.startDate, // Already in YYYY-MM-DD format from VietnameseDateInput
         endDate: formData.endDate,     // Already in YYYY-MM-DD format from VietnameseDateInput
+        status: formData.status,
       };
 
       // Only include serviceIds if not applying to all
@@ -366,12 +380,37 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                   isEndDateInvalid
                     ? "Vui lòng chọn ngày kết thúc"
                     : isDateRangeInvalid
-                    ? "Ngày kết thúc phải sau ngày bắt đầu"
+                    ? "Ngày kết thúc không được trước ngày bắt đầu"
                     : ""
                 }
                 onChange={(value) => handleInputChange("endDate", value)}
               />
             </div>
+
+            <Select
+              className="w-full"
+              id="status"
+              label={
+                <>
+                  Trạng thái <span className="text-red-500">*</span>
+                </>
+              }
+              selectedKeys={[formData.status]}
+              variant="bordered"
+              disallowEmptySelection
+              isInvalid={isStatusInvalid}
+              errorMessage={
+                isStatusInvalid ? "Vui lòng chọn trạng thái ưu đãi" : ""
+              }
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                handleInputChange("status", selected);
+              }}
+            >
+              <SelectItem key="Active">Đang áp dụng</SelectItem>
+              <SelectItem key="Inactive">Không áp dụng</SelectItem>
+              <SelectItem key="Upcoming">Sắp diễn ra</SelectItem>
+            </Select>
 
             <div>
               <p className="block text-sm font-semibold text-gray-700 mb-3">
