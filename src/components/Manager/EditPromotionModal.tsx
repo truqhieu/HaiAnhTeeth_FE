@@ -116,12 +116,12 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
     showValidation && !formData.applyToAll && formData.applicableServices.length === 0,
   );
 
-  // Check if end date is after start date
+  // Check if end date is before start date (same-day is allowed)
   const isDateRangeInvalid = Boolean(
     showValidation &&
       formData.startDate &&
       formData.endDate &&
-      new Date(formData.endDate) <= new Date(formData.startDate),
+      new Date(formData.endDate) < new Date(formData.startDate),
   );
 
   const today = new Date().toISOString().split("T")[0];
@@ -141,16 +141,16 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
       !formData.endDate ||
       (formData.startDate &&
         formData.endDate &&
-        new Date(formData.endDate) <= new Date(formData.startDate)) ||
+        new Date(formData.endDate) < new Date(formData.startDate)) ||
       (!formData.applyToAll && formData.applicableServices.length === 0);
 
     if (hasErrors) {
       if (
         formData.startDate &&
         formData.endDate &&
-        new Date(formData.endDate) <= new Date(formData.startDate)
+        new Date(formData.endDate) < new Date(formData.startDate)
       ) {
-        toast.error("Ngày kết thúc phải sau ngày bắt đầu");
+        toast.error("Ngày kết thúc không được trước ngày bắt đầu");
       } else if (!formData.applyToAll && formData.applicableServices.length === 0) {
         toast.error("Vui lòng chọn ít nhất một dịch vụ");
       }
@@ -366,7 +366,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                   isEndDateInvalid
                     ? "Vui lòng chọn ngày kết thúc"
                     : isDateRangeInvalid
-                    ? "Ngày kết thúc phải sau ngày bắt đầu"
+                    ? "Ngày kết thúc không được trước ngày bắt đầu"
                     : ""
                 }
                 onChange={(value) => handleInputChange("endDate", value)}
