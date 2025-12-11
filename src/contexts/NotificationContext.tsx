@@ -22,7 +22,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
-  clearAll: () => void;
+  clearAll: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
 }
 
@@ -231,10 +231,32 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+
+    const previousNotifications = [...notifications];
+    // Optimistic clear
     setNotifications([]);
-    if (user) {
+
+    try {
+      // Không có API delete-all, xoá tuần tự từng thông báo
+      await Promise.all(
+        previousNotifications.map((notif) =>
+          notificationApi.delete(notif.id).catch((err) => {
+            console.error("❌ Error deleting notification:", notif.id, err);
+            return null;
+          })
+        )
+      );
       localStorage.removeItem(`notifications_${user._id || user.id}`);
+    } catch (error) {
+      console.error("❌ Error clearing notifications:", error);
+      // Revert on failure
+      setNotifications(previousNotifications);
+      toast.error("Không thể xóa tất cả thông báo");
     }
   };
 

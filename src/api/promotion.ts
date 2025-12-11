@@ -27,6 +27,7 @@ export interface CreatePromotionData {
   applicableServices?: string[];
   startDate: string;
   endDate: string;
+  status?: string;
 }
 
 // Update Promotion Data
@@ -39,6 +40,7 @@ export interface UpdatePromotionData {
   applicableServices?: string[];
   startDate?: string;
   endDate?: string;
+  status?: string;
 }
 
 // Get Promotions Params
