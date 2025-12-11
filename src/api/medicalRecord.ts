@@ -1,5 +1,6 @@
 import { authenticatedApiCall, ApiResponse } from "./client";
 
+
 export interface MedicalRecordDisplay {
   patientName: string;
   patientAge: number | null;
@@ -11,6 +12,7 @@ export interface MedicalRecordDisplay {
   phoneNumber?: string;
   gender?: string;
 }
+
 
 export interface MedicalRecord {
   _id: string;
@@ -44,10 +46,12 @@ export interface MedicalRecord {
   updatedAt: string;
 }
 
+
 export interface MedicalRecordRolePermission {
   canEdit: boolean;
   reason?: string | null;
 }
+
 
 export interface MedicalRecordPermissions {
   appointmentStatus: string;
@@ -56,11 +60,13 @@ export interface MedicalRecordPermissions {
   doctor: MedicalRecordRolePermission;
 }
 
+
 export interface MedicalRecordResponsePayload {
   record: MedicalRecord;
   display: MedicalRecordDisplay;
   permissions?: MedicalRecordPermissions;
 }
+
 
 export const medicalRecordApi = {
   getOrCreateByAppointment: async (
@@ -68,13 +74,14 @@ export const medicalRecordApi = {
     userRole?: string
   ): Promise<ApiResponse<MedicalRecordResponsePayload>> => {
     // Sử dụng endpoint phù hợp với role (backend check role với chữ cái đầu hoa)
-    const endpoint = userRole?.toLowerCase() === 'doctor' 
+    const endpoint = userRole?.toLowerCase() === 'doctor'
       ? `/doctor/medical-records/${appointmentId}`
       : `/nurse/medical-records/${appointmentId}`;
     return authenticatedApiCall(endpoint, {
       method: "GET",
     });
   },
+
 
   updateNurseNote: async (
     appointmentId: string,
@@ -86,6 +93,7 @@ export const medicalRecordApi = {
       body: JSON.stringify({ nurseNote }),
     });
   },
+
 
   updateMedicalRecordForNurse: async (
     appointmentId: string,
@@ -112,6 +120,7 @@ export const medicalRecordApi = {
     });
   },
 
+
   updateMedicalRecordForDoctor: async (
     appointmentId: string,
     updateData: {
@@ -135,13 +144,17 @@ export const medicalRecordApi = {
     });
   },
 
+
   approveMedicalRecordByDoctor: async (
-    appointmentId: string
+    appointmentId: string,
+    followUpEndDate?: string | null
   ): Promise<ApiResponse<MedicalRecord>> => {
     return authenticatedApiCall(`/doctor/medical-records/${appointmentId}/approve`, {
       method: "POST",
+      body: followUpEndDate ? JSON.stringify({ followUpEndDate }) : undefined,
     });
   },
+
 
   getActiveServicesForDoctor: async (): Promise<ApiResponse<Array<{ _id: string; serviceName: string; price: number; finalPrice?: number; discountAmount?: number; category?: string }>>> => {
     return authenticatedApiCall(`/doctor/services`, {
@@ -149,11 +162,13 @@ export const medicalRecordApi = {
     });
   },
 
+
   getActiveServicesForNurse: async (): Promise<ApiResponse<Array<{ _id: string; serviceName: string; price: number; finalPrice?: number; discountAmount?: number; category?: string }>>> => {
     return authenticatedApiCall(`/nurse/services`, {
       method: "GET",
     });
   },
+
 
   updateAdditionalServicesForDoctor: async (
     appointmentId: string,
@@ -165,6 +180,7 @@ export const medicalRecordApi = {
     });
   },
 
+
   updateAdditionalServicesForNurse: async (
     appointmentId: string,
     serviceIds: string[]
@@ -175,6 +191,7 @@ export const medicalRecordApi = {
     });
   },
 
+
   getMedicalRecordForPatient: async (
     appointmentId: string
   ): Promise<ApiResponse<{ record: MedicalRecord; display: MedicalRecordDisplay }>> => {
@@ -182,6 +199,7 @@ export const medicalRecordApi = {
       method: "GET",
     });
   },
+
 
   getPatientMedicalRecordsList: async (): Promise<ApiResponse<Array<{
     _id: string;
@@ -209,5 +227,10 @@ export const medicalRecordApi = {
     });
   },
 };
+
+
+
+
+
 
 

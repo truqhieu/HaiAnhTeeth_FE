@@ -54,6 +54,7 @@ const DoctorMedicalRecord: React.FC = () => {
   // Follow-up separate fields
   const [followUpDate, setFollowUpDate] = useState<Date | null>(null);
   const [followUpTimeInput, setFollowUpTimeInput] = useState("");
+  const [followUpEndTimeInput, setFollowUpEndTimeInput] = useState(""); // ⭐ Input cho giờ kết thúc (HH:MM)
   const [followUpServiceIds, setFollowUpServiceIds] = useState<string[]>([]);
   const [followUpDoctorUserId, setFollowUpDoctorUserId] = useState<string | null>(null);
   const [followUpPatientUserId, setFollowUpPatientUserId] = useState<string | null>(null);
@@ -267,6 +268,10 @@ const DoctorMedicalRecord: React.FC = () => {
                     const endTime = new Date(timeslot.endTime);
                     if (!Number.isNaN(endTime.getTime())) {
                       setFollowUpEndTime(endTime);
+                      // ⭐ Set followUpEndTimeInput từ endTime
+                      const endVnHours = String((endTime.getUTCHours() + 7) % 24).padStart(2, '0');
+                      const endVnMinutes = String(endTime.getUTCMinutes()).padStart(2, '0');
+                      setFollowUpEndTimeInput(`${endVnHours}:${endVnMinutes}`);
                       console.log('✅ [load] Loaded follow-up appointment end time from timeslot');
                     }
                   }
@@ -296,17 +301,7 @@ const DoctorMedicalRecord: React.FC = () => {
             setFollowUpTimeInput(`${hours}:${minutes}`);
             setFollowUpDateTime(formatDateTimeInputValue(res.data.record.followUpDate));
 
-            // ⭐ Tính followUpEndTime từ followUpDate + service duration (nếu có)
-            if (followUpServiceIds.length > 0 && allServices.length > 0) {
-              const totalDuration = followUpServiceIds.reduce((total, serviceId) => {
-                const service = allServices.find(s => s._id === serviceId);
-                return total + (service?.durationMinutes || 0);
-              }, 0);
-              if (totalDuration > 0) {
-                const endTime = new Date(followUpDateObj.getTime() + totalDuration * 60 * 1000);
-                setFollowUpEndTime(endTime);
-              }
-            }
+            // ⭐ End time is now manually input by doctor, not calculated from service duration
           } else {
             setFollowUpDate(null);
             setFollowUpTimeInput("");
@@ -1401,6 +1396,7 @@ const DoctorMedicalRecord: React.FC = () => {
       return;
     }
     let followUpDateISO: string | null = null;
+    let followUpEndDateISO: string | null = null; // ⭐ Declare at function scope
     if (followUpEnabled) {
       if (!followUpServiceIds || followUpServiceIds.length === 0) {
         toast.error("Không tìm thấy dịch vụ để tái khám. Vui lòng thêm dịch vụ bổ sung trước.");
@@ -1472,6 +1468,32 @@ const DoctorMedicalRecord: React.FC = () => {
         }
       }
 
+      // ⭐ Validate end time input
+      if (!followUpEndTimeInput) {
+        toast.error("Vui lòng nhập giờ kết thúc tái khám");
+        return;
+      }
+
+      const [endHours, endMinutes] = followUpEndTimeInput.split(':');
+      if (!endHours || !endMinutes || endHours === '' || endMinutes === '') {
+        toast.error("Vui lòng nhập đủ cả giờ và phút kết thúc (ví dụ: 09:00)");
+        return;
+      }
+
+      if (!timeRegex.test(followUpEndTimeInput)) {
+        toast.error("Định dạng giờ kết thúc không hợp lệ. Vui lòng nhập lại (ví dụ: 09:00)");
+        return;
+      }
+
+      // Validate end time is after start time
+      const endVnHours = parseInt(endHours);
+      const endVnMinutes = parseInt(endMinutes);
+      const endTotalMinutes = endVnHours * 60 + endVnMinutes;
+      if (endTotalMinutes <= startTotalMin) {
+        toast.error("Giờ kết thúc phải sau giờ bắt đầu");
+        return;
+      }
+
       console.log('🔍 [onSave] followUpDateObj after setUTCHours:', {
         iso: followUpDateObj.toISOString(),
         utc: {
@@ -1524,6 +1546,19 @@ const DoctorMedicalRecord: React.FC = () => {
         return;
       }
       followUpDateISO = followUpDateObj.toISOString();
+
+      // ⭐ Create followUpEndDateISO from end time input
+      const followUpEndDateObj = new Date(dateStr + "T00:00:00.000Z");
+      const endUtcHours = endVnHours - 7;
+      followUpEndDateObj.setUTCHours(endUtcHours, endVnMinutes, 0, 0);
+      followUpEndDateISO = followUpEndDateObj.toISOString(); // ⭐ Assign to outer scope variable
+
+      console.log('🔍 [onSave] Created followUpEndDateISO:', {
+        followUpEndTimeInput,
+        followUpEndDateISO,
+        endVnHours,
+        endVnMinutes
+      });
     }
 
     // ⭐ FIX: Release reservation trước khi save để tránh conflict với follow-up appointment mới
@@ -1568,7 +1603,10 @@ const DoctorMedicalRecord: React.FC = () => {
       if (res.success && res.data) {
         if (approve) {
           // 1️⃣ Lưu xong rồi thì gọi approve
-          const approveRes = await medicalRecordApi.approveMedicalRecordByDoctor(appointmentId);
+          const approveRes = await medicalRecordApi.approveMedicalRecordByDoctor(
+            appointmentId,
+            followUpEnabled ? followUpEndDateISO : null // ⭐ Pass followUpEndDateISO
+          );
           if (!approveRes.success) {
             throw new Error(approveRes.message || 'Duyệt hồ sơ thất bại');
           }
@@ -2104,99 +2142,99 @@ const DoctorMedicalRecord: React.FC = () => {
                 );
                 const index = originalIndex >= 0 ? originalIndex : displayedIndex;
                 return (
-                <div key={index} className="flex items-start gap-3 p-4 bg-white rounded-lg border border-gray-200">
-                  {/* ⭐ 3 trường hiển thị theo hàng ngang */}
-                  <div className="flex-1 grid grid-cols-3 gap-3">
-                    <Input
-                      label="Thuốc"
-                      value={prescription.medicine}
-                      onChange={(e) => {
-                        const updated = [...prescriptions];
-                        updated[index] = { ...updated[index], medicine: e.target.value };
-                        setPrescriptions(updated);
-                      }}
-                      variant={canEdit ? "bordered" : "flat"}
-                      placeholder="Nhập tên thuốc"
-                      isReadOnly={!canEdit}
-                      onFocus={() => {
-                        if (isDropdownOpen) {
-                          closeDropdown();
-                        }
-                      }}
-                      onMouseDown={() => {
-                        if (isDropdownOpen) {
-                          closeDropdown();
-                        }
-                      }}
-                      classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
-                    />
+                  <div key={index} className="flex items-start gap-3 p-4 bg-white rounded-lg border border-gray-200">
+                    {/* ⭐ 3 trường hiển thị theo hàng ngang */}
+                    <div className="flex-1 grid grid-cols-3 gap-3">
+                      <Input
+                        label="Thuốc"
+                        value={prescription.medicine}
+                        onChange={(e) => {
+                          const updated = [...prescriptions];
+                          updated[index] = { ...updated[index], medicine: e.target.value };
+                          setPrescriptions(updated);
+                        }}
+                        variant={canEdit ? "bordered" : "flat"}
+                        placeholder="Nhập tên thuốc"
+                        isReadOnly={!canEdit}
+                        onFocus={() => {
+                          if (isDropdownOpen) {
+                            closeDropdown();
+                          }
+                        }}
+                        onMouseDown={() => {
+                          if (isDropdownOpen) {
+                            closeDropdown();
+                          }
+                        }}
+                        classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
+                      />
 
-                    <Input
-                      label="Liều dùng"
-                      value={prescription.dosage}
-                      onChange={(e) => {
-                        const updated = [...prescriptions];
-                        updated[index] = { ...updated[index], dosage: e.target.value };
-                        setPrescriptions(updated);
-                      }}
-                      variant={canEdit ? "bordered" : "flat"}
-                      placeholder="Ví dụ: 2 viên/lần"
-                      isReadOnly={!canEdit}
-                      onFocus={() => {
-                        if (isDropdownOpen) {
-                          closeDropdown();
-                        }
-                      }}
-                      onMouseDown={() => {
-                        if (isDropdownOpen) {
-                          closeDropdown();
-                        }
-                      }}
-                      classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
-                    />
+                      <Input
+                        label="Liều dùng"
+                        value={prescription.dosage}
+                        onChange={(e) => {
+                          const updated = [...prescriptions];
+                          updated[index] = { ...updated[index], dosage: e.target.value };
+                          setPrescriptions(updated);
+                        }}
+                        variant={canEdit ? "bordered" : "flat"}
+                        placeholder="Ví dụ: 2 viên/lần"
+                        isReadOnly={!canEdit}
+                        onFocus={() => {
+                          if (isDropdownOpen) {
+                            closeDropdown();
+                          }
+                        }}
+                        onMouseDown={() => {
+                          if (isDropdownOpen) {
+                            closeDropdown();
+                          }
+                        }}
+                        classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
+                      />
 
-                    <Input
-                      label="Thời gian sử dụng"
-                      value={prescription.duration}
-                      onChange={(e) => {
-                        const updated = [...prescriptions];
-                        updated[index] = { ...updated[index], duration: e.target.value };
-                        setPrescriptions(updated);
-                      }}
-                      variant={canEdit ? "bordered" : "flat"}
-                      placeholder="Ví dụ: 7 ngày"
-                      isReadOnly={!canEdit}
-                      onFocus={() => {
-                        if (isDropdownOpen) {
-                          closeDropdown();
-                        }
-                      }}
-                      onMouseDown={() => {
-                        if (isDropdownOpen) {
-                          closeDropdown();
-                        }
-                      }}
-                      classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
-                    />
+                      <Input
+                        label="Thời gian sử dụng"
+                        value={prescription.duration}
+                        onChange={(e) => {
+                          const updated = [...prescriptions];
+                          updated[index] = { ...updated[index], duration: e.target.value };
+                          setPrescriptions(updated);
+                        }}
+                        variant={canEdit ? "bordered" : "flat"}
+                        placeholder="Ví dụ: 7 ngày"
+                        isReadOnly={!canEdit}
+                        onFocus={() => {
+                          if (isDropdownOpen) {
+                            closeDropdown();
+                          }
+                        }}
+                        onMouseDown={() => {
+                          if (isDropdownOpen) {
+                            closeDropdown();
+                          }
+                        }}
+                        classNames={!canEdit ? { inputWrapper: "bg-gray-100 opacity-60", input: "text-gray-500" } : undefined}
+                      />
+                    </div>
+
+                    {/* ⭐ Nút xóa đơn thuốc (chỉ hiển thị khi có thể edit và có nhiều hơn 1 đơn) */}
+                    {canEdit && displayedPrescriptions.length > 1 && (
+                      <Button
+                        isIconOnly
+                        color="danger"
+                        variant="light"
+                        size="sm"
+                        onPress={() => {
+                          const updated = prescriptions.filter((_, i) => i !== index);
+                          setPrescriptions(updated);
+                        }}
+                        className="mt-6"
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </Button>
+                    )}
                   </div>
-
-                  {/* ⭐ Nút xóa đơn thuốc (chỉ hiển thị khi có thể edit và có nhiều hơn 1 đơn) */}
-                  {canEdit && displayedPrescriptions.length > 1 && (
-                    <Button
-                      isIconOnly
-                      color="danger"
-                      variant="light"
-                      size="sm"
-                      onPress={() => {
-                        const updated = prescriptions.filter((_, i) => i !== index);
-                        setPrescriptions(updated);
-                      }}
-                      className="mt-6"
-                    >
-                      <TrashIcon className="w-5 h-5" />
-                    </Button>
-                  )}
-                </div>
                 );
               })
             )}
@@ -2654,17 +2692,8 @@ const DoctorMedicalRecord: React.FC = () => {
                                   }
 
                                   if (timeRegex.test(timeInput)) {
-                                    const [hours, minutes] = timeInput.split(':');
-                                    const vnHours = parseInt(hours);
-                                    const vnMinutes = parseInt(minutes);
-                                    const utcHours = vnHours - 7;
-                                    const dateStr = formatDateToVNString(followUpDate!);
-                                    const dateObj = new Date(dateStr + 'T00:00:00.000Z');
-                                    dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
-                                    const endTimeDate = new Date(dateObj.getTime() + serviceDuration * 60000);
                                     setFollowUpTimeInput(timeInput);
-                                    // ⭐ Chỉ set endTime khi format hợp lệ, không clear khi đang nhập
-                                    setFollowUpEndTime(endTimeDate);
+                                    // ⭐ End time is now manually input, not auto-calculated
 
                                     // ⭐ KHÔNG tự động validate - chỉ validate khi blur
                                   } else {
@@ -2702,37 +2731,74 @@ const DoctorMedicalRecord: React.FC = () => {
                             )}
                           </div>
 
-                          {/* ⭐ Hiển thị endTime bằng 2 ô (Giờ/Phút) như start time — chỉ hiện khi start time hợp lệ và đã có endTime */}
-                          {/* ⭐ Sửa: Chỉ cần có followUpTimeInput hợp lệ và followUpEndTime, không cần kiểm tra regex lại vì đã validate khi blur */}
-                          {followUpTimeInput &&
-                            !timeInputError &&
-                            followUpEndTime &&
-                            !isNaN(followUpEndTime.getTime()) && (
-                              <div className="flex flex-col items-end text-right">
-                                <label className="block text-xs text-gray-600 mb-1">
-                                  Thời gian kết thúc dự kiến
-                                </label>
-                                <div className="flex items-center gap-2 justify-end">
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    placeholder="Giờ"
-                                    className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
-                                    readOnly
-                                    value={String((followUpEndTime.getUTCHours() + 7) % 24).padStart(2, '0')}
-                                  />
-                                  <span className="font-semibold">:</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    placeholder="Phút"
-                                    className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-[#39BDCC] text-[#39BDCC]"
-                                    readOnly
-                                    value={String(followUpEndTime.getUTCMinutes()).padStart(2, '0')}
-                                  />
-                                </div>
+
+                          {/* ⭐ Input cho giờ kết thúc tái khám - Editable như start time */}
+                          {followUpTimeInput && !timeInputError && (
+                            <div className="flex flex-col items-end text-right">
+                              <label className="block text-xs text-gray-600 mb-1">
+                                Giờ kết thúc tái khám <span className="text-red-500">*</span>
+                              </label>
+                              <div className="flex items-center gap-2 justify-end">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="Giờ"
+                                  maxLength={2}
+                                  className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-gray-300 focus:border-[#39BDCC] focus:outline-none"
+                                  value={(followUpEndTimeInput || '').split(':')[0] || ''}
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(/\D/g, '');
+                                    const currentMinute = (followUpEndTimeInput || '').split(':')[1] || '';
+                                    const newEndTimeInput = v + ':' + currentMinute;
+                                    setFollowUpEndTimeInput(newEndTimeInput);
+
+                                    // Update followUpEndTime if valid
+                                    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                                    if (timeRegex.test(newEndTimeInput) && followUpDate) {
+                                      const [hours, minutes] = newEndTimeInput.split(':');
+                                      const vnHours = parseInt(hours);
+                                      const vnMinutes = parseInt(minutes);
+                                      const utcHours = vnHours - 7;
+                                      const dateStr = formatDateToVNString(followUpDate);
+                                      const dateObj = new Date(dateStr + 'T00:00:00.000Z');
+                                      dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+                                      setFollowUpEndTime(dateObj);
+                                    }
+                                  }}
+                                  readOnly={!canEdit}
+                                />
+                                <span className="font-semibold">:</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="Phút"
+                                  maxLength={2}
+                                  className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-gray-300 focus:border-[#39BDCC] focus:outline-none"
+                                  value={(followUpEndTimeInput || '').split(':')[1] || ''}
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(/\D/g, '');
+                                    const currentHour = (followUpEndTimeInput || '').split(':')[0] || '';
+                                    const newEndTimeInput = currentHour + ':' + v;
+                                    setFollowUpEndTimeInput(newEndTimeInput);
+
+                                    // Update followUpEndTime if valid
+                                    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                                    if (timeRegex.test(newEndTimeInput) && followUpDate) {
+                                      const [hours, minutes] = newEndTimeInput.split(':');
+                                      const vnHours = parseInt(hours);
+                                      const vnMinutes = parseInt(minutes);
+                                      const utcHours = vnHours - 7;
+                                      const dateStr = formatDateToVNString(followUpDate);
+                                      const dateObj = new Date(dateStr + 'T00:00:00.000Z');
+                                      dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+                                      setFollowUpEndTime(dateObj);
+                                    }
+                                  }}
+                                  readOnly={!canEdit}
+                                />
                               </div>
-                            )}
+                            </div>
+                          )}
                         </div>
                       ) : null}
                     </div>
@@ -2882,3 +2948,5 @@ const DoctorMedicalRecord: React.FC = () => {
 };
 
 export default DoctorMedicalRecord;
+
+
