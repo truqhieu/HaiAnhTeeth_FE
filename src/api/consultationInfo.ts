@@ -2,16 +2,16 @@ import { apiCall, authenticatedApiCall, ApiResponse } from "./client";
 
 export interface ConsultationForm {
   _id: string;
-  name: string;
-  phone: string;
+  fullName: string;
+  phoneNumber: string;
   email: string;
   createdAt: string;
 }
 
 export const consultationInfoApi = {
   create: async (data: {
-    name: string;
-    phone: string;
+    fullName: string;
+    phoneNumber: string;
     email: string;
   }): Promise<ApiResponse<{ success: boolean; message: string; data: ConsultationForm }>> => {
     return apiCall("/consultation-informations/create", {
