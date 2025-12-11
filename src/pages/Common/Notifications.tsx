@@ -7,12 +7,17 @@ import {
   TrashIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
-import { Button, Select, SelectItem } from "@heroui/react";
+import { Button, Select, SelectItem, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
   const { notifications, markAsRead, markAllAsRead, deleteNotification, clearAll, isLoading, refreshNotifications } = useNotifications();
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
+  const [confirmModal, setConfirmModal] = useState<{open: boolean; type: 'deleteOne' | 'deleteAll'; notificationId?: string}>({
+    open: false,
+    type: 'deleteAll',
+    notificationId: undefined,
+  });
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -59,6 +64,7 @@ const NotificationsPage = () => {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
@@ -113,11 +119,7 @@ const NotificationsPage = () => {
                 variant="light"
                 size="sm"
                 startContent={<TrashIcon className="w-4 h-4" />}
-                onPress={() => {
-                  if (window.confirm("Bạn có chắc muốn xóa tất cả thông báo?")) {
-                    clearAll();
-                  }
-                }}
+                onPress={() => setConfirmModal({ open: true, type: 'deleteAll' })}
               >
                 Xóa tất cả
               </Button>
@@ -212,11 +214,7 @@ const NotificationsPage = () => {
                             size="sm"
                             variant="light"
                             isIconOnly
-                            onPress={() => {
-                              if (window.confirm("Bạn có chắc muốn xóa thông báo này?")) {
-                                deleteNotification(notification.id);
-                              }
-                            }}
+                            onPress={() => setConfirmModal({ open: true, type: 'deleteOne', notificationId: notification.id })}
                           >
                             <TrashIcon className="w-4 h-4" />
                           </Button>
@@ -231,6 +229,51 @@ const NotificationsPage = () => {
         </div>
       </div>
     </div>
+
+    <Modal
+        isOpen={confirmModal.open}
+        onOpenChange={(open) => {
+          if (!open) setConfirmModal((prev) => ({ ...prev, open: false }));
+        }}
+        isDismissable
+        hideCloseButton
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                Xác nhận
+              </ModalHeader>
+              <ModalBody>
+                {confirmModal.type === 'deleteAll'
+                  ? "Bạn có chắc muốn xóa tất cả thông báo?"
+                  : "Bạn có chắc muốn xóa thông báo này?"}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="light" onPress={onClose}>
+                  Hủy
+                </Button>
+                <Button
+                  color="danger"
+                  onPress={() => {
+                  const run = async () => {
+                    if (confirmModal.type === 'deleteAll') {
+                      await clearAll();
+                    } else if (confirmModal.notificationId) {
+                      await deleteNotification(confirmModal.notificationId);
+                    }
+                  };
+                  run().finally(onClose);
+                  }}
+                >
+                  Xóa
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
 
