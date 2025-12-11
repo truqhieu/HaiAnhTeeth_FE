@@ -69,6 +69,13 @@ interface CancelAppointmentModalProps {
   onClose: () => void;
   appointment: Appointment | null;
   policies: Policy[];
+  refundData: {
+    isEligibleForRefund: boolean;
+    hoursUntilAppointment: number | null;
+    cancellationThresholdHours: number;
+    refundMessage: string;
+    requiresBankInfo: boolean;
+  } | null; // ⭐ Thêm refundData từ backend
   onConfirmCancel: (
     confirmed: boolean,
     cancelReason?: string,
@@ -85,6 +92,7 @@ const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
   onClose,
   appointment,
   policies,
+  refundData, // ⭐ Nhận refundData từ backend
   onConfirmCancel
 }) => {
   const [cancelReason, setCancelReason] = useState("");
@@ -162,10 +170,11 @@ const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
   };
 
   const handleConfirm = async () => {
-    const refundStatus = getRefundStatus();
+    // ⭐ Sử dụng refundData từ backend thay vì tính toán ở frontend
+    const canRefund = refundData?.isEligibleForRefund || false;
     
     // Validation cho thông tin ngân hàng khi được hoàn tiền
-    if (refundStatus.canRefund) {
+    if (canRefund) {
       const errors = validateBankFields();
       if (errors.accountHolderName || errors.accountNumber || errors.bankName) {
         return; // Validation errors đã được hiển thị
@@ -176,7 +185,7 @@ const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
     try {
       // Normalize text: trim và chỉ giữ 1 khoảng trắng giữa các từ
       const normalizedCancelReason = normalizeText(cancelReason);
-      const bankInfoToSend = refundStatus.canRefund ? {
+      const bankInfoToSend = canRefund ? {
         accountHolderName: normalizeText(bankInfo.accountHolderName),
         accountNumber: bankInfo.accountNumber.trim(),
         bankName: normalizeText(bankInfo.bankName),
@@ -218,21 +227,43 @@ const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
     });
   };
 
-  // Kiểm tra xem có được hoàn tiền không dựa trên thời gian hủy
+  // ⭐ Sử dụng refundData từ backend thay vì tính toán ở frontend
   const getRefundStatus = () => {
-    if (!appointment?.startTime) return { canRefund: false, hoursLeft: 0 };
+    console.log('🔍 [Modal] getRefundStatus called');
+    console.log('🔍 [Modal] refundData:', refundData);
     
-    const appointmentTime = new Date(appointment.startTime);
-    const now = new Date();
-    const hoursLeft = Math.floor((appointmentTime.getTime() - now.getTime()) / (1000 * 60 * 60));
+    if (!refundData) {
+      console.log('⚠️ [Modal] refundData is null/undefined!');
+      return { canRefund: false, hoursLeft: 0, threshold: 24 };
+    }
     
-    return {
-      canRefund: hoursLeft >= 24,
-      hoursLeft: Math.max(0, hoursLeft)
+    console.log('✅ [Modal] Using refundData from backend:', {
+      isEligibleForRefund: refundData.isEligibleForRefund,
+      hoursUntilAppointment: refundData.hoursUntilAppointment,
+      threshold: refundData.cancellationThresholdHours
+    });
+    
+    const result = {
+      canRefund: refundData.isEligibleForRefund,
+      hoursLeft: refundData.hoursUntilAppointment || 0,
+      threshold: refundData.cancellationThresholdHours
     };
+    
+    console.log('✅ [Modal] Calculated refundStatus:', result);
+    
+    return result;
   };
 
-  const refundStatus = getRefundStatus();
+  // ⭐ Tính lại refundStatus mỗi khi refundData thay đổi
+  const refundStatus = React.useMemo(() => {
+    console.log('🔄 [Modal] useMemo triggered, recalculating refundStatus');
+    const status = getRefundStatus();
+    console.log('🔄 [Modal] Final refundStatus:', status);
+    return status;
+  }, [refundData]);
+
+  console.log('🎨 [Modal] Rendering with refundStatus:', refundStatus);
+  console.log('🎨 [Modal] Policies:', policies);
 
   if (!appointment) return null;
 
@@ -295,59 +326,28 @@ const CancelAppointmentModal: React.FC<CancelAppointmentModalProps> = ({
             </CardBody>
           </Card>
 
-          {/* Thông báo hoàn tiền dựa trên thời gian */}
-          {refundStatus.canRefund ? (
-            <Card className="bg-green-50 border-green-200 overflow-visible">
-              <CardBody className="py-3">
-                <div>
-                  <h4 className="text-sm font-semibold text-green-800 mb-1">
-                    Được hoàn tiền 100%
-                  </h4>
-                  <p className="text-xs text-green-700 leading-relaxed">
-                    Bạn đang hủy lịch trước 24 giờ ({refundStatus.hoursLeft} giờ còn lại),
-                    nên sẽ được hoàn tiền 100% theo chính sách. Nhân viên sẽ xử lý hoàn tiền
-                    và cập nhật trạng thái cho bạn.
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
-          ) : (
-            <Card className="bg-orange-50 border-orange-200 overflow-visible">
-              <CardBody className="py-3">
-                <div>
-                  <h4 className="text-sm font-semibold text-orange-800 mb-1">
-                    Lưu ý quan trọng
-                  </h4>
-                  <p className="text-xs text-orange-700 leading-relaxed">
-                    Bạn đang vi phạm chính sách hủy lịch sau 24h vì vậy bạn sẽ không được hoàn tiền.
-                  </p>
-                </div>
-              </CardBody>
-            </Card>
-          )}
-
-          {/* Chính sách hủy lịch */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-gray-800">Chính sách hủy lịch</h3>
-            <div className="space-y-1">
-              {policies.map((policy) => (
-                <Card key={policy._id} className="bg-gray-50 border-gray-200">
-                  <CardBody className="py-3">
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-800 leading-tight">
-                        {policy.title}
-                      </h4>
-                      <p className="text-xs text-gray-600 leading-relaxed break-words">
-                        {policy.description}
-                      </p>
-                    </div>
-                  </CardBody>
-                </Card>
-              ))}
+          {/* ⭐ CHỈ hiển thị policies từ DB khi KHÔNG đủ điều kiện hoàn tiền */}
+          {!refundStatus.canRefund && policies && policies.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-gray-800">Chính sách hủy lịch</h3>
+              <div className="space-y-1">
+                {policies.map((policy) => (
+                  <Card key={policy._id} className="bg-orange-50 border-orange-200">
+                    <CardBody className="py-3">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-orange-800 leading-tight">
+                          {policy.title}
+                        </h4>
+                        <p className="text-xs text-orange-700 leading-relaxed break-words">
+                          {policy.description}
+                        </p>
+                      </div>
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
-
-          
+          )}
 
           {/* Thông tin ngân hàng - chỉ hiển thị khi được hoàn tiền */}
           {refundStatus.canRefund && (

@@ -837,4 +837,3 @@ const NurseMedicalRecord: React.FC = () => {
 };
 
 export default NurseMedicalRecord;
-

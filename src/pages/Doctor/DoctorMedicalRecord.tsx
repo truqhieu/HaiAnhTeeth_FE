@@ -2882,4 +2882,3 @@ const DoctorMedicalRecord: React.FC = () => {
 };
 
 export default DoctorMedicalRecord;
-
