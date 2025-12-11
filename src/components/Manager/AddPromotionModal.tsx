@@ -26,6 +26,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     applicableServices: [] as string[],
     startDate: "",
     endDate: "",
+    status: "Upcoming",
   });
 
   const [showValidation, setShowValidation] = useState(false);
@@ -85,6 +86,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   const isServicesInvalid = Boolean(
     showValidation && !formData.applyToAll && formData.applicableServices.length === 0,
   );
+  const isStatusInvalid = Boolean(showValidation && !formData.status);
 
   // Check if end date is before start date
   // Compare dates by setting time to 00:00:00 to avoid timezone issues
@@ -115,6 +117,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       (formData.discountType === "Percent" && formData.discountValue > 100) ||
       !formData.startDate ||
       !formData.endDate ||
+      !formData.status ||
       (formData.startDate &&
         formData.endDate &&
         (() => {
@@ -163,6 +166,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
         applyToAll: formData.applyToAll,
         startDate: formData.startDate, // Already in YYYY-MM-DD format from VietnameseDateInput
         endDate: formData.endDate,     // Already in YYYY-MM-DD format from VietnameseDateInput
+        status: formData.status,
       };
 
       // Only include serviceIds if not applying to all
@@ -200,6 +204,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       applicableServices: [] as string[],
       startDate: "",
       endDate: "",
+      status: "Upcoming",
     });
     setShowValidation(false);
     onClose();
@@ -368,6 +373,31 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                 onChange={(value) => handleInputChange("endDate", value)}
               />
             </div>
+
+            <Select
+              className="w-full"
+              id="status"
+              label={
+                <>
+                  Trạng thái <span className="text-red-500">*</span>
+                </>
+              }
+              selectedKeys={[formData.status]}
+              variant="bordered"
+              disallowEmptySelection
+              isInvalid={isStatusInvalid}
+              errorMessage={
+                isStatusInvalid ? "Vui lòng chọn trạng thái ưu đãi" : ""
+              }
+              onSelectionChange={(keys) => {
+                const selected = Array.from(keys)[0] as string;
+                handleInputChange("status", selected);
+              }}
+            >
+              <SelectItem key="Upcoming">Sắp diễn ra</SelectItem>
+              <SelectItem key="Active">Đang áp dụng</SelectItem>
+              <SelectItem key="Expired">Đã hết hạn</SelectItem>
+            </Select>
 
             <div>
               <p className="block text-sm font-semibold text-gray-700 mb-3">
