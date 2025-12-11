@@ -1344,16 +1344,17 @@ const AllAppointments = () => {
   const getStatusColor = (status: string): "success" | "warning" | "primary" | "danger" | "default" => {
     // Subtle colors - still use colors but with flat variant for softer look
     switch (status) {
-      case "Approved":
       case "Completed":
       case "Refunded":
-        return "success";
+        return "success"; // Hoàn thành/hoàn tiền: xanh lá
+      case "Approved":
+        return "primary"; // Đã xác nhận: xanh dương
+      case "CheckedIn":
+      case "InProgress":
+        return "default"; // Trung tính để không trùng màu
       case "Pending":
       case "PendingPayment":
         return "warning";
-      case "CheckedIn":
-      case "InProgress":
-        return "primary";
       case "Cancelled":
       case "No-Show":
       case "Expired":
