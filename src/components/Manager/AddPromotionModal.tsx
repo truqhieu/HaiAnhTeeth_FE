@@ -26,7 +26,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     applicableServices: [] as string[],
     startDate: "",
     endDate: "",
-    status: "Upcoming",
+    status: "Active",
   });
 
   const [showValidation, setShowValidation] = useState(false);
@@ -204,7 +204,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       applicableServices: [] as string[],
       startDate: "",
       endDate: "",
-      status: "Upcoming",
+      status: "Active",
     });
     setShowValidation(false);
     onClose();
@@ -394,7 +394,6 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                 handleInputChange("status", selected);
               }}
             >
-              <SelectItem key="Upcoming">Sắp diễn ra</SelectItem>
               <SelectItem key="Active">Đang áp dụng</SelectItem>
               <SelectItem key="Expired">Đã hết hạn</SelectItem>
             </Select>

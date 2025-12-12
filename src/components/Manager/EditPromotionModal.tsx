@@ -135,11 +135,11 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
     setShowValidation(true);
 
     // Check if there are any errors
-    const allowedStatusesForUpdate = ["Active", "Inactive", "Upcoming"];
+    const allowedStatusesForUpdate = ["Active", "Inactive"];
 
     // Nếu status không hợp lệ cho update, chặn ngay và báo toast (BE cũng sẽ báo nhưng làm sớm để UX tốt hơn)
     if (!allowedStatusesForUpdate.includes(formData.status)) {
-      toast.error("Chỉ được cập nhật trạng thái thành Active, Inactive hoặc Upcoming");
+      toast.error("Chỉ được cập nhật trạng thái thành Active hoặc Inactive");
       setShowValidation(true);
       return;
     }
@@ -409,7 +409,6 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
             >
               <SelectItem key="Active">Đang áp dụng</SelectItem>
               <SelectItem key="Inactive">Không áp dụng</SelectItem>
-              <SelectItem key="Upcoming">Sắp diễn ra</SelectItem>
             </Select>
 
             <div>
