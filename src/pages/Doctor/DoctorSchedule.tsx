@@ -892,18 +892,36 @@ const DoctorSchedule = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Chip 
-                      size="lg" 
-                      variant="flat"
-                      color={appointment.mode === "Online" ? "secondary" : "default"}
-                      startContent={
-                        appointment.mode === "Online" ? 
-                          <VideoCameraIcon className="w-4 h-4" /> : 
-                          <BuildingOfficeIcon className="w-4 h-4" />
-                      }
-                    >
-                      {getModeText(appointment.mode)}
-                    </Chip>
+                    <div className="flex flex-col gap-1">
+                      <Chip 
+                        size="lg" 
+                        variant="flat"
+                        color={appointment.mode === "Online" ? "secondary" : "default"}
+                        startContent={
+                          appointment.mode === "Online" ? 
+                            <VideoCameraIcon className="w-4 h-4" /> : 
+                            <BuildingOfficeIcon className="w-4 h-4" />
+                        }
+                      >
+                        {getModeText(appointment.mode)}
+                      </Chip>
+                      {/* ⭐ Hiển thị link Google Meet cho ca khám online */}
+                      {appointment.mode === "Online" && appointment.linkMeetUrl && (
+                        <a
+                          href={appointment.linkMeetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 mt-1"
+                          title="Click để tham gia Google Meet"
+                        >
+                          <VideoCameraIcon className="w-3 h-3" />
+                          <span>Link Meet</span>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-2">
