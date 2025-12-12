@@ -1453,9 +1453,19 @@ const AllAppointments = () => {
 
       const API_URL = import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api";
 
+      // ⭐ Lấy token từ sessionStorage để gửi kèm Authorization header
+      const token = sessionStorage.getItem("authToken");
+      
+      // ⭐ Tạo headers với Authorization nếu có token
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_URL}/appointments/${appointmentId}/visit-ticket/pdf`, {
         method: "GET",
         credentials: "include",
+        headers: headers,
       });
 
       if (!response.ok) {
