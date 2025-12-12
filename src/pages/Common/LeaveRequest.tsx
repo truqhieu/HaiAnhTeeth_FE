@@ -18,19 +18,48 @@ import {
 import toast from "react-hot-toast";
 
 import { leaveRequestApi } from "@/api/leaveRequest";
+import { doctorApi } from "@/api/doctor";
+import { useAuth } from "@/contexts/AuthContext";
 import VietnameseDateInput from "@/components/Common/VietnameseDateInput";
 
 const LeaveRequestPage = () => {
+  const { user } = useAuth();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [hasInProgressAppointment, setHasInProgressAppointment] = useState(false);
+  const [checkingAppointment, setCheckingAppointment] = useState(false);
 
   useEffect(() => {
     fetchLeaveRequests();
   }, []);
+
+  // Check if doctor has InProgress appointment
+  useEffect(() => {
+    const checkInProgressAppointment = async () => {
+      if (user?.role === "Doctor" || user?.role === "Bác sĩ") {
+        try {
+          setCheckingAppointment(true);
+          const response = await doctorApi.getAppointmentsSchedule();
+          if (response.success && response.data) {
+            const hasInProgress = response.data.some(
+              (apt: any) => apt.status === "InProgress"
+            );
+            setHasInProgressAppointment(hasInProgress);
+          }
+        } catch (error) {
+          console.error("Error checking appointments:", error);
+        } finally {
+          setCheckingAppointment(false);
+        }
+      }
+    };
+
+    checkInProgressAppointment();
+  }, [user]);
 
   const fetchLeaveRequests = async () => {
     try {
@@ -84,6 +113,12 @@ const LeaveRequestPage = () => {
     if (!reason.trim()) {
       toast.error("Vui lòng nhập lý do nghỉ");
 
+      return;
+    }
+
+    // Check if doctor has InProgress appointment
+    if (hasInProgressAppointment) {
+      toast.error("Bạn không thể nghỉ phép khi đang trong ca khám");
       return;
     }
 
@@ -377,15 +412,23 @@ const formatDateRange = (startDate?: string, endDate?: string): string => {
               </p>
             </div>
 
+            {hasInProgressAppointment && (
+              <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                <p className="text-sm text-red-700 font-medium">
+                  ⚠️ Bạn đang trong ca khám. Vui lòng hoàn thành ca khám trước khi gửi đơn nghỉ phép.
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end pt-4 border-t border-gray-200">
               <Button
                 className="bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 font-bold px-8 shadow-md hover:shadow-lg transition-all"
-                isDisabled={submitting}
-                isLoading={submitting}
+                isDisabled={submitting || hasInProgressAppointment}
+                isLoading={submitting || checkingAppointment}
                 size="lg"
                 type="submit"
               >
-                {submitting ? "Đang gửi..." : "Gửi đơn xin nghỉ"}
+                {submitting ? "Đang gửi..." : checkingAppointment ? "Đang kiểm tra..." : "Gửi đơn xin nghỉ"}
               </Button>
             </div>
           </form>
