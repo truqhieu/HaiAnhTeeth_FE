@@ -189,6 +189,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null); // Chỉ dùng cho server errors
   const [timeInputError, setTimeInputError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // ⭐ State để track quá trình validate/reserve time đang diễn ra
+  const [isValidatingTime, setIsValidatingTime] = useState(false);
   // ⭐ Suppress server error banner for cases user đã thấy trong panel (hết chỗ/qua giờ/không đủ thời gian)
   const isNonCriticalAvailabilityMessage = (msg: string) => {
     if (!msg) return false;
@@ -681,8 +683,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         userStartTimeInput: "",
         endTime: utcNow,
       }));
+      setIsValidatingTime(false); // ⭐ Clear validating state
       return;
     }
+
+    // ⭐ Set validating state ngay khi bắt đầu validate
+    setIsValidatingTime(true);
 
     // ⭐ Validate format: HH:mm (basic format check)
     const timeRegex = /^(\d{1,2}):(\d{1,2})$/;
@@ -693,6 +699,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         ...prev,
         endTime: utcNow,
       }));
+      setIsValidatingTime(false); // ⭐ Clear validating state on error
       return;
     }
 
@@ -708,6 +715,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         userStartTimeInput: "",
         endTime: utcNow,
       }));
+      setIsValidatingTime(false); // ⭐ Clear validating state on error
       return;
     }
 
@@ -719,6 +727,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         userStartTimeInput: "",
         endTime: utcNow,
       }));
+      setIsValidatingTime(false); // ⭐ Clear validating state on error
       return;
     }
 
@@ -730,6 +739,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         userStartTimeInput: "",
         endTime: utcNow,
       }));
+      setIsValidatingTime(false); // ⭐ Clear validating state on error
       return;
     }
 
@@ -743,6 +753,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         userStartTimeInput: "",
         endTime: utcNow,
       }));
+      setIsValidatingTime(false); // ⭐ Clear validating state on error
       return;
     }
 
@@ -775,6 +786,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
             userStartTimeInput: "",
             endTime: utcNow,
           }));
+          setIsValidatingTime(false); // ⭐ Clear validating state on error
           return;
         }
       }
@@ -812,6 +824,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         setTimeInputError(errorMsg);
         setErrorMessage(null);
         setHasReservedAfterBlur(false); // ⭐ Clear flag khi có lỗi
+        setIsValidatingTime(false); // ⭐ Clear validating state on error
         // Clear endTime on error
         setFormData((prev) => ({
           ...prev,
@@ -834,6 +847,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
         const reserveError = reserveRes.message || "Không thể giữ chỗ cho khung giờ này.";
         setTimeInputError(reserveError);
         setHasReservedAfterBlur(false); // ⭐ Clear flag khi reserve thất bại
+        setIsValidatingTime(false); // ⭐ Clear validating state on error
         setFormData((prev) => ({
           ...prev,
           userStartTimeInput: "",
@@ -860,6 +874,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       // ⭐ Clear error khi validation thành công
       setTimeInputError(null);
       setErrorMessage(null);
+      setIsValidatingTime(false); // ⭐ Clear validating state - validation thành công!
       setFormData((prev) => ({
         ...prev,
         userStartTimeInput: timeInput,
@@ -874,6 +889,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
       setTimeInputError(errorMsg);
       setErrorMessage(null);
       setHasReservedAfterBlur(false); // ⭐ Clear flag khi có lỗi
+      setIsValidatingTime(false); // ⭐ Clear validating state on error
       // Clear endTime on error
       await releaseReservation({ silent: true });
       setFormData((prev) => ({
@@ -1946,7 +1962,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
               </button>
               <button
                 className="px-6 py-2 bg-[#39BDCC] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#32a8b5]"
-                disabled={submitting}
+                disabled={submitting || isValidatingTime || !activeReservation}
                 type="submit"
                 onMouseDown={() => {
                   // ⭐ Set flag ngay khi user nhấn chuột xuống nút submit
@@ -1957,7 +1973,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                   isSubmittingRef.current = false;
                 }}
               >
-                {submitting ? "Đang xử lý..." : "Xác nhận đặt lịch"}
+                {submitting ? "Đang xử lý..." : isValidatingTime ? "Đang kiểm tra..." : !activeReservation && formData.userStartTimeInput ? "Vui lòng đợi giữ chỗ" : "Xác nhận đặt lịch"}
               </button>
             </div>
           </form>
