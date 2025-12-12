@@ -359,7 +359,7 @@ export const getDoctorScheduleRange = async (
     queryParams.append("serviceId", serviceId);
     queryParams.append("date", date);
     queryParams.append("appointmentFor", appointmentFor);
-        
+
     if (customerFullName) {
       queryParams.append("customerFullName", encodeURIComponent(customerFullName));
     }
@@ -488,6 +488,7 @@ export const validateAppointmentTime = async (
   appointmentFor: 'self' | 'other' = 'self',
   customerFullName?: string,
   customerEmail?: string,
+  endTime?: string, // ⭐ THÊM: Cho phép truyền endTime tùy chỉnh (cho follow-up)
 ): Promise<CheckStartTimeResponse> => {
   try {
     const queryParams = new URLSearchParams();
@@ -496,12 +497,16 @@ export const validateAppointmentTime = async (
     queryParams.append("date", date);
     queryParams.append("startTime", startTime);
     queryParams.append("appointmentFor", appointmentFor);
-    
+
     if (customerFullName) {
       queryParams.append("customerFullName", customerFullName);
     }
     if (customerEmail) {
       queryParams.append("customerEmail", customerEmail);
+    }
+    // ⭐ THÊM: Truyền endTime nếu có
+    if (endTime) {
+      queryParams.append("endTime", endTime);
     }
 
     const query = queryParams.toString();
