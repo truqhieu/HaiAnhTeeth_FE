@@ -3,12 +3,14 @@ import { Button, Form, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter 
 import toast from "react-hot-toast";
 
 import { managerApi } from "@/api";
+import VietnameseDateInput from "@/components/Common/VietnameseDateInput";
 
 interface WorkingHoursModalProps {
   isOpen: boolean;
   onClose: () => void;
   doctorId: string | null;
   initialWorkingHours?: {
+    date?: string;
     morningStart: string;
     morningEnd: string;
     afternoonStart: string;
@@ -25,6 +27,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
   onSuccess,
 }) => {
   const [formData, setFormData] = useState({
+    date: "",
     morningStart: "08:00",
     morningEnd: "12:00",
     afternoonStart: "14:00",
@@ -61,18 +64,37 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
 
   // Load initial working hours when modal opens
   useEffect(() => {
-    if (isOpen && initialWorkingHours) {
-      setFormData({
-        morningStart: convertTo24Hour(initialWorkingHours.morningStart) || "08:00",
-        morningEnd: convertTo24Hour(initialWorkingHours.morningEnd) || "12:00",
-        afternoonStart: convertTo24Hour(initialWorkingHours.afternoonStart) || "14:00",
-        afternoonEnd: convertTo24Hour(initialWorkingHours.afternoonEnd) || "18:00",
-      });
+    if (isOpen) {
+      if (initialWorkingHours) {
+        // Convert date to ISO string format (YYYY-MM-DD) if exists
+        const dateValue = initialWorkingHours.date 
+          ? new Date(initialWorkingHours.date).toISOString().split("T")[0] 
+          : "";
+        
+        setFormData({
+          date: dateValue,
+          morningStart: convertTo24Hour(initialWorkingHours.morningStart) || "08:00",
+          morningEnd: convertTo24Hour(initialWorkingHours.morningEnd) || "12:00",
+          afternoonStart: convertTo24Hour(initialWorkingHours.afternoonStart) || "14:00",
+          afternoonEnd: convertTo24Hour(initialWorkingHours.afternoonEnd) || "18:00",
+        });
+      } else {
+        // Set default date to today if no initial data
+        const today = new Date().toISOString().split("T")[0];
+        setFormData({
+          date: today,
+          morningStart: "08:00",
+          morningEnd: "12:00",
+          afternoonStart: "14:00",
+          afternoonEnd: "18:00",
+        });
+      }
       setShowValidation(false);
     }
   }, [isOpen, initialWorkingHours]);
 
   // Validation
+  const isDateInvalid = showValidation && !formData.date;
   const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
   const isMorningStartInvalid =
     showValidation && (!formData.morningStart || !timeRegex.test(formData.morningStart));
@@ -103,6 +125,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
 
     // Check if there are any errors
     const hasErrors =
+      !formData.date ||
       !formData.morningStart ||
       !formData.morningEnd ||
       !formData.afternoonStart ||
@@ -131,6 +154,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
       }
 
       const workingHours = {
+        date: formData.date, // BE sẽ thêm sau
         morningStart: formData.morningStart,
         morningEnd: formData.morningEnd,
         afternoonStart: formData.afternoonStart,
@@ -207,6 +231,23 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
 
             <ModalBody className="px-6 py-6">
               <Form autoComplete="off" className="space-y-6" onSubmit={handleFormSubmit}>
+            {/* Date input */}
+            <div className="w-full">
+              <VietnameseDateInput
+                label={
+                  <>
+                    Ngày bắt đầu<span className="text-red-500">*</span>
+                  </>
+                }
+                labelOutside={true}
+                value={formData.date}
+                onChange={(value) => setFormData(prev => ({ ...prev, date: value }))}
+                isInvalid={isDateInvalid}
+                errorMessage={isDateInvalid ? "Vui lòng chọn ngày" : ""}
+                className="w-full"
+              />
+            </div>
+
             {/* Row: Ca sáng và Ca chiều */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
               {/* ⭐ Ca sáng */}
