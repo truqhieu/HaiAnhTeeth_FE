@@ -261,7 +261,6 @@ const PromotionManagement = () => {
             <SelectItem key="all">Tất cả trạng thái</SelectItem>
             <SelectItem key="Active">Đang áp dụng</SelectItem>
             <SelectItem key="Inactive">Không áp dụng</SelectItem>
-            <SelectItem key="Upcoming">Sắp diễn ra</SelectItem>
             <SelectItem key="Expired">Đã hết hạn</SelectItem>
           </Select>
 

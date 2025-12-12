@@ -70,6 +70,7 @@ interface Appointment {
   updatedAt?: string; // ⭐ THÊM: Thời gian cập nhật để sắp xếp
   noTreatment?: boolean;
   mode: string; // ⭐ THÊM: Mode của appointment (Online/Offline)
+  hasVisitTicket?: boolean; // ⭐ Đánh dấu đã xuất phiếu khám
 }
 
 interface ApiResponse<T> {
@@ -694,6 +695,7 @@ const AllAppointments = () => {
             updatedAt: apt.updatedAt || apt.createdAt || "", // ⭐ Thêm updatedAt để sắp xếp
             noTreatment: !!apt.noTreatment,
             mode: apt.mode || "Offline", // ⭐ Map mode từ API
+            hasVisitTicket: Boolean((apt as any).hasVisitTicket),
           };
         });
 
@@ -1344,16 +1346,17 @@ const AllAppointments = () => {
   const getStatusColor = (status: string): "success" | "warning" | "primary" | "danger" | "default" => {
     // Subtle colors - still use colors but with flat variant for softer look
     switch (status) {
-      case "Approved":
       case "Completed":
       case "Refunded":
-        return "success";
+        return "success"; // Hoàn thành/hoàn tiền: xanh lá
+      case "Approved":
+        return "primary"; // Đã xác nhận: xanh dương
+      case "CheckedIn":
+      case "InProgress":
+        return "default"; // Trung tính để không trùng màu
       case "Pending":
       case "PendingPayment":
         return "warning";
-      case "CheckedIn":
-      case "InProgress":
-        return "primary";
       case "Cancelled":
       case "No-Show":
       case "Expired":
@@ -2027,6 +2030,11 @@ const AllAppointments = () => {
                       >
                         {getStatusText(appointment.status)}
                       </Chip>
+                      {appointment.hasVisitTicket && (
+                        <p className="text-xs text-green-600 mt-1 font-semibold">
+                          Đã xuất phiếu khám bệnh
+                        </p>
+                      )}
                       {appointment.status === "Completed" && appointment.noTreatment && (
                         <p className="text-xs text-gray-500 mt-1 font-medium">
                           Không cần khám
@@ -2204,7 +2212,7 @@ const AllAppointments = () => {
                                 (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
                                   <div className="flex gap-2">
                                     {appointment.status === "Completed" && !appointment.noTreatment && (
-                                      <Tooltip content="Xuất PDF">
+                                      <Tooltip content="Xuất phiếu khám bệnh">
                                         <Button
                                           isIconOnly
                                           size="md"

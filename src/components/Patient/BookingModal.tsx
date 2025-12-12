@@ -228,6 +228,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   //   }
   // }, [isOpen]);
 
+  const getServiceModeLabel = (service: Service) => {
+    if (!service.mode) return "";
+    if (service.mode === "Online") return " - Trực tuyến";
+    if (service.mode === "Offline") return " - Tại phòng khám";
+    return "";
+  };
+
   // === Fetch services ===
   useEffect(() => {
     if (!isOpen) return;
@@ -1477,11 +1484,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
                 onBlur={() => handleFieldBlur("serviceId")}
               >
                 <option value="">-- Chọn dịch vụ --</option>
-                {services.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.serviceName} ({s.durationMinutes} phút)
-                  </option>
-                ))}
+                {services.map((s) => {
+                  const modeLabel = getServiceModeLabel(s);
+                  return (
+                    <option key={s._id} value={s._id}>
+                      {s.serviceName} ({s.durationMinutes} phút{modeLabel})
+                    </option>
+                  );
+                })}
               </select>
               {fieldErrors.serviceId && (
                 <p className="mt-1 text-xs text-red-600">{fieldErrors.serviceId}</p>
