@@ -33,6 +33,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
+  const [serviceSearchTerm, setServiceSearchTerm] = useState("");
 
   // Category mapping
   const categoryMap: { [key: string]: string } = {
@@ -60,6 +61,19 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     } finally {
       setLoadingServices(false);
     }
+  };
+
+  // Filter services based on search term
+  const getFilteredServices = () => {
+    if (!serviceSearchTerm.trim()) {
+      return services;
+    }
+    const searchLower = serviceSearchTerm.toLowerCase();
+    return services.filter(
+      (service) =>
+        service.serviceName.toLowerCase().includes(searchLower) ||
+        (categoryMap[service.category] || service.category).toLowerCase().includes(searchLower)
+    );
   };
 
   const handleInputChange = (field: string, value: any) => {
@@ -207,6 +221,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       status: "Active",
     });
     setShowValidation(false);
+    setServiceSearchTerm("");
     onClose();
   };
 
@@ -225,6 +240,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       scrollBehavior="outside"
       classNames={{
         base: "max-h-[90vh] rounded-2xl",
+        body: "overflow-y-auto",
       }}
     >
       <ModalContent>
@@ -243,7 +259,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
             </div>
           </ModalHeader>
 
-          <ModalBody className="px-6 py-4 space-y-4">
+          <ModalBody className="px-6 py-4 space-y-4 overflow-y-auto max-h-[calc(90vh-140px)]">
             <Input
               fullWidth
               id="title"
@@ -409,6 +425,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                     handleInputChange("applyToAll", checked);
                     if (checked) {
                       handleInputChange("applicableServices", []);
+                      setServiceSearchTerm("");
                     }
                   }}
                 >
@@ -416,34 +433,101 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                 </Checkbox>
 
                 {!formData.applyToAll && (
-                  <div className="ml-6 mt-3">
+                  <div className="ml-6 mt-3 w-full relative z-0">
                     {loadingServices ? (
                       <div className="flex items-center gap-2 py-4">
                         <Spinner size="sm" />
                         <span className="text-sm text-gray-600">Đang tải danh sách dịch vụ...</span>
                       </div>
                     ) : (
-                      <div className={`border rounded-lg p-4 max-h-60 overflow-y-auto ${isServicesInvalid ? 'border-red-500' : 'border-gray-300'}`}>
-                        <p className="text-sm font-medium text-gray-700 mb-3">
-                          Chọn dịch vụ áp dụng: ({formData.applicableServices.length} đã chọn)
-                        </p>
-                        <CheckboxGroup
-                          value={formData.applicableServices}
-                          onValueChange={(value) => handleInputChange("applicableServices", value)}
-                        >
-                          {services.map((service) => (
-                            <Checkbox key={service._id} value={service._id}>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium">{service.serviceName}</span>
-                                <span className="text-xs text-gray-500">
-                                  {service.price.toLocaleString()}đ - {categoryMap[service.category] || service.category}
-                                </span>
-                              </div>
-                            </Checkbox>
-                          ))}
-                        </CheckboxGroup>
+                      <div className={`border rounded-lg p-4 bg-gray-50 ${isServicesInvalid ? 'border-red-500' : 'border-gray-300'}`}>
+                        {/* Header với search và select all */}
+                        <div className="mb-4 space-y-3">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-gray-700">
+                              Chọn dịch vụ áp dụng
+                              <span className="ml-2 text-blue-600 font-medium">
+                                ({formData.applicableServices.length} đã chọn)
+                              </span>
+                            </p>
+                            {services.length > 0 && (
+                              <Button
+                                size="sm"
+                                variant="light"
+                                className="text-xs h-7"
+                                onPress={() => {
+                                  const filteredServices = getFilteredServices();
+                                  if (formData.applicableServices.length === filteredServices.length) {
+                                    handleInputChange("applicableServices", []);
+                                  } else {
+                                    handleInputChange("applicableServices", filteredServices.map(s => s._id));
+                                  }
+                                }}
+                              >
+                                {formData.applicableServices.length === getFilteredServices().length 
+                                  ? "Bỏ chọn tất cả" 
+                                  : "Chọn tất cả"}
+                              </Button>
+                            )}
+                          </div>
+                          <Input
+                            placeholder="Tìm kiếm dịch vụ..."
+                            value={serviceSearchTerm}
+                            onValueChange={setServiceSearchTerm}
+                            size="sm"
+                            variant="bordered"
+                            classNames={{
+                              input: "text-sm",
+                              base: "w-full",
+                            }}
+                            startContent={
+                              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            }
+                          />
+                        </div>
+
+                        {/* Services list với scroll */}
+                        <div className="max-h-[400px] overflow-y-auto overflow-x-hidden space-y-2 pr-2">
+                          {getFilteredServices().length === 0 ? (
+                            <div className="text-center py-8 text-sm text-gray-500">
+                              {serviceSearchTerm ? "Không tìm thấy dịch vụ nào" : "Không có dịch vụ nào"}
+                            </div>
+                          ) : (
+                            <CheckboxGroup
+                              value={formData.applicableServices}
+                              onValueChange={(value) => handleInputChange("applicableServices", value)}
+                              className="space-y-2"
+                            >
+                              {getFilteredServices().map((service) => (
+                                <Checkbox 
+                                  key={service._id} 
+                                  value={service._id}
+                                  classNames={{
+                                    base: "w-full p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all",
+                                    label: "w-full",
+                                  }}
+                                >
+                                  <div className="flex flex-col gap-1 w-full">
+                                    <span className="text-sm font-semibold text-gray-800">{service.serviceName}</span>
+                                    <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
+                                      <span className="font-medium text-blue-600">
+                                        {service.price.toLocaleString()}đ
+                                      </span>
+                                      <span className="text-gray-400">•</span>
+                                      <span className="px-2 py-0.5 bg-gray-100 rounded text-gray-700">
+                                        {categoryMap[service.category] || service.category}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </Checkbox>
+                              ))}
+                            </CheckboxGroup>
+                          )}
+                        </div>
                         {isServicesInvalid && (
-                          <p className="text-xs text-red-500 mt-2">
+                          <p className="text-xs text-red-500 mt-3 font-medium">
                             Vui lòng chọn ít nhất một dịch vụ
                           </p>
                         )}
