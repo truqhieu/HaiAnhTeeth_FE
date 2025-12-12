@@ -70,6 +70,7 @@ interface Appointment {
   updatedAt?: string; // ⭐ THÊM: Thời gian cập nhật để sắp xếp
   noTreatment?: boolean;
   mode: string; // ⭐ THÊM: Mode của appointment (Online/Offline)
+  hasVisitTicket?: boolean; // ⭐ Đánh dấu đã xuất phiếu khám
 }
 
 interface ApiResponse<T> {
@@ -694,6 +695,7 @@ const AllAppointments = () => {
             updatedAt: apt.updatedAt || apt.createdAt || "", // ⭐ Thêm updatedAt để sắp xếp
             noTreatment: !!apt.noTreatment,
             mode: apt.mode || "Offline", // ⭐ Map mode từ API
+            hasVisitTicket: Boolean((apt as any).hasVisitTicket),
           };
         });
 
@@ -2028,6 +2030,11 @@ const AllAppointments = () => {
                       >
                         {getStatusText(appointment.status)}
                       </Chip>
+                      {appointment.hasVisitTicket && (
+                        <p className="text-xs text-green-600 mt-1 font-semibold">
+                          Đã xuất phiếu khám bệnh
+                        </p>
+                      )}
                       {appointment.status === "Completed" && appointment.noTreatment && (
                         <p className="text-xs text-gray-500 mt-1 font-medium">
                           Không cần khám
@@ -2205,7 +2212,7 @@ const AllAppointments = () => {
                                 (appointment.status === "No-Show" && !isWithinWorkingHours(appointment))) && (
                                   <div className="flex gap-2">
                                     {appointment.status === "Completed" && !appointment.noTreatment && (
-                                      <Tooltip content="Xuất PDF">
+                                      <Tooltip content="Xuất phiếu khám bệnh">
                                         <Button
                                           isIconOnly
                                           size="md"

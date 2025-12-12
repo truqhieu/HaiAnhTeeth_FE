@@ -231,7 +231,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose }) => {
   const getServiceModeLabel = (service: Service) => {
     if (!service.mode) return "";
     if (service.mode === "Online") return " - Trực tuyến";
-    if (service.mode === "Offline") return " - Trực tiếp";
+    if (service.mode === "Offline") return " - Tại phòng khám";
     return "";
   };
 
