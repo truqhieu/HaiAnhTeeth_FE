@@ -411,7 +411,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
               }}
             >
               <SelectItem key="Active">Đang áp dụng</SelectItem>
-              <SelectItem key="Expired">Đã hết hạn</SelectItem>
+              <SelectItem key="Inactive">Không áp dụng</SelectItem>
             </Select>
 
             <div>
@@ -495,35 +495,44 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                               {serviceSearchTerm ? "Không tìm thấy dịch vụ nào" : "Không có dịch vụ nào"}
                             </div>
                           ) : (
-                            <CheckboxGroup
-                              value={formData.applicableServices}
-                              onValueChange={(value) => handleInputChange("applicableServices", value)}
-                              className="space-y-2"
-                            >
-                              {getFilteredServices().map((service) => (
-                                <Checkbox 
-                                  key={service._id} 
-                                  value={service._id}
-                                  classNames={{
-                                    base: "w-full p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all",
-                                    label: "w-full",
-                                  }}
-                                >
-                                  <div className="flex flex-col gap-1 w-full">
-                                    <span className="text-sm font-semibold text-gray-800">{service.serviceName}</span>
-                                    <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
-                                      <span className="font-medium text-blue-600">
-                                        {service.price.toLocaleString()}đ
+                            <div className="space-y-2">
+                              {getFilteredServices().map((service) => {
+                                const isSelected = formData.applicableServices.includes(service._id);
+                                return (
+                                  <div
+                                    key={service._id}
+                                    onClick={() => {
+                                      const currentServices = [...formData.applicableServices];
+                                      if (isSelected) {
+                                        handleInputChange("applicableServices", currentServices.filter(id => id !== service._id));
+                                      } else {
+                                        handleInputChange("applicableServices", [...currentServices, service._id]);
+                                      }
+                                    }}
+                                    className={`w-full p-3 bg-white rounded-lg border cursor-pointer transition-all ${
+                                      isSelected 
+                                        ? 'border-blue-500 bg-blue-50' 
+                                        : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
+                                    }`}
+                                  >
+                                    <div className="flex flex-col gap-1 w-full">
+                                      <span className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
+                                        {service.serviceName}
                                       </span>
-                                      <span className="text-gray-400">•</span>
-                                      <span className="px-2 py-0.5 bg-gray-100 rounded text-gray-700">
-                                        {categoryMap[service.category] || service.category}
-                                      </span>
+                                      <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
+                                        <span className="font-medium text-blue-600">
+                                          {service.price.toLocaleString()}đ
+                                        </span>
+                                        <span className="text-gray-400">•</span>
+                                        <span className="px-2 py-0.5 bg-gray-100 rounded text-gray-700">
+                                          {categoryMap[service.category] || service.category}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
-                                </Checkbox>
-                              ))}
-                            </CheckboxGroup>
+                                );
+                              })}
+                            </div>
                           )}
                         </div>
                         {isServicesInvalid && (
