@@ -3,7 +3,6 @@ import { Button, Form, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter 
 import toast from "react-hot-toast";
 
 import { managerApi } from "@/api";
-import VietnameseDateInput from "@/components/Common/VietnameseDateInput";
 
 interface WorkingHoursModalProps {
   isOpen: boolean;
@@ -94,7 +93,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
   }, [isOpen, initialWorkingHours]);
 
   // Validation
-  const isDateInvalid = showValidation && !formData.date;
   const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
   const isMorningStartInvalid =
     showValidation && (!formData.morningStart || !timeRegex.test(formData.morningStart));
@@ -125,7 +123,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
 
     // Check if there are any errors
     const hasErrors =
-      !formData.date ||
       !formData.morningStart ||
       !formData.morningEnd ||
       !formData.afternoonStart ||
@@ -231,23 +228,6 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
 
             <ModalBody className="px-6 py-6">
               <Form autoComplete="off" className="space-y-6" onSubmit={handleFormSubmit}>
-            {/* Date input */}
-            <div className="w-full">
-              <VietnameseDateInput
-                label={
-                  <>
-                    Ngày bắt đầu<span className="text-red-500">*</span>
-                  </>
-                }
-                labelOutside={true}
-                value={formData.date}
-                onChange={(value) => setFormData(prev => ({ ...prev, date: value }))}
-                isInvalid={isDateInvalid}
-                errorMessage={isDateInvalid ? "Vui lòng chọn ngày" : ""}
-                className="w-full"
-              />
-            </div>
-
             {/* Row: Ca sáng và Ca chiều */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
               {/* ⭐ Ca sáng */}
