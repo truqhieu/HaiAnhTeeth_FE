@@ -855,9 +855,6 @@ const DoctorSchedule = () => {
                         <CalendarIcon className="w-5 h-5 text-gray-400" />
                         <span className="font-medium">{formatDate(appointment.appointmentDate)}</span>
                       </div>
-                      <p className="text-xs text-gray-500 ml-7">
-                        {formatDateTime(appointment.appointmentDate)}
-                      </p>
                     </div>
                   </TableCell>
                   <TableCell>
