@@ -9,6 +9,7 @@ export interface Service {
   durationMinutes: number;
   category: string;
   status: string;
+  mode?: "Online" | "Offline"; // optional: hiển thị loại hình (trực tuyến / trực tiếp)
   // ⭐ Promotion fields (từ BE tính toán)
   originalPrice?: number;
   finalPrice?: number;

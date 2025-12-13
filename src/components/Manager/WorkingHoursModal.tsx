@@ -9,6 +9,7 @@ interface WorkingHoursModalProps {
   onClose: () => void;
   doctorId: string | null;
   initialWorkingHours?: {
+    date?: string;
     morningStart: string;
     morningEnd: string;
     afternoonStart: string;
@@ -25,6 +26,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
   onSuccess,
 }) => {
   const [formData, setFormData] = useState({
+    date: "",
     morningStart: "08:00",
     morningEnd: "12:00",
     afternoonStart: "14:00",
@@ -61,13 +63,31 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
 
   // Load initial working hours when modal opens
   useEffect(() => {
-    if (isOpen && initialWorkingHours) {
-      setFormData({
-        morningStart: convertTo24Hour(initialWorkingHours.morningStart) || "08:00",
-        morningEnd: convertTo24Hour(initialWorkingHours.morningEnd) || "12:00",
-        afternoonStart: convertTo24Hour(initialWorkingHours.afternoonStart) || "14:00",
-        afternoonEnd: convertTo24Hour(initialWorkingHours.afternoonEnd) || "18:00",
-      });
+    if (isOpen) {
+      if (initialWorkingHours) {
+        // Convert date to ISO string format (YYYY-MM-DD) if exists
+        const dateValue = initialWorkingHours.date 
+          ? new Date(initialWorkingHours.date).toISOString().split("T")[0] 
+          : "";
+        
+        setFormData({
+          date: dateValue,
+          morningStart: convertTo24Hour(initialWorkingHours.morningStart) || "08:00",
+          morningEnd: convertTo24Hour(initialWorkingHours.morningEnd) || "12:00",
+          afternoonStart: convertTo24Hour(initialWorkingHours.afternoonStart) || "14:00",
+          afternoonEnd: convertTo24Hour(initialWorkingHours.afternoonEnd) || "18:00",
+        });
+      } else {
+        // Set default date to today if no initial data
+        const today = new Date().toISOString().split("T")[0];
+        setFormData({
+          date: today,
+          morningStart: "08:00",
+          morningEnd: "12:00",
+          afternoonStart: "14:00",
+          afternoonEnd: "18:00",
+        });
+      }
       setShowValidation(false);
     }
   }, [isOpen, initialWorkingHours]);
@@ -131,6 +151,7 @@ const WorkingHoursModal: React.FC<WorkingHoursModalProps> = ({
       }
 
       const workingHours = {
+        date: formData.date, // BE sẽ thêm sau
         morningStart: formData.morningStart,
         morningEnd: formData.morningEnd,
         afternoonStart: formData.afternoonStart,

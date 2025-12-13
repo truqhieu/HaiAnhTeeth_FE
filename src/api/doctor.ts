@@ -1,4 +1,4 @@
-import { apiCall, authenticatedApiCall, ApiResponse, API_BASE_URL } from "./index";
+import { apiCall, authenticatedApiCall, ApiResponse, API_BASE_URL } from "./client";
 
 export interface DoctorAppointment {
   appointmentId: string;
@@ -11,6 +11,7 @@ export interface DoctorAppointment {
   type: string;
   status: string;
   mode: string;
+  linkMeetUrl?: string | null; // ⭐ THÊM: Link Google Meet cho ca khám online
   medicalRecordStatus?: "Draft" | "Finalized" | null; // Status của medical record: Draft = chưa duyệt, Finalized = đã duyệt, null = chưa có hồ sơ
   noTreatment?: boolean;
   createdAt?: string; // ⭐ Thời gian tạo để sắp xếp

@@ -1,4 +1,4 @@
-import { authenticatedApiCall, ApiResponse } from "./index";
+import { authenticatedApiCall, ApiResponse } from "./client";
 
 export interface AppointmentCreationData {
   fullName: string;
@@ -19,6 +19,7 @@ export interface ReserveSlotPayload {
   doctorScheduleId?: string | null;
   date: string;
   startTime: string;
+  endTime?: string; // ⭐ THÊM: Cho phép truyền endTime tùy chỉnh (cho follow-up)
   appointmentFor: "self" | "other";
 }
 
@@ -167,7 +168,7 @@ export const appointmentApi = {
   ): Promise<ApiResponse<any>> => {
     const payload = { appointmentId, action, cancelReason };
     console.log("🔍 [API] Review appointment payload:", payload);
-    
+
     return authenticatedApiCall("/appointments/review", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -185,7 +186,7 @@ export const appointmentApi = {
   ): Promise<ApiResponse<any>> => {
     const payload = { status };
     console.log("🔍 [API] Update status payload:", { appointmentId, payload });
-    
+
     return authenticatedApiCall(`/appointments/${appointmentId}/status`, {
       method: "PUT",
       body: JSON.stringify(payload),
@@ -385,7 +386,7 @@ export const appointmentApi = {
       method: "POST",
     });
   },
-  
+
   /**
    * AI Booking - Tự động tạo lịch từ prompt người dùng
    * POST /api/appointments/ai-create

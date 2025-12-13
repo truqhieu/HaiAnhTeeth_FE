@@ -9,8 +9,8 @@ interface ConsultationFormModalProps {
 }
 
 const ConsultationFormModal: React.FC<ConsultationFormModalProps> = ({ isOpen, onClose }) => {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [fullName, setName] = useState("");
+  const [phoneNumber, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showValidation, setShowValidation] = useState(false);
@@ -24,9 +24,9 @@ const ConsultationFormModal: React.FC<ConsultationFormModalProps> = ({ isOpen, o
     }
   }, [isOpen]);
 
-  const isNameInvalid = showValidation && !name.trim();
+  const isNameInvalid = showValidation && !fullName.trim();
   const isPhoneInvalid =
-    showValidation && (!/^[0-9]{10,11}$/.test(phone) || !phone.startsWith("0"));
+    showValidation && (!/^[0-9]{10,11}$/.test(phoneNumber) || !phoneNumber.startsWith("0"));
   const isEmailInvalid =
     showValidation &&
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -43,8 +43,8 @@ const ConsultationFormModal: React.FC<ConsultationFormModalProps> = ({ isOpen, o
 
       setSubmitting(true);
       const res = await consultationInfoApi.create({
-        name: normalizeText(name),
-        phone: phone.trim(),
+        fullName: normalizeText(fullName),
+        phoneNumber: phoneNumber.trim(),
         email: email.trim(),
       });
       if ((res as any).success) {
@@ -71,7 +71,7 @@ const ConsultationFormModal: React.FC<ConsultationFormModalProps> = ({ isOpen, o
                 <Input
                   label={<>Họ và tên <span className="text-red-500">*</span></>}
                   placeholder="Nhập họ và tên"
-                  value={name}
+                  value={fullName}
                   onValueChange={setName}
                   isInvalid={isNameInvalid}
                   errorMessage={isNameInvalid ? "Vui lòng nhập họ và tên" : ""}
@@ -80,7 +80,7 @@ const ConsultationFormModal: React.FC<ConsultationFormModalProps> = ({ isOpen, o
                 <Input
                   label={<>Số điện thoại <span className="text-red-500">*</span></>}
                   placeholder="Nhập số điện thoại"
-                  value={phone}
+                  value={phoneNumber}
                   onValueChange={(v) => setPhone(v.replace(/[^0-9]/g, ""))}
                   isInvalid={isPhoneInvalid}
                   errorMessage={isPhoneInvalid ? "SĐT phải bắt đầu bằng 0 và có 10-11 số" : ""}

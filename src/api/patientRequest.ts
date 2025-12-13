@@ -1,4 +1,4 @@
-import { authenticatedApiCall } from "./index";
+import { authenticatedApiCall } from "./client";
 
 export interface PatientRequest {
   _id: string;
