@@ -2119,7 +2119,8 @@ const AllAppointments = () => {
 
                           // ⭐ Logic cho ca khám Offline (giữ nguyên)
                           const isOnLeave = isDoctorOnLeave(appointment);
-                          if (isOnLeave) {
+                          // ⭐ Nếu ca khám đã hoàn thành, vẫn cho phép xuất phiếu khám dù bác sĩ nghỉ phép
+                          if (isOnLeave && appointment.status !== "Completed") {
                             return shouldShowReassignButton(appointment, isOnLeave) ? (
                               <Tooltip content="Gán bác sĩ">
                                 <Button

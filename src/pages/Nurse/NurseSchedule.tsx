@@ -954,13 +954,19 @@ const NurseSchedule = () => {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      size="lg"
-                      color={getStatusColor(appointment.status)}
-                      variant="flat"
-                    >
-                      {getStatusText(appointment.status)}
-                    </Chip>
+                    <div className="flex flex-col gap-1">
+                      <Chip
+                        size="lg"
+                        color={getStatusColor(appointment.status)}
+                        variant="flat"
+                      >
+                        {getStatusText(appointment.status)}
+                      </Chip>
+                      {/* ⭐ Hiển thị text "Không cần khám" dưới trạng thái Hoàn thành khi noTreatment === true */}
+                      {appointment.status === "Completed" && appointment.noTreatment && (
+                        <span className="text-xs text-gray-600 italic">Không cần khám</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                   <div className="flex gap-2 flex-wrap items-center">
@@ -1037,9 +1043,10 @@ const NurseSchedule = () => {
                     )}
 
                     {/* Hiển thị Hồ sơ bệnh án cho ca Offline khi đang khám (InProgress), đã bấm bắt đầu, hoặc đã Completed */}
+                    {/* ⭐ Ẩn nút chỉnh sửa hồ sơ khi ca khám không cần khám (noTreatment === true) trong tab history */}
                     {appointment.mode === "Offline" && (
                       appointment.status === "InProgress" ||
-                      appointment.status === "Completed"
+                      (appointment.status === "Completed" && !appointment.noTreatment)
                     ) && (
                       <Button
                         isIconOnly
