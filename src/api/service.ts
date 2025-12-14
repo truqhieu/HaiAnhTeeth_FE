@@ -31,6 +31,7 @@ export interface GetServicesParams {
   status?: string;
   category?: string;
   search?: string;
+  minPrice?: number;
 }
 
 // Backend trả về object này trực tiếp (success là boolean)

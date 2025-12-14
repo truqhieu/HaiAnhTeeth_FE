@@ -280,7 +280,7 @@ const AllAppointments = () => {
   // Load services Active (giống form bệnh nhân: có promotion fields, lọc status Active)
   const fetchWalkInServices = async () => {
     try {
-      const res = await serviceApi.getPublicServices({ status: "Active", limit: 100, category: "Examination" });
+      const res = await serviceApi.getPublicServices({ status: "Active", limit: 100, category: "Examination", minPrice: 0 });
       if (res.success && Array.isArray(res.data)) {
         setWalkInServices(
           res.data.map((s) => ({

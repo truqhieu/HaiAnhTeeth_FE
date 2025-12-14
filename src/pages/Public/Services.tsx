@@ -41,6 +41,7 @@ export default function ServicesPage() {
       const params: any = {
         status: "Active",
         limit: 100,
+        minPrice: 0,
       };
 
       if (selectedCategory !== "all") {

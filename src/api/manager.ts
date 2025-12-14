@@ -771,9 +771,16 @@ export const managerApi = {
 
     const queryString = queryParams.toString();
     const endpoint = `/appointments/dashboard/service-revenue-report/pdf${queryString ? `?${queryString}` : ""}`;
+    const token = typeof window !== 'undefined' ? localStorage.getItem("authToken") : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: "GET",
       credentials: "include",
+      headers,
     });
 
     if (!response.ok) {
