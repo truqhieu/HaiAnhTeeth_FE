@@ -69,7 +69,7 @@ export interface GetBlogsResponse {
 // Blog API Functions
 export const blogApi = {
   // ========== PUBLIC APIs (for guests/patients) ==========
-  
+
   // Get published blogs (no authentication required)
   getPublicBlogs: async (params?: GetBlogsParams): Promise<GetBlogsResponse> => {
     const queryParams = new URLSearchParams();
@@ -105,7 +105,7 @@ export const blogApi = {
   },
 
   // ========== MANAGER APIs (authentication required) ==========
-  
+
   // Get all blogs with pagination and filters
   getAllBlogs: async (params?: GetBlogsParams): Promise<GetBlogsResponse> => {
     const queryParams = new URLSearchParams();
@@ -157,7 +157,7 @@ export const blogApi = {
     formData.append("summary", data.summary);
     formData.append("content", data.content);
     formData.append("status", data.status);
-    
+
     if (data.thumbnailFile) {
       formData.append("thumbnailUrl", data.thumbnailFile);
     }
@@ -172,7 +172,7 @@ export const blogApi = {
 
     // For FormData, we need to manually handle the request.
     // Ưu tiên dùng cookie (credentials: "include"); nếu có token thì gửi kèm.
-    const token = sessionStorage.getItem("authToken");
+    const token = localStorage.getItem("authToken");
     const headers: Record<string, string> = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
@@ -199,13 +199,13 @@ export const blogApi = {
     data: UpdateBlogData,
   ): Promise<ApiResponse<{ success: boolean; message: string; data: Blog }>> => {
     const formData = new FormData();
-    
+
     if (data.title !== undefined) formData.append("title", data.title);
     if (data.category !== undefined) formData.append("category", data.category);
     if (data.summary !== undefined) formData.append("summary", data.summary);
     if (data.content !== undefined) formData.append("content", data.content);
     if (data.status !== undefined) formData.append("status", data.status);
-    
+
     if (data.thumbnailFile) {
       formData.append("thumbnailUrl", data.thumbnailFile);
     }
@@ -220,7 +220,7 @@ export const blogApi = {
 
     // For FormData, we need to manually handle the request.
     // Ưu tiên cookie; nếu có token thì gửi kèm.
-    const token = sessionStorage.getItem("authToken");
+    const token = localStorage.getItem("authToken");
     const headers: Record<string, string> = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;

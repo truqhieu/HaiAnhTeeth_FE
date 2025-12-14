@@ -634,7 +634,7 @@ const AllAppointments = () => {
           if (mainService) {
             allServices.push(mainService);
           }
-          
+
           // Nếu là ca tái khám, thêm các dịch vụ bổ sung
           if (apt.type === 'FollowUp') {
             // Ưu tiên sử dụng additionalServiceNames nếu có (backend đã map sẵn)
@@ -644,23 +644,23 @@ const AllAppointments = () => {
                   allServices.push(serviceName);
                 }
               });
-            } 
+            }
             // Nếu không có additionalServiceNames, thử lấy từ additionalServiceIds
             else if (apt.additionalServiceIds && Array.isArray(apt.additionalServiceIds)) {
               apt.additionalServiceIds.forEach((service: any) => {
                 let serviceName: string | null = null;
-                
+
                 // Nếu là object đã được populate, lấy serviceName
                 if (typeof service === 'object' && service !== null) {
                   serviceName = service.serviceName || service.name || null;
-                } 
+                }
                 // Nếu là string, có thể là ID - bỏ qua (không hiển thị ID)
                 else if (typeof service === 'string') {
                   // Nếu là ID, không thêm vào danh sách
                   console.warn('⚠️ [AllAppointments] additionalServiceIds contains ID instead of populated object:', service);
                   return;
                 }
-                
+
                 if (serviceName && !allServices.includes(serviceName)) {
                   allServices.push(serviceName);
                 }
@@ -1453,9 +1453,19 @@ const AllAppointments = () => {
 
       const API_URL = import.meta.env.VITE_API_URL || "https://haianhteethbe-production.up.railway.app/api";
 
+      // ⭐ Lấy token từ localStorage để gửi kèm Authorization header
+      const token = localStorage.getItem("authToken");
+
+      // ⭐ Tạo headers với Authorization nếu có token
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_URL}/appointments/${appointmentId}/visit-ticket/pdf`, {
         method: "GET",
         credentials: "include",
+        headers: headers,
       });
 
       if (!response.ok) {
@@ -2109,7 +2119,8 @@ const AllAppointments = () => {
 
                           // ⭐ Logic cho ca khám Offline (giữ nguyên)
                           const isOnLeave = isDoctorOnLeave(appointment);
-                          if (isOnLeave) {
+                          // ⭐ Nếu ca khám đã hoàn thành, vẫn cho phép xuất phiếu khám dù bác sĩ nghỉ phép
+                          if (isOnLeave && appointment.status !== "Completed") {
                             return shouldShowReassignButton(appointment, isOnLeave) ? (
                               <Tooltip content="Gán bác sĩ">
                                 <Button
@@ -2369,7 +2380,7 @@ const AllAppointments = () => {
                       const [hours, minutes] = walkInForm.userStartTimeInput.split(":");
                       const h = parseInt(hours, 10);
                       const m = parseInt(minutes, 10);
-                      
+
                       // Validate time format
                       if (h < 0 || h > 23) {
                         toast.error("Giờ không hợp lệ. 00-23");
@@ -2755,12 +2766,12 @@ const AllAppointments = () => {
                                       // This causes UI reload but ensures slot visibility
                                       console.log('✅ [COMPLETELY EMPTY] Refetching schedule...');
                                       fetchWalkInScheduleRanges().catch(err => console.warn('Failed to refresh:', err));
-                                      
-                                      setWalkInForm(prev => ({ 
-                                        ...prev, 
+
+                                      setWalkInForm(prev => ({
+                                        ...prev,
                                         userStartTimeInput: v + ":" + currentMinute,
-                                        startTime: null, 
-                                        endTime: null 
+                                        startTime: null,
+                                        endTime: null
                                       }));
                                       setWalkInTimeError(null);
                                       return;
@@ -2769,22 +2780,22 @@ const AllAppointments = () => {
                                     // ⭐ For partial input (still typing), debounce the release
                                     const newTimeInput = v + ":" + currentMinute;
                                     const oldTimeInput = walkInForm.userStartTimeInput || "";
-                                    
+
                                     console.log(`🔍 [DEBUG] Hour onChange - DEBOUNCED path: newTimeInput="${newTimeInput}", oldTimeInput="${oldTimeInput}"`);
-                                    
+
                                     if (newTimeInput !== oldTimeInput && walkInReservation) {
                                       // Clear previous timeout
                                       if (releaseSlotTimeoutRef.current) {
                                         clearTimeout(releaseSlotTimeoutRef.current);
                                       }
-                                      
+
                                       // ⭐ FIX: Check if time will be cleared after this change
                                       const willBeCleared = newTimeInput === ":" || newTimeInput === "" || !newTimeInput;
                                       console.log(`🔍 [DEBUG] willBeCleared=${willBeCleared}`);
-                                      
+
                                       // ⭐ CRITICAL: Capture reservation ID before it might be cleared
                                       const reservationToRelease = walkInReservation.timeslotId;
-                                      
+
                                       // Debounce release slot API call by 300ms
                                       releaseSlotTimeoutRef.current = setTimeout(() => {
                                         appointmentApi.releaseSlot({ timeslotId: reservationToRelease })
@@ -2804,7 +2815,7 @@ const AllAppointments = () => {
                                             setWalkInReservation(null);
                                           });
                                       }, 300);
-                                      
+
                                       // Clear startTime/endTime to indicate time needs re-processing
                                       setWalkInForm(prev => ({ ...prev, startTime: null, endTime: null }));
                                     }
@@ -2852,13 +2863,13 @@ const AllAppointments = () => {
                                       // This causes UI reload but ensures slot visibility
                                       console.log('✅ [COMPLETELY EMPTY] Refetching schedule...');
                                       fetchWalkInScheduleRanges().catch(err => console.warn('Failed to refresh:', err));
-                                      
-                                      
-                                      setWalkInForm(prev => ({ 
-                                        ...prev, 
+
+
+                                      setWalkInForm(prev => ({
+                                        ...prev,
                                         userStartTimeInput: currentHour + ":" + v,
-                                        startTime: null, 
-                                        endTime: null 
+                                        startTime: null,
+                                        endTime: null
                                       }));
                                       setWalkInTimeError(null);
                                       return;
@@ -2867,22 +2878,22 @@ const AllAppointments = () => {
                                     // ⭐ For partial input (still typing), debounce the release
                                     const newTimeInput = currentHour + ":" + v;
                                     const oldTimeInput = walkInForm.userStartTimeInput || "";
-                                    
+
                                     console.log(`🔍 [DEBUG] Minute onChange - DEBOUNCED path: newTimeInput="${newTimeInput}", oldTimeInput="${oldTimeInput}"`);
-                                    
+
                                     if (newTimeInput !== oldTimeInput && walkInReservation) {
                                       // Clear previous timeout
                                       if (releaseSlotTimeoutRef.current) {
                                         clearTimeout(releaseSlotTimeoutRef.current);
                                       }
-                                      
+
                                       // ⭐ FIX: Check if time will be cleared after this change
                                       const willBeCleared = newTimeInput === ":" || newTimeInput === "" || !newTimeInput;
                                       console.log(`🔍 [DEBUG] willBeCleared=${willBeCleared}`);
-                                      
+
                                       // ⭐ CRITICAL: Capture reservation ID before it might be cleared
                                       const reservationToRelease = walkInReservation.timeslotId;
-                                      
+
                                       // Debounce release slot API call by 300ms
                                       releaseSlotTimeoutRef.current = setTimeout(() => {
                                         appointmentApi.releaseSlot({ timeslotId: reservationToRelease })
@@ -2902,7 +2913,7 @@ const AllAppointments = () => {
                                             setWalkInReservation(null);
                                           });
                                       }, 300);
-                                      
+
                                       // Clear startTime/endTime to indicate time needs re-processing
                                       setWalkInForm(prev => ({ ...prev, startTime: null, endTime: null }));
                                     }

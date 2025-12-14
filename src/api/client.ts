@@ -26,7 +26,7 @@ export const apiCall = async <T = any>(
 
     // ⭐ Check if this is likely an auth check (profile endpoint) to reduce logging
     const isAuthCheck = endpoint.includes("/auth/profile");
-    
+
     if (!isAuthCheck) {
       console.log("🚀 Fetching:", url);
       console.log("🔍 [API Call] Full request details:", {
@@ -50,11 +50,20 @@ export const apiCall = async <T = any>(
 
     // ⭐ Reduce logging for 401 errors (expected when not authenticated)
     const isUnauthorized = response.status === 401;
-    
+
     if (!isAuthCheck || !isUnauthorized) {
       console.log("🔍 [API Call] Response headers:", Object.fromEntries(response.headers.entries()));
       console.log("📡 Response status:", response.status, response.statusText);
+
+      // ⭐ IMPORTANT: Check if cookie is being set (for debugging incognito mode issues)
+      // Note: Set-Cookie header may not be visible in browser due to security restrictions
+      // But we can check if this is an auth endpoint and warn if cookie might not be set
+      if (endpoint.includes('/auth/login') || endpoint.includes('/auth/verify-email')) {
+        console.log("🍪 [API Call] Auth endpoint detected - cookie should be set by browser automatically");
+        console.log("🔐 [API Call] If you're in incognito mode, ensure token is saved to sessionStorage as fallback");
+      }
     }
+
 
     // ⭐ Xử lý 304 Not Modified - không có body, cần fetch lại với cache-busting
     if (response.status === 304) {
@@ -139,15 +148,28 @@ export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  // ⭐ Fallback: Nếu có token trong sessionStorage, thêm Authorization header
-  // Điều này giúp xử lý trường hợp cookie chưa được browser lưu kịp (incognito mode)
-  const token = typeof window !== 'undefined' ? sessionStorage.getItem("authToken") : null;
-  
+  // ⭐ CRITICAL: Lấy token từ localStorage
+  // Lý do:
+  // 1. localStorage tồn tại lâu hơn (không bị xóa khi đóng tab)
+  // 2. Hoạt động tốt với Chrome, Cốc Cốc, Firefox, Opera, Brave
+  // 3. Backend hỗ trợ cả cookie và Authorization header
+  const token = typeof window !== 'undefined' ? localStorage.getItem("authToken") : null;
+
+  // Debug logging để track token availability
+  const isAuthCheck = endpoint.includes("/auth/profile");
+  if (!isAuthCheck) {
+    console.log("🔐 [authenticatedApiCall] Token check:", {
+      endpoint,
+      hasToken: !!token,
+      tokenPreview: token ? `${token.substring(0, 20)}...` : null,
+    });
+  }
+
   // ⭐ Tạo headers object với type phù hợp
   const headersObj: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  
+
   // Merge với headers từ options nếu có
   if (options.headers) {
     if (options.headers instanceof Headers) {
@@ -162,15 +184,22 @@ export const authenticatedApiCall = async <T = any>(
       Object.assign(headersObj, options.headers);
     }
   }
-  
-  // ⭐ Thêm Authorization header nếu có token (fallback khi cookie chưa sẵn sàng)
-  if (token && !headersObj['Authorization']) {
+
+  // ⭐ CRITICAL: LUÔN thêm Authorization header nếu có token
+  // Điều này đảm bảo request authenticated ngay cả khi cookie chưa sẵn sàng
+  // Đặc biệt quan trọng trong incognito mode và ngay sau login
+  if (token) {
     headersObj['Authorization'] = `Bearer ${token}`;
+    if (!isAuthCheck) {
+      console.log("✅ [authenticatedApiCall] Added Authorization header");
+    }
+  } else if (!isAuthCheck) {
+    console.warn("⚠️ [authenticatedApiCall] No token found in sessionStorage, relying on cookie only");
   }
 
   return apiCall<T>(endpoint, {
     ...options,
-    credentials: "include", // để browser tự gửi cookie
+    credentials: "include", // để browser tự gửi cookie (primary auth method)
     headers: headersObj as HeadersInit,
   });
 };
