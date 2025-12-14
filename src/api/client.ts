@@ -148,12 +148,12 @@ export const authenticatedApiCall = async <T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  // ⭐ CRITICAL: Lấy token từ sessionStorage để dùng làm fallback
-  // Điều này CỰC KỲ QUAN TRỌNG trong incognito mode vì:
-  // 1. Cookie có thể chưa được browser lưu kịp ngay sau login
-  // 2. sessionStorage luôn available ngay lập tức
+  // ⭐ CRITICAL: Lấy token từ localStorage
+  // Lý do:
+  // 1. localStorage tồn tại lâu hơn (không bị xóa khi đóng tab)
+  // 2. Hoạt động tốt với Chrome, Cốc Cốc, Firefox, Opera, Brave
   // 3. Backend hỗ trợ cả cookie và Authorization header
-  const token = typeof window !== 'undefined' ? sessionStorage.getItem("authToken") : null;
+  const token = typeof window !== 'undefined' ? localStorage.getItem("authToken") : null;
 
   // Debug logging để track token availability
   const isAuthCheck = endpoint.includes("/auth/profile");

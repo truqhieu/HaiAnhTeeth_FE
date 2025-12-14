@@ -131,7 +131,7 @@ export const introductionApi = {
     formData.append("thumbnailUrl", data.thumbnailFile);
 
     // Ưu tiên cookie (credentials: "include"); nếu có token thì gửi kèm.
-    const token = sessionStorage.getItem("authToken");
+    const token = localStorage.getItem("authToken");
     const headers: Record<string, string> = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
@@ -169,7 +169,7 @@ export const introductionApi = {
     }
 
     // Ưu tiên cookie; nếu có token thì gửi kèm.
-    const token = sessionStorage.getItem("authToken");
+    const token = localStorage.getItem("authToken");
     const headers: Record<string, string> = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;

@@ -249,9 +249,9 @@ export const authApi = {
   },
 
 
-  // Get token from sessionStorage
+  // Get token from localStorage
   getToken: (): string | null => {
-    return sessionStorage.getItem("authToken");
+    return localStorage.getItem("authToken");
   },
 
 
