@@ -16,6 +16,7 @@ export interface NurseAppointment {
   status: string;
   mode: string;
   doctorApproved?: boolean;
+  noTreatment?: boolean; // ⭐ Thêm: Trường đánh dấu ca khám không cần khám
   createdAt?: string; // ⭐ Thời gian tạo để sắp xếp
   updatedAt?: string; // ⭐ Thời gian cập nhật để sắp xếp
 }
