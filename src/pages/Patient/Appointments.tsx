@@ -746,12 +746,18 @@ const Appointments = () => {
           </div>
         </div>
         {rescheduleFor && (
+
           <RescheduleAppointmentModal
             appointmentId={rescheduleFor.id}
             currentStartTime={rescheduleFor.startTime}
             currentEndTime={rescheduleFor.endTime}
             onClose={() => setRescheduleFor(null)}
             onSuccess={() => {
+              setAppointments(prev => prev.map(apt => 
+                apt.id === rescheduleFor.id 
+                  ? { ...apt, hasPendingReschedule: true } 
+                  : apt
+              ));
               setRescheduleFor(null);
               toast.success("Yêu cầu đổi lịch hẹn đã được gửi thành công!");
             }}
@@ -766,6 +772,11 @@ const Appointments = () => {
             currentDoctorName={changeDoctorFor.doctorName}
             onClose={() => setChangeDoctorFor(null)}
             onSuccess={() => {
+              setAppointments(prev => prev.map(apt => 
+                apt.id === changeDoctorFor.id 
+                  ? { ...apt, hasPendingChangeDoctor: true } 
+                  : apt
+              ));
               setChangeDoctorFor(null);
               toast.success("Yêu cầu đổi bác sĩ đã được gửi thành công!");
             }}

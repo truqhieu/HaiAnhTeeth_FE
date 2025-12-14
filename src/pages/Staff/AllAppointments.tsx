@@ -726,17 +726,21 @@ const AllAppointments = () => {
       });
 
       // Backend trả về: { success: true, data: LeaveRequest[], total, totalPages, ... }
-      if (!res || !res.success || !res.data) {
-        console.warn('⚠️ [fetchApprovedLeaves] Invalid response:', res);
-        setApprovedLeaves([]);
-        return;
+      // HOẶC nếu backend controller trả về dạng paginated: { success: true, data: { data: LeaveRequest[], total... } }
+      
+      let leavesData: any[] = [];
+      
+      // Handle different response structures
+      if (res && res.success) {
+         if (Array.isArray(res.data)) {
+           leavesData = res.data;
+         } else if (res.data && Array.isArray((res.data as any).data)) {
+           leavesData = (res.data as any).data;
+         }
       }
 
-      // res.data là array trực tiếp
-      const leavesArray = Array.isArray(res.data) ? res.data : [];
-
-      if (leavesArray.length > 0) {
-        const leaves = leavesArray.map((leave: any) => {
+      if (leavesData.length > 0) {
+        const leaves = leavesData.map((leave: any) => {
           // Extract userId - có thể là object với _id hoặc string
           let userId = "";
           if (leave.userId) {
@@ -759,7 +763,7 @@ const AllAppointments = () => {
         console.log('✅ [fetchApprovedLeaves] Loaded', leaves.length, 'approved leaves');
         setApprovedLeaves(leaves);
       } else {
-        console.log('⚠️ [fetchApprovedLeaves] No approved leaves found');
+        console.log('⚠️ [fetchApprovedLeaves] No approved leaves found (response data empty)');
         setApprovedLeaves([]);
       }
     } catch (err: any) {
@@ -774,7 +778,9 @@ const AllAppointments = () => {
     if (appointment.doctorUserId && appointment.startTime && approvedLeaves.length > 0) {
       const appointmentDate = new Date(appointment.startTime);
       if (!isNaN(appointmentDate.getTime())) {
-        appointmentDate.setHours(0, 0, 0, 0);
+        // Normalize appointment date to Start of Day (UTC+7 handled implicitly if using extracted string components, or just strip time)
+        // Here we use simple string comparison YYYY-MM-DD for robustness
+        const aptDateStr = new Date(appointmentDate.getTime() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
 
         const doctorId = appointment.doctorUserId.toString().trim();
 
@@ -793,10 +799,14 @@ const AllAppointments = () => {
             return false;
           }
 
-          leaveStart.setHours(0, 0, 0, 0);
-          leaveEnd.setHours(23, 59, 59, 999);
+          // Normalize ranges to strings for robust include check
+          // Assuming leave dates are stored as UTC midnights or similar. 
+          // Let's compare timestamps safely by stripping time.
+          const checkTime = new Date(aptDateStr).getTime();
+          const startTime = new Date(leaveStart.toISOString().split('T')[0]).getTime();
+          const endTime = new Date(leaveEnd.toISOString().split('T')[0]).getTime();
 
-          return appointmentDate >= leaveStart && appointmentDate <= leaveEnd;
+          return checkTime >= startTime && checkTime <= endTime;
         });
 
         // Nếu kiểm tra theo ngày cho kết quả, trả về ngay
