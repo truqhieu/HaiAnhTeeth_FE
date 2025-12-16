@@ -1167,7 +1167,7 @@ const DoctorMedicalRecord: React.FC = () => {
             if (conflicts.length > 0) {
               const formatTime = (ms: number) => new Date(ms).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
               const conflictTimes = conflicts.map(c => `${formatTime(c.start)} - ${formatTime(c.end)}`).join(', ');
-              conflictMsg = `Bệnh nhân hoặc bạn có lịch khám khác trong khoảng thời gian ${conflictTimes}, vui lòng chọn thời gian khác.`;
+              conflictMsg = 'Thời gian bạn chọn bị trùng với lịch khám khác. Vui lòng chọn thời gian khác.';
             }
           } catch (e) {
             console.error("Error calculating conflict range:", e);
@@ -2633,8 +2633,12 @@ const DoctorMedicalRecord: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Input thời gian và hiển thị kết quả nằm ngang - Chỉ hiện khi CÓ slot khả dụng */}
-                      {slotsForDisplay && slotsForDisplay.length > 0 && slotsForDisplay.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ? (
+                      {/* Input thời gian - Hiển thị khi: có slot khả dụng, hoặc đã nhập thời gian, hoặc đang giữ chỗ */}
+                      {slotsForDisplay && slotsForDisplay.length > 0 && (
+                        slotsForDisplay.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ||
+                        activeReservation ||
+                        (followUpTimeInput && followUpTimeInput.trim() !== '')
+                      ) ? (
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">
@@ -2669,9 +2673,10 @@ const DoctorMedicalRecord: React.FC = () => {
                                     return;
                                   }
 
-                                  // ⭐ Standard input behavior - không auto-clear
+                                  // ⭐ Cascade delete: Bất kỳ thay đổi giờ nào → Xóa phút
+                                  const oldHour = (followUpTimeInput || '').split(':')[0] || '';
                                   const currentMinute = (followUpTimeInput || '').split(':')[1] || '';
-                                  const timeInput = v + ':' + currentMinute;
+                                  const timeInput = (v !== oldHour) ? (v + ':') : (v + ':' + currentMinute);
                                   const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
 
                                   // ⭐ Release reservation nếu đã xóa hết giờ và phút
