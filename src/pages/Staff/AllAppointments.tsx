@@ -172,6 +172,7 @@ const AllAppointments = () => {
     fullName: string;
     email: string;
     phoneNumber: string;
+    gender: string; // ⭐ THÊM: Giới tính
     date: string; // YYYY-MM-DD - Selected FIRST
     serviceId: string; // Selected SECOND
     doctorUserId: string; // Selected THIRD
@@ -184,6 +185,7 @@ const AllAppointments = () => {
     fullName: "",
     email: "",
     phoneNumber: "",
+    gender: "", // ⭐ THÊM: Mặc định rỗng
     date: "",
     serviceId: "",
     doctorUserId: "",
@@ -239,6 +241,10 @@ const AllAppointments = () => {
           if (digits.length !== 10) next.phoneNumber = "Số điện thoại phải gồm 10 chữ số.";
           else delete next.phoneNumber;
         }
+        break;
+      case "gender":
+        if (!walkInForm.gender) next.gender = "Vui lòng chọn giới tính.";
+        else delete next.gender;
         break;
       case "serviceId":
         if (!walkInForm.serviceId) next.serviceId = "Vui lòng chọn dịch vụ.";
@@ -2404,6 +2410,7 @@ const AllAppointments = () => {
               fullName: "",
               email: "",
               phoneNumber: "",
+              gender: "",
               date: "",
               serviceId: "",
               doctorUserId: "",
@@ -2436,58 +2443,96 @@ const AllAppointments = () => {
                   e.preventDefault();
 
                   // ⭐ FIX: Auto-process time input if user typed time but didn't blur (click submit immediately)
+                  // Always validate and reserve slot before submitting (like patient booking flow)
                   let processedStartTime = walkInForm.startTime;
                   let processedEndTime = walkInForm.endTime;
                   let processedReservation = walkInReservation;
 
                   if (walkInForm.userStartTimeInput && (!walkInForm.startTime || !walkInForm.endTime)) {
                     const timeRegex = /^(\d{1,2}):(\d{1,2})$/;
-                    if (timeRegex.test(walkInForm.userStartTimeInput)) {
-                      const [hours, minutes] = walkInForm.userStartTimeInput.split(":");
-                      const h = parseInt(hours, 10);
-                      const m = parseInt(minutes, 10);
+                    if (!timeRegex.test(walkInForm.userStartTimeInput)) {
+                      toast.error("Định dạng thời gian không hợp lệ. Vui lòng nhập HH:mm");
+                      return;
+                    }
 
-                      // Validate time format
-                      if (h < 0 || h > 23) {
-                        toast.error("Giờ không hợp lệ. 00-23");
+                    const [hours, minutes] = walkInForm.userStartTimeInput.split(":");
+                    const h = parseInt(hours, 10);
+                    const m = parseInt(minutes, 10);
+
+                    // Validate time format
+                    if (h < 0 || h > 23) {
+                      toast.error("Giờ không hợp lệ. 00-23");
+                      return;
+                    }
+                    if (m < 0 || m > 59) {
+                      toast.error("Phút không hợp lệ. 00-59");
+                      return;
+                    }
+
+                    // Check if time is in available ranges
+                    if (!isTimeInWalkInRanges(walkInForm.userStartTimeInput)) {
+                      toast.error("Khung giờ này không nằm trong khoảng khả dụng.");
+                      return;
+                    }
+
+                    // Convert VN → UTC
+                    const dateObj = new Date((walkInForm.date || "") + "T00:00:00.000Z");
+                    const utcHours = h - 7;
+                    dateObj.setUTCHours(utcHours, m, 0, 0);
+                    const startISO = dateObj.toISOString();
+
+                    try {
+                      // ⭐ NEW: Always validate and reserve slot before submitting
+                      // This prevents "slot already booked" errors
+                      
+                      // Step 1: Validate time with backend
+                      const validateRes = await validateAppointmentTime(
+                        walkInForm.doctorUserId,
+                        walkInForm.serviceId,
+                        walkInForm.date,
+                        startISO
+                      );
+
+                      if (!validateRes.success) {
+                        toast.error(validateRes.message || "Thời gian không hợp lệ");
                         return;
                       }
-                      if (m < 0 || m > 59) {
-                        toast.error("Phút không hợp lệ. 00-59");
+
+                      // Step 2: Reserve slot (ensures backend knows this time is taken)
+                      const reserveRes = await appointmentApi.reserveSlot({
+                        doctorUserId: walkInForm.doctorUserId,
+                        serviceId: walkInForm.serviceId,
+                        doctorScheduleId: walkInForm.doctorScheduleId,
+                        date: walkInForm.date,
+                        startTime: startISO,
+                        appointmentFor: "other" // Staff always books for "other"
+                      });
+
+                      if (!reserveRes.success || !reserveRes.data) {
+                        toast.error(reserveRes.message || "Không thể giữ chỗ");
                         return;
                       }
 
-                      // Check if time is in available ranges
-                      if (!isTimeInWalkInRanges(walkInForm.userStartTimeInput)) {
-                        toast.error("Khung giờ này không nằm trong khoảng khả dụng.");
-                        return;
-                      }
-
-                      // Convert VN → UTC
-                      const dateObj = new Date((walkInForm.date || "") + "T00:00:00.000Z");
-                      const utcHours = h - 7;
-                      dateObj.setUTCHours(utcHours, m, 0, 0);
-                      const startISO = dateObj.toISOString();
-
-                      // ⭐ OPTIMIZED: Skip reservation during auto-submit, go straight to appointment creation
-                      // Calculate end time based on service duration
-                      const selectedService = walkInServices.find(s => s._id === walkInForm.serviceId);
-                      const durationMinutes = selectedService?.durationMinutes || 30;
-                      const endTimeObj = new Date(dateObj);
-                      endTimeObj.setMinutes(endTimeObj.getMinutes() + durationMinutes);
-
-                      // Use processed values for submission
+                      // Success! Use the reservation for submission
                       processedStartTime = dateObj;
-                      processedEndTime = endTimeObj;
-                      processedReservation = null; // No reservation during auto-submit
+                      processedEndTime = new Date(reserveRes.data.endTime);
+                      processedReservation = {
+                        timeslotId: reserveRes.data.timeslotId,
+                        expiresAt: reserveRes.data.expiresAt,
+                        countdownSeconds: 0 // Not used in direct submission, but kept for structure
+                      };
 
-                      // Update state for UI feedback
+                      // Update state for UI feedback (optional, submission happens immediately)
                       setWalkInForm(prev => ({
                         ...prev,
                         startTime: processedStartTime,
                         endTime: processedEndTime,
                       }));
                       setWalkInTimeError(null);
+
+                    } catch (err: any) {
+                      toast.error(err.message || "Lỗi xác thực thời gian");
+                      return;
                     }
                   }
 
@@ -2497,9 +2542,10 @@ const AllAppointments = () => {
                   if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(walkInForm.email.trim())) {
                     errors.email = "Email không hợp lệ";
                   }
-                  if (walkInForm.phoneNumber.replace(/[^0-9]/g, "").length !== 10) {
+                  if (!walkInForm.phoneNumber || walkInForm.phoneNumber.replace(/[^0-9]/g, "").length !== 10) {
                     errors.phoneNumber = "Số điện thoại phải gồm 10 chữ số";
                   }
+                  if (!walkInForm.gender) errors.gender = "Vui lòng chọn giới tính";
                   if (!walkInForm.date) errors.date = "Vui lòng chọn ngày";
                   if (!walkInForm.serviceId) errors.serviceId = "Vui lòng chọn dịch vụ";
                   if (!walkInForm.doctorUserId) errors.doctorUserId = "Vui lòng chọn bác sĩ";
@@ -2520,6 +2566,7 @@ const AllAppointments = () => {
                       fullName: walkInForm.fullName,
                       email: walkInForm.email,
                       phoneNumber: walkInForm.phoneNumber,
+                      gender: walkInForm.gender,
                       serviceId: walkInForm.serviceId,
                       doctorUserId: walkInForm.doctorUserId,
                       doctorScheduleId: walkInForm.doctorScheduleId || "",
@@ -2551,6 +2598,7 @@ const AllAppointments = () => {
                         fullName: "",
                         email: "",
                         phoneNumber: "",
+                        gender: "",
                         date: "",
                         serviceId: "",
                         doctorUserId: "",
@@ -2716,6 +2764,34 @@ const AllAppointments = () => {
                         errorMessage={walkInErrors.phoneNumber}
                         size="lg"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm mb-1.5 font-medium text-gray-700">
+                        Giới tính <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        placeholder="Chọn giới tính"
+                        selectedKeys={walkInForm.gender ? new Set([walkInForm.gender]) : new Set([])}
+                        onSelectionChange={(keys) => {
+                          const selected = Array.from(keys)[0] as string;
+                          setWalkInForm(prev => ({ ...prev, gender: selected }));
+                          if (walkInErrors.gender) {
+                            setWalkInErrors(prev => {
+                              const next = { ...prev };
+                              delete next.gender;
+                              return next;
+                            });
+                          }
+                        }}
+                        isInvalid={!!walkInErrors.gender}
+                        errorMessage={walkInErrors.gender || ""}
+                        size="lg"
+                      >
+                        <SelectItem key="Male">Nam</SelectItem>
+                        <SelectItem key="Female">Nữ</SelectItem>
+                        <SelectItem key="Other">Khác</SelectItem>
+                      </Select>
                     </div>
                   </div>
                 </div>
