@@ -461,6 +461,8 @@ const DoctorMedicalRecord: React.FC = () => {
       setSlotsMessage(null);
       return;
     }
+    // ⭐ Format date sang YYYY-MM-DD theo múi giờ VN (không dùng toISOString vì sẽ bị lệch sang UTC)
+    const dateStr = formatDateToVNString(followUpDate);
 
     if (!silent) {
       setLoadingSlots(true);
@@ -470,12 +472,6 @@ const DoctorMedicalRecord: React.FC = () => {
     try {
       // Lấy service đầu tiên để check available slots
       const serviceId = followUpServiceIds[0];
-      // ⭐ Sử dụng helper function để format date theo VN timezone
-      // Format date giống như BookingModal để đảm bảo consistency
-      const yyyy = followUpDate.getFullYear();
-      const mm = String(followUpDate.getMonth() + 1).padStart(2, "0");
-      const dd = String(followUpDate.getDate()).padStart(2, "0");
-      const dateStr = `${yyyy}-${mm}-${dd}`;
 
       // ⭐ GIẢM LOG: Comment lại để giảm spam log
       // console.log('🔍 [FollowUp] Loading slots for date:', dateStr, 'from Date object:', followUpDate);
@@ -487,26 +483,17 @@ const DoctorMedicalRecord: React.FC = () => {
         followUpPatientUserId,
       );
 
+      // ⭐ Race Condition Check: Nếu ngày đã thay đổi trong lúc chờ API, bỏ qua kết quả cũ
+      if (!followUpDateRef.current || formatDateToVNString(followUpDateRef.current) !== dateStr) {
+        console.log(`⚠️ [loadAvailableSlots] Ignoring stale response for ${dateStr}. Current: ${followUpDateRef.current ? formatDateToVNString(followUpDateRef.current) : 'null'}`);
+        return;
+      }
+
       // // ⭐ THÊM DEBUG LOGS NGAY ĐÂY
-      console.log("🔍 [loadAvailableSlots] Raw Response:", res);
-      console.log("🔍 [loadAvailableSlots] Response success:", res.success);
-      console.log("🔍 [loadAvailableSlots] Response message:", res.message);
-      console.log("🔍 [loadAvailableSlots] Response data:", res.data);
+      // console.log("🔍 [loadAvailableSlots] Raw Response:", res);
 
       if (res.data) {
-        console.log("🔍 [loadAvailableSlots] Data keys:", Object.keys(res.data));
-        console.log("🔍 [loadAvailableSlots] startTimes:", res.data.startTimes);
-        console.log("🔍 [loadAvailableSlots] startTimes length:", res.data.startTimes?.length);
-
-        if (res.data.startTimes && Array.isArray(res.data.startTimes)) {
-          console.log("🔍 [loadAvailableSlots] First time:", res.data.startTimes[0]);
-          res.data.startTimes.forEach((timeSlot: any, idx: number) => {
-            console.log(`   TimeSlot ${idx}:`, {
-              time: timeSlot.time,
-              available: timeSlot.available,
-            });
-          });
-        }
+        // console.log("🔍 [loadAvailableSlots] Data keys:", Object.keys(res.data));
       }
 
       // ⭐ GIẢM LOG: Comment lại để giảm spam log
@@ -551,7 +538,11 @@ const DoctorMedicalRecord: React.FC = () => {
       setSlotsMessage(error.message || "Lỗi tải lịch khả dụng");
     } finally {
       if (!silent) {
-        setLoadingSlots(false);
+        // ⭐ Check: Chỉ tắt loading nếu request này khớp với ngày hiện tại
+        // Nếu là stale request (đã bị bỏ qua ở trên), không được tắt loading của request mới đang chạy
+        if (followUpDateRef.current && formatDateToVNString(followUpDateRef.current) === dateStr) {
+          setLoadingSlots(false);
+        }
       }
     }
   }, [followUpDate, followUpDoctorUserId, followUpServiceIdsString, followUpPatientUserId]);
@@ -588,7 +579,7 @@ const DoctorMedicalRecord: React.FC = () => {
       clearScheduleRefreshInterval();
 
       // Gọi API ngay lập tức khi có thay đổi thực sự
-      loadAvailableSlots({ silent: true });
+      loadAvailableSlots({ silent: false }); // ⭐ Show loading spinner khi đổi ngày/bác sĩ
 
       // ⭐ Set interval mới với thời gian dài hơn (90 giây thay vì 45 giây) để giảm tần suất
       scheduleRefreshTimerRef.current = setInterval(() => {
@@ -598,7 +589,7 @@ const DoctorMedicalRecord: React.FC = () => {
         const currentServiceIds = followUpServiceIdsRef.current;
 
         if (currentDate && currentDoctorUserId && currentServiceIds && currentServiceIds.length > 0) {
-          loadAvailableSlots({ silent: true });
+          loadAvailableSlots({ silent: true }); // Keep auto-refresh silent
         }
       }, 90000); // Tăng từ 45s lên 90s để giảm tần suất gọi API
     }
