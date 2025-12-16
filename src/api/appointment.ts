@@ -113,6 +113,14 @@ export const appointmentApi = {
     });
   },
 
+  // ⭐ Kiểm tra email tồn tại (cho walk-in)
+  checkEmailExistence: async (email: string): Promise<ApiResponse<{ exists: boolean; message?: string; type?: string }>> => {
+    const query = new URLSearchParams({ email }).toString();
+    return authenticatedApiCall(`/appointments/walk-in/check-email?${query}`, {
+      method: "GET",
+    });
+  },
+
   // ⭐ Lấy danh sách người thân đã đặt lịch
   getMyRelatives: async (): Promise<ApiResponse<Relative[]>> => {
     return authenticatedApiCall("/appointments/my-relatives", {

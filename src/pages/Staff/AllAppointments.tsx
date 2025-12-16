@@ -71,6 +71,17 @@ interface Appointment {
   noTreatment?: boolean;
   mode: string; // ⭐ THÊM: Mode của appointment (Online/Offline)
   hasVisitTicket?: boolean; // ⭐ Đánh dấu đã xuất phiếu khám
+  doctorWorkingHours?: { // ⭐ THÊM: Working hours from Doctor model
+    morningStart?: string;
+    morningEnd?: string;
+    afternoonStart?: string;
+    afternoonEnd?: string;
+  };
+  timeslotId?: { // Needed for fallback
+    startTime: string;
+    endTime: string;
+    doctorScheduleId?: any; 
+  };
 }
 
 interface ApiResponse<T> {
@@ -248,6 +259,8 @@ const AllAppointments = () => {
         break;
     }
     setWalkInErrors(next);
+    // ⭐ Return true if NO error for this field
+    return !next[fieldName];
   };
 
   // Debug: Log khi approvedLeaves thay đổi
@@ -696,6 +709,8 @@ const AllAppointments = () => {
             noTreatment: !!apt.noTreatment,
             mode: apt.mode || "Offline", // ⭐ Map mode từ API
             hasVisitTicket: Boolean((apt as any).hasVisitTicket),
+            doctorWorkingHours: apt.doctorWorkingHours, // ⭐ Map from backend
+            timeslotId: apt.timeslotId,
           };
         });
 
@@ -806,7 +821,11 @@ const AllAppointments = () => {
           const startTime = new Date(leaveStart.toISOString().split('T')[0]).getTime();
           const endTime = new Date(leaveEnd.toISOString().split('T')[0]).getTime();
 
-          return checkTime >= startTime && checkTime <= endTime;
+          const isMatch = checkTime >= startTime && checkTime <= endTime;
+          if (isMatch) {
+             console.log(`🚨 [isDoctorOnLeave] Match Found! Apt: ${aptDateStr}, Leave: ${leaveStart.toISOString()} - ${leaveEnd.toISOString()}`);
+          }
+          return isMatch;
         });
 
         // Nếu kiểm tra theo ngày cho kết quả, trả về ngay
@@ -1232,17 +1251,55 @@ const AllAppointments = () => {
     // Lấy giờ của appointment (VN time, UTC+7)
     const appointmentHour = (appointmentDate.getUTCHours() + 7) % 24;
 
-    // Nếu appointment vào buổi sáng (trước 12:00), endTime là 12:00
-    // Nếu appointment vào buổi chiều (từ 12:00 trở đi), endTime là 18:00
-    let scheduleEndHourVN = 18; // Mặc định buổi chiều
-    if (appointmentHour < 12) {
-      scheduleEndHourVN = 12; // Buổi sáng
+    // ⭐ DYNAMIC WORKING HOURS: Lấy giờ kết thúc từ Doctor Model
+    let scheduleEndHourVN = 23; // Fallback: 23h (cho phép check-in muộn)
+    let scheduleEndMinuteVN = 0;
+
+    // Ưu tiên lấy từ Doctor Model (Global Settings)
+    const workingHours = appointment.doctorWorkingHours;
+    // Fallback: Check doctorScheduleId (Specific Day Schedule) if available
+    const scheduleObj = appointment.timeslotId?.doctorScheduleId;
+    
+    // Determine source
+    const source = workingHours || (scheduleObj && scheduleObj.workingHours ? scheduleObj.workingHours : null);
+
+    if (source) {
+      try {
+        let endTimeStr = "18:00"; // Default fallback
+
+        // Determine which end time to use based on appointment time
+        // If appointment is in morning (<12:00), use morningEnd
+        // If appointment is in afternoon (>=12:00), use afternoonEnd
+        if (appointmentHour < 12) {
+          endTimeStr = source.morningEnd || "12:00";
+        } else {
+          endTimeStr = source.afternoonEnd || "18:00";
+        }
+
+        // Parse HH:MM
+        if (endTimeStr) {
+          const [hh, mm] = endTimeStr.split(':').map(Number);
+          if (!isNaN(hh)) scheduleEndHourVN = hh;
+          if (!isNaN(mm)) scheduleEndMinuteVN = mm;
+        }
+      } catch (e) {
+        console.warn("Error parsing dynamic working hours, using fallback 23:00", e);
+      }
+    } else {
+      // Logic cũ (fallback):
+      // Nếu appointment vào buổi sáng (trước 12:00), endTime là 12:00
+      // Nếu appointment vào buổi chiều (từ 12:00 trở đi), endTime là 23:00
+      if (appointmentHour < 12) {
+        scheduleEndHourVN = 12; // Buổi sáng
+      } else {
+        scheduleEndHourVN = 23; // Buổi chiều logic nới lỏng
+      }
     }
 
     // Tạo endTime của buổi làm việc (VN time), sau đó convert sang UTC
     // VN time = UTC + 7, nên UTC = VN time - 7
     const scheduleEndDate = new Date(appointmentDateOnly);
-    scheduleEndDate.setUTCHours(scheduleEndHourVN - 7, 0, 0, 0); // Convert VN time to UTC
+    scheduleEndDate.setUTCHours(scheduleEndHourVN - 7, scheduleEndMinuteVN, 0, 0); // Convert VN time to UTC
 
     // Kiểm tra xem hiện tại có trước endTime không
     return now < scheduleEndDate;
@@ -2129,26 +2186,25 @@ const AllAppointments = () => {
 
                           // ⭐ Logic cho ca khám Offline (giữ nguyên)
                           const isOnLeave = isDoctorOnLeave(appointment);
-                          // ⭐ Nếu ca khám đã hoàn thành, vẫn cho phép xuất phiếu khám dù bác sĩ nghỉ phép
-                          if (isOnLeave && appointment.status !== "Completed") {
-                            return shouldShowReassignButton(appointment, isOnLeave) ? (
-                              <Tooltip content="Gán bác sĩ">
-                                <Button
-                                  isIconOnly
-                                  size="md"
-                                  variant="light"
-                                  className="text-purple-600 hover:bg-purple-50 transition-colors"
-                                  onPress={() => openReassignModal(appointment)}
-                                  isDisabled={processingId === appointment.id}
-                                >
-                                  <UserPlusIcon className="w-5 h-5" />
-                                </Button>
-                              </Tooltip>
-                            ) : null;
-                          }
+
 
                           return (
                             <>
+                              {/* ⭐ Reassign Button moved here to show alongside check-in */}
+                              {isOnLeave && appointment.status !== "Completed" && shouldShowReassignButton(appointment, isOnLeave) && (
+                                <Tooltip content="Gán bác sĩ">
+                                  <Button
+                                    isIconOnly
+                                    size="md"
+                                    variant="light"
+                                    className="text-purple-600 hover:bg-purple-50 transition-colors"
+                                    onPress={() => openReassignModal(appointment)}
+                                    isDisabled={processingId === appointment.id}
+                                  >
+                                    <UserPlusIcon className="w-5 h-5" />
+                                  </Button>
+                                </Tooltip>
+                              )}
                               {appointment.status === "Pending" && (
                                 <>
                                   <Tooltip content="Xác nhận">
@@ -2515,6 +2571,12 @@ const AllAppointments = () => {
                     console.error('   - Error response:', err.response?.data);
 
                     const errorMessage = err.response?.data?.message || err.message || "Có lỗi xảy ra khi đặt lịch";
+                    
+                    // ⭐ Highlight email field if error is about existing email
+                    if (errorMessage.toLowerCase().includes("email")) {
+                      setWalkInErrors(prev => ({ ...prev, email: errorMessage }));
+                    }
+
                     toast.error(errorMessage);
                   } finally {
                     setWalkInSubmitting(false);
@@ -2571,7 +2633,59 @@ const AllAppointments = () => {
                             });
                           }
                         }}
-                        onBlur={() => validateWalkInField("email")}
+                        onBlur={async () => {
+                          console.log("🔵 [Email Blur] Event triggered");
+                          
+                          // Format validation first
+                          validateWalkInField("email");
+
+                          // Then check server if format is valid
+                          const email = walkInForm.email?.trim();
+                          console.log("🔵 [Email Blur] Trimmed email:", email);
+                          
+                          if (!email) {
+                            console.log("🔵 [Email Blur] No email, exiting");
+                            return;
+                          }
+
+                          // Skip if already has format error
+                          const isValidFormat = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email);
+                          console.log("🔵 [Email Blur] Format valid:", isValidFormat);
+                          
+                          if (!isValidFormat) {
+                            console.log("🔵 [Email Blur] Invalid format, exiting");
+                            return;
+                          }
+
+                          try {
+                            console.log("🚀 [Email Blur] Calling API checkEmailExistence with:", email);
+                            const res = await appointmentApi.checkEmailExistence(email);
+                            console.log("📥 [Email Blur] API Response:", res);
+                            console.log("📥 [Email Blur] res.success:", res.success);
+                            console.log("📥 [Email Blur] res.data:", res.data);
+                            console.log("📥 [Email Blur] res.data?.exists:", res.data?.exists);
+                            console.log("📥 [Email Blur] res.data?.message:", res.data?.message);
+                            
+                            if (res.success && res.data?.exists) {
+                              console.log("⚠️ [Email Blur] Email exists! Setting error...");
+                              const errorMessage = res.data?.message || "Email đã tồn tại trong hệ thống";
+                              console.log("⚠️ [Email Blur] Error message:", errorMessage);
+                              
+                              setWalkInErrors(prev => {
+                                const newErrors = { 
+                                  ...prev, 
+                                  email: errorMessage 
+                                };
+                                console.log("⚠️ [Email Blur] New errors state:", newErrors);
+                                return newErrors;
+                              });
+                            } else {
+                              console.log("✅ [Email Blur] Email is available");
+                            }
+                          } catch (err) {
+                            console.error("❌ [Email Blur] API call failed:", err);
+                          }
+                        }}
                         placeholder="example@email.com"
                         isInvalid={!!walkInErrors.email}
                         errorMessage={walkInErrors.email}
