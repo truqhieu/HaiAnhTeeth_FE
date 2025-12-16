@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { medicalRecordApi, type MedicalRecord, type MedicalRecordDisplay, type MedicalRecordPermissions } from "@/api/medicalRecord";
-import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader } from "@heroui/react";
+import { Spinner, Button, Card, CardBody, Textarea, Input, CardHeader, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import { BeakerIcon, DocumentTextIcon, PencilSquareIcon, HeartIcon, CheckCircleIcon, ChevronDownIcon, XMarkIcon, ArrowLeftIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 import { appointmentApi } from "@/api/appointment";
@@ -29,6 +29,7 @@ const NurseMedicalRecord: React.FC = () => {
   const dropdownButtonRef = useRef<HTMLButtonElement>(null);
   const dropdownMenuRef = useRef<HTMLDivElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const canEdit = permissions?.nurse?.canEdit ?? true;
   const lockReason = !canEdit ? permissions?.nurse?.reason || null : null;
   const isFinalized = permissions?.recordStatus === "Finalized";
@@ -341,6 +342,7 @@ const NurseMedicalRecord: React.FC = () => {
       return;
     }
 
+    setIsConfirmModalOpen(false);
     setSaving(true);
     try {
       const res = await appointmentApi.markNoTreatmentForNurse(appointmentId);
@@ -814,7 +816,7 @@ const NurseMedicalRecord: React.FC = () => {
             <Button
               color="warning"
               variant="flat"
-              onPress={handleNoTreatment}
+              onPress={() => setIsConfirmModalOpen(true)}
               isLoading={saving}
               isDisabled={saving || !canEdit}
             >
@@ -832,6 +834,43 @@ const NurseMedicalRecord: React.FC = () => {
           </div>
         </CardBody>
       </Card>
+
+      {/* Modal xác nhận "Không cần khám" */}
+      <Modal 
+        isOpen={isConfirmModalOpen} 
+        onClose={() => setIsConfirmModalOpen(false)}
+        size="md"
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            <h3 className="text-lg font-semibold">Xác nhận đánh dấu "Không cần khám"</h3>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-gray-700">
+              Bạn có chắc chắn muốn đánh dấu ca khám này là "Không cần khám"? 
+              Hành động này sẽ không thể hoàn tác.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              color="default" 
+              variant="flat" 
+              onPress={() => setIsConfirmModalOpen(false)}
+              isDisabled={saving}
+            >
+              Hủy
+            </Button>
+            <Button 
+              color="warning" 
+              onPress={handleNoTreatment}
+              isLoading={saving}
+              isDisabled={saving}
+            >
+              Xác nhận
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };

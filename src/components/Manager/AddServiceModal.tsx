@@ -56,8 +56,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
   const isPriceInvalid =
     showValidation &&
     (!formData.price ||
-      isNaN(Number(formData.price)) ||
-      Number(formData.price) <= 0);
+      isNaN(Number(formData.price)));
   const isDurationInvalid =
     showValidation &&
     (!formData.duration ||
@@ -86,7 +85,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       !formData.description.trim() ||
       !formData.price ||
       isNaN(Number(formData.price)) ||
-      Number(formData.price) <= 0 ||
       !formData.duration ||
       isNaN(Number(formData.duration)) ||
       Number(formData.duration) <= 0 ||
@@ -239,7 +237,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
                 }}
                 autoComplete="off"
                 errorMessage={
-                  isPriceInvalid ? "Vui lòng nhập giá hợp lệ (lớn hơn 0)" : ""
+                  isPriceInvalid ? "Vui lòng nhập giá hợp lệ" : ""
                 }
                 isInvalid={isPriceInvalid}
                 label={

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -62,7 +62,8 @@ const ServiceManagement = () => {
   };
 
   // Fetch services from API
-  const fetchServices = async () => {
+  // ⭐ FIX: Sử dụng useCallback để đảm bảo fetchServices luôn có state mới nhất
+  const fetchServices = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await managerApi.getAllServices({
@@ -108,14 +109,14 @@ const ServiceManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, statusFilter, categoryFilter, searchTerm, itemsPerPage]);
 
   // Fetch data when component mounts or filters change
   useEffect(() => {
     fetchServices();
-  }, [currentPage, statusFilter, categoryFilter]);
+  }, [fetchServices]);
 
-  // Debounce search term
+  // Debounce search term - chỉ reset page khi search term thay đổi
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (currentPage === 1) {
@@ -126,7 +127,8 @@ const ServiceManagement = () => {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm]); // Chỉ chạy khi searchTerm thay đổi, KHÔNG có currentPage
 
   const statusOptions = [
     { key: "all", label: "Tất cả trạng thái" },
@@ -159,14 +161,9 @@ const ServiceManagement = () => {
   };
 
   const handleEditSuccess = () => {
-    // Refresh service list after successful edit
-    if (statusFilter !== "all") {
-      setStatusFilter("all");
-      // fetchServices will be triggered by useEffect
-    } else {
-      // If already on "all", manually fetch
-      fetchServices();
-    }
+    // ⭐ FIX: Luôn refresh ngay lập tức để đảm bảo giá được cập nhật
+    // Gọi fetchServices trực tiếp với state mới nhất từ useCallback
+    fetchServices();
     setIsEditModalOpen(false);
     setSelectedService(null);
   };
