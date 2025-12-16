@@ -78,6 +78,8 @@ const DoctorMedicalRecord: React.FC = () => {
   const pendingValidationRef = useRef<{ timeInput: string; timeoutId: ReturnType<typeof setTimeout> | null } | null>(null); // ⭐ Track pending validation
   const prevScheduleKeyRef = useRef<string | null>(null); // Track previous schedule key để tránh gọi API không cần thiết
   const prevReservationIdRef = useRef<string | null>(null); // Track previous reservation ID để tránh refresh không cần thiết
+  const endTimeHourInputRef = useRef<HTMLInputElement>(null); // ⭐ Ref cho endTime hour input
+  const endTimeMinuteInputRef = useRef<HTMLInputElement>(null); // ⭐ Ref cho endTime minute input
   // Refs để lưu giá trị mới nhất cho interval callback (tránh stale closure)
   const followUpDateRef = useRef<Date | null>(followUpDate);
   const followUpDoctorUserIdRef = useRef<string | null>(followUpDoctorUserId);
@@ -461,8 +463,6 @@ const DoctorMedicalRecord: React.FC = () => {
       setSlotsMessage(null);
       return;
     }
-    // ⭐ Format date sang YYYY-MM-DD theo múi giờ VN (không dùng toISOString vì sẽ bị lệch sang UTC)
-    const dateStr = formatDateToVNString(followUpDate);
 
     if (!silent) {
       setLoadingSlots(true);
@@ -472,6 +472,12 @@ const DoctorMedicalRecord: React.FC = () => {
     try {
       // Lấy service đầu tiên để check available slots
       const serviceId = followUpServiceIds[0];
+      // ⭐ Sử dụng helper function để format date theo VN timezone
+      // Format date giống như BookingModal để đảm bảo consistency
+      const yyyy = followUpDate.getFullYear();
+      const mm = String(followUpDate.getMonth() + 1).padStart(2, "0");
+      const dd = String(followUpDate.getDate()).padStart(2, "0");
+      const dateStr = `${yyyy}-${mm}-${dd}`;
 
       // ⭐ GIẢM LOG: Comment lại để giảm spam log
       // console.log('🔍 [FollowUp] Loading slots for date:', dateStr, 'from Date object:', followUpDate);
@@ -483,17 +489,26 @@ const DoctorMedicalRecord: React.FC = () => {
         followUpPatientUserId,
       );
 
-      // ⭐ Race Condition Check: Nếu ngày đã thay đổi trong lúc chờ API, bỏ qua kết quả cũ
-      if (!followUpDateRef.current || formatDateToVNString(followUpDateRef.current) !== dateStr) {
-        console.log(`⚠️ [loadAvailableSlots] Ignoring stale response for ${dateStr}. Current: ${followUpDateRef.current ? formatDateToVNString(followUpDateRef.current) : 'null'}`);
-        return;
-      }
-
       // // ⭐ THÊM DEBUG LOGS NGAY ĐÂY
-      // console.log("🔍 [loadAvailableSlots] Raw Response:", res);
+      console.log("🔍 [loadAvailableSlots] Raw Response:", res);
+      console.log("🔍 [loadAvailableSlots] Response success:", res.success);
+      console.log("🔍 [loadAvailableSlots] Response message:", res.message);
+      console.log("🔍 [loadAvailableSlots] Response data:", res.data);
 
       if (res.data) {
-        // console.log("🔍 [loadAvailableSlots] Data keys:", Object.keys(res.data));
+        console.log("🔍 [loadAvailableSlots] Data keys:", Object.keys(res.data));
+        console.log("🔍 [loadAvailableSlots] startTimes:", res.data.startTimes);
+        console.log("🔍 [loadAvailableSlots] startTimes length:", res.data.startTimes?.length);
+
+        if (res.data.startTimes && Array.isArray(res.data.startTimes)) {
+          console.log("🔍 [loadAvailableSlots] First time:", res.data.startTimes[0]);
+          res.data.startTimes.forEach((timeSlot: any, idx: number) => {
+            console.log(`   TimeSlot ${idx}:`, {
+              time: timeSlot.time,
+              available: timeSlot.available,
+            });
+          });
+        }
       }
 
       // ⭐ GIẢM LOG: Comment lại để giảm spam log
@@ -538,11 +553,7 @@ const DoctorMedicalRecord: React.FC = () => {
       setSlotsMessage(error.message || "Lỗi tải lịch khả dụng");
     } finally {
       if (!silent) {
-        // ⭐ Check: Chỉ tắt loading nếu request này khớp với ngày hiện tại
-        // Nếu là stale request (đã bị bỏ qua ở trên), không được tắt loading của request mới đang chạy
-        if (followUpDateRef.current && formatDateToVNString(followUpDateRef.current) === dateStr) {
-          setLoadingSlots(false);
-        }
+        setLoadingSlots(false);
       }
     }
   }, [followUpDate, followUpDoctorUserId, followUpServiceIdsString, followUpPatientUserId]);
@@ -579,7 +590,7 @@ const DoctorMedicalRecord: React.FC = () => {
       clearScheduleRefreshInterval();
 
       // Gọi API ngay lập tức khi có thay đổi thực sự
-      loadAvailableSlots({ silent: false }); // ⭐ Show loading spinner khi đổi ngày/bác sĩ
+      loadAvailableSlots({ silent: true });
 
       // ⭐ Set interval mới với thời gian dài hơn (90 giây thay vì 45 giây) để giảm tần suất
       scheduleRefreshTimerRef.current = setInterval(() => {
@@ -589,7 +600,7 @@ const DoctorMedicalRecord: React.FC = () => {
         const currentServiceIds = followUpServiceIdsRef.current;
 
         if (currentDate && currentDoctorUserId && currentServiceIds && currentServiceIds.length > 0) {
-          loadAvailableSlots({ silent: true }); // Keep auto-refresh silent
+          loadAvailableSlots({ silent: true });
         }
       }, 90000); // Tăng từ 45s lên 90s để giảm tần suất gọi API
     }
@@ -1074,6 +1085,48 @@ const DoctorMedicalRecord: React.FC = () => {
         return;
       }
 
+      // ⭐ THÊM: Validate FE - Check xem thời gian có nằm trong availableGaps không
+      if (slotsForDisplay && slotsForDisplay.length > 0 && endTimeISO) {
+        console.log('🔍 [FE Validation] slotsForDisplay:', slotsForDisplay);
+        console.log('🔍 [FE Validation] startTimeISO:', startTimeISO);
+        console.log('🔍 [FE Validation] endTimeISO:', endTimeISO);
+
+        const startTimeMs = new Date(startTimeISO).getTime();
+        const endTimeMs = new Date(endTimeISO).getTime();
+
+        // Tìm range chứa thời gian này
+        let isInAvailableGap = false;
+        for (const slot of slotsForDisplay) {
+          console.log('🔍 [FE Validation] Checking slot:', slot.shiftDisplay, 'availableGaps:', slot.availableGaps);
+          if (slot.availableGaps && slot.availableGaps.length > 0) {
+            for (const gap of slot.availableGaps) {
+              const gapStartMs = new Date(gap.start).getTime();
+              const gapEndMs = new Date(gap.end).getTime();
+
+              console.log('🔍 [FE Validation] Gap:', new Date(gap.start).toISOString(), '-', new Date(gap.end).toISOString());
+              console.log('🔍 [FE Validation] Checking:', startTimeMs >= gapStartMs, '&&', endTimeMs <= gapEndMs);
+
+              // Check xem [startTime, endTime] có nằm hoàn toàn trong gap không
+              if (startTimeMs >= gapStartMs && endTimeMs <= gapEndMs) {
+                isInAvailableGap = true;
+                console.log('✅ [FE Validation] Found valid gap!');
+                break;
+              }
+            }
+          }
+          if (isInAvailableGap) break;
+        }
+
+        console.log('🔍 [FE Validation] isInAvailableGap:', isInAvailableGap);
+
+        if (!isInAvailableGap) {
+          setTimeInputError("Khung giờ này không khả dụng. Vui lòng chọn thời gian trong khoảng thời gian khả dụng.");
+          setFollowUpEndTime(null);
+          setHasReservedAfterBlur(false);
+          return;
+        }
+      }
+
       const validateRes = await validateAppointmentTime(
         followUpDoctorUserId,
         serviceId,
@@ -1176,6 +1229,7 @@ const DoctorMedicalRecord: React.FC = () => {
         releaseReservation({ silent: true });
         setTimeInputError("Giữ chỗ đã hết hạn. Vui lòng chọn lại khung giờ.");
         setFollowUpTimeInput("");
+        setFollowUpEndTimeInput(""); // ⭐ Clear endTime input
         setFollowUpEndTime(null);
         return;
       }
@@ -2526,8 +2580,8 @@ const DoctorMedicalRecord: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Input thời gian và hiển thị kết quả nằm ngang - Chỉ hiện khi có slot khả dụng */}
-                      {slotsForDisplay.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ? (
+                      {/* Input thời gian và hiển thị kết quả nằm ngang - Chỉ hiện khi CÓ slot khả dụng */}
+                      {slotsForDisplay && slotsForDisplay.length > 0 && slotsForDisplay.some((r: any) => r.displayRange !== 'Đã hết chỗ' && r.displayRange !== 'Đã qua thời gian làm việc') ? (
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">
@@ -2552,8 +2606,17 @@ const DoctorMedicalRecord: React.FC = () => {
                                   // ⭐ Clear flag ngay khi bắt đầu onChange để ẩn message khi đang nhập
                                   setHasReservedAfterBlur(false);
                                   setTimeInputError(null);
-                                  // ⭐ Sửa: Chỉ clear endTime khi thực sự thay đổi giờ/phút, không clear khi đang nhập
-                                  // Chỉ clear khi xóa hết hoặc thay đổi đáng kể
+
+                                  // ⭐ Nếu đã có reservation, clear startTime để nhập lại (giữ nguyên endTime)
+                                  if (activeReservation) {
+                                    await releaseReservation({ silent: true });
+                                    setFollowUpTimeInput('');
+                                    setHasReservedAfterBlur(false);
+                                    setTimeInputError(null);
+                                    return;
+                                  }
+
+                                  // ⭐ Standard input behavior - không auto-clear
                                   const currentMinute = (followUpTimeInput || '').split(':')[1] || '';
                                   const timeInput = v + ':' + currentMinute;
                                   const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
@@ -2561,7 +2624,7 @@ const DoctorMedicalRecord: React.FC = () => {
                                   // ⭐ Release reservation nếu đã xóa hết giờ và phút
                                   if (activeReservation && (!v || v === '') && (!currentMinute || currentMinute === '')) {
                                     await releaseReservation({ silent: true });
-                                    setFollowUpEndTime(null); // ⭐ Chỉ clear endTime khi xóa hết
+                                    setFollowUpEndTime(null);
                                     setHasReservedAfterBlur(false); // ⭐ Clear flag khi xóa hết
                                   }
 
@@ -2657,7 +2720,16 @@ const DoctorMedicalRecord: React.FC = () => {
                                   // ⭐ Clear flag ngay khi bắt đầu onChange để ẩn message khi đang nhập
                                   setHasReservedAfterBlur(false);
                                   setTimeInputError(null);
-                                  // ⭐ Sửa: Chỉ clear endTime khi thực sự thay đổi giờ/phút, không clear khi đang nhập
+
+                                  // ⭐ Nếu đã có reservation, clear startTime để nhập lại (giữ nguyên endTime)
+                                  if (activeReservation) {
+                                    await releaseReservation({ silent: true });
+                                    setFollowUpTimeInput('');
+                                    setHasReservedAfterBlur(false);
+                                    setTimeInputError(null);
+                                    return;
+                                  }
+
                                   const currentHour = (followUpTimeInput || '').split(':')[0] || '';
                                   const timeInput = currentHour + ':' + v;
                                   const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
@@ -2725,12 +2797,37 @@ const DoctorMedicalRecord: React.FC = () => {
                                   }
                                 }}
                                 onBlur={() => {
-                                  // ⭐ CHỈ clear error, KHÔNG validate ở đây (sẽ validate khi blur khỏi endTime)
-                                  const [h, m] = (followUpTimeInput || '').split(':');
-                                  if (!h || h === '' || !m || m === '') {
-                                    setTimeInputError(null);
-                                    setFollowUpEndTime(null);
-                                  }
+                                  // ⭐ Validate và reserve khi blur khỏi startTime
+                                  // ⭐ Đợi một chút để state update từ onChange
+                                  setTimeout(() => {
+                                    const [h, m] = (followUpTimeInput || '').split(':');
+                                    const [endH, endM] = (followUpEndTimeInput || '').split(':');
+
+                                    // ⭐ Validate format: giờ phải 0-23, phút phải 0-59
+                                    const hNum = parseInt(h);
+                                    const mNum = parseInt(m);
+                                    const endHNum = parseInt(endH);
+                                    const endMNum = parseInt(endM);
+
+                                    const isValidStartTime = !isNaN(hNum) && hNum >= 0 && hNum <= 23 && !isNaN(mNum) && mNum >= 0 && mNum <= 59;
+                                    const isValidEndTime = !isNaN(endHNum) && endHNum >= 0 && endHNum <= 23 && !isNaN(endMNum) && endMNum >= 0 && endMNum <= 59;
+
+                                    // Chỉ validate khi có đầy đủ startTime và endTime HỢP LỆ
+                                    if (h && h !== '' && m && m !== '' && endH && endH !== '' && endM && endM !== '' && isValidStartTime && isValidEndTime) {
+                                      handleTimeInputBlur(h + ':' + m);
+                                    } else if (h && h !== '' && m && m !== '' && endH && endH !== '' && endM && endM !== '') {
+                                      // ⭐ Nếu đã nhập đủ nhưng không hợp lệ → Hiển thị lỗi
+                                      if (!isValidStartTime) {
+                                        setTimeInputError("Giờ bắt đầu không hợp lệ. Giờ phải từ 0-23, phút từ 0-59.");
+                                      } else if (!isValidEndTime) {
+                                        setTimeInputError("Giờ kết thúc không hợp lệ. Giờ phải từ 0-23, phút từ 0-59.");
+                                      }
+                                    } else {
+                                      // ⭐ Clear error nếu chưa nhập đủ
+                                      setTimeInputError(null);
+                                      setFollowUpEndTime(null);
+                                    }
+                                  }, 100); // Đợi 100ms cho state update
                                 }}
                                 readOnly={!canEdit}
                               />
@@ -2755,79 +2852,177 @@ const DoctorMedicalRecord: React.FC = () => {
 
 
                           {/* ⭐ Input cho giờ kết thúc tái khám - Editable như start time */}
-                          {followUpTimeInput && !timeInputError && (
-                            <div className="flex flex-col items-end text-right">
-                              <label className="block text-xs text-gray-600 mb-1">
-                                Giờ kết thúc tái khám <span className="text-red-500">*</span>
-                              </label>
-                              <div className="flex items-center gap-2 justify-end">
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  placeholder="Giờ"
-                                  maxLength={2}
-                                  className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-gray-300 focus:border-[#39BDCC] focus:outline-none"
-                                  value={(followUpEndTimeInput || '').split(':')[0] || ''}
-                                  onChange={(e) => {
-                                    const v = e.target.value.replace(/\D/g, '');
-                                    const currentMinute = (followUpEndTimeInput || '').split(':')[1] || '';
-                                    const newEndTimeInput = v + ':' + currentMinute;
-                                    setFollowUpEndTimeInput(newEndTimeInput);
+                          <div className="flex flex-col items-end text-right">
+                            <label className="block text-xs text-gray-600 mb-1">
+                              Giờ kết thúc tái khám <span className="text-red-500">*</span>
+                            </label>
+                            <div className="flex items-center gap-2 justify-end">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Giờ"
+                                maxLength={2}
+                                className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-gray-300 focus:border-[#39BDCC] focus:outline-none"
+                                ref={endTimeHourInputRef}
+                                value={(followUpEndTimeInput || '').split(':')[0] || ''}
+                                onChange={async (e) => {
+                                  const v = e.target.value.replace(/\D/g, '');
+                                  const currentMinute = (followUpEndTimeInput || '').split(':')[1] || '';
 
-                                    // Update followUpEndTime if valid
-                                    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
-                                    if (timeRegex.test(newEndTimeInput) && followUpDate) {
-                                      const [hours, minutes] = newEndTimeInput.split(':');
-                                      const vnHours = parseInt(hours);
-                                      const vnMinutes = parseInt(minutes);
-                                      const utcHours = vnHours - 7;
-                                      const dateStr = formatDateToVNString(followUpDate);
-                                      const dateObj = new Date(dateStr + 'T00:00:00.000Z');
-                                      dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
-                                      setFollowUpEndTime(dateObj);
-                                    }
-                                  }}
-                                  readOnly={!canEdit}
-                                />
-                                <span className="font-semibold">:</span>
-                                <input
-                                  type="text"
-                                  inputMode="numeric"
-                                  placeholder="Phút"
-                                  maxLength={2}
-                                  className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-gray-300 focus:border-[#39BDCC] focus:outline-none"
-                                  value={(followUpEndTimeInput || '').split(':')[1] || ''}
-                                  onChange={(e) => {
-                                    const v = e.target.value.replace(/\D/g, '');
-                                    const currentHour = (followUpEndTimeInput || '').split(':')[0] || '';
-                                    const newEndTimeInput = currentHour + ':' + v;
-                                    setFollowUpEndTimeInput(newEndTimeInput);
+                                  // ⭐ Nếu đã có reservation, clear endTime để nhập lại (giữ nguyên startTime)
+                                  if (activeReservation) {
+                                    await releaseReservation({ silent: true });
+                                    setFollowUpEndTimeInput('');
+                                    setFollowUpEndTime(null);
+                                    setHasReservedAfterBlur(false);
+                                    setTimeInputError(null);
+                                    return;
+                                  }
 
-                                    // Update followUpEndTime if valid
-                                    const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
-                                    if (timeRegex.test(newEndTimeInput) && followUpDate) {
-                                      const [hours, minutes] = newEndTimeInput.split(':');
-                                      const vnHours = parseInt(hours);
-                                      const vnMinutes = parseInt(minutes);
-                                      const utcHours = vnHours - 7;
-                                      const dateStr = formatDateToVNString(followUpDate);
-                                      const dateObj = new Date(dateStr + 'T00:00:00.000Z');
-                                      dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
-                                      setFollowUpEndTime(dateObj);
-                                    }
-                                  }}
-                                  onBlur={() => {
-                                    // ⭐ Validate và reserve khi blur khỏi endTime
-                                    const [h, m] = (followUpTimeInput || '').split(':');
-                                    if (h && h !== '' && m && m !== '') {
-                                      handleTimeInputBlur(h + ':' + m);
-                                    }
-                                  }}
-                                  readOnly={!canEdit}
-                                />
-                              </div>
+                                  // ⭐ Bất kỳ thay đổi giờ nào → Xóa phút (cascade delete)
+                                  const oldHour = (followUpEndTimeInput || '').split(':')[0] || '';
+                                  const newEndTimeInput = (v !== oldHour) ? (v + ':') : (v + ':' + currentMinute);
+                                  setFollowUpEndTimeInput(newEndTimeInput);
+
+                                  // ⭐ Release reservation nếu đã xóa hết giờ và phút của endTime
+                                  if (activeReservation && (!v || v === '') && (!currentMinute || currentMinute === '')) {
+                                    await releaseReservation({ silent: true });
+                                    setFollowUpEndTime(null);
+                                    setHasReservedAfterBlur(false);
+                                  }
+
+                                  // Update followUpEndTime if valid
+                                  const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                                  if (timeRegex.test(newEndTimeInput) && followUpDate) {
+                                    const [hours, minutes] = newEndTimeInput.split(':');
+                                    const vnHours = parseInt(hours);
+                                    const vnMinutes = parseInt(minutes);
+                                    const utcHours = vnHours - 7;
+                                    const dateStr = formatDateToVNString(followUpDate);
+                                    const dateObj = new Date(dateStr + 'T00:00:00.000Z');
+                                    dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+                                    setFollowUpEndTime(dateObj);
+                                  } else {
+                                    // ⭐ Clear endTime nếu format không hợp lệ
+                                    setFollowUpEndTime(null);
+                                  }
+                                }}
+                                readOnly={!canEdit}
+                              />
+                              <span className="font-semibold">:</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                placeholder="Phút"
+                                maxLength={2}
+                                className="w-16 text-center border px-3 py-2 rounded-lg bg-white border-gray-300 focus:border-[#39BDCC] focus:outline-none"
+                                ref={endTimeMinuteInputRef}
+                                value={(followUpEndTimeInput || '').split(':')[1] || ''}
+                                onChange={async (e) => {
+                                  const v = e.target.value.replace(/\D/g, '');
+                                  const currentHour = (followUpEndTimeInput || '').split(':')[0] || '';
+
+                                  // ⭐ Nếu đã có reservation, clear endTime để nhập lại (giữ nguyên startTime)
+                                  if (activeReservation) {
+                                    await releaseReservation({ silent: true });
+                                    setFollowUpEndTimeInput('');
+                                    setFollowUpEndTime(null);
+                                    setHasReservedAfterBlur(false);
+                                    setTimeInputError(null);
+                                    return;
+                                  }
+
+                                  const newEndTimeInput = currentHour + ':' + v;
+                                  setFollowUpEndTimeInput(newEndTimeInput);
+
+                                  // ⭐ Release reservation nếu đã xóa hết giờ và phút của endTime
+                                  if (activeReservation && (!currentHour || currentHour === '') && (!v || v === '')) {
+                                    await releaseReservation({ silent: true });
+                                    setFollowUpEndTime(null);
+                                    setHasReservedAfterBlur(false);
+                                  }
+
+                                  // Update followUpEndTime if valid
+                                  const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+                                  if (timeRegex.test(newEndTimeInput) && followUpDate) {
+                                    const [hours, minutes] = newEndTimeInput.split(':');
+                                    const vnHours = parseInt(hours);
+                                    const vnMinutes = parseInt(minutes);
+                                    const utcHours = vnHours - 7;
+                                    const dateStr = formatDateToVNString(followUpDate);
+                                    const dateObj = new Date(dateStr + 'T00:00:00.000Z');
+                                    dateObj.setUTCHours(utcHours, vnMinutes, 0, 0);
+                                    setFollowUpEndTime(dateObj);
+                                  } else {
+                                    // ⭐ Clear endTime nếu format không hợp lệ
+                                    setFollowUpEndTime(null);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  // ⭐ Validate và reserve khi blur khỏi endTime minute
+                                  // ⭐ Lưu reference trước khi vào setTimeout (React event pooling)
+                                  const minuteInput = e.currentTarget;
+
+                                  setTimeout(() => {
+                                    (async () => {
+                                      // ⭐ THÊM: Release reservation cũ TRƯỚC KHI validate mới
+                                      if (activeReservation) {
+                                        console.log('🔄 [onBlur endTime minute] Releasing old reservation before validation');
+                                        await releaseReservation({ silent: true });
+                                        setHasReservedAfterBlur(false);
+                                      }
+
+                                      // ⭐ Đọc giá trị từ DOM - Tìm parent container chứa cả hour và minute inputs
+                                      const parent = minuteInput.parentElement;
+                                      const hourInput = parent?.querySelector('input[placeholder="Giờ"]') as HTMLInputElement;
+
+                                      const endH = hourInput?.value || '';
+                                      const endM = minuteInput.value || '';
+                                      const [h, m] = (followUpTimeInput || '').split(':');
+
+                                      console.log('🔍 [onBlur endTime minute] endH from DOM:', endH, 'endM from DOM:', endM);
+                                      console.log('🔍 [onBlur endTime minute] followUpEndTimeInput from state:', followUpEndTimeInput);
+
+                                      // ⭐ Validate format: giờ phải 0-23, phút phải 0-59
+                                      const hNum = parseInt(h);
+                                      const mNum = parseInt(m);
+                                      const endHNum = parseInt(endH);
+                                      const endMNum = parseInt(endM);
+
+                                      const isValidStartTime = !isNaN(hNum) && hNum >= 0 && hNum <= 23 && !isNaN(mNum) && mNum >= 0 && mNum <= 59;
+                                      const isValidEndTime = !isNaN(endHNum) && endHNum >= 0 && endHNum <= 23 && !isNaN(endMNum) && endMNum >= 0 && endMNum <= 59;
+
+                                      // Chỉ validate khi có đầy đủ startTime và endTime HỢP LỆ
+                                      if (h && h !== '' && m && m !== '' && endH && endH !== '' && endM && endM !== '' && isValidStartTime && isValidEndTime) {
+                                        // ⭐ Update state với giá trị từ DOM TRƯỚC KHI validate
+                                        const endTimeFromDOM = endH + ':' + endM;
+                                        setFollowUpEndTimeInput(endTimeFromDOM);
+                                        // Đợi một chút để state update
+                                        await new Promise(resolve => setTimeout(resolve, 20));
+                                        handleTimeInputBlur(h + ':' + m);
+                                      } else if (h && h !== '' && m && m !== '' && endH && endH !== '' && endM && endM !== '') {
+                                        // ⭐ Nếu đã nhập đủ nhưng không hợp lệ → Hiển thị lỗi
+                                        if (!isValidStartTime) {
+                                          setTimeInputError("Giờ bắt đầu không hợp lệ. Giờ phải từ 0-23, phút từ 0-59.");
+                                        } else if (!isValidEndTime) {
+                                          setTimeInputError("Giờ kết thúc không hợp lệ. Giờ phải từ 0-23, phút từ 0-59.");
+                                        }
+                                      } else {
+                                        // ⭐ Clear error nếu endTime bị xóa (chưa nhập đủ)
+                                        setTimeInputError(null);
+                                        // ⭐ Release reservation nếu endTime không đầy đủ
+                                        if (activeReservation) {
+                                          await releaseReservation({ silent: true });
+                                          setHasReservedAfterBlur(false);
+                                        }
+                                      }
+                                    })(); // Close IIFE
+                                  }, 100); // Đợi 100ms để onChange kịp update DOM
+                                }}
+                                readOnly={!canEdit}
+                              />
                             </div>
-                          )}
+                          </div>
                         </div>
                       ) : null}
                     </div>
