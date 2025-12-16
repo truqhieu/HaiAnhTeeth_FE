@@ -1120,7 +1120,60 @@ const DoctorMedicalRecord: React.FC = () => {
         console.log('🔍 [FE Validation] isInAvailableGap:', isInAvailableGap);
 
         if (!isInAvailableGap) {
-          setTimeInputError("Khung giờ này không khả dụng. Vui lòng chọn thời gian trong khoảng thời gian khả dụng.");
+          // ⭐ Calculate conflict ranges (intervals within requested time that are NOT in availableGaps)
+          let conflictMsg = "Bệnh nhân đã có lịch khám khác trong khoảng thời gian này";
+
+          try {
+            // Flatten and sort all gaps
+            const allGaps = slotsForDisplay.flatMap(s => s.availableGaps || [])
+              .map(g => ({ start: new Date(g.start).getTime(), end: new Date(g.end).getTime() }))
+              .sort((a, b) => a.start - b.start);
+
+            const requestedStart = startTimeMs;
+            const requestedEnd = endTimeMs;
+            const conflicts: { start: number, end: number }[] = [];
+
+            // Filter gaps that have any overlap or are relevant to the requested range
+            // We are looking for "holes" between gaps inside [requestedStart, requestedEnd]
+            const relevantGaps = allGaps.filter(g => g.end > requestedStart && g.start < requestedEnd);
+
+            if (relevantGaps.length === 0) {
+              // No gaps overlap at all -> The entire range is a conflict
+              conflicts.push({ start: requestedStart, end: requestedEnd });
+            } else {
+              let currentCheck = requestedStart;
+
+              // Check space before the first gap
+              if (relevantGaps[0].start > currentCheck) {
+                conflicts.push({ start: currentCheck, end: relevantGaps[0].start });
+              }
+              currentCheck = Math.max(currentCheck, relevantGaps[0].end);
+
+              // Check spaces between gaps
+              for (let i = 1; i < relevantGaps.length; i++) {
+                const gap = relevantGaps[i];
+                if (gap.start > currentCheck) {
+                  conflicts.push({ start: currentCheck, end: gap.start });
+                }
+                currentCheck = Math.max(currentCheck, gap.end);
+              }
+
+              // Check space after the last gap
+              if (currentCheck < requestedEnd) {
+                conflicts.push({ start: currentCheck, end: requestedEnd });
+              }
+            }
+
+            if (conflicts.length > 0) {
+              const formatTime = (ms: number) => new Date(ms).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+              const conflictTimes = conflicts.map(c => `${formatTime(c.start)} - ${formatTime(c.end)}`).join(', ');
+              conflictMsg = `Bệnh nhân hoặc bạn có lịch khám khác trong khoảng thời gian ${conflictTimes}, vui lòng chọn thời gian khác.`;
+            }
+          } catch (e) {
+            console.error("Error calculating conflict range:", e);
+          }
+
+          setTimeInputError(conflictMsg);
           setFollowUpEndTime(null);
           setHasReservedAfterBlur(false);
           return;
@@ -2884,6 +2937,12 @@ const DoctorMedicalRecord: React.FC = () => {
                                   const newEndTimeInput = (v !== oldHour) ? (v + ':') : (v + ':' + currentMinute);
                                   setFollowUpEndTimeInput(newEndTimeInput);
 
+                                  // ⭐ Clear error message khi CẢ giờ VÀ phút đều rỗng (cascade delete case)
+                                  if ((!v || v === '') && (!currentMinute || currentMinute === '')) {
+                                    setTimeInputError(null);
+                                    setFollowUpEndTime(null);
+                                  }
+
                                   // ⭐ Release reservation nếu đã xóa hết giờ và phút của endTime
                                   if (activeReservation && (!v || v === '') && (!currentMinute || currentMinute === '')) {
                                     await releaseReservation({ silent: true });
@@ -2906,6 +2965,16 @@ const DoctorMedicalRecord: React.FC = () => {
                                     // ⭐ Clear endTime nếu format không hợp lệ
                                     setFollowUpEndTime(null);
                                   }
+                                }}
+                                onBlur={() => {
+                                  // ⭐ Clear error when both hour and minute are empty on blur
+                                  setTimeout(() => {
+                                    const [endH, endM] = (followUpEndTimeInput || '').split(':');
+                                    if ((!endH || endH === '') && (!endM || endM === '')) {
+                                      setTimeInputError(null);
+                                      setFollowUpEndTime(null);
+                                    }
+                                  }, 100);
                                 }}
                                 readOnly={!canEdit}
                               />
