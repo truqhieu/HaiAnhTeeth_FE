@@ -1054,8 +1054,8 @@ const Appointments = () => {
                           </>
                         )}
 
-                        {/* Đổi lịch hẹn - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
-                        {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
+                        {/* Đổi lịch hẹn - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ và KHÔNG phải ca tái khám */}
+                        {!appointment.replacedDoctorName && appointment.type !== "FollowUp" && (appointment.status === "Pending" || appointment.status === "Approved") && (
                         <button
                             className={`p-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 ${
                               appointment.hasPendingReschedule
@@ -1074,8 +1074,8 @@ const Appointments = () => {
                         </button>
                         )}
 
-                        {/* Đổi bác sĩ - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ */}
-                        {!appointment.replacedDoctorName && (appointment.status === "Pending" || appointment.status === "Approved") && (
+                        {/* Đổi bác sĩ - chỉ hiển thị khi KHÔNG có yêu cầu đổi bác sĩ và KHÔNG phải ca tái khám */}
+                        {!appointment.replacedDoctorName && appointment.type !== "FollowUp" && (appointment.status === "Pending" || appointment.status === "Approved") && (
                           <button
                             className={`p-2.5 rounded-lg transition-colors focus:outline-none focus:ring-2 ${
                               appointment.hasPendingChangeDoctor
