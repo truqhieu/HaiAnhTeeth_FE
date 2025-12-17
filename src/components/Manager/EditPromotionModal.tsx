@@ -64,7 +64,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
           return item;
         });
       }
-      
+
       setFormData({
         title: promotion.title,
         description: promotion.description,
@@ -117,14 +117,14 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
   const isDescriptionInvalid =
     Boolean(
       showValidation &&
-        (!formData.description || formData.description.trim().length === 0),
+      (!formData.description || formData.description.trim().length === 0),
     );
   const isDiscountValueInvalid = Boolean(showValidation && formData.discountValue <= 0);
   const isPercentInvalid =
     Boolean(
       showValidation &&
-        formData.discountType === "Percent" &&
-        formData.discountValue > 100,
+      formData.discountType === "Percent" &&
+      formData.discountValue > 100,
     );
   const isStartDateInvalid = Boolean(showValidation && !formData.startDate);
   const isEndDateInvalid = Boolean(showValidation && !formData.endDate);
@@ -136,9 +136,9 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
   // Check if end date is before start date (same-day is allowed)
   const isDateRangeInvalid = Boolean(
     showValidation &&
-      formData.startDate &&
-      formData.endDate &&
-      new Date(formData.endDate) < new Date(formData.startDate),
+    formData.startDate &&
+    formData.endDate &&
+    new Date(formData.endDate) < new Date(formData.startDate),
   );
 
   const today = new Date().toISOString().split("T")[0];
@@ -153,7 +153,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
 
     // Nếu status không hợp lệ cho update, chặn ngay và báo toast (BE cũng sẽ báo nhưng làm sớm để UX tốt hơn)
     if (!allowedStatusesForUpdate.includes(formData.status)) {
-      toast.error("Chỉ được cập nhật trạng thái thành Active hoặc Inactive");
+      toast.error("Chỉ được cập nhật trạng thái thành Đã áp dụng hoặc Không áp dụng");
       setShowValidation(true);
       return;
     }
@@ -356,8 +356,8 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                   isDiscountValueInvalid
                     ? "Giá trị giảm giá phải lớn hơn 0"
                     : isPercentInvalid
-                    ? "Phần trăm giảm giá không được vượt quá 100%"
-                    : ""
+                      ? "Phần trăm giảm giá không được vượt quá 100%"
+                      : ""
                 }
                 onValueChange={(value) =>
                   handleInputChange("discountValue", Number(value))
@@ -396,8 +396,8 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                   isEndDateInvalid
                     ? "Vui lòng chọn ngày kết thúc"
                     : isDateRangeInvalid
-                    ? "Ngày kết thúc không được trước ngày bắt đầu"
-                    : ""
+                      ? "Ngày kết thúc không được trước ngày bắt đầu"
+                      : ""
                 }
                 onChange={(value) => handleInputChange("endDate", value)}
               />
@@ -477,8 +477,8 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                                   }
                                 }}
                               >
-                                {formData.applicableServices.length === getFilteredServices().length 
-                                  ? "Bỏ chọn tất cả" 
+                                {formData.applicableServices.length === getFilteredServices().length
+                                  ? "Bỏ chọn tất cả"
                                   : "Chọn tất cả"}
                               </Button>
                             )}
@@ -522,11 +522,10 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                                         handleInputChange("applicableServices", [...currentServices, service._id]);
                                       }
                                     }}
-                                    className={`w-full p-3 bg-white rounded-lg border cursor-pointer transition-all ${
-                                      isSelected 
-                                        ? 'border-blue-500 bg-blue-50' 
+                                    className={`w-full p-3 bg-white rounded-lg border cursor-pointer transition-all ${isSelected
+                                        ? 'border-blue-500 bg-blue-50'
                                         : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex flex-col gap-1 w-full">
                                       <span className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
