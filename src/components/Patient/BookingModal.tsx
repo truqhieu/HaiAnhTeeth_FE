@@ -505,7 +505,8 @@ const res = await serviceApi.get({ status: "Active", limit: 1000, minPrice: 0 })
           formData.date,
           formData.appointmentFor,
           formData.fullName,
-          formData.email
+          formData.email,
+          user?.id || user?._id // ⭐ FIX: Pass patientUserId để backend exclude cross-doctor bookings
         );
 
         if (scheduleRes.success && scheduleRes.data) {
