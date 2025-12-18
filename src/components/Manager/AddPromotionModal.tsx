@@ -48,6 +48,21 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
     }
   }, [isOpen]);
 
+  // Auto-set status to "Inactive" if startDate is in the future
+  useEffect(() => {
+    if (formData.startDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDate = new Date(formData.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      
+      // If startDate is in the future, status must be "Inactive"
+      if (startDate > today && formData.status === "Active") {
+        setFormData((prev) => ({ ...prev, status: "Inactive" }));
+      }
+    }
+  }, [formData.startDate, formData.status]);
+
   const fetchServices = async () => {
     try {
       setLoadingServices(true);
@@ -77,7 +92,24 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   };
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      
+      // If startDate is being changed, check if status needs to be updated
+      if (field === "startDate" && value) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startDate = new Date(value);
+        startDate.setHours(0, 0, 0, 0);
+        
+        // If startDate is in the future, status must be "Inactive"
+        if (startDate > today && updated.status === "Active") {
+          updated.status = "Inactive";
+        }
+      }
+      
+      return updated;
+    });
   };
 
   // Validation
@@ -172,6 +204,14 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
 
       // Convert date to YYYY-MM-DD format (backend expects this format)
       // VietnameseDateInput already returns YYYY-MM-DD format, so we can use it directly
+      
+      // ⚠️ Validate: If startDate is in the future, status must be "Inactive"
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDate = new Date(formData.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      const finalStatus = startDate > today ? "Inactive" : formData.status;
+      
       const createData: any = {
         title: normalizeText(formData.title),
         description: normalizeText(formData.description),
@@ -180,7 +220,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
         applyToAll: formData.applyToAll,
         startDate: formData.startDate, // Already in YYYY-MM-DD format from VietnameseDateInput
         endDate: formData.endDate,     // Already in YYYY-MM-DD format from VietnameseDateInput
-        status: formData.status,
+        status: finalStatus, // Use validated status
       };
 
       // Only include serviceIds if not applying to all
@@ -407,10 +447,36 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
               }
               onSelectionChange={(keys) => {
                 const selected = Array.from(keys)[0] as string;
+                // Check if startDate is in the future
+                if (formData.startDate) {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const startDate = new Date(formData.startDate);
+                  startDate.setHours(0, 0, 0, 0);
+                  
+                  // If startDate is in the future and user tries to select "Active", prevent it
+                  if (startDate > today && selected === "Active") {
+                    toast.error("Không thể chọn 'Đang áp dụng' khi ngày bắt đầu trong tương lai");
+                    return;
+                  }
+                }
                 handleInputChange("status", selected);
               }}
             >
-              <SelectItem key="Active">Đang áp dụng</SelectItem>
+              <SelectItem 
+                key="Active"
+                isDisabled={
+                  formData.startDate ? (() => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const startDate = new Date(formData.startDate);
+                    startDate.setHours(0, 0, 0, 0);
+                    return startDate > today;
+                  })() : false
+                }
+              >
+                Đang áp dụng
+              </SelectItem>
               <SelectItem key="Inactive">Không áp dụng</SelectItem>
             </Select>
 

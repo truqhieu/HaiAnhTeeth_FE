@@ -12,7 +12,7 @@ export interface Promotion {
   services?: any[]; // Backend returns this field with populated service data
   startDate: string;
   endDate: string;
-  status: "Upcoming" | "Active" | "Expired";
+  status: "Active" | "Inactive" | "Expired";
   createdAt?: string;
   updatedAt?: string;
 }

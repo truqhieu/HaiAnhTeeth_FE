@@ -162,9 +162,10 @@ const PromotionManagement = () => {
         return "success";
       case "Inactive":
         return "danger";
-      case "Upcoming":
-        return "warning";
       case "Expired":
+        return "danger";
+      case "Upcoming":
+        // Map "Upcoming" to "danger" (same as "Inactive") for backward compatibility
         return "danger";
       default:
         return "warning";
@@ -177,10 +178,11 @@ const PromotionManagement = () => {
         return "Đang áp dụng";
       case "Inactive":
         return "Không áp dụng";
-      case "Upcoming":
-        return "Sắp diễn ra";
       case "Expired":
         return "Đã hết hạn";
+      case "Upcoming":
+        // Map "Upcoming" to "Không áp dụng" for backward compatibility
+        return "Không áp dụng";
       default:
         return status;
     }
