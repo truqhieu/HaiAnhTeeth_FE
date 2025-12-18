@@ -107,7 +107,9 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
           console.log('🚀 Fetching promotion detail for:', promotion._id);
           const response = await promotionApi.getPromotionDetail(promotion._id);
           if (response.success && response.data) {
-            const promotionData = response.data;
+            // response.data has type { success: boolean; message: string; data: Promotion }
+            // So we need to access response.data.data to get the Promotion object
+            const promotionData = (response.data as any).data || response.data;
             // 🔧 Convert applicableServices/services to array of IDs
             let serviceIds: string[] = [];
             
@@ -145,7 +147,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
               const updated = {
                 title: promotionData.title,
                 description: promotionData.description,
-                discountType: promotionData.discountType === "Fix" ? "Fixed" : "Percent",
+                discountType: (promotionData.discountType === "Fix" ? "Fixed" : "Percent") as "Percent" | "Fixed",
                 discountValue: promotionData.discountValue,
                 applyToAll: promotionData.applyToAll,
                 // Only update applicableServices if we got service IDs from API
