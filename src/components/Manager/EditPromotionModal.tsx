@@ -50,34 +50,127 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
     }
   }, [isOpen]);
 
+  // Set formData immediately from promotion prop when modal opens (for instant display)
   useEffect(() => {
-    if (promotion) {
-      // 🔧 Convert applicableServices to array of IDs if it's array of objects
+    if (promotion && isOpen) {
+      console.log('🔍 Promotion prop when modal opens:', {
+        _id: promotion._id,
+        applyToAll: promotion.applyToAll,
+        services: promotion.services,
+        applicableServices: promotion.applicableServices,
+        fullPromotion: promotion
+      });
+
+      // Extract service IDs from promotion prop first (for immediate display)
       let serviceIds: string[] = [];
-      if (promotion.applicableServices && Array.isArray(promotion.applicableServices)) {
-        serviceIds = promotion.applicableServices.map((item: any) => {
-          // If item is object with _id, extract _id
-          if (typeof item === 'object' && item._id) {
-            return item._id;
+      const servicesData = promotion.services || promotion.applicableServices;
+      
+      console.log('🔍 Services data from promotion prop:', servicesData);
+      
+      if (servicesData && Array.isArray(servicesData) && servicesData.length > 0) {
+        serviceIds = servicesData.map((item: any) => {
+          if (typeof item === 'object' && item !== null) {
+            const id = String(item._id || item.id || item);
+            console.log('🔍 Extracting ID from object:', { item, extractedId: id });
+            return id;
           }
-          // If item is already a string ID, use it
-          return item;
-        });
+          const id = String(item);
+          console.log('🔍 Using string ID:', id);
+          return id;
+        }).filter((id: any) => id && id !== 'undefined' && id !== 'null');
       }
 
+      console.log('✅ Service IDs extracted from promotion prop:', serviceIds);
+
+      // Set formData immediately from promotion prop
       setFormData({
         title: promotion.title,
         description: promotion.description,
         discountType: promotion.discountType === "Fix" ? "Fixed" : "Percent",
         discountValue: promotion.discountValue,
         applyToAll: promotion.applyToAll,
-        applicableServices: serviceIds, // ✅ Now always array of string IDs
+        applicableServices: serviceIds,
         startDate: promotion.startDate.split("T")[0],
         endDate: promotion.endDate.split("T")[0],
         status: promotion.status,
       });
+
+      console.log('✅ FormData set with applicableServices:', serviceIds);
     }
-  }, [promotion]);
+  }, [promotion, isOpen]);
+
+  // Fetch promotion detail when modal opens to ensure we have complete data (update formData after)
+  useEffect(() => {
+    const fetchPromotionDetail = async () => {
+      if (promotion && isOpen && promotion._id) {
+        try {
+          console.log('🚀 Fetching promotion detail for:', promotion._id);
+          const response = await promotionApi.getPromotionDetail(promotion._id);
+          if (response.success && response.data) {
+            // response.data has type { success: boolean; message: string; data: Promotion }
+            // So we need to access response.data.data to get the Promotion object
+            const promotionData = (response.data as any).data || response.data;
+            // 🔧 Convert applicableServices/services to array of IDs
+            let serviceIds: string[] = [];
+            
+            // Check both applicableServices and services fields
+            // Backend may return services as array of objects with _id
+            const servicesData = promotionData.services || promotionData.applicableServices;
+            
+            console.log('🔍 Promotion data from API:', {
+              applyToAll: promotionData.applyToAll,
+              services: promotionData.services,
+              applicableServices: promotionData.applicableServices,
+              servicesData
+            });
+            
+            if (servicesData && Array.isArray(servicesData) && servicesData.length > 0) {
+              serviceIds = servicesData.map((item: any) => {
+                // If item is object with _id, extract _id
+                if (typeof item === 'object' && item !== null) {
+                  // Try _id first, then id, and convert to string
+                  const id = item._id || item.id || item;
+                  return String(id); // Convert to string to ensure consistency
+                }
+                // If item is already a string ID, convert to string to be safe
+                return String(item);
+              }).filter((id: any) => id && id !== 'undefined' && id !== 'null'); // Filter out invalid values
+            }
+
+            console.log('✅ Extracted service IDs from API:', serviceIds);
+            console.log('✅ Current formData.applicableServices before update:', formData.applicableServices);
+
+            // Update formData with complete data from API
+            // ⚠️ IMPORTANT: Only update applicableServices if API returned services data
+            // Otherwise, keep the existing value from promotion prop
+            setFormData(prev => {
+              const updated = {
+                title: promotionData.title,
+                description: promotionData.description,
+                discountType: (promotionData.discountType === "Fix" ? "Fixed" : "Percent") as "Percent" | "Fixed",
+                discountValue: promotionData.discountValue,
+                applyToAll: promotionData.applyToAll,
+                // Only update applicableServices if we got service IDs from API
+                // Otherwise, keep the existing value from promotion prop
+                applicableServices: serviceIds.length > 0 ? serviceIds : prev.applicableServices,
+                startDate: promotionData.startDate.split("T")[0],
+                endDate: promotionData.endDate.split("T")[0],
+                status: promotionData.status,
+              };
+              console.log('✅ Updated formData with applicableServices:', updated.applicableServices);
+              return updated;
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching promotion detail:", error);
+          // If fetch fails, formData is already set from promotion prop above
+        }
+      }
+    };
+
+    // Fetch immediately when modal opens
+    fetchPromotionDetail();
+  }, [promotion, isOpen]);
 
   const fetchServices = async () => {
     try {
@@ -107,8 +200,40 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
     );
   };
 
+  // Auto-set status to "Inactive" if startDate is in the future
+  useEffect(() => {
+    if (formData.startDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDate = new Date(formData.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      
+      // If startDate is in the future, status must be "Inactive"
+      if (startDate > today && formData.status === "Active") {
+        setFormData((prev) => ({ ...prev, status: "Inactive" }));
+      }
+    }
+  }, [formData.startDate, formData.status]);
+
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [field]: value };
+      
+      // If startDate is being changed, check if status needs to be updated
+      if (field === "startDate" && value) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startDate = new Date(value);
+        startDate.setHours(0, 0, 0, 0);
+        
+        // If startDate is in the future, status must be "Inactive"
+        if (startDate > today && updated.status === "Active") {
+          updated.status = "Inactive";
+        }
+      }
+      
+      return updated;
+    });
   };
 
   // Validation
@@ -194,6 +319,14 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
 
       // Convert date to YYYY-MM-DD format (backend expects this format)
       // VietnameseDateInput already returns YYYY-MM-DD format, so we can use it directly
+      
+      // ⚠️ Validate: If startDate is in the future, status must be "Inactive"
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const startDate = new Date(formData.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      const finalStatus = startDate > today ? "Inactive" : formData.status;
+      
       const updateData: any = {
         title: normalizeText(formData.title),
         description: normalizeText(formData.description),
@@ -202,7 +335,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
         applyToAll: formData.applyToAll,
         startDate: formData.startDate, // Already in YYYY-MM-DD format from VietnameseDateInput
         endDate: formData.endDate,     // Already in YYYY-MM-DD format from VietnameseDateInput
-        status: formData.status,
+        status: finalStatus, // Use validated status
       };
 
       // Only include serviceIds if not applying to all
@@ -235,6 +368,18 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
     if (isSubmitting) return;
     setShowValidation(false);
     setServiceSearchTerm("");
+    // Reset formData when closing modal
+    setFormData({
+      title: "",
+      description: "",
+      discountType: "Percent",
+      discountValue: 0,
+      applyToAll: true,
+      applicableServices: [],
+      startDate: "",
+      endDate: "",
+      status: "",
+    });
     onClose();
   };
 
@@ -420,10 +565,36 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
               }
               onSelectionChange={(keys) => {
                 const selected = Array.from(keys)[0] as string;
+                // Check if startDate is in the future
+                if (formData.startDate) {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const startDate = new Date(formData.startDate);
+                  startDate.setHours(0, 0, 0, 0);
+                  
+                  // If startDate is in the future and user tries to select "Active", prevent it
+                  if (startDate > today && selected === "Active") {
+                    toast.error("Không thể chọn 'Đang áp dụng' khi ngày bắt đầu trong tương lai");
+                    return;
+                  }
+                }
                 handleInputChange("status", selected);
               }}
             >
-              <SelectItem key="Active">Đang áp dụng</SelectItem>
+              <SelectItem 
+                key="Active"
+                isDisabled={
+                  formData.startDate ? (() => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const startDate = new Date(formData.startDate);
+                    startDate.setHours(0, 0, 0, 0);
+                    return startDate > today;
+                  })() : false
+                }
+              >
+                Đang áp dụng
+              </SelectItem>
               <SelectItem key="Inactive">Không áp dụng</SelectItem>
             </Select>
 
@@ -473,7 +644,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                                   if (formData.applicableServices.length === filteredServices.length) {
                                     handleInputChange("applicableServices", []);
                                   } else {
-                                    handleInputChange("applicableServices", filteredServices.map(s => s._id));
+                                    handleInputChange("applicableServices", filteredServices.map(s => String(s._id)));
                                   }
                                 }}
                               >
@@ -510,16 +681,29 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                           ) : (
                             <div className="space-y-2">
                               {getFilteredServices().map((service) => {
-                                const isSelected = formData.applicableServices.includes(service._id);
+                                // Convert both to string for comparison to handle ObjectId vs string
+                                const serviceIdStr = String(service._id);
+                                const isSelected = formData.applicableServices.some(id => String(id) === serviceIdStr);
+                                
+                                // Debug log for first service
+                                if (getFilteredServices().indexOf(service) === 0) {
+                                  console.log('🔍 Service comparison:', {
+                                    serviceId: serviceIdStr,
+                                    applicableServices: formData.applicableServices,
+                                    isSelected
+                                  });
+                                }
+                                
                                 return (
                                   <div
                                     key={service._id}
                                     onClick={() => {
                                       const currentServices = [...formData.applicableServices];
+                                      const serviceIdStr = String(service._id);
                                       if (isSelected) {
-                                        handleInputChange("applicableServices", currentServices.filter(id => id !== service._id));
+                                        handleInputChange("applicableServices", currentServices.filter(id => String(id) !== serviceIdStr));
                                       } else {
-                                        handleInputChange("applicableServices", [...currentServices, service._id]);
+                                        handleInputChange("applicableServices", [...currentServices, serviceIdStr]);
                                       }
                                     }}
                                     className={`w-full p-3 bg-white rounded-lg border cursor-pointer transition-all ${isSelected

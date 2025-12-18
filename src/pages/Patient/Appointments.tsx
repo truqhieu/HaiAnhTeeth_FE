@@ -1020,6 +1020,8 @@ const Appointments = () => {
                                     ? "bg-red-100 text-red-800"
                                     : appointment.status === "Expired"
                                       ? "bg-orange-100 text-orange-800"
+                                      : appointment.status === "No-Show"
+                                        ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-800"
                       }`}
                         >
