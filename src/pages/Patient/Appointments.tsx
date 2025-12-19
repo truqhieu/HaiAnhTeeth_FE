@@ -385,8 +385,9 @@ const Appointments = () => {
 
   // ⭐ Mở modal hủy lịch - phân biệt Consultation và Examination
   const handleCancelAppointment = async (appointment: Appointment) => {
-    // ⭐ Nếu là Examination/FollowUp: Hiển thị modal xác nhận đơn giản
-    if (appointment.type === 'Examination' || appointment.type === 'FollowUp') {
+    // ⭐ Nếu là Examination/FollowUp hoặc PendingPayment: Hiển thị modal xác nhận đơn giản
+    // PendingPayment = chưa thanh toán → không cần bank info
+    if (appointment.type === 'Examination' || appointment.type === 'FollowUp' || appointment.status === 'PendingPayment') {
       setConfirmCancelState({ open: true, appointment });
       return;
     }
