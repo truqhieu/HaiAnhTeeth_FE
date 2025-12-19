@@ -1423,7 +1423,7 @@ const AllAppointments = () => {
       case "Refunded":
         return "success"; // Hoàn thành/hoàn tiền: xanh lá
       case "Approved":
-        return "warning"; // Đã xác nhận: xanh dương
+        return "success"; // Đã xác nhận: xanh lá cây
       case "CheckedIn":
       case "InProgress":
         return "primary"; // Trung tính để không trùng màu
