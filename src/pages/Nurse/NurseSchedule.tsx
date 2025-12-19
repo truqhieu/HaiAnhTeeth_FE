@@ -771,6 +771,7 @@ const NurseSchedule = () => {
               onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
               placeholder="Chọn khoảng thời gian"
               className="w-full text-gray-500"
+              size="lg"
             />
 
             <Select
