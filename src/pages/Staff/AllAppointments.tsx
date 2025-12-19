@@ -2136,6 +2136,9 @@ const AllAppointments = () => {
                     <TableCell>
                       <div className="flex gap-2 flex-wrap">
                         {(() => {
+                          // ⭐ Kiểm tra bác sĩ vắng mặt cho cả Online và Offline
+                          const isOnLeave = isDoctorOnLeave(appointment);
+                          
                           // ⭐ Ca khám Online: Staff có thể xác nhận hoặc từ chối khi ở trạng thái Pending
                           if (appointment.mode === "Online") {
                             // Hiển thị nút xác nhận/từ chối cho ca khám Pending
@@ -2167,6 +2170,21 @@ const AllAppointments = () => {
                                       <XCircleIcon className="w-5 h-5" />
                                     </Button>
                                   </Tooltip>
+                                  {/* ⭐ Button Gán bác sĩ cho Consultation khi bác sĩ vắng mặt */}
+                                  {isOnLeave && shouldShowReassignButton(appointment, isOnLeave) && (
+                                    <Tooltip content="Gán bác sĩ">
+                                      <Button
+                                        isIconOnly
+                                        size="md"
+                                        variant="light"
+                                        className="text-purple-600 hover:bg-purple-50 transition-colors"
+                                        onPress={() => openReassignModal(appointment)}
+                                        isDisabled={processingId === appointment.id}
+                                      >
+                                        <UserPlusIcon className="w-5 h-5" />
+                                      </Button>
+                                    </Tooltip>
+                                  )}
                                 </>
                               );
                             }
@@ -2186,14 +2204,28 @@ const AllAppointments = () => {
                                 </Tooltip>
                               );
                             }
+                            // ⭐ Button Gán bác sĩ cho Consultation ở các trạng thái khác (Approved, CheckedIn)
+                            if (isOnLeave && shouldShowReassignButton(appointment, isOnLeave)) {
+                              return (
+                                <Tooltip content="Gán bác sĩ">
+                                  <Button
+                                    isIconOnly
+                                    size="md"
+                                    variant="light"
+                                    className="text-purple-600 hover:bg-purple-50 transition-colors"
+                                    onPress={() => openReassignModal(appointment)}
+                                    isDisabled={processingId === appointment.id}
+                                  >
+                                    <UserPlusIcon className="w-5 h-5" />
+                                  </Button>
+                                </Tooltip>
+                              );
+                            }
                             // Không hiển thị nút nào khác cho ca khám Online ở các trạng thái khác
                             return null;
                           }
 
                           // ⭐ Logic cho ca khám Offline (giữ nguyên)
-                          const isOnLeave = isDoctorOnLeave(appointment);
-
-
                           return (
                             <>
                               {/* ⭐ Reassign Button moved here to show alongside check-in */}
