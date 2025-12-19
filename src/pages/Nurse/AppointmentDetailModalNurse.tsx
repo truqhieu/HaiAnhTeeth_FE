@@ -85,6 +85,8 @@ const AppointmentDetailModalNurse = ({
         return "Đã xác nhận";
       case "CheckedIn":
         return "Đã nhận";
+      case "InProgress":
+        return "Đang trong ca khám";
       case "Completed":
         return "Hoàn thành";
       case "Finalized":
