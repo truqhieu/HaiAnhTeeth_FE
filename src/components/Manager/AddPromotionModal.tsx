@@ -55,7 +55,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       today.setHours(0, 0, 0, 0);
       const startDate = new Date(formData.startDate);
       startDate.setHours(0, 0, 0, 0);
-      
+
       // If startDate is in the future, status must be "Inactive"
       if (startDate > today && formData.status === "Active") {
         setFormData((prev) => ({ ...prev, status: "Inactive" }));
@@ -66,7 +66,11 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   const fetchServices = async () => {
     try {
       setLoadingServices(true);
-      const response = await serviceApi.get({ limit: 1000, status: "Active" });
+      const response = await serviceApi.get({
+        limit: 1000,
+        status: "Active",
+        forPromotion: true 
+      });
       if (response.success && response.data) {
         setServices(response.data);
       }
@@ -94,20 +98,20 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      
+
       // If startDate is being changed, check if status needs to be updated
       if (field === "startDate" && value) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const startDate = new Date(value);
         startDate.setHours(0, 0, 0, 0);
-        
+
         // If startDate is in the future, status must be "Inactive"
         if (startDate > today && updated.status === "Active") {
           updated.status = "Inactive";
         }
       }
-      
+
       return updated;
     });
   };
@@ -118,14 +122,14 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   const isDescriptionInvalid =
     Boolean(
       showValidation &&
-        (!formData.description || formData.description.trim().length === 0),
+      (!formData.description || formData.description.trim().length === 0),
     );
   const isDiscountValueInvalid = Boolean(showValidation && formData.discountValue <= 0);
   const isPercentInvalid =
     Boolean(
       showValidation &&
-        formData.discountType === "Percent" &&
-        formData.discountValue > 100,
+      formData.discountType === "Percent" &&
+      formData.discountValue > 100,
     );
   const isStartDateInvalid = Boolean(showValidation && !formData.startDate);
   const isEndDateInvalid = Boolean(showValidation && !formData.endDate);
@@ -139,15 +143,15 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
   // Allow endDate to be equal to startDate (promotion can last 1 day)
   const isDateRangeInvalid = Boolean(
     showValidation &&
-      formData.startDate &&
-      formData.endDate &&
-      (() => {
-        const start = new Date(formData.startDate);
-        const end = new Date(formData.endDate);
-        start.setHours(0, 0, 0, 0);
-        end.setHours(0, 0, 0, 0);
-        return end < start;
-      })(),
+    formData.startDate &&
+    formData.endDate &&
+    (() => {
+      const start = new Date(formData.startDate);
+      const end = new Date(formData.endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+      return end < start;
+    })(),
   );
 
   const today = new Date().toISOString().split("T")[0];
@@ -204,14 +208,14 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
 
       // Convert date to YYYY-MM-DD format (backend expects this format)
       // VietnameseDateInput already returns YYYY-MM-DD format, so we can use it directly
-      
+
       // ⚠️ Validate: If startDate is in the future, status must be "Inactive"
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const startDate = new Date(formData.startDate);
       startDate.setHours(0, 0, 0, 0);
       const finalStatus = startDate > today ? "Inactive" : formData.status;
-      
+
       const createData: any = {
         title: normalizeText(formData.title),
         description: normalizeText(formData.description),
@@ -383,8 +387,8 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                   isDiscountValueInvalid
                     ? "Giá trị giảm giá phải lớn hơn 0"
                     : isPercentInvalid
-                    ? "Phần trăm giảm giá không được vượt quá 100%"
-                    : ""
+                      ? "Phần trăm giảm giá không được vượt quá 100%"
+                      : ""
                 }
                 onValueChange={(value) =>
                   handleInputChange("discountValue", Number(value))
@@ -423,8 +427,8 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                   isEndDateInvalid
                     ? "Vui lòng chọn ngày kết thúc"
                     : isDateRangeInvalid
-                    ? "Ngày kết thúc không được trước ngày bắt đầu"
-                    : ""
+                      ? "Ngày kết thúc không được trước ngày bắt đầu"
+                      : ""
                 }
                 onChange={(value) => handleInputChange("endDate", value)}
               />
@@ -453,7 +457,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                   today.setHours(0, 0, 0, 0);
                   const startDate = new Date(formData.startDate);
                   startDate.setHours(0, 0, 0, 0);
-                  
+
                   // If startDate is in the future and user tries to select "Active", prevent it
                   if (startDate > today && selected === "Active") {
                     toast.error("Không thể chọn 'Đang áp dụng' khi ngày bắt đầu trong tương lai");
@@ -463,7 +467,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                 handleInputChange("status", selected);
               }}
             >
-              <SelectItem 
+              <SelectItem
                 key="Active"
                 isDisabled={
                   formData.startDate ? (() => {
@@ -530,8 +534,8 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                                   }
                                 }}
                               >
-                                {formData.applicableServices.length === getFilteredServices().length 
-                                  ? "Bỏ chọn tất cả" 
+                                {formData.applicableServices.length === getFilteredServices().length
+                                  ? "Bỏ chọn tất cả"
                                   : "Chọn tất cả"}
                               </Button>
                             )}
@@ -575,11 +579,10 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                                         handleInputChange("applicableServices", [...currentServices, service._id]);
                                       }
                                     }}
-                                    className={`w-full p-3 bg-white rounded-lg border cursor-pointer transition-all ${
-                                      isSelected 
-                                        ? 'border-blue-500 bg-blue-50' 
+                                    className={`w-full p-3 bg-white rounded-lg border cursor-pointer transition-all ${isSelected
+                                        ? 'border-blue-500 bg-blue-50'
                                         : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
-                                    }`}
+                                      }`}
                                   >
                                     <div className="flex flex-col gap-1 w-full">
                                       <span className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>

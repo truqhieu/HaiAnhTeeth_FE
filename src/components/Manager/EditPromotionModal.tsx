@@ -64,9 +64,9 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
       // Extract service IDs from promotion prop first (for immediate display)
       let serviceIds: string[] = [];
       const servicesData = promotion.services || promotion.applicableServices;
-      
+
       console.log('🔍 Services data from promotion prop:', servicesData);
-      
+
       if (servicesData && Array.isArray(servicesData) && servicesData.length > 0) {
         serviceIds = servicesData.map((item: any) => {
           if (typeof item === 'object' && item !== null) {
@@ -112,18 +112,18 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
             const promotionData = (response.data as any).data || response.data;
             // 🔧 Convert applicableServices/services to array of IDs
             let serviceIds: string[] = [];
-            
+
             // Check both applicableServices and services fields
             // Backend may return services as array of objects with _id
             const servicesData = promotionData.services || promotionData.applicableServices;
-            
+
             console.log('🔍 Promotion data from API:', {
               applyToAll: promotionData.applyToAll,
               services: promotionData.services,
               applicableServices: promotionData.applicableServices,
               servicesData
             });
-            
+
             if (servicesData && Array.isArray(servicesData) && servicesData.length > 0) {
               serviceIds = servicesData.map((item: any) => {
                 // If item is object with _id, extract _id
@@ -175,7 +175,11 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
   const fetchServices = async () => {
     try {
       setLoadingServices(true);
-      const response = await serviceApi.get({ limit: 1000, status: "Active" });
+      const response = await serviceApi.get({
+        limit: 1000,
+        status: "Active",
+        forPromotion: true 
+      });
       if (response.success && response.data) {
         setServices(response.data);
       }
@@ -207,7 +211,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
       today.setHours(0, 0, 0, 0);
       const startDate = new Date(formData.startDate);
       startDate.setHours(0, 0, 0, 0);
-      
+
       // If startDate is in the future, status must be "Inactive"
       if (startDate > today && formData.status === "Active") {
         setFormData((prev) => ({ ...prev, status: "Inactive" }));
@@ -218,20 +222,20 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      
+
       // If startDate is being changed, check if status needs to be updated
       if (field === "startDate" && value) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const startDate = new Date(value);
         startDate.setHours(0, 0, 0, 0);
-        
+
         // If startDate is in the future, status must be "Inactive"
         if (startDate > today && updated.status === "Active") {
           updated.status = "Inactive";
         }
       }
-      
+
       return updated;
     });
   };
@@ -319,14 +323,14 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
 
       // Convert date to YYYY-MM-DD format (backend expects this format)
       // VietnameseDateInput already returns YYYY-MM-DD format, so we can use it directly
-      
+
       // ⚠️ Validate: If startDate is in the future, status must be "Inactive"
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const startDate = new Date(formData.startDate);
       startDate.setHours(0, 0, 0, 0);
       const finalStatus = startDate > today ? "Inactive" : formData.status;
-      
+
       const updateData: any = {
         title: normalizeText(formData.title),
         description: normalizeText(formData.description),
@@ -571,7 +575,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                   today.setHours(0, 0, 0, 0);
                   const startDate = new Date(formData.startDate);
                   startDate.setHours(0, 0, 0, 0);
-                  
+
                   // If startDate is in the future and user tries to select "Active", prevent it
                   if (startDate > today && selected === "Active") {
                     toast.error("Không thể chọn 'Đang áp dụng' khi ngày bắt đầu trong tương lai");
@@ -581,7 +585,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                 handleInputChange("status", selected);
               }}
             >
-              <SelectItem 
+              <SelectItem
                 key="Active"
                 isDisabled={
                   formData.startDate ? (() => {
@@ -684,7 +688,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                                 // Convert both to string for comparison to handle ObjectId vs string
                                 const serviceIdStr = String(service._id);
                                 const isSelected = formData.applicableServices.some(id => String(id) === serviceIdStr);
-                                
+
                                 // Debug log for first service
                                 if (getFilteredServices().indexOf(service) === 0) {
                                   console.log('🔍 Service comparison:', {
@@ -693,7 +697,7 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                                     isSelected
                                   });
                                 }
-                                
+
                                 return (
                                   <div
                                     key={service._id}
@@ -707,8 +711,8 @@ const EditPromotionModal: React.FC<EditPromotionModalProps> = ({
                                       }
                                     }}
                                     className={`w-full p-3 bg-white rounded-lg border cursor-pointer transition-all ${isSelected
-                                        ? 'border-blue-500 bg-blue-50'
-                                        : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
+                                      ? 'border-blue-500 bg-blue-50'
+                                      : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50'
                                       }`}
                                   >
                                     <div className="flex flex-col gap-1 w-full">
