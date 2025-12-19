@@ -1423,10 +1423,10 @@ const AllAppointments = () => {
       case "Refunded":
         return "success"; // Hoàn thành/hoàn tiền: xanh lá
       case "Approved":
-        return "primary"; // Đã xác nhận: xanh dương
+        return "warning"; // Đã xác nhận: xanh dương
       case "CheckedIn":
       case "InProgress":
-        return "default"; // Trung tính để không trùng màu
+        return "primary"; // Trung tính để không trùng màu
       case "Pending":
       case "PendingPayment":
         return "warning";

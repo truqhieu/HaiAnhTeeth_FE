@@ -442,6 +442,8 @@ const DoctorSchedule = () => {
         return "success";
       case "CheckedIn":
         return "primary";
+      case "InProgress":
+        return "warning"; // Đang trong ca khám: màu vàng/cam
       case "Completed":
         return "primary";
       case "Finalized":
@@ -733,7 +735,8 @@ const DoctorSchedule = () => {
               endDate={dateRange.endDate}
               onDateChange={(startDate, endDate) => setDateRange({ startDate, endDate })}
               placeholder="Chọn khoảng thời gian"
-              className="w-full"
+              className="w-full text-gray-500"
+              size="lg"
             />
 
             <Select
