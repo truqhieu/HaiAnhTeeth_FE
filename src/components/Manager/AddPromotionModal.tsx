@@ -219,7 +219,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
       const createData: any = {
         title: normalizeText(formData.title),
         description: normalizeText(formData.description),
-        discountType: formData.discountType === "Fixed" ? "Fix" : "Percent",
+        discountType: "Percent",
         discountValue: formData.discountValue,
         applyToAll: formData.applyToAll,
         startDate: formData.startDate, // Already in YYYY-MM-DD format from VietnameseDateInput
@@ -342,30 +342,22 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
             />
 
             <div className="grid grid-cols-2 gap-4">
-              <Select
-                className="w-full"
+              <Input
+                fullWidth
                 id="discountType"
                 label={
                   <>
                     Loại giảm giá <span className="text-red-500">*</span>
                   </>
                 }
-                selectedKeys={[formData.discountType]}
+                value="Phần trăm (%)"
                 variant="bordered"
-                disallowEmptySelection
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0] as "Percent" | "Fixed";
-                  handleInputChange("discountType", selected);
+                isReadOnly
+                classNames={{
+                  input: "cursor-default",
+                  inputWrapper: "bg-gray-50"
                 }}
-                popoverProps={{
-                  shouldCloseOnInteractOutside: (element) => {
-                    return !element.closest('[role="listbox"]');
-                  }
-                }}
-              >
-                <SelectItem key="Percent">Phần trăm (%)</SelectItem>
-                <SelectItem key="Fixed">Số tiền cố định (đ)</SelectItem>
-              </Select>
+              />
 
               <Input
                 fullWidth
@@ -376,9 +368,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                   </>
                 }
                 min="0"
-                placeholder={
-                  formData.discountType === "Percent" ? "0-100" : "Số tiền"
-                }
+                placeholder="0-100"
                 type="number"
                 value={formData.discountValue.toString()}
                 variant="bordered"
@@ -511,7 +501,7 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                       </div>
                     ) : (
                       <div className={`border rounded-lg p-4 bg-gray-50 ${isServicesInvalid ? 'border-red-500' : 'border-gray-300'}`}>
-                        {/* Header với search và select all */}
+                        {/* Header với search */}
                         <div className="mb-4 space-y-3">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <p className="text-sm font-semibold text-gray-700">
@@ -520,25 +510,6 @@ const AddPromotionModal: React.FC<AddPromotionModalProps> = ({
                                 ({formData.applicableServices.length} đã chọn)
                               </span>
                             </p>
-                            {services.length > 0 && (
-                              <Button
-                                size="sm"
-                                variant="light"
-                                className="text-xs h-7"
-                                onPress={() => {
-                                  const filteredServices = getFilteredServices();
-                                  if (formData.applicableServices.length === filteredServices.length) {
-                                    handleInputChange("applicableServices", []);
-                                  } else {
-                                    handleInputChange("applicableServices", filteredServices.map(s => s._id));
-                                  }
-                                }}
-                              >
-                                {formData.applicableServices.length === getFilteredServices().length
-                                  ? "Bỏ chọn tất cả"
-                                  : "Chọn tất cả"}
-                              </Button>
-                            )}
                           </div>
                           <Input
                             placeholder="Tìm kiếm dịch vụ..."
