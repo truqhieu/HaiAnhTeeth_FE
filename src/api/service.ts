@@ -32,7 +32,9 @@ export interface GetServicesParams {
   category?: string;
   search?: string;
   minPrice?: number;
+  forPromotion?: boolean; 
 }
+
 
 // Backend trả về object này trực tiếp (success là boolean)
 export interface GetServicesResponse {
